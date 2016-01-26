@@ -23,7 +23,6 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVE
 #include "quaternion.h"
 #include "matrix.h"
 #include "ray.h"
-#include "bbox.h"
 
 #include <cmath>
 #include <ctime>
@@ -128,25 +127,6 @@ namespace FireRays
     inline ray transform_ray(ray const& r, matrix const& m)
     {
         return ray(transform_point(r.o, m), transform_vector(r.d, m), r.o.w, r.d.w);
-    }
-    
-    /// Transform bounding box
-    inline bbox transform_bbox(bbox const& b, matrix const& m)
-    {
-        // Get extents
-        float3 extents = b.extents();
-        
-        // Transform the box to correct instance space
-        bbox newbox(transform_point(b.pmin, m));
-        newbox.grow(transform_point(b.pmin + float3(extents.x, 0, 0), m));
-        newbox.grow(transform_point(b.pmin + float3(extents.x, extents.y, 0), m));
-        newbox.grow(transform_point(b.pmin + float3(0, extents.y, 0), m));
-        newbox.grow(transform_point(b.pmin + float3(extents.x, 0, extents.z), m));
-        newbox.grow(transform_point(b.pmin + float3(extents.x, extents.y, extents.z), m));
-        newbox.grow(transform_point(b.pmin + float3(0, extents.y, extents.z), m));
-        newbox.grow(transform_point(b.pmin + float3(0, 0, extents.z), m));
-        
-        return newbox;
     }
 
     /// Solve quadratic equation

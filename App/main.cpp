@@ -38,7 +38,7 @@
 
 #include "CLW.h"
 
-#include "../FireRays/math/mathutils.h"
+#include "math/mathutils.h"
 
 #include "tiny_obj_loader.h"
 #include "perspective_camera.h"

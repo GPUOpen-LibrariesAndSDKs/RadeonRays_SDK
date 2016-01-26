@@ -17,7 +17,7 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVE
 #ifndef SH_H
 #define SH_H
 
-#include "../FireRays/math/mathutils.h"
+#include "math/mathutils.h"
 
 ///< In mathematics, spherical harmonics are the angular portion of a set of solutions to Laplace's equation. 
 ///< Represented in a system of spherical coordinates, Laplace's spherical harmonics 

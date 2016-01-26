@@ -18,7 +18,7 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVE
 #ifndef RENDERER_H
 #define RENDERER_H
 
-#include "../FireRays/math/mathutils.h"
+#include "math/mathutils.h"
 
 class Scene;
 

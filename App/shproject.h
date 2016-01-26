@@ -19,7 +19,7 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVE
 
 #include <string>
 
-#include "../FireRays/math/mathutils.h"
+#include "math/mathutils.h"
 
 ///< The function projects latitude-longitude environment map to SH basis up to lmax band
 void ShProjectEnvironmentMap(FireRays::float3 const* envmap, int width, int height, int lmax, FireRays::float3* coeffs);

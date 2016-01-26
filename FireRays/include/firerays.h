@@ -17,11 +17,11 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVE
 #ifndef FIRERAYS_H
 #define FIRERAYS_H
 
-#include "../math/float3.h"
-#include "../math/float2.h"
-#include "../math/matrix.h"
-#include "../math/ray.h"
-#include "../math/mathutils.h"
+#include "math/float3.h"
+#include "math/float2.h"
+#include "math/matrix.h"
+#include "math/ray.h"
+#include "math/mathutils.h"
 
 #define FIRERAYS_API_VERSION 1.21
 

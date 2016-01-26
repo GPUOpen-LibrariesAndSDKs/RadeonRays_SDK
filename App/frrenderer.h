@@ -18,7 +18,7 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVE
 
 #include "CLW.h"
 #include "renderer.h"
-#include "../FireRays/intersection/firerays_cl.h"
+#include "firerays_cl.h"
 
 class FrOutput;
 

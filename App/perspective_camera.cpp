@@ -3,9 +3,9 @@
 #include <cmath>
 #include <cassert>
 
-#include "../FireRays/math/quaternion.h"
-#include "../FireRays/math/matrix.h"
-#include "../FireRays/math/mathutils.h"
+#include "math/quaternion.h"
+#include "math/matrix.h"
+#include "math/mathutils.h"
 
 
 using namespace FireRays;

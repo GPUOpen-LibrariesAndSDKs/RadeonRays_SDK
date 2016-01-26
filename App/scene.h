@@ -17,7 +17,7 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVE
 #define SCENE_H
 
 
-#include "../FireRays/math/mathutils.h"
+#include "math/mathutils.h"
 #include "perspective_camera.h"
 #include <vector>
 #include <string>
