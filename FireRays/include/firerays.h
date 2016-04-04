@@ -41,7 +41,7 @@ namespace FireRays
     /// API is distributing the work across multiple devices itsels, so
     /// this structure is only used to query devices configuration and
     /// limit the number of devices available for the API.
-    struct FRAPI IntersectionDeviceInfo
+    struct FRAPI DeviceInfo
     {
         // Device type
         enum Type
@@ -51,22 +51,12 @@ namespace FireRays
             kAccelerator
         };
 
-        // API mask components
-        enum Api
-        {
-            kNative        = 0x1,
-            kOpenCl        = 0x2,
-            kDirectCompute = 0x4,
-        };
-
         // Device name
-        char* name;
+        char const* name;
         // Device vendor
-        char* vendor;
+        char const* vendor;
         // Device type
         Type type;
-        // Supported APIs
-        int apis;
     };
 
     // Forward declaration of entities
@@ -167,14 +157,14 @@ namespace FireRays
         // Use this part of API to query for available devices and
         // limit the set of devices which API is going to use
         // Get the number of devices available in the system
-        static int GetIntersectionDeviceCount();
+        static std::uint32_t GetDeviceCount();
         // Get the information for the specified device
-        static IntersectionDeviceInfo const& GetIntersectionDeviceInfo(int devidx);
+        static void GetDeviceInfo(std::uint32_t devidx, DeviceInfo& devinfo);
 
         /******************************************
         API lifetime management
         ******************************************/
-        static IntersectionApi* Create(int usagehint, int* devindices, int* apis, int numdevices);
+        static IntersectionApi* Create(std::uint32_t devidx);
 
         // Deallocation
         static void Delete(IntersectionApi* api);
@@ -203,9 +193,9 @@ namespace FireRays
         // The call is blocking, so the returned value is ready upon return.
         virtual Shape* CreateInstance(Shape const* shape) const = 0;
         // Delete the shape (to simplify DLL boundary crossing
-        virtual void DeleteShape(Shape* shape) = 0;
+        virtual void DeleteShape(Shape const* shape) = 0;
         // Attach shape to participate in intersection process
-        virtual void AttachShape(Shape* shape) = 0;
+        virtual void AttachShape(Shape const* shape) = 0;
         // Detach shape, i.e. it is not going to be considered part of the scene anymore
         virtual void DetachShape(Shape const* shape) = 0;
         // Commit all geometry creations/changes
@@ -220,9 +210,9 @@ namespace FireRays
         virtual void DeleteBuffer(Buffer* buffer) const = 0;
         // Map buffer. Event pointer might be nullptr.
         // The call is asynchronous.
-        virtual void MapBuffer(Buffer const* buffer, MapType type, size_t offset, size_t size, void** data, Event** event) const = 0;
+        virtual void MapBuffer(Buffer* buffer, MapType type, size_t offset, size_t size, void** data, Event** event) const = 0;
         // Unmap buffer
-        virtual void UnmapBuffer(Buffer const* buffer, void* ptr, Event** event) const = 0;
+        virtual void UnmapBuffer(Buffer* buffer, void* ptr, Event** event) const = 0;
 
         /******************************************
           Events handling
@@ -232,32 +222,20 @@ namespace FireRays
         /******************************************
           Ray casting
         ******************************************/
-        // Fast path:
-        // Find closest intersection.
-        // The call is blocking.
-        virtual void IntersectBatch(ray const* rays, int numrays, Intersection* hits) const = 0;
-        // Find any intersection.
-        // The call is blocking.
-        virtual void IntersectBatchP(ray const* rays, int numrays, int* hitresults) const = 0;
-        // Async version
-        virtual void IntersectBatch(ray const* rays, int numrays, Intersection* hits, Event** event) const = 0;
-        // Async version
-        virtual void IntersectBatchP(ray const* rays, int numrays, int* hitresults, Event** event) const = 0;
-
         // Complete path:
         // Find closest intersection
         // The call is asynchronous. Event pointers might be nullptrs.
-        virtual void IntersectBatch(Buffer const* rays, int numrays, Buffer* hitinfos, Event const* waitevent, Event** event) const = 0;
+        virtual void QueryIntersection(Buffer const* rays, int numrays, Buffer* hitinfos, Event const* waitevent, Event** event) const = 0;
         // Find any intersection.
         // The call is asynchronous. Event pointer mights be nullptrs.
-        virtual void IntersectBatchP(Buffer const* rays, int numrays, Buffer* hitresults, Event const* waitevent, Event** event) const = 0;
+        virtual void QueryOcclusion(Buffer const* rays, int numrays, Buffer* hitresults, Event const* waitevent, Event** event) const = 0;
 
         // Find closest intersection, number of rays is in remote memory
         // The call is asynchronous. Event pointers might be nullptrs.
-        virtual void IntersectBatch(Buffer const* rays, Buffer const* numrays, int maxrays, Buffer* hitinfos, Event const* waitevent, Event** event) const = 0;
+        virtual void QueryIntersection(Buffer const* rays, Buffer const* numrays, int maxrays, Buffer* hitinfos, Event const* waitevent, Event** event) const = 0;
         // Find any intersection.
         // The call is asynchronous. Event pointer mights be nullptrs.
-        virtual void IntersectBatchP(Buffer const* rays, Buffer const* numrays, int maxrays, Buffer* hitresults, Event const* waitevent, Event** event) const = 0;
+        virtual void QueryOcclusion(Buffer const* rays, Buffer const* numrays, int maxrays, Buffer* hitresults, Event const* waitevent, Event** event) const = 0;
 
         /******************************************
         Utility
@@ -298,7 +276,7 @@ namespace FireRays
 
     inline Buffer::~Buffer(){}
     inline Shape::~Shape(){}
-    inline Event::~Event(){};
+    inline Event::~Event(){}
     inline Exception::~Exception(){}
 }
 

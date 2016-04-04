@@ -1,24 +1,18 @@
-//
-// Copyright (c) 2016 Advanced Micro Devices, Inc. All rights reserved.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
-//
+/**********************************************************************
+ Copyright ©2015 Advanced Micro Devices, Inc. All rights reserved.
+
+ Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+ ï   Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+ ï   Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or
+ other materials provided with the distribution.
+
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY
+ DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
+ OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ ********************************************************************/
 #ifndef BXDF_CL
 #define BXDF_CL
 
@@ -38,7 +32,10 @@ enum Bxdf
     kMicrofacetGGX,
     kLayered,
     kFresnelBlend,
-	kEmissive
+	kMix,
+	kEmissive,
+	kPassthrough,
+	kTranslucent
 };
 
 enum BxdfFlags
@@ -129,16 +126,16 @@ void MicrofacetDistribution_Beckmann_Sample(// Roughness
     float3 wi,
     // Texture args
     TEXTURE_ARG_LIST,
-    // RNG
-    Rng* rng,
+	// Sample
+	float2 sample,
     // Outgoing  direction
     float3* wo,
     // PDF at wo
     float* pdf
     )
 {
-    float r1 = RandFloat(rng);
-    float r2 = RandFloat(rng);
+	float r1 = sample.x;
+	float r2 = sample.y;
 
     // Sample halfway vector first, then reflect wi around that
     float temp = atan(native_sqrt(-roughness*roughness*native_log(1.f - r1*0.99f)));
@@ -242,8 +239,8 @@ float3 MicrofacetBeckmann_Sample(
     float3 wi,
     // Texture args
     TEXTURE_ARG_LIST,
-    // RNG
-    Rng* rng,
+	// Sample
+	float2 sample,
     // Outgoing  direction
     float3* wo,
     // PDF at wo
@@ -258,7 +255,7 @@ float3 MicrofacetBeckmann_Sample(
     }
 
     const float roughness = Texture_GetValue1f(dg->mat.ns, dg->uv, TEXTURE_ARGS_IDX(dg->mat.nsmapidx));
-    MicrofacetDistribution_Beckmann_Sample(roughness, dg, wi, TEXTURE_ARGS, rng, wo, pdf);
+    MicrofacetDistribution_Beckmann_Sample(roughness, dg, wi, TEXTURE_ARGS, sample, wo, pdf);
     return MicrofacetBeckmann_Evaluate(dg, wi, *wo, TEXTURE_ARGS);
 }
 
@@ -309,16 +306,16 @@ void MicrofacetDistribution_GGX_Sample(// Roughness
     float3 wi,
     // Texture args
     TEXTURE_ARG_LIST,
-    // RNG
-    Rng* rng,
+	// Sample
+	float2 sample,
     // Outgoing  direction
     float3* wo,
     // PDF at wo
     float* pdf
     )
 {
-    float r1 = RandFloat(rng);
-    float r2 = RandFloat(rng);
+	float r1 = sample.x;
+	float r2 = sample.y;
 
     // Sample halfway vector first, then reflect wi around that
     float temp = atan(roughness * native_sqrt(r1) / native_sqrt(1.f - r1));
@@ -416,8 +413,8 @@ float3 MicrofacetGGX_Sample(
     float3 wi,
     // Texture args
     TEXTURE_ARG_LIST,
-    // RNG
-    Rng* rng,
+	// Sample
+	float2 sample,
     // Outgoing  direction
     float3* wo,
     // PDF at wo
@@ -431,7 +428,7 @@ float3 MicrofacetGGX_Sample(
     }
 
     const float roughness = Texture_GetValue1f(dg->mat.ns, dg->uv, TEXTURE_ARGS_IDX(dg->mat.nsmapidx));
-    MicrofacetDistribution_GGX_Sample(roughness, dg, wi, TEXTURE_ARGS, rng, wo, pdf);
+    MicrofacetDistribution_GGX_Sample(roughness, dg, wi, TEXTURE_ARGS, sample, wo, pdf);
     return MicrofacetGGX_Evaluate(dg, wi, *wo, TEXTURE_ARGS);
 }
 
@@ -478,8 +475,8 @@ void MicrofacetDistribution_Blinn_Sample(// Shininess param
     float3 wi,
     // Texture args
     TEXTURE_ARG_LIST,
-    // RNG
-    Rng* rng,
+	// Sample
+	float2 sample,
     // Outgoing  direction
     float3* wo,
     // PDF at wo
@@ -487,8 +484,8 @@ void MicrofacetDistribution_Blinn_Sample(// Shininess param
     )
 {
     //
-    float r1 = RandFloat(rng);
-    float r2 = RandFloat(rng);
+	float r1 = sample.x;
+	float r2 = sample.y;
 
     // Sample halfway vector first, then reflect wi around that
     float costheta = native_powr(r1, 1.f / (shininess + 1.f));
@@ -576,8 +573,8 @@ float3 MicrofacetBlinn_Sample(
     float3 wi,
     // Texture args
     TEXTURE_ARG_LIST,
-    // RNG
-    Rng* rng,
+    // Sample
+    float2 sample,
     // Outgoing  direction
     float3* wo,
     // PDF at wo
@@ -591,7 +588,7 @@ float3 MicrofacetBlinn_Sample(
     }
 
     const float shininess = dg->mat.ns;
-    MicrofacetDistribution_Blinn_Sample(shininess, dg, wi, TEXTURE_ARGS, rng, wo, pdf);
+    MicrofacetDistribution_Blinn_Sample(shininess, dg, wi, TEXTURE_ARGS, sample, wo, pdf);
     return MicrofacetBlinn_Evaluate(dg, wi, *wo, TEXTURE_ARGS);
 }
 
@@ -640,8 +637,8 @@ float3 Lambert_Sample(
     float3 wi,
     // Texture args
     TEXTURE_ARG_LIST,
-    // RNG
-    Rng* rng,
+    // Sample
+    float2 sample,
     // Outgoing  direction
     float3* wo,
     // PDF at wo
@@ -650,13 +647,13 @@ float3 Lambert_Sample(
 {
     const float3 kd = Texture_GetValue3f(dg->mat.kx.xyz, dg->uv, TEXTURE_ARGS_IDX(dg->mat.kxmapidx));
 
-    *wo = SampleHemisphere(rng, dg->n, 1.f);
+    *wo = Sample_MapToHemisphere(sample, dg->n, 1.f);
 
 	float F = dg->mat.fresnel;
 
     *pdf = fabs(dot(dg->n, *wo)) / PI;
 
-    return F * kd * (*pdf);
+    return F * kd / PI;
 }
 
 /*
@@ -674,6 +671,79 @@ float3 IdealReflect_Evaluate(
     )
 {
     return 0.f;
+}
+
+/// Lambert BRDF sampling
+float3 Translucent_Sample(
+	// Geometry
+	DifferentialGeometry const* dg,
+	// Incoming direction
+	float3 wi,
+	// Texture args
+	TEXTURE_ARG_LIST,
+	// Sample
+	float2 sample,
+	// Outgoing  direction
+	float3* wo,
+	// PDF at wo
+	float* pdf
+	)
+{
+	const float3 kd = Texture_GetValue3f(dg->mat.kx.xyz, dg->uv, TEXTURE_ARGS_IDX(dg->mat.kxmapidx));
+
+	float ndotwi = dot(dg->n, wi);
+
+	float3 n = ndotwi > 0.f ? -dg->n : dg->n;
+
+	*wo = normalize(Sample_MapToHemisphere(sample, n, 1.f));
+
+	*pdf = fabs(dot(n, *wo)) / PI;
+
+	return kd / PI;
+}
+
+// Lambert BRDF evaluation
+float3 Translucent_Evaluate(
+	// Geometry
+	DifferentialGeometry const* dg,
+	// Incoming direction
+	float3 wi,
+	// Outgoing direction
+	float3 wo,
+	// Texture args
+	TEXTURE_ARG_LIST
+	)
+{
+	const float3 kd = Texture_GetValue3f(dg->mat.kx.xyz, dg->uv, TEXTURE_ARGS_IDX(dg->mat.kxmapidx));
+
+	float ndotwi = dot(dg->n, wi);
+	float ndotwo = dot(dg->n, wo);
+
+	if (ndotwi * ndotwo > 0)
+		return 0.f;
+
+	return kd / PI;
+}
+
+/// Lambert BRDF PDF
+float Translucent_GetPdf(
+	// Geometry
+	DifferentialGeometry const* dg,
+	// Incoming direction
+	float3 wi,
+	// Outgoing direction
+	float3 wo,
+	// Texture args
+	TEXTURE_ARG_LIST
+	)
+{
+	float ndotwi = dot(dg->n, wi);
+	float ndotwo = dot(dg->n, wo);
+
+	if (ndotwi * ndotwo > 0)
+		return 0.f;
+
+	return fabs(ndotwo) / PI;
 }
 
 float IdealReflect_GetPdf(
@@ -697,8 +767,8 @@ float3 IdealReflect_Sample(
     float3 wi,
     // Texture args
     TEXTURE_ARG_LIST,
-    // RNG
-    Rng* rng,
+    // Sample
+    float2 sample,
     // Outgoing  direction
     float3* wo,
     // PDF at wo
@@ -764,8 +834,8 @@ float3 IdealRefract_Sample(
     float3 wi,
     // Texture args
     TEXTURE_ARG_LIST,
-    // RNG
-    Rng* rng,
+    // Sample
+    float2 sample,
     // Outgoing  direction
     float3* wo,
     // PDF at wo
@@ -816,6 +886,33 @@ float3 IdealRefract_Sample(
 	return cost > 0.0001f ? F * (((etai * etai) / (etat * etat)) * ks / cost) : 0.f;
 }
 
+float3 Passthrough_Sample(
+	// Geometry
+	DifferentialGeometry const* dg,
+	// Incoming direction
+	float3 wi,
+	// Texture args
+	TEXTURE_ARG_LIST,
+	// Sample
+	float2 sample,
+	// Outgoing  direction
+	float3* wo,
+	// PDF at wo
+	float* pdf
+	)
+{
+
+	*wo = -wi;
+	float coswo = fabs(dot(dg->n, *wo));
+
+	// PDF is infinite at that point, but deltas are going to cancel out while evaluating
+	// so set it to 1.f
+	*pdf = 1.f;
+
+	// 
+	return coswo > 0.0001f ? (1.f / coswo) : 0.f;
+}
+
 /*
  Dispatch functions
  */
@@ -845,6 +942,8 @@ float3 Bxdf_Evaluate(
         return IdealReflect_Evaluate(dg, wi, wo, TEXTURE_ARGS);
     case kIdealRefract:
         return IdealRefract_Evaluate(dg, wi, wo, TEXTURE_ARGS);
+	case kTranslucent:
+		return Translucent_Evaluate(dg, wi, wo, TEXTURE_ARGS);
     }
 
     return 0.f;
@@ -858,7 +957,7 @@ float3 Bxdf_Sample(
     // Texture args
     TEXTURE_ARG_LIST,
     // RNG
-    Rng* rng,
+    float2 sample,
     // Outgoing  direction
     float3* wo,
     // PDF at w
@@ -869,21 +968,26 @@ float3 Bxdf_Sample(
     switch (mattype)
     {
     case kLambert:
-        return Lambert_Sample(dg, wi, TEXTURE_ARGS, rng, wo, pdf);
+        return Lambert_Sample(dg, wi, TEXTURE_ARGS, sample, wo, pdf);
     case kMicrofacetBlinn:
-        return MicrofacetBlinn_Sample(dg, wi, TEXTURE_ARGS, rng, wo, pdf);
+        return MicrofacetBlinn_Sample(dg, wi, TEXTURE_ARGS, sample, wo, pdf);
     case kMicrofacetGGX:
-        return MicrofacetGGX_Sample(dg, wi, TEXTURE_ARGS, rng, wo, pdf);
+        return MicrofacetGGX_Sample(dg, wi, TEXTURE_ARGS, sample, wo, pdf);
     case kMicrofacetBeckmann:
-        return MicrofacetBeckmann_Sample(dg, wi, TEXTURE_ARGS, rng, wo, pdf);
+        return MicrofacetBeckmann_Sample(dg, wi, TEXTURE_ARGS, sample, wo, pdf);
     case kIdealReflect:
-        return IdealReflect_Sample(dg, wi, TEXTURE_ARGS, rng, wo, pdf);
+        return IdealReflect_Sample(dg, wi, TEXTURE_ARGS, sample, wo, pdf);
     case kIdealRefract:
-        return IdealRefract_Sample(dg, wi, TEXTURE_ARGS, rng, wo, pdf);
+        return IdealRefract_Sample(dg, wi, TEXTURE_ARGS, sample, wo, pdf);
+	case kTranslucent:
+		return Translucent_Sample(dg, wi, TEXTURE_ARGS, sample, wo, pdf);
+	case kPassthrough:
+		return Passthrough_Sample(dg, wi, TEXTURE_ARGS, sample, wo, pdf);
+    
     }
 
     *pdf = 0.f;
-    return 0.f;
+    return make_float3(0.f, 0.f, 0.f);
 }
 
 float Bxdf_GetPdf(
@@ -912,22 +1016,43 @@ float Bxdf_GetPdf(
         return IdealReflect_GetPdf(dg, wi, wo, TEXTURE_ARGS);
     case kIdealRefract:
         return IdealRefract_GetPdf(dg, wi, wo, TEXTURE_ARGS);
+	case kTranslucent:
+		return Translucent_GetPdf(dg, wi, wo, TEXTURE_ARGS);
+	case kPassthrough:
+		return 0.f;
     }
 
 	return 0.f;
+}
+
+/// Emissive BRDF sampling
+float3 Emissive_GetLe(
+	// Geometry
+	DifferentialGeometry const* dg,
+	// Texture args
+	TEXTURE_ARG_LIST)
+{
+	const float3 kd = Texture_GetValue3f(dg->mat.kx.xyz, dg->uv, TEXTURE_ARGS_IDX(dg->mat.kxmapidx));
+	return kd;
 }
 
 
 /// BxDF singularity check
 bool Bxdf_IsSingular(DifferentialGeometry const* dg)
 {
-    return dg->mat.type == kIdealReflect || dg->mat.type == kIdealRefract;
+    return dg->mat.type == kIdealReflect || dg->mat.type == kIdealRefract || dg->mat.type == kPassthrough;
+}
+
+/// BxDF emission check
+bool Bxdf_IsEmissive(DifferentialGeometry const* dg)
+{
+	return dg->mat.type == kEmissive;
 }
 
 /// BxDF singularity check
 bool Bxdf_IsBtdf(DifferentialGeometry const* dg)
 {
-	return dg->mat.type == kIdealRefract;
+	return dg->mat.type == kIdealRefract || dg->mat.type == kPassthrough || dg->mat.type == kTranslucent;
 }
 
 #endif // BXDF_CL

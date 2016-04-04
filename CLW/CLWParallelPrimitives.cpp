@@ -1,23 +1,10 @@
 //
-// Copyright (c) 2016 Advanced Micro Devices, Inc. All rights reserved.
+//  CLWParallelPrimitives.cpp
+//  CLW
 //
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
+//  Created by dmitryk on 11.03.14.
+//  Copyright (c) 2014 dmitryk. All rights reserved.
 //
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
 #include "CLWParallelPrimitives.h"
 
 #include <cassert>
@@ -116,12 +103,8 @@ CLWEvent CLWParallelPrimitives::SegmentedScanExclusiveAddTwoLevel(unsigned int d
     cl_uint numElems = (cl_uint)input.GetElementCount();
     
     int GROUP_BLOCK_SIZE_SCAN = (WG_SIZE);
-    int GROUP_BLOCK_SIZE_DISTRIBUTE = (WG_SIZE);
-    
     int NUM_GROUPS_BOTTOM_LEVEL_SCAN = (numElems + GROUP_BLOCK_SIZE_SCAN - 1) / GROUP_BLOCK_SIZE_SCAN;
     int NUM_GROUPS_TOP_LEVEL_SCAN = (NUM_GROUPS_BOTTOM_LEVEL_SCAN + GROUP_BLOCK_SIZE_SCAN - 1) / GROUP_BLOCK_SIZE_SCAN;
-    
-    int NUM_GROUPS_BOTTOM_LEVEL_DISTRIBUTE = (numElems + GROUP_BLOCK_SIZE_DISTRIBUTE - 1) / GROUP_BLOCK_SIZE_DISTRIBUTE;
     
     auto devicePartSums = GetTempIntBuffer(NUM_GROUPS_BOTTOM_LEVEL_SCAN);
     auto devicePartFlags = GetTempIntBuffer(NUM_GROUPS_BOTTOM_LEVEL_SCAN);
@@ -635,6 +618,20 @@ CLWBuffer<cl_int> CLWParallelPrimitives::GetTempIntBuffer(size_t size)
     return context_.CreateBuffer<cl_int>(size, CL_MEM_READ_WRITE);
 }
 
+CLWBuffer<char> CLWParallelPrimitives::GetTempCharBuffer(size_t size)
+{
+	auto iter = charBufferCache_.find(size);
+
+	if (iter != charBufferCache_.end())
+	{
+		CLWBuffer<char> tmp = iter->second;
+		charBufferCache_.erase(iter);
+		return tmp;
+	}
+
+	return context_.CreateBuffer<char>(size, CL_MEM_READ_WRITE);
+}
+
 CLWBuffer<cl_float> CLWParallelPrimitives::GetTempFloatBuffer(size_t size)
 {
     auto iter = floatBufferCache_.find(size);
@@ -721,6 +718,73 @@ CLWEvent CLWParallelPrimitives::SortRadix(unsigned int deviceIdx, CLWBuffer<cl_i
     return event;
 }
 
+CLWEvent CLWParallelPrimitives::SortRadix(unsigned int deviceIdx, CLWBuffer<char> inputKeys, CLWBuffer<char> outputKeys,
+	CLWBuffer<char> inputValues, CLWBuffer<char> outputValues, int numElems)
+{
+	int GROUP_BLOCK_SIZE = (WG_SIZE * 4 * 8);
+	int NUM_BLOCKS = (numElems + GROUP_BLOCK_SIZE - 1) / GROUP_BLOCK_SIZE;
+
+	auto deviceHistograms = GetTempIntBuffer(NUM_BLOCKS * 16);
+	auto deviceTempKeysBuffer = GetTempCharBuffer(numElems * 4);
+	auto deviceTempValsBuffer = GetTempCharBuffer(numElems * 4);
+
+	auto fromKeys = &inputKeys;
+	auto fromVals = &inputValues;
+	auto toKeys = &deviceTempKeysBuffer;
+	auto toVals = &deviceTempValsBuffer;
+
+	CLWKernel histogramKernel = program_.GetKernel("BitHistogram");
+	CLWKernel scatterKeysAndVals = program_.GetKernel("ScatterKeysAndValues");
+
+	CLWEvent event;
+
+	for (int offset = 0; offset < 32; offset += 4)
+	{
+		// Split
+		histogramKernel.SetArg(0, offset);
+		histogramKernel.SetArg(1, *fromKeys);
+		histogramKernel.SetArg(2, numElems);
+		histogramKernel.SetArg(3, deviceHistograms);
+
+		context_.Launch1D(0, NUM_BLOCKS*WG_SIZE, WG_SIZE, histogramKernel);
+
+		// Scan histograms
+		ScanExclusiveAdd(0, deviceHistograms, deviceHistograms);
+
+		//context_.ReadBuffer(0, deviceHistograms, &hist[0], 16).Wait();
+
+		// Scatter keys
+		scatterKeysAndVals.SetArg(0, offset);
+		scatterKeysAndVals.SetArg(1, *fromKeys);
+		scatterKeysAndVals.SetArg(2, *fromVals);
+		scatterKeysAndVals.SetArg(3, numElems);
+		scatterKeysAndVals.SetArg(4, deviceHistograms);
+		scatterKeysAndVals.SetArg(5, *toKeys);
+		scatterKeysAndVals.SetArg(6, *toVals);
+
+		event = context_.Launch1D(0, NUM_BLOCKS*WG_SIZE, WG_SIZE, scatterKeysAndVals);
+
+		//context_.ReadBuffer(0, *toKeys, &keys[0], 64).Wait();
+
+		if (offset == 0)
+		{
+			fromKeys = &outputKeys;
+			fromVals = &outputValues;
+		}
+
+		// Swap pointers
+		std::swap(fromKeys, toKeys);
+		std::swap(fromVals, toVals);
+	}
+
+	// Return buffers to memory manager
+	ReclaimTempIntBuffer(deviceHistograms);
+	ReclaimTempCharBuffer(deviceTempKeysBuffer);
+	ReclaimTempCharBuffer(deviceTempValsBuffer);
+
+	return event;
+}
+
 
 CLWEvent CLWParallelPrimitives::SortRadix(unsigned int deviceIdx, CLWBuffer<cl_int> inputKeys, CLWBuffer<cl_int> outputKeys)
 {
@@ -797,6 +861,18 @@ void CLWParallelPrimitives::ReclaimTempIntBuffer(CLWBuffer<cl_int> buffer)
     }
 
     intBufferCache_[buffer.GetElementCount()] = buffer;
+}
+
+void CLWParallelPrimitives::ReclaimTempCharBuffer(CLWBuffer<char> buffer)
+{
+	auto iter = charBufferCache_.find(buffer.GetElementCount());
+
+	if (iter != charBufferCache_.end())
+	{
+		return;
+	}
+
+	charBufferCache_[buffer.GetElementCount()] = buffer;
 }
 
 void CLWParallelPrimitives::ReclaimTempFloatBuffer(CLWBuffer<cl_float> buffer)

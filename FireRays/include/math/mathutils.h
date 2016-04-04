@@ -124,10 +124,10 @@ namespace FireRays
     }
 
     /// Transform a ray using a matrix
-    inline ray transform_ray(ray const& r, matrix const& m)
-    {
-        return ray(transform_point(r.o, m), transform_vector(r.d, m), r.o.w, r.d.w);
-    }
+	inline ray transform_ray(ray const& r, matrix const& m)
+	{
+		return ray(transform_point(r.o, m), transform_vector(r.d, m), r.o.w, r.d.w);
+	}
 
     /// Solve quadratic equation
     /// Returns false in case of no real roots exist

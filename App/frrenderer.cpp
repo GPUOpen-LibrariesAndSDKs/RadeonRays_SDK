@@ -1,29 +1,12 @@
-//
-// Copyright (c) 2016 Advanced Micro Devices, Inc. All rights reserved.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
-//
 #include "frrenderer.h"
 #include "scene.h"
 
 #include <numeric>
 #include <chrono>
+#include <cstddef>
+#include <cstdlib>
+
+#include "sobol.h"
 
 #ifdef FR_EMBED_KERNELS
 #include "./CL/cache/kernels.h"
@@ -34,6 +17,34 @@ using namespace FireRays;
 
 static int const kMaxLightSamples = 1;
 
+struct FrRenderer::QmcSampler
+{
+	unsigned int seq;
+	unsigned int s0;
+	unsigned int s1;
+	unsigned int s2;
+};
+
+struct FrRenderer::PathState
+{	
+	float4 throughput;
+	int volume;
+	int flags;
+	int extra0;
+	int extra1;
+};
+
+struct FrRenderer::Volume
+{
+    int type;
+    int phase_func;
+    int data;
+    int extra;
+    
+    float3 sigma_a;
+    float3 sigma_s;
+    float3 sigma_e;
+};
 
 struct FrRenderer::GpuData
 {
@@ -53,7 +64,10 @@ struct FrRenderer::GpuData
     CLWBuffer<float3> radiance;
     CLWBuffer<float3> accumulator;
     CLWBuffer<float3> lightsamples;
-    CLWBuffer<float3> throughput;
+    CLWBuffer<PathState> paths;
+	CLWBuffer<QmcSampler> samplers;
+	CLWBuffer<unsigned int> sobolmat;
+    CLWBuffer<Volume> volumes;
 
     CLWBuffer<int> materialids;
     CLWBuffer<Scene::Emissive> emissives;
@@ -69,6 +83,8 @@ struct FrRenderer::GpuData
     CLWBuffer<Scene::Texture> textures;
     CLWBuffer<char> texturedata;
     CLWBuffer<int> hitcount[2];
+
+	CLWBuffer<int> debug;
 
     CLWBuffer<PerspectiveCamera> camera;
 
@@ -104,6 +120,7 @@ FrRenderer::FrRenderer(CLWContext context, int devidx)
 , nbounces_(0)
 , vidmemusage_(0)
 , vidmemws_(0)
+, resetsampler_(1)
 {
     // Get raw CL data out of CLW context
     cl_device_id id = context_.GetDevice(devidx).GetID();
@@ -121,7 +138,7 @@ FrRenderer::FrRenderer(CLWContext context, int devidx)
 #endif
 
     // Create intersection API
-    api_ = IntersectionApiCL::CreateFromOpenClContext(0, context_, &id, &queue, 1);
+    api_ = IntersectionApiCL::CreateFromOpenClContext(context_, id, queue);
 
     // Do app specific settings
     api_->SetOption("acc.type", "fatbvh");
@@ -143,7 +160,18 @@ FrRenderer::FrRenderer(CLWContext context, int devidx)
     gpudata_->hitcount[0] = context_.CreateBuffer<int>(1, CL_MEM_READ_ONLY);
 	gpudata_->hitcount[1] = context_.CreateBuffer<int>(1, CL_MEM_READ_ONLY);
     gpudata_->fr_hitcount[0] = api_->CreateFromOpenClBuffer(gpudata_->hitcount[0]);
-	gpudata_->fr_hitcount[1] = api_->CreateFromOpenClBuffer(gpudata_->hitcount[0]);
+	gpudata_->fr_hitcount[1] = api_->CreateFromOpenClBuffer(gpudata_->hitcount[1]);
+
+    
+	gpudata_->sobolmat = context_.CreateBuffer<unsigned int>(1024 * 52, CL_MEM_READ_ONLY, &g_SobolMatrices[0]);
+    
+    //Volume vol = {1, 0, 0, 0, {0.9f, 0.6f, 0.9f}, {5.1f, 1.8f, 5.1f}, {0.0f, 0.0f, 0.0f}};
+	Volume vol = { 1, 0, 0, 0,{	1.2f, 0.4f, 1.2f },{ 5.1f, 4.8f, 5.1f },{ 0.0f, 0.0f, 0.0f } };
+
+    
+    gpudata_->volumes = context_.CreateBuffer<Volume>(1, CL_MEM_READ_ONLY, &vol);
+
+	gpudata_->debug = context_.CreateBuffer<int>(1, CL_MEM_READ_WRITE);
 }
 
 FrRenderer::~FrRenderer()
@@ -171,6 +199,7 @@ void FrRenderer::DeleteOutput(Output* output)
 void FrRenderer::Clear(FireRays::float3 const& val, Output& output)
 {
     static_cast<FrOutput&>(output).Clear(val);
+	resetsampler_ = 1;
 }
 
 
@@ -203,7 +232,7 @@ void FrRenderer::Preprocess(Scene const& scene)
             );
 
 		int midx = scene.materialids_[scene.shapes_[i].startidx / 3];
-		if (scene.material_names_[midx] == "glass" || scene.material_names_[midx] == "glasstranslucent" || scene.material_names_[midx] == "bone")
+		if (scene.material_names_[midx] == "glass" || scene.material_names_[midx] == "glasstranslucent")
 		{
 			//std::cout << "Setting glass mask\n";
 			shape->SetMask(0xFFFF0000);
@@ -221,7 +250,6 @@ void FrRenderer::Preprocess(Scene const& scene)
     }
 
     // Commit to intersector
-
     auto startime = std::chrono::high_resolution_clock::now();
 
     api_->Commit();
@@ -247,16 +275,6 @@ void FrRenderer::Render(Scene const& scene)
     // Check output
     assert(output_);
 
-    // Clear some buffers
-    float3 clearval = float3(0, 0, 0);
-    clearval.w = 1.f;
-    // Clear radiance sample buffer
-    context_.FillBuffer(0, gpudata_->radiance, clearval, gpudata_->radiance.GetElementCount());
-
-    // Set througput to 1 for primary rays
-    clearval = float3(1.f, 1.f, 1.f);
-    context_.FillBuffer(0, gpudata_->throughput, clearval, gpudata_->throughput.GetElementCount());
-
     // Update camera data
     context_.WriteBuffer(0, gpudata_->camera, scene.camera_.get(), 1);
 
@@ -271,6 +289,11 @@ void FrRenderer::Render(Scene const& scene)
     context_.CopyBuffer(0, gpudata_->iota, gpudata_->pixelindices[1], 0, 0, gpudata_->iota.GetElementCount());
     context_.FillBuffer(0, gpudata_->hitcount[0], maxrays, 1);
 	context_.FillBuffer(0, gpudata_->hitcount[1], maxrays, 1);
+    context_.FillBuffer(0, gpudata_->debug, 0, 1);
+
+	//float3 clearval;
+	//clearval.w = 1.f;
+	//context_.FillBuffer(0, gpudata_->radiance, clearval, gpudata_->radiance.GetElementCount());
 
     // Initialize first pass
     for (int pass = 0; pass < nbounces_; ++pass)
@@ -279,29 +302,40 @@ void FrRenderer::Render(Scene const& scene)
         context_.FillBuffer(0, gpudata_->hits, 0, gpudata_->hits.GetElementCount());
 
         // Intersect ray batch
-        api_->IntersectBatch(gpudata_->fr_rays[pass & 0x1], gpudata_->fr_hitcount[pass & 0x1], maxrays, gpudata_->fr_intersections, nullptr, nullptr);
+        api_->QueryIntersection(gpudata_->fr_rays[pass & 0x1], gpudata_->fr_hitcount[0], maxrays, gpudata_->fr_intersections, nullptr, nullptr);
+        
+		// Apply scattering
+        EvaluateVolume(scene, pass);
 
         // Convert intersections to predicates
-        ConvertToPredicate(pass);
+        FilterPathStream(pass);
 
         // Compact batch
-        gpudata_->pp.Compact(0, gpudata_->hits, gpudata_->iota, gpudata_->compacted_indices, gpudata_->hitcount[pass & 0x1]);
+        gpudata_->pp.Compact(0, gpudata_->hits, gpudata_->iota, gpudata_->compacted_indices, gpudata_->hitcount[0]);
+
+		/*int cnt = 0;
+		context_.ReadBuffer(0, gpudata_->hitcount[0], &cnt, 1).Wait();
+		std::cout << "Pass " << pass << " Alive " << cnt << "\n";*/
 
         // Advance indices to keep pixel indices up to date
         RestorePixelIndices(pass);
 
-        // Shade hits
-        ShadeFirstHit(scene, pass);
+		// Shade hits
+		ShadeVolume(scene, pass);
+
+		// Shade hits
+		ShadeSurface(scene, pass);
 
 		// Shade missing rays
 		if (pass == 0) ShadeMiss(scene, pass);
 
         // Intersect shadow rays
-        api_->IntersectBatchP(gpudata_->fr_shadowrays, gpudata_->fr_hitcount[pass & 0x1], maxrays, gpudata_->fr_shadowhits, nullptr, nullptr);
+        api_->QueryOcclusion(gpudata_->fr_shadowrays, gpudata_->fr_hitcount[0], maxrays, gpudata_->fr_shadowhits, nullptr, nullptr);
 
         // Gather light samples and account for visibility
         GatherLightSamples(scene, pass);
         
+		//
         context_.Flush(0);
     }
 }
@@ -334,10 +368,10 @@ void FrRenderer::RenderAmbientOcclusion(Scene const& scene, float radius)
     context_.FillBuffer(0, gpudata_->hitcount[1], numrays, 1);
 
     // Intersect ray batch
-    api_->IntersectBatch(gpudata_->fr_rays[0], gpudata_->fr_hitcount[0], numrays, gpudata_->fr_intersections, nullptr, nullptr);
+    api_->QueryIntersection(gpudata_->fr_rays[0], gpudata_->fr_hitcount[0], numrays, gpudata_->fr_intersections, nullptr, nullptr);
 
     // Convert intersections to predicates
-    ConvertToPredicate(0);
+    FilterPathStream(0);
 
     //
     gpudata_->pp.Compact(0, gpudata_->hits, gpudata_->iota, gpudata_->compacted_indices, gpudata_->hitcount[0]).Wait();
@@ -349,7 +383,7 @@ void FrRenderer::RenderAmbientOcclusion(Scene const& scene, float radius)
     SampleAmbientOcclusion(scene, radius);
 
     // Intersect shadow rays
-    api_->IntersectBatchP(gpudata_->fr_shadowrays, gpudata_->fr_hitcount[0], numrays, gpudata_->fr_shadowhits, nullptr, nullptr);
+    api_->QueryOcclusion(gpudata_->fr_shadowrays, gpudata_->fr_hitcount[0], numrays, gpudata_->fr_shadowhits, nullptr, nullptr);
 
     // Gather light samples and account for visibility
     GatherAmbientOcclusion(scene);
@@ -385,7 +419,7 @@ void FrRenderer::SampleAmbientOcclusion(Scene const& scene, float radius)
     shadekernel.SetArg(argc++, rand_uint());
     shadekernel.SetArg(argc++, gpudata_->shadowrays);
     shadekernel.SetArg(argc++, gpudata_->lightsamples);
-    shadekernel.SetArg(argc++, gpudata_->throughput);
+    shadekernel.SetArg(argc++, gpudata_->paths);
     shadekernel.SetArg(argc++, gpudata_->rays[1]);
 
 
@@ -407,7 +441,7 @@ void FrRenderer::GatherAmbientOcclusion(Scene const& scene)
     gatherkernel.SetArg(argc++, gpudata_->hitcount[0]);
     gatherkernel.SetArg(argc++, gpudata_->shadowhits);
     gatherkernel.SetArg(argc++, gpudata_->lightsamples);
-    gatherkernel.SetArg(argc++, gpudata_->throughput);
+    gatherkernel.SetArg(argc++, gpudata_->paths);
     gatherkernel.SetArg(argc++, output_->data());
 
     // Run shading kernel
@@ -438,6 +472,12 @@ void FrRenderer::ResizeWorkingSet(Output const& output)
     gpudata_->rays[1] = context_.CreateBuffer<ray>(output.width() * output.height(), CL_MEM_READ_WRITE);
     vidmemws_ += output.width() * output.height() * sizeof(ray);
 
+    gpudata_->rays[2] = context_.CreateBuffer<ray>(output.width() * output.height(), CL_MEM_READ_WRITE);
+    vidmemws_ += output.width() * output.height() * sizeof(ray);
+
+    gpudata_->rays[3] = context_.CreateBuffer<ray>(output.width() * output.height(), CL_MEM_READ_WRITE);
+    vidmemws_ += output.width() * output.height() * sizeof(ray);
+
     gpudata_->hits = context_.CreateBuffer<int>(output.width() * output.height(), CL_MEM_READ_WRITE);
     vidmemws_ += output.width() * output.height() * sizeof(int);
 
@@ -454,13 +494,16 @@ void FrRenderer::ResizeWorkingSet(Output const& output)
     vidmemws_ += output.width() * output.height() * sizeof(float3)* kMaxLightSamples;
 
     gpudata_->radiance = context_.CreateBuffer<float3>(output.width() * output.height(), CL_MEM_READ_WRITE);
-    vidmemws_ += output.width() * output.height() * sizeof(float3)* kMaxLightSamples;
+    vidmemws_ += output.width() * output.height() * sizeof(float3) * kMaxLightSamples;
 
     gpudata_->accumulator = context_.CreateBuffer<float3>(output.width() * output.height(), CL_MEM_READ_WRITE);
-    vidmemws_ += output.width() * output.height() * sizeof(float3)* kMaxLightSamples;
+    vidmemws_ += output.width() * output.height() * sizeof(float3) * kMaxLightSamples;
 
-    gpudata_->throughput = context_.CreateBuffer<float3>(output.width() * output.height(), CL_MEM_READ_WRITE);
-    vidmemws_ += output.width() * output.height() * sizeof(float3)* kMaxLightSamples;
+    gpudata_->paths = context_.CreateBuffer<PathState>(output.width() * output.height(), CL_MEM_READ_WRITE);
+    vidmemws_ += output.width() * output.height() * sizeof(PathState);
+
+	gpudata_->samplers = context_.CreateBuffer<QmcSampler>(output.width() * output.height(), CL_MEM_READ_WRITE);
+	vidmemws_ += output.width() * output.height() * sizeof(QmcSampler);
 
     std::vector<int> initdata(output.width() * output.height());
     std::iota(initdata.begin(), initdata.end(), 0);
@@ -497,7 +540,7 @@ void FrRenderer::ResizeWorkingSet(Output const& output)
 void FrRenderer::GeneratePrimaryRays()
 {
     // Fetch kernel
-    CLWKernel genkernel = gpudata_->program.GetKernel("PerspectiveCamera_GenerateRays");
+    CLWKernel genkernel = gpudata_->program.GetKernel("PerspectiveCamera_GeneratePaths");
 
     // Set kernel parameters
     genkernel.SetArg(0, gpudata_->camera);
@@ -505,6 +548,11 @@ void FrRenderer::GeneratePrimaryRays()
     genkernel.SetArg(2, output_->height());
     genkernel.SetArg(3, (int)rand_uint());
     genkernel.SetArg(4, gpudata_->rays[0]);
+	genkernel.SetArg(5, gpudata_->samplers);
+	genkernel.SetArg(6, gpudata_->sobolmat);
+	genkernel.SetArg(7, resetsampler_);
+	genkernel.SetArg(8, gpudata_->paths);
+	resetsampler_ = 0;
 
     // Run generation kernel
     {
@@ -515,10 +563,10 @@ void FrRenderer::GeneratePrimaryRays()
     }
 }
 
-void FrRenderer::ShadeFirstHit(Scene const& scene, int pass)
+void FrRenderer::ShadeSurface(Scene const& scene, int pass)
 {
     // Fetch kernel
-    CLWKernel shadekernel = gpudata_->program.GetKernel("SampleEnvironment");
+    CLWKernel shadekernel = gpudata_->program.GetKernel("ShadeSurface");
 
     // Set kernel parameters
     int argc = 0;
@@ -526,7 +574,7 @@ void FrRenderer::ShadeFirstHit(Scene const& scene, int pass)
     shadekernel.SetArg(argc++, gpudata_->intersections);
     shadekernel.SetArg(argc++, gpudata_->compacted_indices);
     shadekernel.SetArg(argc++, gpudata_->pixelindices[pass & 0x1]);
-    shadekernel.SetArg(argc++, gpudata_->hitcount[pass & 0x1]);
+    shadekernel.SetArg(argc++, gpudata_->hitcount[0]);
     shadekernel.SetArg(argc++, gpudata_->vertices);
     shadekernel.SetArg(argc++, gpudata_->normals);
     shadekernel.SetArg(argc++, gpudata_->uvs);
@@ -541,16 +589,93 @@ void FrRenderer::ShadeFirstHit(Scene const& scene, int pass)
     shadekernel.SetArg(argc++, gpudata_->emissives);
     shadekernel.SetArg(argc++, gpudata_->numemissive);
     shadekernel.SetArg(argc++, rand_uint());
+	shadekernel.SetArg(argc++, gpudata_->samplers);
+	shadekernel.SetArg(argc++, gpudata_->sobolmat);
+	shadekernel.SetArg(argc++, pass);
+    shadekernel.SetArg(argc++, gpudata_->volumes);
     shadekernel.SetArg(argc++, gpudata_->shadowrays);
     shadekernel.SetArg(argc++, gpudata_->lightsamples);
-    shadekernel.SetArg(argc++, gpudata_->throughput);
+    shadekernel.SetArg(argc++, gpudata_->paths);
     shadekernel.SetArg(argc++, gpudata_->rays[(pass + 1) & 0x1]);
+	shadekernel.SetArg(argc++, output_->data());
 
 
     // Run shading kernel
     {
         int globalsize = output_->width() * output_->height();
         context_.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, shadekernel);
+    }
+}
+
+void FrRenderer::ShadeVolume(Scene const& scene, int pass)
+{
+	// Fetch kernel
+	CLWKernel shadekernel = gpudata_->program.GetKernel("ShadeVolume");
+
+	// Set kernel parameters
+	int argc = 0;
+	shadekernel.SetArg(argc++, gpudata_->rays[pass & 0x1]);
+	shadekernel.SetArg(argc++, gpudata_->intersections);
+	shadekernel.SetArg(argc++, gpudata_->compacted_indices);
+	shadekernel.SetArg(argc++, gpudata_->pixelindices[pass & 0x1]);
+	shadekernel.SetArg(argc++, gpudata_->hitcount[0]);
+	shadekernel.SetArg(argc++, gpudata_->vertices);
+	shadekernel.SetArg(argc++, gpudata_->normals);
+	shadekernel.SetArg(argc++, gpudata_->uvs);
+	shadekernel.SetArg(argc++, gpudata_->indices);
+	shadekernel.SetArg(argc++, gpudata_->shapes);
+	shadekernel.SetArg(argc++, gpudata_->materialids);
+	shadekernel.SetArg(argc++, gpudata_->materials);
+	shadekernel.SetArg(argc++, gpudata_->textures);
+	shadekernel.SetArg(argc++, gpudata_->texturedata);
+	shadekernel.SetArg(argc++, scene.envidx_);
+	shadekernel.SetArg(argc++, scene.envmapmul_);
+	shadekernel.SetArg(argc++, gpudata_->emissives);
+	shadekernel.SetArg(argc++, gpudata_->numemissive);
+	shadekernel.SetArg(argc++, rand_uint());
+	shadekernel.SetArg(argc++, gpudata_->samplers);
+	shadekernel.SetArg(argc++, gpudata_->sobolmat);
+	shadekernel.SetArg(argc++, pass);
+	shadekernel.SetArg(argc++, gpudata_->volumes);
+	shadekernel.SetArg(argc++, gpudata_->shadowrays);
+	shadekernel.SetArg(argc++, gpudata_->lightsamples);
+	shadekernel.SetArg(argc++, gpudata_->paths);
+	shadekernel.SetArg(argc++, gpudata_->rays[(pass + 1) & 0x1]);
+	shadekernel.SetArg(argc++, output_->data());
+
+	// Run shading kernel
+	{
+		int globalsize = output_->width() * output_->height();
+		context_.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, shadekernel);
+	}
+
+}
+
+void FrRenderer::EvaluateVolume(Scene const& scene, int pass)
+{
+    // Fetch kernel
+    CLWKernel evalkernel = gpudata_->program.GetKernel("EvaluateVolume");
+
+    // Set kernel parameters
+    int argc = 0;
+    evalkernel.SetArg(argc++, gpudata_->rays[pass & 0x1]);
+    evalkernel.SetArg(argc++, gpudata_->pixelindices[(pass + 1) & 0x1]);
+    evalkernel.SetArg(argc++, gpudata_->hitcount[0]);
+    evalkernel.SetArg(argc++, gpudata_->volumes);
+    evalkernel.SetArg(argc++, gpudata_->textures);
+    evalkernel.SetArg(argc++, gpudata_->texturedata);
+    evalkernel.SetArg(argc++, rand_uint());
+    evalkernel.SetArg(argc++, gpudata_->samplers);
+    evalkernel.SetArg(argc++, gpudata_->sobolmat);
+    evalkernel.SetArg(argc++, pass);
+    evalkernel.SetArg(argc++, gpudata_->intersections);
+    evalkernel.SetArg(argc++, gpudata_->paths);
+    evalkernel.SetArg(argc++, output_->data());
+    
+    // Run shading kernel
+    {
+        int globalsize = output_->width() * output_->height();
+        context_.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, evalkernel);
     }
 }
 
@@ -566,12 +691,12 @@ void FrRenderer::ShadeMiss(Scene const& scene, int pass)
     misskernel.SetArg(argc++, gpudata_->rays[pass & 0x1]);
     misskernel.SetArg(argc++, gpudata_->intersections);
     misskernel.SetArg(argc++, gpudata_->pixelindices[(pass + 1) & 0x1]);
-    misskernel.SetArg(argc++, gpudata_->hitcount[(pass + 1) & 0x1]);
+    misskernel.SetArg(argc++, numrays);
     misskernel.SetArg(argc++, gpudata_->textures);
     misskernel.SetArg(argc++, gpudata_->texturedata);
     misskernel.SetArg(argc++, scene.envidx_);
-    misskernel.SetArg(argc++, gpudata_->throughput);
-	misskernel.SetArg(argc++, (pass == 0) ? 1 : 0);
+    misskernel.SetArg(argc++, gpudata_->paths);
+    misskernel.SetArg(argc++, gpudata_->volumes);
     misskernel.SetArg(argc++, output_->data());
 
     // Run shading kernel
@@ -589,10 +714,10 @@ void FrRenderer::GatherLightSamples(Scene const& scene, int pass)
     // Set kernel parameters
     int argc = 0;
     gatherkernel.SetArg(argc++, gpudata_->pixelindices[pass & 0x1]);
-    gatherkernel.SetArg(argc++, gpudata_->hitcount[pass & 0x1]);
+    gatherkernel.SetArg(argc++, gpudata_->hitcount[0]);
     gatherkernel.SetArg(argc++, gpudata_->shadowhits);
     gatherkernel.SetArg(argc++, gpudata_->lightsamples);
-    gatherkernel.SetArg(argc++, gpudata_->throughput);
+    gatherkernel.SetArg(argc++, gpudata_->paths);
     gatherkernel.SetArg(argc++, output_->data());
 
     // Run shading kernel
@@ -610,7 +735,7 @@ void FrRenderer::RestorePixelIndices(int pass)
     // Set kernel parameters
     int argc = 0;
     restorekernel.SetArg(argc++, gpudata_->compacted_indices);
-    restorekernel.SetArg(argc++, gpudata_->hitcount[pass & 0x1]);
+    restorekernel.SetArg(argc++, gpudata_->hitcount[0]);
     restorekernel.SetArg(argc++, gpudata_->pixelindices[(pass + 1) & 0x1]);
     restorekernel.SetArg(argc++, gpudata_->pixelindices[pass & 0x1]);
 
@@ -621,23 +746,29 @@ void FrRenderer::RestorePixelIndices(int pass)
     }
 }
 
-void FrRenderer::ConvertToPredicate(int pass)
+void FrRenderer::FilterPathStream(int pass)
 {
     // Fetch kernel
-    CLWKernel restorekernel = gpudata_->program.GetKernel("ConvertToPredicate");
+    CLWKernel restorekernel = gpudata_->program.GetKernel("FilterPathStream");
 
     // Set kernel parameters
     int argc = 0;
     restorekernel.SetArg(argc++, gpudata_->intersections);
-    restorekernel.SetArg(argc++, gpudata_->hitcount[(pass + 1) & 0x1]);
+    restorekernel.SetArg(argc++, gpudata_->hitcount[0]);
+	restorekernel.SetArg(argc++, gpudata_->pixelindices[(pass + 1) & 0x1]);
+	restorekernel.SetArg(argc++, gpudata_->paths);
     restorekernel.SetArg(argc++, gpudata_->hits);
+    restorekernel.SetArg(argc++, gpudata_->debug);
 
     // Run shading kernel
     {
-
         int globalsize = output_->width() * output_->height();
         context_.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, restorekernel);
     }
+    
+    //int cnt = 0;
+    //context_.ReadBuffer(0, gpudata_->debug, &cnt, 1).Wait();
+    //std::cout << "Pass " << pass << " killed " << cnt << "\n";
 }
 
 void FrRenderer::CompileScene(Scene const& scene)
@@ -732,7 +863,7 @@ void FrRenderer::RunBenchmark(Scene const& scene)
 
             for (int i = 0; i < kNumPasses; ++i)
             {
-                api_->IntersectBatch(gpudata_->fr_rays[pass & 0x1], numhits, gpudata_->fr_intersections, nullptr, &event);
+                api_->QueryIntersection(gpudata_->fr_rays[pass & 0x1], numhits, gpudata_->fr_intersections, nullptr, &event);
             }
 
             event->Wait();
@@ -745,7 +876,7 @@ void FrRenderer::RunBenchmark(Scene const& scene)
             std::cout << "Average throuput: " << (float)numhits / (time / kNumPasses) / 1000 << " MRays/s\n";
 
             // Convert intersections to predicates
-            ConvertToPredicate(pass);
+            FilterPathStream(pass);
 
             if (pass == 0)
             {
@@ -765,7 +896,7 @@ void FrRenderer::RunBenchmark(Scene const& scene)
             RestorePixelIndices(numhits);
 
             // Shade hits
-            ShadeFirstHit(scene, pass);
+            ShadeSurface(scene, pass);
 
             std::cout << "Number of shadow rays: " << kMaxLightSamples * numhits << "\n";
             // Intersect shadow rays
@@ -774,7 +905,7 @@ void FrRenderer::RunBenchmark(Scene const& scene)
 
             for (int i = 0; i < kNumPasses; ++i)
             {
-                api_->IntersectBatchP(gpudata_->fr_shadowrays, numhits * kMaxLightSamples, gpudata_->fr_shadowhits, nullptr, &event);
+                api_->QueryOcclusion(gpudata_->fr_shadowrays, numhits * kMaxLightSamples, gpudata_->fr_shadowhits, nullptr, &event);
             }
 
             event->Wait();
@@ -876,3 +1007,4 @@ CLWKernel FrRenderer::GetAccumulateKernel()
 {
 	return gpudata_->program.GetKernel("AccumulateData");
 }
+

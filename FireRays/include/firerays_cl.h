@@ -30,7 +30,7 @@ namespace FireRays
     class FRAPI IntersectionApiCL : public IntersectionApi
     {
     public:
-        static IntersectionApiCL* CreateFromOpenClContext(int usagehint, cl_context context, cl_device_id* devices, cl_command_queue* queues, int numdevices);
+        static IntersectionApiCL* CreateFromOpenClContext(cl_context context, cl_device_id device, cl_command_queue queue);
 
         /******************************************
         Memory management
