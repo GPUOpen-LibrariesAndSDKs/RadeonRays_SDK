@@ -56,3 +56,20 @@ solution "FireRays"
 	if fileExists("./App/App.lua") then
 		dofile("./App/App.lua")
 	end
+
+    	if os.is("windows") then
+		os.execute("mkdir Bin & cd Bin & mkdir Release & cd Release & mkdir x64 & cd .. & mkdir Debug & cd Debug & mkdir x64 & cd ../..")
+
+		os.execute("cp ./3rdparty/freeglut/bin/x64/freeglut.dll ./Bin/Release/x64/")
+		os.execute("cp ./3rdparty/freeglut/bin/x64/freeglut.dll ./Bin/Debug/x64/")
+	
+		os.execute("cp ./3rdparty/glew/bin/x64/glew32.dll ./Bin/Release/x64/")
+		os.execute("cp ./3rdparty/glew/bin/x64/glew32.dll ./Bin/Debug/x64/")
+	
+		os.execute("cp ./3rdparty/oiio/bin/x64/OpenImageIO.dll ./Bin/Release/x64/")
+		os.execute("cp ./3rdparty/oiio/bin/x64/OpenImageIOD.dll ./Bin/Debug/x64/")
+
+		os.execute("cp ./FireRays/bin/x64/FireRays64.dll ./Bin/Release/x64/")
+		os.execute("cp ./FireRays/bin/x64/FireRays64.dll ./Bin/Debug/x64/")
+	end
+	
