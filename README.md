@@ -12,7 +12,7 @@ The source tree consist of the following subdirectories:
 ## System requirements
 The library is cross-platform and the following compilers are supported:
 
-- Visual Studio 2012 and later
+- Visual Studio 2015
 
 - Xcode 4 and later
 
@@ -23,19 +23,19 @@ The library is cross-platform and the following compilers are supported:
 AMD OpenCL APP SDK 2.0+ is also required for the standalone app build.  
 
 ## Set up OpenCL
-- Set environmental variable.  GPU_MAX_ALLOC_PERCENT = 100. This is necessary to allocate a large buffers. 
+- Set environmental variable.  GPU_MAX_ALLOC_PERCENT = 100. This is necessary to allocate a large buffers.
 
 ## Build                                                                                       
 
 ### Windows
-- Create Visual Studio 2013 Solution
+- Create Visual Studio 2015 Solution
 
-`./premake/win/premake5.exe vs2013`
+`./premake/win/premake5.exe vs2015`
 
 ### OSX
 - Create Xcode project
 
-`./premake/osx/premake4 xcode4` 
+`./premake/osx/premake4 xcode4`
 
 ### Linux
 on Ubuntu:
@@ -43,21 +43,24 @@ install complimentary libraries:
 
 `sudo apt-get install g++`
 
-- Create Makefile
+install OpenImageIO:
 
-`./premake/linux64/premake4 gmake`
+`sudo apt-get install libopenimageio-dev`
 
-`make config=release64`
+Create Makefile:
+
+`./premake/linux64/premake5 gmake`
+
+`make config=release_x64`
 
 ### Options
-Specify --embed_kernels option to premake to get rid of kernel files dependency in standalone ap. This option forces premake to embed kernel sources into app binary module.
-This option requires python to be installed.
 
 ## Run
 
 ## Run standalone app
-
-`./Bin/Release/x64/App64`
+ - `export LD_LIBRARY_PATH=<FireRays_SDK path>/FireRays/lib/x64/:${LD_LIBRARY_PATH}`
+ - `cd App`
+ - `../Bin/Release/x64/App64`
 
 Possible command line args:
 
@@ -73,9 +76,8 @@ Possible command line args:
 ---
 # Known Issues
 
-## Windows 
+## Windows
 
-## OSX 
+## OSX
 
 ## Linux
-    
