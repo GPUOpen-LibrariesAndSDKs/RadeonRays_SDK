@@ -121,18 +121,17 @@ Scene* Scene::LoadFromObj(std::string const& filename, std::string const& basepa
 	// Enumerate and translate materials
 	for (int i = 0; i < (int)objmaterials.size(); ++i)
 	{
-		if (objmaterials[i].name == "carpaint")
+		if (objmaterials[i].name == "carpaint" || objmaterials[i].name == "Curve")
 		{
 			Material diffuse;
 			diffuse.kx = float3(0.9f, 0.9f, 0.9f);
-			diffuse.ni = 2.f;
+			diffuse.ni = 1.2f;
 			diffuse.type = kLambert;
 
 			Material specular;
 			specular.kx = float3(0.9f, 0.9f, 0.9f);
-			specular.ni = 2.3f;
-			specular.ns = 0.005f;
-			specular.type = kMicrofacetGGX;
+			specular.ni = 1.2f;
+			specular.type = kIdealReflect;
 
 			scene->materials_.push_back(diffuse);
 			scene->material_names_.push_back(objmaterials[i].name);
@@ -141,7 +140,7 @@ Scene* Scene::LoadFromObj(std::string const& filename, std::string const& basepa
 			scene->material_names_.push_back(objmaterials[i].name);
 
 			Material layered;
-			layered.ni = 1.3f;
+			layered.ni = 1.2f;
 			layered.type = kFresnelBlend;
 			layered.brdfbaseidx = scene->materials_.size() - 2;
 			layered.brdftopidx = scene->materials_.size() - 1;
@@ -262,6 +261,39 @@ Scene* Scene::LoadFromObj(std::string const& filename, std::string const& basepa
 			matmap[i] = scene->materials_.size() - 1;
 			continue;
 		}
+		else if (objmaterials[i].name == "red_glass")
+		{
+
+			Material refract;
+			refract.kx = float3(1.f, 0.3f, 0.3f);
+			refract.ni = 1.33f;
+			refract.type = kIdealRefract;
+			refract.fresnel = 1.f;
+
+			scene->materials_.push_back(refract);
+			scene->material_names_.push_back(objmaterials[i].name);
+
+			Material specular;
+			specular.kx = float3(1.f, 0.3f, 0.3f);
+			specular.ni = 1.33f;
+			specular.ns = 0.001f;
+			specular.type = kIdealReflect;
+			specular.fresnel = 1.f;
+
+			scene->materials_.push_back(specular);
+			scene->material_names_.push_back(objmaterials[i].name);
+
+			Material layered;
+			layered.ni = 1.33f;
+			layered.type = kFresnelBlend;
+			layered.brdftopidx = scene->materials_.size() - 1;
+			layered.brdfbaseidx = scene->materials_.size() - 2;
+
+			scene->materials_.push_back(layered);
+			scene->material_names_.push_back(objmaterials[i].name);
+			matmap[i] = scene->materials_.size() - 1;
+			continue;
+		}
 		else if (objmaterials[i].name == "wire_113135006")
 		{
 
@@ -327,7 +359,8 @@ Scene* Scene::LoadFromObj(std::string const& filename, std::string const& basepa
 			matmap[i] = scene->materials_.size() - 1;
 			continue;
 		}
-		else if (objmaterials[i].name == "metal")
+		else if (objmaterials[i].name == "metal" || objmaterials[i].name == "Base_Motor_mat" || objmaterials[i].name == "Base_Motor_mat1"
+			|| objmaterials[i].name == "Base_Motor_mat2" || objmaterials[i].name == "Base_Motor_mat3")
 		{
 			Material specular;
 			specular.kx = float3(0.9f, 0.9f, 0.9f);
@@ -371,15 +404,32 @@ Scene* Scene::LoadFromObj(std::string const& filename, std::string const& basepa
 		}
 		else if (objmaterials[i].name == "brakes")
 		{
+			Material diffuse;
+			diffuse.kx = float3(0.f, 0.f, 0.f);
+			diffuse.ni = 1.3f;
+			diffuse.type = kLambert;
+
 			Material specular;
-			specular.kx = float3(0.3f, 0.3f, 0.3f);
-			specular.ni = 1.5f;
-			specular.ns = 0.1f;
-			specular.type = kIdealReflect;
-			specular.fresnel = 1.f;
+			specular.kx = float3(0.9f, 0.9f, 0.9f);
+			specular.ni = 1.3f;
+			specular.ns = 0.005f;
+			specular.type = kMicrofacetGGX;
+
+			scene->materials_.push_back(diffuse);
+			scene->material_names_.push_back(objmaterials[i].name);
 
 			scene->materials_.push_back(specular);
 			scene->material_names_.push_back(objmaterials[i].name);
+
+			Material layered;
+			layered.ni = 1.3f;
+			layered.type = kFresnelBlend;
+			layered.brdfbaseidx = scene->materials_.size() - 2;
+			layered.brdftopidx = scene->materials_.size() - 1;
+
+			scene->materials_.push_back(layered);
+			scene->material_names_.push_back(objmaterials[i].name);
+
 			matmap[i] = scene->materials_.size() - 1;
 			continue;
 		}
