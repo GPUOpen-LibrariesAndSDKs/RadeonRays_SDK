@@ -33,9 +33,23 @@ AMD OpenCL APP SDK 2.0+ is also required for the standalone app build.
 `./premake/win/premake5.exe vs2015`
 
 ### OSX
+- Install Homebrew
+
+`/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"`
+
+- Install OpenImageIO
+
+`brew install homebrew/science/openimageio`
+
 - Create Xcode project
 
-`./premake/osx/premake4 xcode4`
+`./premake/osx/premake5 xcode4`
+
+- Alternatively use gmake version
+
+`./premake/osx/premake5 gmake`
+
+`make config=release_x64`
 
 ### Linux
 on Ubuntu:
@@ -72,6 +86,29 @@ Possible command line args:
 - `-nb num` run in GI mode and calculate num bounces of light
 - `-cpx x -cpy y -cpz z` set camera position
 - `-tpx x -tpy y -tpz z` set camera target
+
+
+# Hardware  support
+
+The library has been tested on the following hardware and OSes:
+
+## Linux 
+ - Ubuntu Linux 14.04 
+ - AMD FirePro driver 15.201: W9100, W8100, W9000, W7000, W7100, S9300x2, W5100
+ - AMD Radeon driver 15.302: R9 Nano, R9 Fury X, R9 290
+ - NVIDIA driver 352.79: GeForce GTX970, Titan X
+
+## Windows 
+ - Windows 7/8.1/10
+ - AMD FirePro driver 15.201: W9100, W8100, W9000, W7000, W7100, S9300x2, W5100
+ - AMD Radeon driver 16.4: R9 Nano, R9 Fury X, R9 290, Pro Duo
+ - NVIDIA driver 364.72: GeForce GTX970, Titan X
+
+## OSX
+ - OSX El Capitan 10.11.4
+ - Mac Pro (Late 2013) AMD FirePro D500 x2
+ - Macbook Pro Retina 13" (Early 2013) Intel HD 4300 
+ - Macbook 12" (Early 2015) Intel HD 5300
 
 ---
 # Known Issues
