@@ -57,7 +57,7 @@ solution "FireRays"
 		dofile("./App/App.lua")
 	end
 
-    	if os.is("windows") then
+    if os.is("windows") then
 		os.execute("mkdir Bin & cd Bin & mkdir Release & cd Release & mkdir x64 & cd .. & mkdir Debug & cd Debug & mkdir x64 & cd ../..")
 
 		os.execute("cp ./3rdparty/freeglut/bin/x64/freeglut.dll ./Bin/Release/x64/")
@@ -73,3 +73,9 @@ solution "FireRays"
 		os.execute("cp ./FireRays/bin/x64/FireRays64.dll ./Bin/Debug/x64/")
 	end
 	
+
+    if os.is("macosx") then
+		os.execute("mkdir Bin ; cd Bin ; mkdir Release ; cd Release ; mkdir x64 ; cd .. ; mkdir Debug ; cd Debug ; mkdir x64 ; cd ../..")
+		os.execute("cp ./FireRays/lib/x64/libFireRays64.dylib ./Bin/Release/x64/")
+		os.execute("cp ./FireRays/lib/x64/libFireRays64.dylib ./Bin/Debug/x64/")
+	end
