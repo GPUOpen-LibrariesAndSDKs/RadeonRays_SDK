@@ -111,7 +111,7 @@ float SobolSampler_Sample1D(uint index, uint dimension, uint scramble, __global 
 			result ^= mat[i];
 	}
 
-	return result * (1.f / (1ULL << 32));
+	return result * (1.f / (1UL << 32));
 }
 
 
