@@ -34,7 +34,7 @@ project "App"
 
     if os.is("linux") then
         buildoptions "-std=c++11"
-        links {"OpenImageIO", "glut", "GLEW", "GL"}
+        links {"OpenImageIO", "glut", "GLEW", "GL", "pthread"}
         os.execute("rm -rf obj");
     end
 
