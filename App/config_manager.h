@@ -35,7 +35,9 @@ public:
 	{
 		kUseAll,
 		kUseGpus,
-		kUseSingleGpu
+		kUseSingleGpu,
+		kUseSingleCpu,
+		kUseCpus
 	};
 
 	struct Config

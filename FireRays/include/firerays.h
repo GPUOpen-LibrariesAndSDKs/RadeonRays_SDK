@@ -25,14 +25,19 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVE
 
 #define FIRERAYS_API_VERSION 1.21
 
+
 #ifdef WIN32
-#ifdef EXPORT_API
-#define FRAPI __declspec(dllexport)
-#else
-#define FRAPI __declspec(dllimport)
-#endif
-#else
-#define FRAPI
+    #ifdef EXPORT_API
+        #define FRAPI __declspec(dllexport)
+    #else
+        #define FRAPI __declspec(dllimport)
+    #endif
+#elif defined(__GNUC__)
+    #ifdef EXPORT_API
+        #define FRAPI __attribute__((visibility ("default")))
+    #else
+        #define FRAPI
+    #endif
 #endif
 
 namespace FireRays 

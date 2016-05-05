@@ -74,13 +74,13 @@ int g_samplecount = 0;
 float g_ao_radius = 1.f;
 float g_envmapmul = 1.f;
 float g_cspeed = 100.25f;
-float3 g_camera_pos = float3(0, 100, 800);
-float3 g_camera_at = float3(0, 100, 0);
+float3 g_camera_pos = float3(0, 1, 3);
+float3 g_camera_at = float3(0, 1, 0);
 bool g_recording_enabled = false;
 int g_frame_count = 0;
 bool g_benchmark = false;
 bool g_interop = true;
-bool g_mgpu = 0;
+ConfigManager::Mode g_mode = ConfigManager::Mode::kUseSingleGpu;
 
 using namespace tinyobj;
 
@@ -238,7 +238,7 @@ void InitGraphics()
 
 void InitCl()
 {
-	ConfigManager::CreateConfigs(g_mgpu ? (ConfigManager::kUseGpus) : (ConfigManager::kUseSingleGpu), g_interop, g_cfgs);
+	ConfigManager::CreateConfigs(g_mode, g_interop, g_cfgs);
 
 	std::cout << "Running on devices: \n";
 
@@ -736,8 +736,21 @@ int main(int argc, char * argv[])
     char* interop = GetCmdOption(argv, argv + argc, "-interop");
     g_interop = interop ? (atoi(interop) > 0) : g_interop;
 
-	char* mgpu = GetCmdOption(argv, argv + argc, "-mgpu");
-	g_mgpu = mgpu ? (atoi(mgpu) > 0) : g_mgpu;
+	char* cfg = GetCmdOption(argv, argv + argc, "-config");
+
+	if (cfg)
+	{
+		if (strcmp(cfg, "cpu") == 0)
+			g_mode = ConfigManager::Mode::kUseSingleCpu;
+		else if (strcmp(cfg, "gpu") == 0)
+			g_mode = ConfigManager::Mode::kUseSingleGpu;
+		else if (strcmp(cfg, "mcpu") == 0)
+			g_mode = ConfigManager::Mode::kUseCpus;
+		else if (strcmp(cfg, "mgpu") == 0)
+			g_mode = ConfigManager::Mode::kUseGpus;
+		else if (strcmp(cfg, "all") == 0)
+			g_mode = ConfigManager::Mode::kUseAll;
+	}
 
 	char* cspeed = GetCmdOption(argv, argv + argc, "-cspeed");
 	g_cspeed = cspeed ? atof(cspeed) : g_cspeed;

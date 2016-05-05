@@ -16,16 +16,6 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVE
 #ifndef RAY_H
 #define RAY_H
 
-#ifdef WIN32
-#ifdef EXPORT_API
-#define FRAPI __declspec(dllexport)
-#else
-#define FRAPI __declspec(dllimport)
-#endif
-#else
-#define FRAPI
-#endif
-
 #include <limits>
 
 #include "float3.h"

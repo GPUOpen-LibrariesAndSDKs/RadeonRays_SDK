@@ -68,12 +68,12 @@ float3 Texture_Sample2D(float2 uv, TEXTURE_ARG_LIST_IDX(texidx))
     uv.y = 1.f - uv.y;
     
     // Calculate integer coordinates
-    int x0 = floor(uv.x * width);
-    int y0 = floor(uv.y * height);
+    int x0 = clamp((int)floor(uv.x * width), 0, width - 1);
+    int y0 = clamp((int)floor(uv.y * height), 0, height - 1);
     
     // Calculate samples for linear filtering
-    int x1 = min(x0 + 1, width - 1);
-    int y1 = min(y0 + 1, height - 1);
+    int x1 = clamp(x0 + 1, 0,  width - 1);
+    int y1 = clamp(y0 + 1, 0, height - 1);
     
     // Calculate weights for linear filtering
     float wx = uv.x * width - floor(uv.x * width);
@@ -213,8 +213,8 @@ float3 Texture_SampleBump(float2 uv, TEXTURE_ARG_LIST_IDX(texidx))
 	uv.y = 1.f - uv.y;
 
 	// Calculate integer coordinates
-	int s0 = floor(uv.x * width);
-	int t0 = floor(uv.y * height);
+	int s0 = clamp((int)floor(uv.x * width), 0, width - 1);
+	int t0 = clamp((int)floor(uv.y * height), 0, height - 1);
 
 	switch (textures[texidx].fmt)
 	{

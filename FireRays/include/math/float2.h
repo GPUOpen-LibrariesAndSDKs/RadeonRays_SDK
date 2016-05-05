@@ -17,16 +17,6 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVE
 #ifndef FLOAT2_H
 #define FLOAT2_H
 
-#ifdef WIN32
-#ifdef EXPORT_API
-#define FRAPI __declspec(dllexport)
-#else
-#define FRAPI __declspec(dllimport)
-#endif
-#else
-#define FRAPI
-#endif
-
 #include <cmath>
 #include <algorithm>
 

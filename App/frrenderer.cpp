@@ -143,12 +143,13 @@ FrRenderer::FrRenderer(CLWContext context, int devidx)
     // Do app specific settings
 #ifdef __APPLE__
     // Apple runtime has known issue with stacked traversal
-    api_->SetOption("acc.type", "bvh");
+    api_->SetOption("acc.type", "fatbvh");
     api_->SetOption("bvh.builder", "sah");
 #else
     api_->SetOption("acc.type", "fatbvh");
     api_->SetOption("bvh.builder", "sah");
 #endif
+
     // Create parallel primitives
     gpudata_->pp = CLWParallelPrimitives(context_);
 

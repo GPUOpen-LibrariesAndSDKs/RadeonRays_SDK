@@ -34,17 +34,15 @@ void ConfigManager::CreateConfigs(Mode mode, bool interop, std::vector<Config>& 
 	bool hasprimary = false;
 	for (int i = 0; i < platforms.size(); ++i)
 	{
-		if (platforms[i].GetName().find("Intel") != std::string::npos)
-		{
-			continue;
-		}
-
 		std::vector<CLWDevice> devices;
 		int startidx = configs.size();
 
 		for (int d = 0; d < (int)platforms[i].GetDeviceCount(); ++d)
 		{
 			if ((mode == kUseGpus || mode == kUseSingleGpu) && platforms[i].GetDevice(d).GetType() != CL_DEVICE_TYPE_GPU)
+				continue;
+
+			if ((mode == kUseCpus || mode == kUseSingleCpu) && platforms[i].GetDevice(d).GetType() != CL_DEVICE_TYPE_CPU)
 				continue;
 
 			Config cfg;
@@ -122,11 +120,11 @@ void ConfigManager::CreateConfigs(Mode mode, bool interop, std::vector<Config>& 
 
 			configs.push_back(cfg);
 
-			if (mode == kUseSingleGpu)
+			if (mode == kUseSingleGpu || mode == kUseSingleCpu)
 				break;
 		}
 
-		if (configs.size() == 1 && mode == kUseSingleGpu)
+		if (configs.size() == 1 && (mode == kUseSingleGpu || mode == kUseSingleCpu))
 			break;
 	}
 

@@ -22,15 +22,15 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVE
 
 void ApplyNormalMap(DifferentialGeometry* dg, TEXTURE_ARG_LIST)
 {
-	int nmapidx = dg->mat.nmapidx;
-	if (nmapidx != -1)
-	{
-		// Now n, dpdu, dpdv is orthonormal basis
-		float3 mappednormal = 2.f * Texture_Sample2D(dg->uv, TEXTURE_ARGS_IDX(nmapidx)) - make_float3(1.f, 1.f, 1.f);
-
-		// Return mapped version
-		dg->n = normalize(mappednormal.z *  dg->n * 0.5f + mappednormal.x * dg->dpdu + mappednormal.y * dg->dpdv);
-	}
+    int nmapidx = dg->mat.nmapidx;
+    if (nmapidx != -1)
+    {
+        // Now n, dpdu, dpdv is orthonormal basis
+        float3 mappednormal = 2.f * Texture_Sample2D(dg->uv, TEXTURE_ARGS_IDX(nmapidx)) - make_float3(1.f, 1.f, 1.f);
+    
+        // Return mapped version
+        dg->n = normalize(mappednormal.z *  dg->n * 0.5f + mappednormal.x * dg->dpdu + mappednormal.y * dg->dpdv);
+    }
 }
 
 void ApplyBumpMap(DifferentialGeometry* dg, TEXTURE_ARG_LIST)
@@ -42,7 +42,7 @@ void ApplyBumpMap(DifferentialGeometry* dg, TEXTURE_ARG_LIST)
 		float3 mappednormal = 2.f * Texture_SampleBump(dg->uv, TEXTURE_ARGS_IDX(nmapidx)) - make_float3(1.f, 1.f, 1.f);
 
 		// Return mapped version
-		dg->n = normalize(mappednormal.z * dg->n * 0.5f - mappednormal.x * dg->dpdu - mappednormal.y * dg->dpdv);
+		dg->n = normalize(mappednormal.z * dg->n - mappednormal.x * dg->dpdu - mappednormal.y * dg->dpdv);
 	}
 }
 

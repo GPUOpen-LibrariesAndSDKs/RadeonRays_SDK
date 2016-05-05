@@ -92,13 +92,13 @@ Possible command line args:
 
 The library has been tested on the following hardware and OSes:
 
-## Linux 
- - Ubuntu Linux 14.04 
+## Linux
+ - Ubuntu Linux 14.04
  - AMD FirePro driver 15.201: W9100, W8100, W9000, W7000, W7100, S9300x2, W5100
  - AMD Radeon driver 15.302: R9 Nano, R9 Fury X, R9 290
  - NVIDIA driver 352.79: GeForce GTX970, Titan X
 
-## Windows 
+## Windows
  - Windows 7/8.1/10
  - AMD FirePro driver 15.201: W9100, W8100, W9000, W7000, W7100, S9300x2, W5100
  - AMD Radeon driver 16.4: R9 Nano, R9 Fury X, R9 290, Pro Duo
@@ -107,7 +107,7 @@ The library has been tested on the following hardware and OSes:
 ## OSX
  - OSX El Capitan 10.11.4
  - Mac Pro (Late 2013) AMD FirePro D500 x2
- - Macbook Pro Retina 13" (Early 2013) Intel HD 4300 
+ - Macbook Pro Retina 13" (Early 2013) Intel HD 4300
  - Macbook 12" (Early 2015) Intel HD 5300
 
 ---
@@ -118,3 +118,9 @@ The library has been tested on the following hardware and OSes:
 ## OSX
 
 ## Linux
+
+If <CL/cl.h> is missing try to specify OpenCL SDK location.
+AMD:
+`export $AMDAPPSDKROOT=<SDK_PATH>`
+NVIDIA:
+`export $CUDA_PATH=<SDK_PATH>`
