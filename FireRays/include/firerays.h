@@ -29,7 +29,7 @@ THE SOFTWARE.
 #include "math/ray.h"
 #include "math/mathutils.h"
 
-#define FIRERAYS_API_VERSION 1.21
+#define FIRERAYS_API_VERSION 2.0
 
 
 #ifdef WIN32
