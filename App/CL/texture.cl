@@ -1,24 +1,24 @@
-//
-// Copyright (c) 2016 Advanced Micro Devices, Inc. All rights reserved.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
-//
+/**********************************************************************
+Copyright (c) 2016 Advanced Micro Devices, Inc. All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+********************************************************************/
 #ifndef TEXTURE_CL
 #define TEXTURE_CL
 
@@ -74,12 +74,12 @@ float3 Texture_Sample2D(float2 uv, TEXTURE_ARG_LIST_IDX(texidx))
     uv.y = 1.f - uv.y;
     
     // Calculate integer coordinates
-    int x0 = floor(uv.x * width);
-    int y0 = floor(uv.y * height);
+    int x0 = clamp((int)floor(uv.x * width), 0, width - 1);
+    int y0 = clamp((int)floor(uv.y * height), 0, height - 1);
     
     // Calculate samples for linear filtering
-    int x1 = min(x0 + 1, width - 1);
-    int y1 = min(y0 + 1, height - 1);
+    int x1 = clamp(x0 + 1, 0,  width - 1);
+    int y1 = clamp(y0 + 1, 0, height - 1);
     
     // Calculate weights for linear filtering
     float wx = uv.x * width - floor(uv.x * width);
@@ -219,8 +219,8 @@ float3 Texture_SampleBump(float2 uv, TEXTURE_ARG_LIST_IDX(texidx))
 	uv.y = 1.f - uv.y;
 
 	// Calculate integer coordinates
-	int s0 = floor(uv.x * width);
-	int t0 = floor(uv.y * height);
+	int s0 = clamp((int)floor(uv.x * width), 0, width - 1);
+	int t0 = clamp((int)floor(uv.y * height), 0, height - 1);
 
 	switch (textures[texidx].fmt)
 	{

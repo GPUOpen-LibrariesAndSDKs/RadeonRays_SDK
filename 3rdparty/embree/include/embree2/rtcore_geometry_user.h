@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2014 Intel Corporation                                    //
+// Copyright 2009-2015 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -20,17 +20,16 @@
 /*! \ingroup embree_kernel_api */
 /*! \{ */
 
-/*! Axis aligned bounding box representation */
-struct RTCORE_ALIGN(16) RTCBounds
-{
-  float lower_x, lower_y, lower_z, align0;
-  float upper_x, upper_y, upper_z, align1;
-};
-
 /*! Type of bounding function. */
 typedef void (*RTCBoundsFunc)(void* ptr,              /*!< pointer to user data */
                               size_t item,            /*!< item to calculate bounds for */
                               RTCBounds& bounds_o     /*!< returns calculated bounds */);
+
+/*! Type of bounding function. */
+typedef void (*RTCBoundsFunc2)(void* userPtr,         /*!< pointer to user data */
+                               void* geomUserPtr,     /*!< pointer to geometry user data */
+                               size_t item,           /*!< item to calculate bounds for */
+                               RTCBounds* bounds_o    /*!< returns calculated bounds */);
 
 /*! Type of intersect function pointer for single rays. */
 typedef void (*RTCIntersectFunc)(void* ptr,           /*!< pointer to user data */
@@ -91,19 +90,24 @@ typedef void (*RTCOccludedFunc16) (const void* valid, /*! pointer to valid mask 
  *  representation of the geometry, is passed to each intersect and
  *  occluded function invokation, as well as the index of the geometry
  *  of the set to intersect. */
-RTCORE_API unsigned rtcNewUserGeometry (RTCScene scene,        /*!< the scene the user geometry set is created in */
-                                        size_t numGeometries   /*!< the number of geometries contained in the set */);
+RTCORE_API unsigned rtcNewUserGeometry (RTCScene scene,           /*!< the scene the user geometry set is created in */
+                                        size_t numGeometries      /*!< the number of geometries contained in the set */);
 
-/*! Set data pointer for intersect and occluded functions. Invokations
- *  of the various user intersect and occluded functions get passed
- *  this data pointer when called. */
-RTCORE_API void rtcSetUserData (RTCScene scene, unsigned geomID, void* ptr);
+RTCORE_API unsigned rtcNewUserGeometry2 (RTCScene scene,          /*!< the scene the user geometry set is created in */
+                                         size_t numGeometries,    /*!< the number of geometries contained in the set */
+                                         size_t numTimeSteps = 1  /*!< number of motion blur time steps */);
 
 /*! Sets the bounding function to calculate bounding boxes of the user
  *  geometry items when building spatial index structures. The
  *  calculated bounding box have to be conservative and should be
- *  tight.*/
+ *  tight. */
 RTCORE_API void rtcSetBoundsFunction (RTCScene scene, unsigned geomID, RTCBoundsFunc bounds);
+
+/*! Sets the bounding function to calculate bounding boxes of the user
+ *  geometry items when building spatial index structures. The
+ *  calculated bounding box have to be conservative and should be
+ *  tight. */
+RTCORE_API void rtcSetBoundsFunction2 (RTCScene scene, unsigned geomID, RTCBoundsFunc2 bounds, void* userPtr);
 
 /*! Set intersect function for single rays. The rtcIntersect function
  *  will call the passed function for intersecting the user

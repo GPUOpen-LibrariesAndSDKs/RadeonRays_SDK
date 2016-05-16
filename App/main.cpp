@@ -1,24 +1,24 @@
-//
-// Copyright (c) 2016 Advanced Micro Devices, Inc. All rights reserved.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
-//
+/**********************************************************************
+Copyright (c) 2016 Advanced Micro Devices, Inc. All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+********************************************************************/
 #ifdef __APPLE__
 #include <OpenCL/OpenCL.h>
 #include <OpenGL/OpenGL.h>
@@ -34,7 +34,7 @@
 #include <GL/glx.h>
 #endif
 
-#include <OpenImageIO/imageio.h>
+#include "OpenImageIO/imageio.h"
 
 #include <memory>
 #include <chrono>
@@ -74,8 +74,8 @@ using namespace FireRays;
 char const* kHelpMessage =
 "App [-p path_to_models][-f model_name][-b][-r][-ns number_of_shadow_rays][-ao ao_radius][-w window_width][-h window_height][-nb number_of_indirect_bounces]";
 char const* g_path =
-"../Resources/CornellBox";
-char const* g_modelname = "orig.objm";
+"../Resources/bmw";
+char const* g_modelname = "i8.obj";
 
 std::unique_ptr<ShaderManager>	g_shader_manager;
 
@@ -83,25 +83,25 @@ GLuint g_vertex_buffer;
 GLuint g_index_buffer;
 GLuint g_texture;
 
-int g_window_width = 512;
-int g_window_height = 512;
+int g_window_width = 640;
+int g_window_height = 480;
 int g_num_shadow_rays = 1;
 int g_num_ao_rays = 1;
 int g_ao_enabled = false;
 int g_progressive = false;
-int g_num_bounces = 3;
+int g_num_bounces = 10;
 int g_num_samples = -1;
 int g_samplecount = 0;
 float g_ao_radius = 1.f;
-float g_envmapmul = 3.f;
-float g_cspeed = 10.25f;
-float3 g_camera_pos = float3(0, 1, -3);
+float g_envmapmul = 1.f;
+float g_cspeed = 100.25f;
+float3 g_camera_pos = float3(0, 1, 3);
 float3 g_camera_at = float3(0, 1, 0);
 bool g_recording_enabled = false;
 int g_frame_count = 0;
 bool g_benchmark = false;
 bool g_interop = true;
-bool g_mgpu = 0;
+ConfigManager::Mode g_mode = ConfigManager::Mode::kUseSingleGpu;
 
 using namespace tinyobj;
 
@@ -259,7 +259,7 @@ void InitGraphics()
 
 void InitCl()
 {
-	ConfigManager::CreateConfigs(g_mgpu ? (ConfigManager::kUseGpus) : (ConfigManager::kUseSingleGpu), g_interop, g_cfgs);
+	ConfigManager::CreateConfigs(g_mode, g_interop, g_cfgs);
 
 	std::cout << "Running on devices: \n";
 
@@ -323,7 +323,7 @@ void InitData()
         , (float)g_window_width / g_window_height
         ));
 
-    //g_scene->SetEnvironment("../Resources/Textures/HDR.hdr", "", g_envmapmul);
+    g_scene->SetEnvironment("../Resources/Textures/studio015.hdr", "", g_envmapmul);
 
 #pragma omp parallel for
 	for (int i = 0; i < g_cfgs.size(); ++i)
@@ -343,6 +343,8 @@ void InitData()
 			g_outputs[i].copybuffer = g_cfgs[i].context.CreateBuffer<float3>(g_window_width * g_window_height, CL_MEM_READ_WRITE);
 		}
 	}
+
+	g_cfgs[g_primary].renderer->Clear(float3(0, 0, 0), *g_outputs[g_primary].output);
 }
 
 void Reshape(GLint w, GLint h)
@@ -529,7 +531,6 @@ void Update()
 		}
 
         numbnc = 1;
-        // g_renderer->SetNumBounces(numbnc);
 		for (int i = 0; i < g_cfgs.size(); ++i)
 		{
 			g_cfgs[i].renderer->SetNumBounces(numbnc);
@@ -756,8 +757,21 @@ int main(int argc, char * argv[])
     char* interop = GetCmdOption(argv, argv + argc, "-interop");
     g_interop = interop ? (atoi(interop) > 0) : g_interop;
 
-	char* mgpu = GetCmdOption(argv, argv + argc, "-mgpu");
-	g_mgpu = mgpu ? (atoi(mgpu) > 0) : g_mgpu;
+	char* cfg = GetCmdOption(argv, argv + argc, "-config");
+
+	if (cfg)
+	{
+		if (strcmp(cfg, "cpu") == 0)
+			g_mode = ConfigManager::Mode::kUseSingleCpu;
+		else if (strcmp(cfg, "gpu") == 0)
+			g_mode = ConfigManager::Mode::kUseSingleGpu;
+		else if (strcmp(cfg, "mcpu") == 0)
+			g_mode = ConfigManager::Mode::kUseCpus;
+		else if (strcmp(cfg, "mgpu") == 0)
+			g_mode = ConfigManager::Mode::kUseGpus;
+		else if (strcmp(cfg, "all") == 0)
+			g_mode = ConfigManager::Mode::kUseAll;
+	}
 
 	char* cspeed = GetCmdOption(argv, argv + argc, "-cspeed");
 	g_cspeed = cspeed ? atof(cspeed) : g_cspeed;

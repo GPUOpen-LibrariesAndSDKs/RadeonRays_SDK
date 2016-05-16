@@ -1,17 +1,23 @@
 /**********************************************************************
-Copyright ©2015 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2016 Advanced Micro Devices, Inc. All rights reserved.
 
-Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-•   Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
-•   Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or
-other materials provided with the distribution.
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
 
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY
-DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
-OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
 ********************************************************************/
 
 #ifndef FIRERAYS_H
@@ -25,14 +31,19 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVE
 
 #define FIRERAYS_API_VERSION 1.21
 
+
 #ifdef WIN32
-#ifdef EXPORT_API
-#define FRAPI __declspec(dllexport)
-#else
-#define FRAPI __declspec(dllimport)
-#endif
-#else
-#define FRAPI
+    #ifdef EXPORT_API
+        #define FRAPI __declspec(dllexport)
+    #else
+        #define FRAPI __declspec(dllimport)
+    #endif
+#elif defined(__GNUC__)
+    #ifdef EXPORT_API
+        #define FRAPI __attribute__((visibility ("default")))
+    #else
+        #define FRAPI
+    #endif
 #endif
 
 namespace FireRays 
@@ -41,7 +52,7 @@ namespace FireRays
     /// API is distributing the work across multiple devices itsels, so
     /// this structure is only used to query devices configuration and
     /// limit the number of devices available for the API.
-    struct FRAPI IntersectionDeviceInfo
+    struct FRAPI DeviceInfo
     {
         // Device type
         enum Type
@@ -51,22 +62,12 @@ namespace FireRays
             kAccelerator
         };
 
-        // API mask components
-        enum Api
-        {
-            kNative        = 0x1,
-            kOpenCl        = 0x2,
-            kDirectCompute = 0x4,
-        };
-
         // Device name
-        char* name;
+        char const* name;
         // Device vendor
-        char* vendor;
+        char const* vendor;
         // Device type
         Type type;
-        // Supported APIs
-        int apis;
     };
 
     // Forward declaration of entities
@@ -167,14 +168,14 @@ namespace FireRays
         // Use this part of API to query for available devices and
         // limit the set of devices which API is going to use
         // Get the number of devices available in the system
-        static int GetIntersectionDeviceCount();
+        static std::uint32_t GetDeviceCount();
         // Get the information for the specified device
-        static IntersectionDeviceInfo const& GetIntersectionDeviceInfo(int devidx);
+        static void GetDeviceInfo(std::uint32_t devidx, DeviceInfo& devinfo);
 
         /******************************************
         API lifetime management
         ******************************************/
-        static IntersectionApi* Create(int usagehint, int* devindices, int* apis, int numdevices);
+        static IntersectionApi* Create(std::uint32_t devidx);
 
         // Deallocation
         static void Delete(IntersectionApi* api);
@@ -203,9 +204,9 @@ namespace FireRays
         // The call is blocking, so the returned value is ready upon return.
         virtual Shape* CreateInstance(Shape const* shape) const = 0;
         // Delete the shape (to simplify DLL boundary crossing
-        virtual void DeleteShape(Shape* shape) = 0;
+        virtual void DeleteShape(Shape const* shape) = 0;
         // Attach shape to participate in intersection process
-        virtual void AttachShape(Shape* shape) = 0;
+        virtual void AttachShape(Shape const* shape) = 0;
         // Detach shape, i.e. it is not going to be considered part of the scene anymore
         virtual void DetachShape(Shape const* shape) = 0;
         // Commit all geometry creations/changes
@@ -220,9 +221,9 @@ namespace FireRays
         virtual void DeleteBuffer(Buffer* buffer) const = 0;
         // Map buffer. Event pointer might be nullptr.
         // The call is asynchronous.
-        virtual void MapBuffer(Buffer const* buffer, MapType type, size_t offset, size_t size, void** data, Event** event) const = 0;
+        virtual void MapBuffer(Buffer* buffer, MapType type, size_t offset, size_t size, void** data, Event** event) const = 0;
         // Unmap buffer
-        virtual void UnmapBuffer(Buffer const* buffer, void* ptr, Event** event) const = 0;
+        virtual void UnmapBuffer(Buffer* buffer, void* ptr, Event** event) const = 0;
 
         /******************************************
           Events handling
@@ -232,32 +233,20 @@ namespace FireRays
         /******************************************
           Ray casting
         ******************************************/
-        // Fast path:
-        // Find closest intersection.
-        // The call is blocking.
-        virtual void IntersectBatch(ray const* rays, int numrays, Intersection* hits) const = 0;
-        // Find any intersection.
-        // The call is blocking.
-        virtual void IntersectBatchP(ray const* rays, int numrays, int* hitresults) const = 0;
-        // Async version
-        virtual void IntersectBatch(ray const* rays, int numrays, Intersection* hits, Event** event) const = 0;
-        // Async version
-        virtual void IntersectBatchP(ray const* rays, int numrays, int* hitresults, Event** event) const = 0;
-
         // Complete path:
         // Find closest intersection
         // The call is asynchronous. Event pointers might be nullptrs.
-        virtual void IntersectBatch(Buffer const* rays, int numrays, Buffer* hitinfos, Event const* waitevent, Event** event) const = 0;
+        virtual void QueryIntersection(Buffer const* rays, int numrays, Buffer* hitinfos, Event const* waitevent, Event** event) const = 0;
         // Find any intersection.
         // The call is asynchronous. Event pointer mights be nullptrs.
-        virtual void IntersectBatchP(Buffer const* rays, int numrays, Buffer* hitresults, Event const* waitevent, Event** event) const = 0;
+        virtual void QueryOcclusion(Buffer const* rays, int numrays, Buffer* hitresults, Event const* waitevent, Event** event) const = 0;
 
         // Find closest intersection, number of rays is in remote memory
         // The call is asynchronous. Event pointers might be nullptrs.
-        virtual void IntersectBatch(Buffer const* rays, Buffer const* numrays, int maxrays, Buffer* hitinfos, Event const* waitevent, Event** event) const = 0;
+        virtual void QueryIntersection(Buffer const* rays, Buffer const* numrays, int maxrays, Buffer* hitinfos, Event const* waitevent, Event** event) const = 0;
         // Find any intersection.
         // The call is asynchronous. Event pointer mights be nullptrs.
-        virtual void IntersectBatchP(Buffer const* rays, Buffer const* numrays, int maxrays, Buffer* hitresults, Event const* waitevent, Event** event) const = 0;
+        virtual void QueryOcclusion(Buffer const* rays, Buffer const* numrays, int maxrays, Buffer* hitresults, Event const* waitevent, Event** event) const = 0;
 
         /******************************************
         Utility
@@ -298,7 +287,7 @@ namespace FireRays
 
     inline Buffer::~Buffer(){}
     inline Shape::~Shape(){}
-    inline Event::~Event(){};
+    inline Event::~Event(){}
     inline Exception::~Exception(){}
 }
 

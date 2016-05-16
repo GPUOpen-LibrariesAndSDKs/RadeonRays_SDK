@@ -1,24 +1,24 @@
-//
-// Copyright (c) 2016 Advanced Micro Devices, Inc. All rights reserved.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
-//
+/**********************************************************************
+Copyright (c) 2016 Advanced Micro Devices, Inc. All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+********************************************************************/
 #ifndef LIGHT_CL
 #define LIGHT_CL
 
@@ -40,7 +40,7 @@ int IntersectTriangle(ray const* r, float3 v1, float3 v2, float3 v3, float* a, f
 	const float  b2 = dot(r->d.xyz, s2) * invd;
 	const float temp = dot(e2, s2) * invd;
 
-	if (b1 < 0.f || b1 > 1.f || b2 < 0.f || b1 + b2 > 1.f)
+	if (b1 < 0.f || b1 > 1.f || b2 < 0.f || b1 + b2 > 1.f || temp < 0.f || temp > r->o.w)
 	{
 		return 0;
 	}
@@ -80,15 +80,15 @@ float3 EnvironmentLight_Sample(// Scene
                                DifferentialGeometry const* dg,
                                // Textures
                                TEXTURE_ARG_LIST,
-                               // RNG
-                               Rng* rng,
+                               // Sample
+                               float2 sample,
                                // Direction to light source
                                float3* wo,
                                // PDF
                                float* pdf
 							  )
 {
-	float3 d = SampleHemisphere(rng, dg->n, 1.f);
+	float3 d = Sample_MapToHemisphere(sample, dg->n, 1.f);
 
     // Generate direction
 	*wo = 100000.f * d;
@@ -204,8 +204,8 @@ float3 AreaLight_Sample(// Emissive object
                         DifferentialGeometry const* dg,
                         // Textures
                         TEXTURE_ARG_LIST,
-                        // RNG
-                        Rng* rng,
+                        // Sample
+                        float2 sample,
                         // Direction to light source
                         float3* wo,
                         // PDF
@@ -238,8 +238,8 @@ float3 AreaLight_Sample(// Emissive object
 	float2 uv2 = scene->uvs[shape.startvtx + i2];
 
 	// Generate sample on triangle
-	float r0 = RandFloat(rng);
-	float r1 = RandFloat(rng);
+	float r0 = sample.x;
+	float r1 = sample.y;
 
 	// Convert random to barycentric coords
 	float2 uv;
@@ -375,8 +375,8 @@ float3 Light_Sample(// Light index
                     DifferentialGeometry const* dg,
                     // Textures
                     TEXTURE_ARG_LIST,
-                    // RNG
-                    Rng* rng,
+                    // Sample
+					float2 sample,
                     // Direction to light source
                     float3* wo,
                     // PDF
@@ -385,12 +385,12 @@ float3 Light_Sample(// Light index
 	int numemissives = scene->numemissives;
 	if (idx == numemissives)
 	{
-		return EnvironmentLight_Sample(scene, dg, TEXTURE_ARGS, rng, wo, pdf);
+		return EnvironmentLight_Sample(scene, dg, TEXTURE_ARGS, sample, wo, pdf);
 	}
 	else
 	{
 		Emissive emissive = scene->emissives[idx];
-		return AreaLight_Sample(&emissive, scene, dg, TEXTURE_ARGS, rng, wo, pdf);
+		return AreaLight_Sample(&emissive, scene, dg, TEXTURE_ARGS, sample, wo, pdf);
 	}
 }
 

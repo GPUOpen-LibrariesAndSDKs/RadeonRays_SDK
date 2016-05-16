@@ -15,12 +15,16 @@ project "CLW"
     if _OPTIONS["embed_kernels"] then
 	configuration {}
 	defines {"FR_EMBED_KERNELS"}
-	os.execute("python ../scripts/stringify.py ./CL/ > ./CL/cache/kernels.h")
+	os.execute("python ../Tools/scripts/stringify.py ./CL/ > ./CL/cache/kernels.h")
 	print ">> CLW: CL kernels embedded"
     end
 	
+	configuration {"x32", "Debug"}
+        targetdir "../Bin/Debug/x86"
     configuration {"x64", "Debug"}
         targetdir "../Bin/Debug/x64"
+    configuration {"x32", "Release"}
+        targetdir "../Bin/Release/x86"
     configuration {"x64", "Release"}
         targetdir "../Bin/Release/x64"
     configuration {}

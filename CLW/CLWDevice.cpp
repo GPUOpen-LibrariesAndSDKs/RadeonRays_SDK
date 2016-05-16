@@ -1,24 +1,24 @@
-//
-// Copyright (c) 2016 Advanced Micro Devices, Inc. All rights reserved.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
-//
+/**********************************************************************
+Copyright (c) 2016 Advanced Micro Devices, Inc. All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+********************************************************************/
 #include "CLWDevice.h"
 #include "CLWExcept.h"
 
@@ -41,6 +41,7 @@ CLWDevice::CLWDevice(cl_device_id id) : ReferenceCounter<cl_device_id, clRetainD
     GetDeviceInfoParameter(*this, CL_DEVICE_LOCAL_MEM_SIZE, localMemSize_);
     GetDeviceInfoParameter(*this, CL_DEVICE_LOCAL_MEM_TYPE, localMemType_);
     GetDeviceInfoParameter(*this, CL_DEVICE_MAX_MEM_ALLOC_SIZE, maxAllocSize_);
+	GetDeviceInfoParameter(*this, CL_DEVICE_MIN_DATA_TYPE_ALIGN_SIZE, minAlignSize_);
 }
 
 CLWDevice::~CLWDevice()
@@ -61,27 +62,27 @@ template <> void CLWDevice::GetDeviceInfoParameter<std::string>(cl_device_id id,
     value = &buffer[0];
 }
 
-std::string  CLWDevice::GetName() const
+std::string const& CLWDevice::GetName() const
 {
     return name_;
 }
 
-std::string  CLWDevice::GetExtensions() const
+std::string const& CLWDevice::GetExtensions() const
 {
     return extensions_;
 }
 
-std::string  CLWDevice::GetVersion() const
+std::string const& CLWDevice::GetVersion() const
 {
     return version_;
 }
 
-std::string  CLWDevice::GetProfile() const
+std::string const& CLWDevice::GetProfile() const
 {
     return profile_;
 }
 
-std::string  CLWDevice::GetVendor() const
+std::string const& CLWDevice::GetVendor() const
 {
     return vendor_;
 }
@@ -115,6 +116,11 @@ cl_device_id CLWDevice::GetID() const
 cl_ulong CLWDevice::GetMaxAllocSize() const
 {
     return maxAllocSize_;
+}
+
+cl_uint CLWDevice::GetMinAlignSize() const
+{
+	return minAlignSize_;
 }
 
 bool CLWDevice::HasGlInterop() const
