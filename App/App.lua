@@ -7,7 +7,7 @@ project "App"
 
     if os.is("macosx") then
         includedirs {"../3rdParty/oiio16/include"}
-        libdirs {"../3rdParty/oiio16/lib/x64"}
+        libdirs {"../3rdParty/oiio16/lib/x64", "/usr/local/lib"}
         linkoptions{ "-framework OpenGL", "-framework GLUT" }
         buildoptions "-std=c++11 -stdlib=libc++"
         links {"OpenImageIO"}
