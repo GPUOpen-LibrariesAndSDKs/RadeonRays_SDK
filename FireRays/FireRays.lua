@@ -8,6 +8,9 @@ project "FireRays"
     
     if not os.is("macosx") then
         linkoptions {"-Wl,--no-undefined"}
+    elseif os.is("macosx") then 
+        filter { "kind:SharedLib", "system:macosx" }
+            linkoptions { '-Wl,-install_name', '-Wl,@loader_path/%{cfg.linktarget.name}' }
     end
 
     excludes {"../FireRays/src/device/embree*"}
