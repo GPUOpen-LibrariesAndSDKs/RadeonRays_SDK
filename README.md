@@ -43,11 +43,11 @@ AMD OpenCL APP SDK 2.0+ is also required for the standalone app build.
 
 - Create Xcode project
 
-`./premake/osx/premake5 xcode4`
+`./Tools/premake/osx/premake5 xcode4`
 
 - Alternatively use gmake version
 
-`./premake/osx/premake5 gmake`
+`./Tools/premake/osx/premake5 gmake`
 
 `make config=release_x64`
 
@@ -63,7 +63,7 @@ install OpenImageIO:
 
 Create Makefile:
 
-`./premake/linux64/premake5 gmake`
+`./Tools/premake/linux64/premake5 gmake`
 
 `make config=release_x64`
 
