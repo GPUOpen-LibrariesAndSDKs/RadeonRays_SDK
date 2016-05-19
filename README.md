@@ -97,6 +97,17 @@ Possible command line args:
 - `-cpx x -cpy y -cpz z` set camera position
 - `-tpx x -tpy y -tpz z` set camera target
 
+The app only supports loading of pure triangle .obj meshes. The list of supported texture formats:
+
+- png
+- bmp
+- jpg
+- gif
+- exr
+- tex
+- dds (limited support)
+- tga
+
 
 # Hardware  support
 
