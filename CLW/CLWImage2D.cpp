@@ -30,7 +30,18 @@ THE SOFTWARE.
 CLWImage2D CLWImage2D::Create(cl_context context, cl_image_format const* imgFormat, size_t width, size_t height, size_t rowPitch)
 {
     cl_int status = CL_SUCCESS;
-    cl_mem deviceImg = clCreateImage2D(context, CL_MEM_READ_WRITE, imgFormat, width, height, rowPitch, nullptr, &status);
+    
+    cl_image_desc desc;
+    desc.image_type = CL_MEM_OBJECT_IMAGE2D;
+    desc.image_width = width;
+    desc.image_height = height;
+    desc.image_row_pitch = rowPitch;
+    desc.image_slice_pitch = 0;
+    desc.num_mip_levels = 0;
+    desc.num_samples = 0;
+    desc.buffer = nullptr;
+    
+    cl_mem deviceImg = clCreateImage(context, CL_MEM_READ_WRITE, imgFormat, &desc, nullptr, &status);
 
     ThrowIf(status != CL_SUCCESS, status, "clCreateImage2D failed");
 
