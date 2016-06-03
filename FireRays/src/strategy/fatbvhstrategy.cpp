@@ -40,7 +40,7 @@ THE SOFTWARE.
 // Preferred work group size for Radeon devices
 static int const kWorkGroupSize = 64;
 static int const kMaxStackSize = 48;
-static int const kMaxBatchSize = 4 *1024 * 1024;
+static int const kMaxBatchSize = 1024 * 1024;
 
 namespace FireRays
 {
@@ -412,10 +412,13 @@ namespace FireRays
 
 		void FatBvhStrategy::QueryIntersection(std::uint32_t queueidx, Calc::Buffer const* rays, std::uint32_t numrays, Calc::Buffer *hits, Calc::Event const* waitevent, Calc::Event **event) const
 		{
-				// Check if we can allocate enough stack memory
-				if (numrays >= kMaxBatchSize)
+				size_t stack_size = 4 * numrays * kMaxStackSize; //required stack size, kMaxStackSize * sizeof(int) bytes per ray
+				// Check if we need to relocate memory
+				if (stack_size > m_gpudata->stack->GetSize())
 				{
-						throw ExceptionImpl("fatbvh accelerator max batch size exceeded");
+					m_device->DeleteBuffer(m_gpudata->stack);
+					m_gpudata->stack = nullptr;
+					m_gpudata->stack = m_device->CreateBuffer(stack_size, Calc::BufferType::kWrite);
 				}
 
 				auto& func = m_gpudata->isect_func;
@@ -442,10 +445,13 @@ namespace FireRays
 
 		void FatBvhStrategy::QueryOcclusion(std::uint32_t queueidx, Calc::Buffer const* rays, std::uint32_t numrays, Calc::Buffer *hits, Calc::Event const* waitevent, Calc::Event **event) const
 		{
-				// Check if we can allocate enough stack memory
-				if (numrays >= kMaxBatchSize)
+				size_t stack_size = 4 * numrays * kMaxStackSize; //required stack size, kMaxStackSize * sizeof(int) bytes per ray
+				// Check if we need to relocate memory
+				if (stack_size > m_gpudata->stack->GetSize())
 				{
-						throw ExceptionImpl("fatbvh accelerator max batch size exceeded");
+					m_device->DeleteBuffer(m_gpudata->stack);
+					m_gpudata->stack = nullptr;
+					m_gpudata->stack = m_device->CreateBuffer(stack_size, Calc::BufferType::kWrite);
 				}
 
 				auto& func = m_gpudata->occlude_func;
@@ -472,10 +478,13 @@ namespace FireRays
 
 		void FatBvhStrategy::QueryIntersection(std::uint32_t queueidx, Calc::Buffer const* rays, Calc::Buffer const* numrays, std::uint32_t maxrays, Calc::Buffer* hits, Calc::Event const* waitevent, Calc::Event** event) const
 		{
-				// Check if we can allocate enough stack memory
-				if (maxrays >= kMaxBatchSize)
+				size_t stack_size = 4 * maxrays * kMaxStackSize; //required stack size, kMaxStackSize * sizeof(int) bytes per ray
+				// Check if we need to relocate memory
+				if (stack_size > m_gpudata->stack->GetSize())
 				{
-						throw ExceptionImpl("fatbvh accelerator max batch size exceeded");
+					m_device->DeleteBuffer(m_gpudata->stack);
+					m_gpudata->stack = nullptr;
+					m_gpudata->stack = m_device->CreateBuffer(stack_size, Calc::BufferType::kWrite);
 				}
 
 				auto& func = m_gpudata->isect_indirect_func;
@@ -502,10 +511,13 @@ namespace FireRays
 
 		void FatBvhStrategy::QueryOcclusion(std::uint32_t queueidx, Calc::Buffer const* rays, Calc::Buffer const* numrays, std::uint32_t maxrays, Calc::Buffer* hits, Calc::Event const* waitevent, Calc::Event** event) const
 		{
-				// Check if we can allocate enough stack memory
-				if (maxrays >= kMaxBatchSize)
+				size_t stack_size = 4 * maxrays * kMaxStackSize; //required stack size, kMaxStackSize * sizeof(int) bytes per ray
+				// Check if we need to relocate memory
+				if (stack_size > m_gpudata->stack->GetSize())
 				{
-						throw ExceptionImpl("fatbvh accelerator max batch size exceeded");
+					m_device->DeleteBuffer(m_gpudata->stack);
+					m_gpudata->stack = nullptr;
+					m_gpudata->stack = m_device->CreateBuffer(stack_size, Calc::BufferType::kWrite);
 				}
 
 				auto& func = m_gpudata->occlude_indirect_func;
