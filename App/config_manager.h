@@ -25,38 +25,41 @@ THE SOFTWARE.
 #include "CLW.h"
 #include <vector>
 
-class FrRenderer;
+namespace Baikal
+{
+    class PtRenderer;
+}
 
 class ConfigManager
 {
 public:
 
-	enum DeviceType
-	{
-		kPrimary,
-		kSecondary
-	};
+    enum DeviceType
+    {
+        kPrimary,
+        kSecondary
+    };
 
-	enum Mode
-	{
-		kUseAll,
-		kUseGpus,
-		kUseSingleGpu,
-		kUseSingleCpu,
-		kUseCpus
-	};
+    enum Mode
+    {
+        kUseAll,
+        kUseGpus,
+        kUseSingleGpu,
+        kUseSingleCpu,
+        kUseCpus
+    };
 
-	struct Config
-	{
-		DeviceType type;
-		int devidx;
-		FrRenderer* renderer;
-		CLWContext context;
-		bool caninterop;
+    struct Config
+    {
+        DeviceType type;
+        int devidx;
+        Baikal::PtRenderer* renderer;
+        CLWContext context;
+        bool caninterop;
 
-	};
+    };
 
-	static void CreateConfigs(Mode mode, bool interop, std::vector<Config>& renderers);
+    static void CreateConfigs(Mode mode, bool interop, std::vector<Config>& renderers);
 
 private:
 

@@ -42,7 +42,7 @@ THE SOFTWARE.
 #define NON_BLACK(x) (length(x) > 0.f)
 
 // This kernel only handles scattered paths.
-// It applies direct illumination and generates 
+// It applies direct illumination and generates
 // path continuation if multiscattering is enabled.
 __kernel void ShadeVolume(
 	// Ray batch
@@ -157,11 +157,11 @@ __kernel void ShadeVolume(
 #ifdef MULTISCATTER
         float2 sample2 = UniformSampler_Sample2D(&rng);
 #endif
-#endif 
-		// Here we know that volidx != -1 since this is a precondition 
+#endif
+		// Here we know that volidx != -1 since this is a precondition
 		// for scattering event
 		int volidx = Path_GetVolumeIdx(path);
-		
+
 		// Sample light source
 		float pdf = 0.f;
 		float selection_pdf = 0.f;
@@ -171,7 +171,7 @@ __kernel void ShadeVolume(
 
 		// Here we need fake differential geometry for light sampling procedure
 		DifferentialGeometry dg;
-		// put scattering position in there (it is along the current ray at isect.distance 
+		// put scattering position in there (it is along the current ray at isect.distance
 		// since EvaluateVolume has put it there
 		dg.p = o + wi * Intersection_GetDistance(isects + hitidx);
 		// Get light sample intencity
@@ -185,15 +185,15 @@ __kernel void ShadeVolume(
 		// current volume, but in this case it will be discarded anyway since the intersection at the outer bound
 		// of a current volume), so the result is fully correct.
 		float3 tr = Volume_Transmittance(&volumes[volidx], &shadowrays[globalid], shadow_ray_length);
-		
-		// Volume emission is applied only if the light source is in the current volume(this is incorrect since the light source might be 
+
+		// Volume emission is applied only if the light source is in the current volume(this is incorrect since the light source might be
 		// outside of a volume and we have to compute fraction of ray in this case, but need to figure out how)
 		float3 r = Volume_Emission(&volumes[volidx], &shadowrays[globalid], shadow_ray_length);
 
 		// This is the estimate coming from a light source
 		// TODO: remove hardcoded phase func and sigma
 		r += tr * le * volumes[volidx].sigma_s * PhaseFunction_Uniform(wi, normalize(wo)) / pdf / selection_pdf;
-		
+
 		// Only if we have some radiance compute the visibility ray
 		if (NON_BLACK(tr) && NON_BLACK(r) && pdf > 0.f)
 		{
@@ -352,12 +352,12 @@ __kernel void ShadeSurface(
 		float2 sample2 = UniformSampler_Sample2D(&rng);
 		float2 sample3 = UniformSampler_Sample2D(&rng);
 		float  sample4 = UniformSampler_Sample2D(&rng).x;
-#endif 
+#endif
 
         // Fill surface data
         DifferentialGeometry diffgeo;
         FillDifferentialGeometry(&scene, &isect, &diffgeo);
-        
+
 		// Check if we are hitting from the inside
 		float ndotwi = dot(diffgeo.n, wi);
 		int twosided = diffgeo.mat.twosided;
@@ -372,7 +372,7 @@ __kernel void ShadeSurface(
 			diffgeo.dpdv = -diffgeo.dpdv;
 		}
 
-		// Select BxDF 
+		// Select BxDF
         Material_Select(&scene, wi, TEXTURE_ARGS, sample0.x, &diffgeo);
 
 		// Terminate if emissive
@@ -405,14 +405,14 @@ __kernel void ShadeSurface(
 			diffgeo.dpdv = -diffgeo.dpdv;
 		}
 
-		// TODO: this is test code, need to 
+		// TODO: this is test code, need to
 		// maintain proper volume stack here
 		//if (Bxdf_IsBtdf(&diffgeo))
 		//{
 			// If we entering set the volume
 			//path->volume = ndotwi > 0.f ? 0 : -1;
 		//}
-        
+
         // Check if we need to apply normal map
         //ApplyNormalMap(&diffgeo, TEXTURE_ARGS);
 		ApplyBumpMap(&diffgeo, TEXTURE_ARGS);
@@ -432,12 +432,12 @@ __kernel void ShadeSurface(
         float3 le = Light_Sample(lightidx, &scene, &diffgeo, TEXTURE_ARGS, sample1, &lightwo, &lightpdf);
         lightbxdfpdf = Bxdf_GetPdf(&diffgeo, wi, normalize(lightwo), TEXTURE_ARGS);
         float lightweight = PowerHeuristic(1, lightpdf, 1, lightbxdfpdf);
-        
+
         // Sample BxDF
 		float3 bxdf = Bxdf_Sample(&diffgeo, wi, TEXTURE_ARGS, sample2, &bxdfwo, &bxdfpdf);
         bxdflightpdf = Light_GetPdf(lightidx, &scene, &diffgeo, bxdfwo, TEXTURE_ARGS);
         float bxdfweight = PowerHeuristic(1, bxdfpdf, 1, bxdflightpdf);
-       
+
         // Apply MIS to account for both
 		float3 throughput = Path_GetThroughput(path);
 		if ((sample4 < 0.5f) && NON_BLACK(le) && lightpdf > 0.0f && !Bxdf_IsSingular(&diffgeo))
@@ -453,7 +453,7 @@ __kernel void ShadeSurface(
             le = Light_GetLe(lightidx, &scene, &diffgeo, &wo, TEXTURE_ARGS);
 			radiance = le * bxdf * throughput * ndotwo * bxdfweight / bxdfpdf / selection_pdf / 0.5f;
         }
-        
+
 		// If we have some light here generate a shadow ray
 		if (NON_BLACK(radiance))
 		{
@@ -464,11 +464,11 @@ __kernel void ShadeSurface(
 			int shadow_ray_mask = Bxdf_IsSingular(&diffgeo) ? 0xFFFFFFFF : 0x0000FFFF;
 
 			Ray_Init(shadowrays + globalid, shadow_ray_o, shadow_ray_dir, shadow_ray_length, 0.f, shadow_ray_mask);
-			
+
             // Apply the volume to shadow ray if needed
 			int volidx = Path_GetVolumeIdx(path);
 			if (volidx != -1)
-			{ 
+			{
 				radiance *= Volume_Transmittance(&volumes[volidx], &shadowrays[globalid], shadow_ray_length);
 				radiance += Volume_Emission(&volumes[volidx], &shadowrays[globalid], shadow_ray_length) * throughput;
 			}
@@ -489,7 +489,7 @@ __kernel void ShadeSurface(
 		float3 t = bxdf * fabs(dot(diffgeo.n, bxdfwo));
 
 		// Only continue if we have non-zero throughput & pdf
-		// TODO: apply Russian roulette 
+		// TODO: apply Russian roulette
 		if (NON_BLACK(t) && bxdfpdf > 0.f)
 		{
 			// Update the throughput
@@ -503,10 +503,10 @@ __kernel void ShadeSurface(
 		}
 		else
 		{
-			// Otherwise kill the path 
+			// Otherwise kill the path
 			Path_Kill(path);
 			Ray_SetInactive(indirectrays + globalid);
-		} 
+		}
     }
 }
 
@@ -563,70 +563,70 @@ __kernel void SampleOcclusion(
                               )
 {
     int globalid = get_global_id(0);
-    
+
     if (globalid < *numhits)
     {
         // Fetch index
         int hitidx = hitindices[globalid];
         int pixelidx = pixelindices[globalid];
-        
+
         // Fetch incoming ray
         float3 wi = -normalize(rays[hitidx].d.xyz);
         float time = rays[hitidx].d.w;
-        
+
         // Determine shape and polygon
         int shapeid = isects[hitidx].shapeid - 1;
         int primid = isects[hitidx].primid;
         float2 uv = isects[hitidx].uvwt.xy;
-        
+
         // Extract shape data
         Shape shape = shapes[shapeid];
         float3 linearvelocity = shape.linearvelocity;
         float4 angularvelocity = shape.angularvelocity;
-        
+
         // Fetch indices starting from startidx and offset by primid
         int i0 = indices[shape.startidx + 3 * primid];
         int i1 = indices[shape.startidx + 3 * primid + 1];
         int i2 = indices[shape.startidx + 3 * primid + 2];
-        
+
         // Fetch normals
         float3 n0 = normals[shape.startvtx + i0];
         float3 n1 = normals[shape.startvtx + i1];
         float3 n2 = normals[shape.startvtx + i2];
-        
+
         // Fetch positions
         float3 v0 = vertices[shape.startvtx + i0];
         float3 v1 = vertices[shape.startvtx + i1];
         float3 v2 = vertices[shape.startvtx + i2];
-        
+
         // Fetch UVs
         float2 uv0 = uvs[shape.startvtx + i0];
         float2 uv1 = uvs[shape.startvtx + i1];
         float2 uv2 = uvs[shape.startvtx + i2];
-        
+
         // Calculate barycentric position and normal
         float3 n = normalize((1.f - uv.x - uv.y) * n0 + uv.x * n1 + uv.y * n2);
         float3 v = (1.f - uv.x - uv.y) * v0 + uv.x * v1 + uv.y * v2;
         //float2 t = (1.f - uv.x - uv.y) * uv0 + uv.x * uv1 + uv.y * uv2;
-        
+
         // Bail out if opposite facing normal
         if (dot(wi, n) < 0.f)
         {
             //throughput[pixelidx] = 0;
             //return;
         }
-        
+
         n = transform_vector(n, shape.m0, shape.m1, shape.m2, shape.m3);
-        
+
         if (dot(wi, n) < 0.f)
         {
             n = -n;
         }
-        
+
         // Prepare RNG for light sampling
         Rng rng;
         InitRng(rngseed + globalid * 157, &rng);
-        
+
         // Generate AO ray
 		float2 sample = UniformSampler_Sample2D(&rng);
         float3 wo = Sample_MapToHemisphere(sample, n, 1.f);
@@ -661,7 +661,7 @@ __kernel void ShadeMiss(
                         )
 {
     int globalid = get_global_id(0);
-    
+
     if (globalid < numrays)
     {
         int pixelidx = pixelindices[globalid];
@@ -671,18 +671,18 @@ __kernel void ShadeMiss(
         {
             // Multiply by throughput
 			int volidx = paths[pixelidx].volume;
-            
+
             if (volidx == -1)
                 output[pixelidx].xyz += Texture_SampleEnvMap(rays[globalid].d.xyz, TEXTURE_ARGS_IDX(envmapidx));
             else
             {
                 output[pixelidx].xyz += Texture_SampleEnvMap(rays[globalid].d.xyz, TEXTURE_ARGS_IDX(envmapidx)) *
                 Volume_Transmittance(&volumes[volidx], &rays[globalid], rays[globalid].o.w);
-                
+
                 output[pixelidx].xyz += Volume_Emission(&volumes[volidx], &rays[globalid], rays[globalid].o.w);
             }
         }
-        
+
 		output[pixelidx].w += 1.f;
     }
 }
@@ -704,13 +704,13 @@ __kernel void GatherLightSamples(
                                  )
 {
     int globalid = get_global_id(0);
-    
+
     if (globalid < *numrays)
-    {   
+    {
         // Get pixel id for this sample set
         int pixelidx = pixelindices[globalid];
 
-		
+
 			// Prepare accumulator variable
 			float3 radiance = make_float3(0.f, 0.f, 0.f);
 
@@ -747,14 +747,14 @@ __kernel void GatherOcclusion(
                               )
 {
     int globalid = get_global_id(0);
-    
+
     if (globalid < *numrays)
     {
         // Get pixel id for this sample set
         int pixelidx = pixelindices[globalid];
-        
+
         float visibility = (shadowhits[globalid] == 1) ? 0.f : 1.f;
-        
+
         output[pixelidx].xyz += visibility;
         output[pixelidx].w += 1.f;
     }
@@ -773,7 +773,7 @@ __kernel void RestorePixelIndices(
                                   )
 {
     int globalid = get_global_id(0);
-    
+
     // Handle only working subset
     if (globalid < *numitems)
     {
@@ -792,23 +792,22 @@ __kernel void FilterPathStream(
                                  // Paths
 								 __global Path* paths,
 								 // Predicate
-                                 __global int* predicate,
-                                 __global int* debugcnt
+                                 __global int* predicate
                                  )
 {
     int globalid = get_global_id(0);
-    
+
     // Handle only working subset
     if (globalid < *numitems)
     {
 		int pixelidx = pixelindices[globalid];
-        
+
         __global Path* path = paths + pixelidx;
 
 		if (Path_IsAlive(path))
 		{
             bool kill = (length(Path_GetThroughput(path)) < CRAZY_LOW_THROUGHPUT);
-            
+
             if (!kill)
             {
                 predicate[globalid] = isects[globalid].shapeid >= 0 ? 1 : 0;
@@ -817,7 +816,6 @@ __kernel void FilterPathStream(
             {
                 Path_Kill(path);
                 predicate[globalid] = 0;
-                //atom_inc(debugcnt);
             }
 		}
 		else
@@ -864,20 +862,20 @@ __kernel void AccumulateData(
 //
 //	if (gidx < imgwidth && gidy < imgheight)
 //	{
-//		
+//
 //		int xstart = max(gidx - FILTER_RADIUS, 0);
 //		int xend = min(gidx + FILTER_RADIUS, imgwidth);
 //
 //		int ystart = max(gidy - FILTER_RADIUS, 0);
 //		int yend = min(gidy + FILTER_RADIUS, imgheight);
-//		
+//
 //		float3 cv = data[gid].xyz;
 //		float3 d1 = fabs(data[gid1].xyz - cv);
 //		float3 d2 = fabs(data[gid2].xyz - cv);
 //		float3 d3 = fabs(data[gid3].xyz - cv);
 //		float3 d4 = fabs(data[gid4].xyz - cv);
 //
-//		
+//
 //		/*if (d1.x > alpha ||
 //			d1.y > alpha ||
 //			d1.z > alpha ||
@@ -924,10 +922,10 @@ __kernel void ApplyGammaAndCopyData(
                                     )
 {
     int gid = get_global_id(0);
-    
+
     int gidx = gid % imgwidth;
     int gidy = gid / imgwidth;
-    
+
     if (gidx < imgwidth && gidy < imgheight)
     {
 		float4 v = data[gid];

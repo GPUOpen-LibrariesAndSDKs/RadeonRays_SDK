@@ -28,6 +28,9 @@ THE SOFTWARE.
 #include <algorithm>
 #include <iterator>
 
+namespace Baikal
+{
+
 using namespace FireRays;
 
 static int GetTextureForemat(OIIO_NAMESPACE::ImageSpec const& spec)
@@ -757,4 +760,5 @@ void Scene::SetBackground(std::string const& filename, std::string const& basepa
 
 	// Add texture desc
 	textures_.push_back(texture);
+}
 }

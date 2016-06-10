@@ -22,7 +22,7 @@ THE SOFTWARE.
 #include "config_manager.h"
 
 #include "CLW.h"
-#include "frrenderer.h"
+#include "PT/ptrenderer.h"
 
 #ifdef __APPLE__
 #include <OpenCL/OpenCL.h>
@@ -123,7 +123,7 @@ void ConfigManager::CreateConfigs(Mode mode, bool interop, std::vector<Config>& 
                     CL_CONTEXT_PROPERTY_USE_CGL_SHAREGROUP_APPLE,
                     (cl_context_properties)kCGLShareGroup, 0
                     };
-                    
+
                     cfg.context = CLWContext::Create(platforms[i].GetDevice(d), props);
                     devices.push_back(platforms[i].GetDevice(d));
                     cfg.devidx = 0;
@@ -156,6 +156,6 @@ void ConfigManager::CreateConfigs(Mode mode, bool interop, std::vector<Config>& 
 
 	for (int i = 0; i < configs.size(); ++i)
 	{
-		configs[i].renderer = new FrRenderer(configs[i].context, configs[i].devidx);
+		configs[i].renderer = new Baikal::PtRenderer(configs[i].context, configs[i].devidx);
 	}
 }
