@@ -70,7 +70,7 @@ namespace Baikal
         float3 sigma_e;
     };
 
-    struct PtRenderer::GpuData
+    struct PtRenderer::RenderData
     {
         // OpenCL stuff
         CLWBuffer<ray> rays[2];
@@ -84,31 +84,11 @@ namespace Baikal
         CLWBuffer<int> pixelindices[2];
         CLWBuffer<int> iota;
 
-        //CLWBuffer<int> iota;
-        CLWBuffer<float3> radiance;
-        CLWBuffer<float3> accumulator;
         CLWBuffer<float3> lightsamples;
         CLWBuffer<PathState> paths;
         CLWBuffer<QmcSampler> samplers;
         CLWBuffer<unsigned int> sobolmat;
-        CLWBuffer<Volume> volumes;
-
-        CLWBuffer<int> materialids;
-        CLWBuffer<Scene::Emissive> emissives;
-        int numemissive;
-        CLWBuffer<Scene::Material> materials;
-
-        CLWBuffer<float3> vertices;
-        CLWBuffer<float3> normals;
-        CLWBuffer<float2> uvs;
-        CLWBuffer<int>    indices;
-        CLWBuffer<Scene::Shape> shapes;
-
-        CLWBuffer<Scene::Texture> textures;
-        CLWBuffer<char> texturedata;
-        CLWBuffer<int> hitcount[2];
-
-        CLWBuffer<PerspectiveCamera> camera;
+        CLWBuffer<int> hitcount;
 
         CLWProgram program;
         CLWParallelPrimitives pp;
@@ -119,9 +99,9 @@ namespace Baikal
         Buffer* fr_shadowhits;
         Buffer* fr_hits;
         Buffer* fr_intersections;
-        Buffer* fr_hitcount[2];
+        Buffer* fr_hitcount;
 
-        GpuData()
+        RenderData()
         : fr_shadowrays(nullptr)
         , fr_shadowhits(nullptr)
         , fr_hits(nullptr)
@@ -132,13 +112,30 @@ namespace Baikal
         }
     };
 
+    struct PtRenderer::SceneData
+    {
+        CLWBuffer<Volume> volumes;
+        CLWBuffer<int> materialids;
+        CLWBuffer<Scene::Emissive> emissives;
+        CLWBuffer<Scene::Material> materials;
+        CLWBuffer<float3> vertices;
+        CLWBuffer<float3> normals;
+        CLWBuffer<float2> uvs;
+        CLWBuffer<int> indices;
+        CLWBuffer<Scene::Shape> shapes;
+        CLWBuffer<Scene::Texture> textures;
+        CLWBuffer<char> texturedata;
+        CLWBuffer<PerspectiveCamera> camera;
 
+        int numemissive;
+    };
 
     // Constructor
     PtRenderer::PtRenderer(CLWContext context, int devidx)
     : m_context(context)
     , m_output(nullptr)
-    , m_gpudata(new GpuData)
+    , m_render_data(new RenderData)
+    , m_scene_data(new SceneData)
     , m_vidmemusage(0)
     , m_vidmemws(0)
     , m_resetsampler(true)
@@ -161,28 +158,26 @@ namespace Baikal
         #endif
 
         // Create parallel primitives
-        m_gpudata->pp = CLWParallelPrimitives(m_context);
+        m_render_data->pp = CLWParallelPrimitives(m_context);
 
         // Load kernels
         #ifndef FR_EMBED_KERNELS
-        m_gpudata->program = CLWProgram::CreateFromFile("../App/CL/integrator.cl", m_context);
+        m_render_data->program = CLWProgram::CreateFromFile("../App/CL/integrator.cl", m_context);
         #else
-        m_gpudata->program = CLWProgram::CreateFromSource(cl_app, std::strlen(cl_integrator), context);
+        m_render_data->program = CLWProgram::CreateFromSource(cl_app, std::strlen(cl_integrator), context);
         #endif
 
         // Create static buffers
-        m_gpudata->camera = m_context.CreateBuffer<PerspectiveCamera>(1, CL_MEM_READ_ONLY);
-        m_gpudata->hitcount[0] = m_context.CreateBuffer<int>(1, CL_MEM_READ_ONLY);
-        m_gpudata->hitcount[1] = m_context.CreateBuffer<int>(1, CL_MEM_READ_ONLY);
-        m_gpudata->fr_hitcount[0] = m_api->CreateFromOpenClBuffer(m_gpudata->hitcount[0]);
-        m_gpudata->fr_hitcount[1] = m_api->CreateFromOpenClBuffer(m_gpudata->hitcount[1]);
+        m_scene_data->camera = m_context.CreateBuffer<PerspectiveCamera>(1, CL_MEM_READ_ONLY);
+        m_render_data->hitcount = m_context.CreateBuffer<int>(1, CL_MEM_READ_ONLY);
+        m_render_data->fr_hitcount = m_api->CreateFromOpenClBuffer(m_render_data->hitcount);
 
-        m_gpudata->sobolmat = m_context.CreateBuffer<unsigned int>(1024 * 52, CL_MEM_READ_ONLY, &g_SobolMatrices[0]);
+        m_render_data->sobolmat = m_context.CreateBuffer<unsigned int>(1024 * 52, CL_MEM_READ_ONLY, &g_SobolMatrices[0]);
 
         //Volume vol = {1, 0, 0, 0, {0.9f, 0.6f, 0.9f}, {5.1f, 1.8f, 5.1f}, {0.0f, 0.0f, 0.0f}};
         Volume vol = { 1, 0, 0, 0,{	1.2f, 0.4f, 1.2f },{ 5.1f, 4.8f, 5.1f },{ 0.0f, 0.0f, 0.0f } };
 
-        m_gpudata->volumes = m_context.CreateBuffer<Volume>(1, CL_MEM_READ_ONLY, &vol);
+        m_scene_data->volumes = m_context.CreateBuffer<Volume>(1, CL_MEM_READ_ONLY, &vol);
     }
 
     PtRenderer::~PtRenderer()
@@ -279,7 +274,7 @@ namespace Baikal
         assert(m_output);
 
         // Update camera data
-        m_context.WriteBuffer(0, m_gpudata->camera, scene.camera_.get(), 1);
+        m_context.WriteBuffer(0, m_scene_data->camera, scene.camera_.get(), 1);
 
         // Number of rays to generate
         int maxrays = m_output->width() * m_output->height();
@@ -288,24 +283,23 @@ namespace Baikal
         GeneratePrimaryRays();
 
         // Copy compacted indices to track reverse indices
-        m_context.CopyBuffer(0, m_gpudata->iota, m_gpudata->pixelindices[0], 0, 0, m_gpudata->iota.GetElementCount());
-        m_context.CopyBuffer(0, m_gpudata->iota, m_gpudata->pixelindices[1], 0, 0, m_gpudata->iota.GetElementCount());
-        m_context.FillBuffer(0, m_gpudata->hitcount[0], maxrays, 1);
-        m_context.FillBuffer(0, m_gpudata->hitcount[1], maxrays, 1);
+        m_context.CopyBuffer(0, m_render_data->iota, m_render_data->pixelindices[0], 0, 0, m_render_data->iota.GetElementCount());
+        m_context.CopyBuffer(0, m_render_data->iota, m_render_data->pixelindices[1], 0, 0, m_render_data->iota.GetElementCount());
+        m_context.FillBuffer(0, m_render_data->hitcount, maxrays, 1);
 
         //float3 clearval;
         //clearval.w = 1.f;
-        //m_context.FillBuffer(0, m_gpudata->radiance, clearval, m_gpudata->radiance.GetElementCount());
+        //m_context.FillBuffer(0, m_render_data->radiance, clearval, m_render_data->radiance.GetElementCount());
 
         // Initialize first pass
         for (int pass = 0; pass < 5; ++pass)
         {
             // Clear ray hits buffer
-            m_context.FillBuffer(0, m_gpudata->hits, 0, m_gpudata->hits.GetElementCount());
+            m_context.FillBuffer(0, m_render_data->hits, 0, m_render_data->hits.GetElementCount());
 
             // Intersect ray batch
             //Event* e = nullptr;
-            m_api->QueryIntersection(m_gpudata->fr_rays[pass & 0x1], m_gpudata->fr_hitcount[0], maxrays, m_gpudata->fr_intersections, nullptr, nullptr);
+            m_api->QueryIntersection(m_render_data->fr_rays[pass & 0x1], m_render_data->fr_hitcount, maxrays, m_render_data->fr_intersections, nullptr, nullptr);
             //e->Wait();
             //m_api->DeleteEvent(e);
 
@@ -316,10 +310,10 @@ namespace Baikal
             FilterPathStream(pass);
 
             // Compact batch
-            m_gpudata->pp.Compact(0, m_gpudata->hits, m_gpudata->iota, m_gpudata->compacted_indices, m_gpudata->hitcount[0]);
+            m_render_data->pp.Compact(0, m_render_data->hits, m_render_data->iota, m_render_data->compacted_indices, m_render_data->hitcount);
 
             /*int cnt = 0;
-            m_context.ReadBuffer(0, m_gpudata->hitcount[0], &cnt, 1).Wait();
+            m_context.ReadBuffer(0, m_render_data->hitcount[0], &cnt, 1).Wait();
             std::cout << "Pass " << pass << " Alive " << cnt << "\n";*/
 
             // Advance indices to keep pixel indices up to date
@@ -335,7 +329,7 @@ namespace Baikal
             if (pass == 0) ShadeMiss(scene, pass);
 
             // Intersect shadow rays
-            m_api->QueryOcclusion(m_gpudata->fr_shadowrays, m_gpudata->fr_hitcount[0], maxrays, m_gpudata->fr_shadowhits, nullptr, nullptr);
+            m_api->QueryOcclusion(m_render_data->fr_shadowrays, m_render_data->fr_hitcount, maxrays, m_render_data->fr_shadowhits, nullptr, nullptr);
             //e->Wait();
             //m_api->DeleteEvent(e);
 
@@ -362,73 +356,67 @@ namespace Baikal
         m_vidmemws = 0;
 
         // Create ray payloads
-        m_gpudata->rays[0] = m_context.CreateBuffer<ray>(output.width() * output.height(), CL_MEM_READ_WRITE);
+        m_render_data->rays[0] = m_context.CreateBuffer<ray>(output.width() * output.height(), CL_MEM_READ_WRITE);
         m_vidmemws += output.width() * output.height() * sizeof(ray);
 
-        m_gpudata->rays[1] = m_context.CreateBuffer<ray>(output.width() * output.height(), CL_MEM_READ_WRITE);
+        m_render_data->rays[1] = m_context.CreateBuffer<ray>(output.width() * output.height(), CL_MEM_READ_WRITE);
         m_vidmemws += output.width() * output.height() * sizeof(ray);
 
-        m_gpudata->rays[2] = m_context.CreateBuffer<ray>(output.width() * output.height(), CL_MEM_READ_WRITE);
+        m_render_data->rays[2] = m_context.CreateBuffer<ray>(output.width() * output.height(), CL_MEM_READ_WRITE);
         m_vidmemws += output.width() * output.height() * sizeof(ray);
 
-        m_gpudata->rays[3] = m_context.CreateBuffer<ray>(output.width() * output.height(), CL_MEM_READ_WRITE);
+        m_render_data->rays[3] = m_context.CreateBuffer<ray>(output.width() * output.height(), CL_MEM_READ_WRITE);
         m_vidmemws += output.width() * output.height() * sizeof(ray);
 
-        m_gpudata->hits = m_context.CreateBuffer<int>(output.width() * output.height(), CL_MEM_READ_WRITE);
+        m_render_data->hits = m_context.CreateBuffer<int>(output.width() * output.height(), CL_MEM_READ_WRITE);
         m_vidmemws += output.width() * output.height() * sizeof(int);
 
-        m_gpudata->intersections = m_context.CreateBuffer<Intersection>(output.width() * output.height(), CL_MEM_READ_WRITE);
+        m_render_data->intersections = m_context.CreateBuffer<Intersection>(output.width() * output.height(), CL_MEM_READ_WRITE);
         m_vidmemws += output.width() * output.height() * sizeof(Intersection);
 
-        m_gpudata->shadowrays = m_context.CreateBuffer<ray>(output.width() * output.height() * kMaxLightSamples, CL_MEM_READ_WRITE);
+        m_render_data->shadowrays = m_context.CreateBuffer<ray>(output.width() * output.height() * kMaxLightSamples, CL_MEM_READ_WRITE);
         m_vidmemws += output.width() * output.height() * sizeof(ray)* kMaxLightSamples;
 
-        m_gpudata->shadowhits = m_context.CreateBuffer<int>(output.width() * output.height() * kMaxLightSamples, CL_MEM_READ_WRITE);
+        m_render_data->shadowhits = m_context.CreateBuffer<int>(output.width() * output.height() * kMaxLightSamples, CL_MEM_READ_WRITE);
         m_vidmemws += output.width() * output.height() * sizeof(int)* kMaxLightSamples;
 
-        m_gpudata->lightsamples = m_context.CreateBuffer<float3>(output.width() * output.height() * kMaxLightSamples, CL_MEM_READ_WRITE);
+        m_render_data->lightsamples = m_context.CreateBuffer<float3>(output.width() * output.height() * kMaxLightSamples, CL_MEM_READ_WRITE);
         m_vidmemws += output.width() * output.height() * sizeof(float3)* kMaxLightSamples;
 
-        m_gpudata->radiance = m_context.CreateBuffer<float3>(output.width() * output.height(), CL_MEM_READ_WRITE);
-        m_vidmemws += output.width() * output.height() * sizeof(float3) * kMaxLightSamples;
-
-        m_gpudata->accumulator = m_context.CreateBuffer<float3>(output.width() * output.height(), CL_MEM_READ_WRITE);
-        m_vidmemws += output.width() * output.height() * sizeof(float3) * kMaxLightSamples;
-
-        m_gpudata->paths = m_context.CreateBuffer<PathState>(output.width() * output.height(), CL_MEM_READ_WRITE);
+        m_render_data->paths = m_context.CreateBuffer<PathState>(output.width() * output.height(), CL_MEM_READ_WRITE);
         m_vidmemws += output.width() * output.height() * sizeof(PathState);
 
-        m_gpudata->samplers = m_context.CreateBuffer<QmcSampler>(output.width() * output.height(), CL_MEM_READ_WRITE);
+        m_render_data->samplers = m_context.CreateBuffer<QmcSampler>(output.width() * output.height(), CL_MEM_READ_WRITE);
         m_vidmemws += output.width() * output.height() * sizeof(QmcSampler);
 
         std::vector<int> initdata(output.width() * output.height());
         std::iota(initdata.begin(), initdata.end(), 0);
-        m_gpudata->iota = m_context.CreateBuffer<int>(output.width() * output.height(), CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, &initdata[0]);
+        m_render_data->iota = m_context.CreateBuffer<int>(output.width() * output.height(), CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, &initdata[0]);
         m_vidmemws += output.width() * output.height() * sizeof(int);
 
-        m_gpudata->compacted_indices = m_context.CreateBuffer<int>(output.width() * output.height(), CL_MEM_READ_WRITE);
+        m_render_data->compacted_indices = m_context.CreateBuffer<int>(output.width() * output.height(), CL_MEM_READ_WRITE);
         m_vidmemws += output.width() * output.height() * sizeof(int);
 
-        m_gpudata->pixelindices[0] = m_context.CreateBuffer<int>(output.width() * output.height(), CL_MEM_READ_WRITE);
+        m_render_data->pixelindices[0] = m_context.CreateBuffer<int>(output.width() * output.height(), CL_MEM_READ_WRITE);
         m_vidmemws += output.width() * output.height() * sizeof(int);
 
-        m_gpudata->pixelindices[1] = m_context.CreateBuffer<int>(output.width() * output.height(), CL_MEM_READ_WRITE);
+        m_render_data->pixelindices[1] = m_context.CreateBuffer<int>(output.width() * output.height(), CL_MEM_READ_WRITE);
         m_vidmemws += output.width() * output.height() * sizeof(int);
 
         // Recreate FR buffers
-        m_api->DeleteBuffer(m_gpudata->fr_rays[0]);
-        m_api->DeleteBuffer(m_gpudata->fr_rays[1]);
-        m_api->DeleteBuffer(m_gpudata->fr_shadowrays);
-        m_api->DeleteBuffer(m_gpudata->fr_hits);
-        m_api->DeleteBuffer(m_gpudata->fr_shadowhits);
-        m_api->DeleteBuffer(m_gpudata->fr_intersections);
+        m_api->DeleteBuffer(m_render_data->fr_rays[0]);
+        m_api->DeleteBuffer(m_render_data->fr_rays[1]);
+        m_api->DeleteBuffer(m_render_data->fr_shadowrays);
+        m_api->DeleteBuffer(m_render_data->fr_hits);
+        m_api->DeleteBuffer(m_render_data->fr_shadowhits);
+        m_api->DeleteBuffer(m_render_data->fr_intersections);
 
-        m_gpudata->fr_rays[0] = m_api->CreateFromOpenClBuffer(m_gpudata->rays[0]);
-        m_gpudata->fr_rays[1] = m_api->CreateFromOpenClBuffer(m_gpudata->rays[1]);
-        m_gpudata->fr_shadowrays = m_api->CreateFromOpenClBuffer(m_gpudata->shadowrays);
-        m_gpudata->fr_hits = m_api->CreateFromOpenClBuffer(m_gpudata->hits);
-        m_gpudata->fr_shadowhits = m_api->CreateFromOpenClBuffer(m_gpudata->shadowhits);
-        m_gpudata->fr_intersections = m_api->CreateFromOpenClBuffer(m_gpudata->intersections);
+        m_render_data->fr_rays[0] = m_api->CreateFromOpenClBuffer(m_render_data->rays[0]);
+        m_render_data->fr_rays[1] = m_api->CreateFromOpenClBuffer(m_render_data->rays[1]);
+        m_render_data->fr_shadowrays = m_api->CreateFromOpenClBuffer(m_render_data->shadowrays);
+        m_render_data->fr_hits = m_api->CreateFromOpenClBuffer(m_render_data->hits);
+        m_render_data->fr_shadowhits = m_api->CreateFromOpenClBuffer(m_render_data->shadowhits);
+        m_render_data->fr_intersections = m_api->CreateFromOpenClBuffer(m_render_data->intersections);
 
         std::cout << "Vidmem usage (working set): " << m_vidmemws / (1024 * 1024) << "Mb\n";
     }
@@ -436,18 +424,18 @@ namespace Baikal
     void PtRenderer::GeneratePrimaryRays()
     {
         // Fetch kernel
-        CLWKernel genkernel = m_gpudata->program.GetKernel("PerspectiveCamera_GeneratePaths");
+        CLWKernel genkernel = m_render_data->program.GetKernel("PerspectiveCamera_GeneratePaths");
 
         // Set kernel parameters
-        genkernel.SetArg(0, m_gpudata->camera);
+        genkernel.SetArg(0, m_scene_data->camera);
         genkernel.SetArg(1, m_output->width());
         genkernel.SetArg(2, m_output->height());
         genkernel.SetArg(3, (int)rand_uint());
-        genkernel.SetArg(4, m_gpudata->rays[0]);
-        genkernel.SetArg(5, m_gpudata->samplers);
-        genkernel.SetArg(6, m_gpudata->sobolmat);
+        genkernel.SetArg(4, m_render_data->rays[0]);
+        genkernel.SetArg(5, m_render_data->samplers);
+        genkernel.SetArg(6, m_render_data->sobolmat);
         genkernel.SetArg(7, m_resetsampler);
-        genkernel.SetArg(8, m_gpudata->paths);
+        genkernel.SetArg(8, m_render_data->paths);
         m_resetsampler = 0;
 
         // Run generation kernel
@@ -462,37 +450,37 @@ namespace Baikal
     void PtRenderer::ShadeSurface(Scene const& scene, int pass)
     {
         // Fetch kernel
-        CLWKernel shadekernel = m_gpudata->program.GetKernel("ShadeSurface");
+        CLWKernel shadekernel = m_render_data->program.GetKernel("ShadeSurface");
 
         // Set kernel parameters
         int argc = 0;
-        shadekernel.SetArg(argc++, m_gpudata->rays[pass & 0x1]);
-        shadekernel.SetArg(argc++, m_gpudata->intersections);
-        shadekernel.SetArg(argc++, m_gpudata->compacted_indices);
-        shadekernel.SetArg(argc++, m_gpudata->pixelindices[pass & 0x1]);
-        shadekernel.SetArg(argc++, m_gpudata->hitcount[0]);
-        shadekernel.SetArg(argc++, m_gpudata->vertices);
-        shadekernel.SetArg(argc++, m_gpudata->normals);
-        shadekernel.SetArg(argc++, m_gpudata->uvs);
-        shadekernel.SetArg(argc++, m_gpudata->indices);
-        shadekernel.SetArg(argc++, m_gpudata->shapes);
-        shadekernel.SetArg(argc++, m_gpudata->materialids);
-        shadekernel.SetArg(argc++, m_gpudata->materials);
-        shadekernel.SetArg(argc++, m_gpudata->textures);
-        shadekernel.SetArg(argc++, m_gpudata->texturedata);
+        shadekernel.SetArg(argc++, m_render_data->rays[pass & 0x1]);
+        shadekernel.SetArg(argc++, m_render_data->intersections);
+        shadekernel.SetArg(argc++, m_render_data->compacted_indices);
+        shadekernel.SetArg(argc++, m_render_data->pixelindices[pass & 0x1]);
+        shadekernel.SetArg(argc++, m_render_data->hitcount);
+        shadekernel.SetArg(argc++, m_scene_data->vertices);
+        shadekernel.SetArg(argc++, m_scene_data->normals);
+        shadekernel.SetArg(argc++, m_scene_data->uvs);
+        shadekernel.SetArg(argc++, m_scene_data->indices);
+        shadekernel.SetArg(argc++, m_scene_data->shapes);
+        shadekernel.SetArg(argc++, m_scene_data->materialids);
+        shadekernel.SetArg(argc++, m_scene_data->materials);
+        shadekernel.SetArg(argc++, m_scene_data->textures);
+        shadekernel.SetArg(argc++, m_scene_data->texturedata);
         shadekernel.SetArg(argc++, scene.envidx_);
         shadekernel.SetArg(argc++, scene.envmapmul_);
-        shadekernel.SetArg(argc++, m_gpudata->emissives);
-        shadekernel.SetArg(argc++, m_gpudata->numemissive);
+        shadekernel.SetArg(argc++, m_scene_data->emissives);
+        shadekernel.SetArg(argc++, m_scene_data->numemissive);
         shadekernel.SetArg(argc++, rand_uint());
-        shadekernel.SetArg(argc++, m_gpudata->samplers);
-        shadekernel.SetArg(argc++, m_gpudata->sobolmat);
+        shadekernel.SetArg(argc++, m_render_data->samplers);
+        shadekernel.SetArg(argc++, m_render_data->sobolmat);
         shadekernel.SetArg(argc++, pass);
-        shadekernel.SetArg(argc++, m_gpudata->volumes);
-        shadekernel.SetArg(argc++, m_gpudata->shadowrays);
-        shadekernel.SetArg(argc++, m_gpudata->lightsamples);
-        shadekernel.SetArg(argc++, m_gpudata->paths);
-        shadekernel.SetArg(argc++, m_gpudata->rays[(pass + 1) & 0x1]);
+        shadekernel.SetArg(argc++, m_scene_data->volumes);
+        shadekernel.SetArg(argc++, m_render_data->shadowrays);
+        shadekernel.SetArg(argc++, m_render_data->lightsamples);
+        shadekernel.SetArg(argc++, m_render_data->paths);
+        shadekernel.SetArg(argc++, m_render_data->rays[(pass + 1) & 0x1]);
         shadekernel.SetArg(argc++, m_output->data());
 
         // Run shading kernel
@@ -505,37 +493,37 @@ namespace Baikal
     void PtRenderer::ShadeVolume(Scene const& scene, int pass)
     {
         // Fetch kernel
-        CLWKernel shadekernel = m_gpudata->program.GetKernel("ShadeVolume");
+        CLWKernel shadekernel = m_render_data->program.GetKernel("ShadeVolume");
 
         // Set kernel parameters
         int argc = 0;
-        shadekernel.SetArg(argc++, m_gpudata->rays[pass & 0x1]);
-        shadekernel.SetArg(argc++, m_gpudata->intersections);
-        shadekernel.SetArg(argc++, m_gpudata->compacted_indices);
-        shadekernel.SetArg(argc++, m_gpudata->pixelindices[pass & 0x1]);
-        shadekernel.SetArg(argc++, m_gpudata->hitcount[0]);
-        shadekernel.SetArg(argc++, m_gpudata->vertices);
-        shadekernel.SetArg(argc++, m_gpudata->normals);
-        shadekernel.SetArg(argc++, m_gpudata->uvs);
-        shadekernel.SetArg(argc++, m_gpudata->indices);
-        shadekernel.SetArg(argc++, m_gpudata->shapes);
-        shadekernel.SetArg(argc++, m_gpudata->materialids);
-        shadekernel.SetArg(argc++, m_gpudata->materials);
-        shadekernel.SetArg(argc++, m_gpudata->textures);
-        shadekernel.SetArg(argc++, m_gpudata->texturedata);
+        shadekernel.SetArg(argc++, m_render_data->rays[pass & 0x1]);
+        shadekernel.SetArg(argc++, m_render_data->intersections);
+        shadekernel.SetArg(argc++, m_render_data->compacted_indices);
+        shadekernel.SetArg(argc++, m_render_data->pixelindices[pass & 0x1]);
+        shadekernel.SetArg(argc++, m_render_data->hitcount);
+        shadekernel.SetArg(argc++, m_scene_data->vertices);
+        shadekernel.SetArg(argc++, m_scene_data->normals);
+        shadekernel.SetArg(argc++, m_scene_data->uvs);
+        shadekernel.SetArg(argc++, m_scene_data->indices);
+        shadekernel.SetArg(argc++, m_scene_data->shapes);
+        shadekernel.SetArg(argc++, m_scene_data->materialids);
+        shadekernel.SetArg(argc++, m_scene_data->materials);
+        shadekernel.SetArg(argc++, m_scene_data->textures);
+        shadekernel.SetArg(argc++, m_scene_data->texturedata);
         shadekernel.SetArg(argc++, scene.envidx_);
         shadekernel.SetArg(argc++, scene.envmapmul_);
-        shadekernel.SetArg(argc++, m_gpudata->emissives);
-        shadekernel.SetArg(argc++, m_gpudata->numemissive);
+        shadekernel.SetArg(argc++, m_scene_data->emissives);
+        shadekernel.SetArg(argc++, m_scene_data->numemissive);
         shadekernel.SetArg(argc++, rand_uint());
-        shadekernel.SetArg(argc++, m_gpudata->samplers);
-        shadekernel.SetArg(argc++, m_gpudata->sobolmat);
+        shadekernel.SetArg(argc++, m_render_data->samplers);
+        shadekernel.SetArg(argc++, m_render_data->sobolmat);
         shadekernel.SetArg(argc++, pass);
-        shadekernel.SetArg(argc++, m_gpudata->volumes);
-        shadekernel.SetArg(argc++, m_gpudata->shadowrays);
-        shadekernel.SetArg(argc++, m_gpudata->lightsamples);
-        shadekernel.SetArg(argc++, m_gpudata->paths);
-        shadekernel.SetArg(argc++, m_gpudata->rays[(pass + 1) & 0x1]);
+        shadekernel.SetArg(argc++, m_scene_data->volumes);
+        shadekernel.SetArg(argc++, m_render_data->shadowrays);
+        shadekernel.SetArg(argc++, m_render_data->lightsamples);
+        shadekernel.SetArg(argc++, m_render_data->paths);
+        shadekernel.SetArg(argc++, m_render_data->rays[(pass + 1) & 0x1]);
         shadekernel.SetArg(argc++, m_output->data());
 
         // Run shading kernel
@@ -549,22 +537,22 @@ namespace Baikal
     void PtRenderer::EvaluateVolume(Scene const& scene, int pass)
     {
         // Fetch kernel
-        CLWKernel evalkernel = m_gpudata->program.GetKernel("EvaluateVolume");
+        CLWKernel evalkernel = m_render_data->program.GetKernel("EvaluateVolume");
 
         // Set kernel parameters
         int argc = 0;
-        evalkernel.SetArg(argc++, m_gpudata->rays[pass & 0x1]);
-        evalkernel.SetArg(argc++, m_gpudata->pixelindices[(pass + 1) & 0x1]);
-        evalkernel.SetArg(argc++, m_gpudata->hitcount[0]);
-        evalkernel.SetArg(argc++, m_gpudata->volumes);
-        evalkernel.SetArg(argc++, m_gpudata->textures);
-        evalkernel.SetArg(argc++, m_gpudata->texturedata);
+        evalkernel.SetArg(argc++, m_render_data->rays[pass & 0x1]);
+        evalkernel.SetArg(argc++, m_render_data->pixelindices[(pass + 1) & 0x1]);
+        evalkernel.SetArg(argc++, m_render_data->hitcount);
+        evalkernel.SetArg(argc++, m_scene_data->volumes);
+        evalkernel.SetArg(argc++, m_scene_data->textures);
+        evalkernel.SetArg(argc++, m_scene_data->texturedata);
         evalkernel.SetArg(argc++, rand_uint());
-        evalkernel.SetArg(argc++, m_gpudata->samplers);
-        evalkernel.SetArg(argc++, m_gpudata->sobolmat);
+        evalkernel.SetArg(argc++, m_render_data->samplers);
+        evalkernel.SetArg(argc++, m_render_data->sobolmat);
         evalkernel.SetArg(argc++, pass);
-        evalkernel.SetArg(argc++, m_gpudata->intersections);
-        evalkernel.SetArg(argc++, m_gpudata->paths);
+        evalkernel.SetArg(argc++, m_render_data->intersections);
+        evalkernel.SetArg(argc++, m_render_data->paths);
         evalkernel.SetArg(argc++, m_output->data());
 
         // Run shading kernel
@@ -577,21 +565,21 @@ namespace Baikal
     void PtRenderer::ShadeMiss(Scene const& scene, int pass)
     {
         // Fetch kernel
-        CLWKernel misskernel = m_gpudata->program.GetKernel("ShadeMiss");
+        CLWKernel misskernel = m_render_data->program.GetKernel("ShadeMiss");
 
         int numrays = m_output->width() * m_output->height();
 
         // Set kernel parameters
         int argc = 0;
-        misskernel.SetArg(argc++, m_gpudata->rays[pass & 0x1]);
-        misskernel.SetArg(argc++, m_gpudata->intersections);
-        misskernel.SetArg(argc++, m_gpudata->pixelindices[(pass + 1) & 0x1]);
+        misskernel.SetArg(argc++, m_render_data->rays[pass & 0x1]);
+        misskernel.SetArg(argc++, m_render_data->intersections);
+        misskernel.SetArg(argc++, m_render_data->pixelindices[(pass + 1) & 0x1]);
         misskernel.SetArg(argc++, numrays);
-        misskernel.SetArg(argc++, m_gpudata->textures);
-        misskernel.SetArg(argc++, m_gpudata->texturedata);
+        misskernel.SetArg(argc++, m_scene_data->textures);
+        misskernel.SetArg(argc++, m_scene_data->texturedata);
         misskernel.SetArg(argc++, scene.envidx_);
-        misskernel.SetArg(argc++, m_gpudata->paths);
-        misskernel.SetArg(argc++, m_gpudata->volumes);
+        misskernel.SetArg(argc++, m_render_data->paths);
+        misskernel.SetArg(argc++, m_scene_data->volumes);
         misskernel.SetArg(argc++, m_output->data());
 
         // Run shading kernel
@@ -604,15 +592,15 @@ namespace Baikal
     void PtRenderer::GatherLightSamples(Scene const& scene, int pass)
     {
         // Fetch kernel
-        CLWKernel gatherkernel = m_gpudata->program.GetKernel("GatherLightSamples");
+        CLWKernel gatherkernel = m_render_data->program.GetKernel("GatherLightSamples");
 
         // Set kernel parameters
         int argc = 0;
-        gatherkernel.SetArg(argc++, m_gpudata->pixelindices[pass & 0x1]);
-        gatherkernel.SetArg(argc++, m_gpudata->hitcount[0]);
-        gatherkernel.SetArg(argc++, m_gpudata->shadowhits);
-        gatherkernel.SetArg(argc++, m_gpudata->lightsamples);
-        gatherkernel.SetArg(argc++, m_gpudata->paths);
+        gatherkernel.SetArg(argc++, m_render_data->pixelindices[pass & 0x1]);
+        gatherkernel.SetArg(argc++, m_render_data->hitcount);
+        gatherkernel.SetArg(argc++, m_render_data->shadowhits);
+        gatherkernel.SetArg(argc++, m_render_data->lightsamples);
+        gatherkernel.SetArg(argc++, m_render_data->paths);
         gatherkernel.SetArg(argc++, m_output->data());
 
         // Run shading kernel
@@ -625,14 +613,14 @@ namespace Baikal
     void PtRenderer::RestorePixelIndices(int pass)
     {
         // Fetch kernel
-        CLWKernel restorekernel = m_gpudata->program.GetKernel("RestorePixelIndices");
+        CLWKernel restorekernel = m_render_data->program.GetKernel("RestorePixelIndices");
 
         // Set kernel parameters
         int argc = 0;
-        restorekernel.SetArg(argc++, m_gpudata->compacted_indices);
-        restorekernel.SetArg(argc++, m_gpudata->hitcount[0]);
-        restorekernel.SetArg(argc++, m_gpudata->pixelindices[(pass + 1) & 0x1]);
-        restorekernel.SetArg(argc++, m_gpudata->pixelindices[pass & 0x1]);
+        restorekernel.SetArg(argc++, m_render_data->compacted_indices);
+        restorekernel.SetArg(argc++, m_render_data->hitcount);
+        restorekernel.SetArg(argc++, m_render_data->pixelindices[(pass + 1) & 0x1]);
+        restorekernel.SetArg(argc++, m_render_data->pixelindices[pass & 0x1]);
 
         // Run shading kernel
         {
@@ -644,15 +632,15 @@ namespace Baikal
     void PtRenderer::FilterPathStream(int pass)
     {
         // Fetch kernel
-        CLWKernel restorekernel = m_gpudata->program.GetKernel("FilterPathStream");
+        CLWKernel restorekernel = m_render_data->program.GetKernel("FilterPathStream");
 
         // Set kernel parameters
         int argc = 0;
-        restorekernel.SetArg(argc++, m_gpudata->intersections);
-        restorekernel.SetArg(argc++, m_gpudata->hitcount[0]);
-        restorekernel.SetArg(argc++, m_gpudata->pixelindices[(pass + 1) & 0x1]);
-        restorekernel.SetArg(argc++, m_gpudata->paths);
-        restorekernel.SetArg(argc++, m_gpudata->hits);
+        restorekernel.SetArg(argc++, m_render_data->intersections);
+        restorekernel.SetArg(argc++, m_render_data->hitcount);
+        restorekernel.SetArg(argc++, m_render_data->pixelindices[(pass + 1) & 0x1]);
+        restorekernel.SetArg(argc++, m_render_data->paths);
+        restorekernel.SetArg(argc++, m_render_data->hits);
 
         // Run shading kernel
         {
@@ -661,7 +649,7 @@ namespace Baikal
         }
 
         //int cnt = 0;
-        //m_context.ReadBuffer(0, m_gpudata->debug, &cnt, 1).Wait();
+        //m_context.ReadBuffer(0, m_render_data->debug, &cnt, 1).Wait();
         //std::cout << "Pass " << pass << " killed " << cnt << "\n";
     }
 
@@ -670,29 +658,29 @@ namespace Baikal
         m_vidmemusage = 0;
 
         // Vertex, normal and uv data
-        m_gpudata->vertices = m_context.CreateBuffer<float3>(scene.vertices_.size(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, (void*)&scene.vertices_[0]);
+        m_scene_data->vertices = m_context.CreateBuffer<float3>(scene.vertices_.size(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, (void*)&scene.vertices_[0]);
         m_vidmemusage += scene.vertices_.size() * sizeof(float3);
 
-        m_gpudata->normals = m_context.CreateBuffer<float3>(scene.normals_.size(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, (void*)&scene.normals_[0]);
+        m_scene_data->normals = m_context.CreateBuffer<float3>(scene.normals_.size(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, (void*)&scene.normals_[0]);
         m_vidmemusage += scene.normals_.size() * sizeof(float3);
 
-        m_gpudata->uvs = m_context.CreateBuffer<float2>(scene.uvs_.size(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, (void*)&scene.uvs_[0]);
+        m_scene_data->uvs = m_context.CreateBuffer<float2>(scene.uvs_.size(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, (void*)&scene.uvs_[0]);
         m_vidmemusage += scene.uvs_.size() * sizeof(float2);
 
         // Index data
-        m_gpudata->indices = m_context.CreateBuffer<int>(scene.indices_.size(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, (void*)&scene.indices_[0]);
+        m_scene_data->indices = m_context.CreateBuffer<int>(scene.indices_.size(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, (void*)&scene.indices_[0]);
         m_vidmemusage += scene.indices_.size() * sizeof(int);
 
         // Shapes
-        m_gpudata->shapes = m_context.CreateBuffer<Scene::Shape>(scene.shapes_.size(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, (void*)&scene.shapes_[0]);
+        m_scene_data->shapes = m_context.CreateBuffer<Scene::Shape>(scene.shapes_.size(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, (void*)&scene.shapes_[0]);
         m_vidmemusage += scene.shapes_.size() * sizeof(Scene::Shape);
 
         // Material IDs
-        m_gpudata->materialids = m_context.CreateBuffer<int>(scene.materialids_.size(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, (void*)&scene.materialids_[0]);
+        m_scene_data->materialids = m_context.CreateBuffer<int>(scene.materialids_.size(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, (void*)&scene.materialids_[0]);
         m_vidmemusage += scene.materialids_.size() * sizeof(int);
 
         // Material descriptions
-        m_gpudata->materials = m_context.CreateBuffer<Scene::Material>(scene.materials_.size(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, (void*)&scene.materials_[0]);
+        m_scene_data->materials = m_context.CreateBuffer<Scene::Material>(scene.materials_.size(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, (void*)&scene.materials_[0]);
         m_vidmemusage += scene.materials_.size() * sizeof(Scene::Material);
 
         // Bake textures
@@ -701,14 +689,14 @@ namespace Baikal
         // Emissives
         if (scene.emissives_.size() > 0)
         {
-            m_gpudata->emissives = m_context.CreateBuffer<Scene::Emissive>(scene.emissives_.size(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, (void*)&scene.emissives_[0]);
-            m_gpudata->numemissive = scene.emissives_.size();
+            m_scene_data->emissives = m_context.CreateBuffer<Scene::Emissive>(scene.emissives_.size(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, (void*)&scene.emissives_[0]);
+            m_scene_data->numemissive = scene.emissives_.size();
             m_vidmemusage += scene.emissives_.size() * sizeof(Scene::Emissive);
         }
         else
         {
-            m_gpudata->emissives = m_context.CreateBuffer<Scene::Emissive>(1, CL_MEM_READ_ONLY);
-            m_gpudata->numemissive = 0;
+            m_scene_data->emissives = m_context.CreateBuffer<Scene::Emissive>(1, CL_MEM_READ_ONLY);
+            m_scene_data->numemissive = 0;
             m_vidmemusage += sizeof(Scene::Emissive);
         }
 
@@ -728,11 +716,11 @@ namespace Baikal
             }
 
             // Texture descriptors
-            m_gpudata->textures = m_context.CreateBuffer<Scene::Texture>(scene.textures_.size(), CL_MEM_READ_ONLY);
+            m_scene_data->textures = m_context.CreateBuffer<Scene::Texture>(scene.textures_.size(), CL_MEM_READ_ONLY);
             m_vidmemusage += scene.textures_.size() * sizeof(Scene::Texture);
 
             // Texture data
-            m_gpudata->texturedata = m_context.CreateBuffer<char>(datasize, CL_MEM_READ_ONLY);
+            m_scene_data->texturedata = m_context.CreateBuffer<char>(datasize, CL_MEM_READ_ONLY);
 
             // Map both buffers
             Scene::Texture* mappeddesc = nullptr;
@@ -740,8 +728,8 @@ namespace Baikal
             Scene::Texture* mappeddesc_orig = nullptr;
             char* mappeddata_orig = nullptr;
 
-            m_context.MapBuffer(0, m_gpudata->textures, CL_MAP_WRITE, &mappeddesc).Wait();
-            m_context.MapBuffer(0, m_gpudata->texturedata, CL_MAP_WRITE, &mappeddata).Wait();
+            m_context.MapBuffer(0, m_scene_data->textures, CL_MAP_WRITE, &mappeddesc).Wait();
+            m_context.MapBuffer(0, m_scene_data->texturedata, CL_MAP_WRITE, &mappeddata).Wait();
 
             // Save them for unmap
             mappeddesc_orig = mappeddesc;
@@ -774,28 +762,28 @@ namespace Baikal
                 ++mappeddesc;
             }
 
-            m_context.UnmapBuffer(0, m_gpudata->textures, mappeddesc_orig).Wait();
-            m_context.UnmapBuffer(0, m_gpudata->texturedata, mappeddata_orig).Wait();
+            m_context.UnmapBuffer(0, m_scene_data->textures, mappeddesc_orig).Wait();
+            m_context.UnmapBuffer(0, m_scene_data->texturedata, mappeddata_orig).Wait();
         }
         else
         {
             // Create stub
-            m_gpudata->textures = m_context.CreateBuffer<Scene::Texture>(1, CL_MEM_READ_ONLY);
+            m_scene_data->textures = m_context.CreateBuffer<Scene::Texture>(1, CL_MEM_READ_ONLY);
             m_vidmemusage += sizeof(Scene::Texture);
 
             // Texture data
-            m_gpudata->texturedata = m_context.CreateBuffer<char>(1, CL_MEM_READ_ONLY);
+            m_scene_data->texturedata = m_context.CreateBuffer<char>(1, CL_MEM_READ_ONLY);
             m_vidmemusage += 1;
         }
     }
 
     CLWKernel PtRenderer::GetCopyKernel()
     {
-        return m_gpudata->program.GetKernel("ApplyGammaAndCopyData");
+        return m_render_data->program.GetKernel("ApplyGammaAndCopyData");
     }
 
     CLWKernel PtRenderer::GetAccumulateKernel()
     {
-        return m_gpudata->program.GetKernel("AccumulateData");
+        return m_render_data->program.GetKernel("AccumulateData");
     }
 }

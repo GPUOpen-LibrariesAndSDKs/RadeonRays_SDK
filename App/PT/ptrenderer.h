@@ -41,17 +41,17 @@ namespace Baikal
 
         // Renderer overrides
         // Create output
-        Output* CreateOutput(std::uint32_t w, std::uint32_t h) const;
+        Output* CreateOutput(std::uint32_t w, std::uint32_t h) const override;
         // Delete output
-        void DeleteOutput(Output* output) const;
+        void DeleteOutput(Output* output) const override;
         // Clear output
-        void Clear(FireRays::float3 const& val, Output& output) const;
+        void Clear(FireRays::float3 const& val, Output& output) const override;
         // Do necessary precalculation and initialization
-        void Preprocess(Scene const& scene);
+        void Preprocess(Scene const& scene) override;
         // Render the scene into the output
-        void Render(Scene const& scene);
+        void Render(Scene const& scene) override;
         // Set output
-        void SetOutput(Output* output);
+        void SetOutput(Output* output) override;
 
 
         // Interop function
@@ -99,8 +99,10 @@ namespace Baikal
         struct PathState;
 
         struct Volume;
-        struct GpuData;
-        std::unique_ptr<GpuData> m_gpudata;
+        struct RenderData;
+        struct SceneData;
+        std::unique_ptr<RenderData> m_render_data;
+        std::unique_ptr<SceneData> m_scene_data;
 
         // Intersector data
         std::vector<FireRays::Shape*> m_shapes;
