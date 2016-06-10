@@ -65,7 +65,7 @@ THE SOFTWARE.
 #include "tiny_obj_loader.h"
 #include "perspective_camera.h"
 #include "shader_manager.h"
-#include "scene.h"
+#include "Scene/scene.h"
 #include "PT/ptrenderer.h"
 #include "CLW/clwoutput.h"
 #include "config_manager.h"

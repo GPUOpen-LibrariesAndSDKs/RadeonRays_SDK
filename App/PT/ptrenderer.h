@@ -22,13 +22,18 @@ THE SOFTWARE.
 #pragma once
 
 #include "Core/renderer.h"
+#include "CLW/clwscene.h"
+#include "Scene/scene_tracker.h"
 
 #include "CLW.h"
 #include "firerays_cl.h"
 
+
 namespace Baikal
 {
     class ClwOutput;
+    class ClwScene;
+    class SceneTracker;
 
     ///< Renderer implementation
     class PtRenderer : public Renderer
@@ -52,8 +57,6 @@ namespace Baikal
         void Render(Scene const& scene) override;
         // Set output
         void SetOutput(Output* output) override;
-
-
         // Interop function
         CLWKernel GetCopyKernel();
         // Add function
@@ -62,27 +65,22 @@ namespace Baikal
     protected:
         // Resize output-dependent buffers
         void ResizeWorkingSet(Output const& output);
-        // Create buffers for shading part
-        void CompileScene(Scene const& scene);
         // Generate rays
-        void GeneratePrimaryRays();
+        void GeneratePrimaryRays(ClwScene const& scene);
         // Shade first hit
-        void ShadeSurface(Scene const& scene, int pass);
+        void ShadeSurface(ClwScene const& scene, int pass);
         // Evaluate volume
-        void EvaluateVolume(Scene const& scene, int pass);
+        void EvaluateVolume(ClwScene const& scene, int pass);
         // Handle missing rays
-        void ShadeMiss(Scene const& scene, int pass);
+        void ShadeMiss(ClwScene const& scene, int pass);
         // Gather light samples and account for visibility
-        void GatherLightSamples(Scene const& scene, int pass);
+        void GatherLightSamples(ClwScene const& scene, int pass);
         // Restore pixel indices after compaction
         void RestorePixelIndices(int pass);
-        // Pack textures for GPU
-        void BakeTextures(Scene const& scene);
         // Convert intersection info to compaction predicate
         void FilterPathStream(int pass);
         // Integrate volume
-        void ShadeVolume(Scene const& scene, int pass);
-
+        void ShadeVolume(ClwScene const& scene, int pass);
 
     public:
         // Intersection API
@@ -93,23 +91,20 @@ namespace Baikal
         ClwOutput* m_output;
         // Flag to reset the sampler
         mutable bool m_resetsampler;
+        //
+        SceneTracker m_scene_tracker;
 
         // GPU data
         struct QmcSampler;
         struct PathState;
-
-        struct Volume;
         struct RenderData;
-        struct SceneData;
+
         std::unique_ptr<RenderData> m_render_data;
-        std::unique_ptr<SceneData> m_scene_data;
 
         // Intersector data
         std::vector<FireRays::Shape*> m_shapes;
 
         // Vidmem usage
-        // Data
-        size_t m_vidmemusage;
         // Working set
         size_t m_vidmemws;
     };

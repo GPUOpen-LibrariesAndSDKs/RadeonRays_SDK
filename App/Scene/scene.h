@@ -39,6 +39,12 @@ namespace Baikal
 
         void SetBackground(std::string const& filename, std::string const& basepath = "");
 
+        enum DirtyFlags
+        {
+            kNone = 0x0,
+            kCamera = 0x1
+        };
+
         enum Bxdf
         {
             kZero,
@@ -160,6 +166,20 @@ namespace Baikal
 
                 int padding;
             };
+
+            struct Volume
+            {
+                int type;
+                int phase_func;
+                int data;
+                int extra;
+
+                FireRays::float3 sigma_a;
+                FireRays::float3 sigma_s;
+                FireRays::float3 sigma_e;
+            };
+
+            std::uint32_t dirty() const { return kCamera; }
 
             // Scene data
             // Vertices
