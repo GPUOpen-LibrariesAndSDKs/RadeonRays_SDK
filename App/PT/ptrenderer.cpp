@@ -94,6 +94,7 @@ namespace Baikal
         , fr_shadowhits(nullptr)
         , fr_hits(nullptr)
         , fr_intersections(nullptr)
+        , fr_hitcount(nullptr)
         {
             fr_rays[0] = nullptr;
             fr_rays[1] = nullptr;
@@ -107,25 +108,9 @@ namespace Baikal
     , m_render_data(new RenderData)
     , m_vidmemws(0)
     , m_resetsampler(true)
-    , m_scene_tracker(context)
+    , m_scene_tracker(context, devidx)
     {
-        // Get raw CL data out of CLW context
-        cl_device_id id = m_context.GetDevice(devidx).GetID();
-        cl_command_queue queue = m_context.GetCommandQueue(devidx);
-
-        // Create intersection API
-        m_api = IntersectionApiCL::CreateFromOpenClContext(m_context, id, queue);
-
-        // Do app specific settings
-        #ifdef __APPLE__
-        // Apple runtime has known issue with stacked traversal
-        m_api->SetOption("acc.type", "bvh");
-        m_api->SetOption("bvh.builder", "sah");
-        #else
-        m_api->SetOption("acc.type", "fatbvh");
-        m_api->SetOption("bvh.builder", "sah");
-        #endif
-
+        
         // Create parallel primitives
         m_render_data->pp = CLWParallelPrimitives(m_context);
 
@@ -135,23 +120,12 @@ namespace Baikal
         #else
         m_render_data->program = CLWProgram::CreateFromSource(cl_app, std::strlen(cl_integrator), context);
         #endif
-
-
-        m_render_data->hitcount = m_context.CreateBuffer<int>(1, CL_MEM_READ_ONLY);
-        m_render_data->fr_hitcount = m_api->CreateFromOpenClBuffer(m_render_data->hitcount);
+        
         m_render_data->sobolmat = m_context.CreateBuffer<unsigned int>(1024 * 52, CL_MEM_READ_ONLY, &g_SobolMatrices[0]);
     }
 
     PtRenderer::~PtRenderer()
     {
-        // Delete all shapes
-        for (int i = 0; i < (int)m_shapes.size(); ++i)
-        {
-            m_api->DeleteShape(m_shapes[i]);
-        }
-
-        // Delete API
-        IntersectionApi::Delete(m_api);
     }
 
     Output* PtRenderer::CreateOutput(std::uint32_t w, std::uint32_t h) const
@@ -172,63 +146,12 @@ namespace Baikal
 
     void PtRenderer::Preprocess(Scene const& scene)
     {
-        // Release old data if any
-        // TODO: implement me
-        rand_init();
-
-        // Enumerate all shapes in the scene
-        for (int i = 0; i < (int)scene.shapes_.size(); ++i)
-        {
-            Shape* shape = nullptr;
-
-            shape = m_api->CreateMesh(
-            // Vertices starting from the first one
-            (float*)&scene.vertices_[scene.shapes_[i].startvtx],
-            // Number of vertices
-            scene.shapes_[i].numvertices,
-            // Stride
-            sizeof(float3),
-            // TODO: make API signature const
-            const_cast<int*>(&scene.indices_[scene.shapes_[i].startidx]),
-            // Index stride
-            0,
-            // All triangles
-            nullptr,
-            // Number of primitives
-            (int)scene.shapes_[i].numprims
-            );
-
-            int midx = scene.materialids_[scene.shapes_[i].startidx / 3];
-            if (scene.material_names_[midx] == "glass" || scene.material_names_[midx] == "glasstranslucent")
-            {
-                //std::cout << "Setting glass mask\n";
-                shape->SetMask(0xFFFF0000);
-            }
-
-            shape->SetLinearVelocity(scene.shapes_[i].linearvelocity);
-
-            shape->SetAngularVelocity(scene.shapes_[i].angularvelocity);
-
-            shape->SetTransform(scene.shapes_[i].m, inverse(scene.shapes_[i].m));
-
-            m_api->AttachShape(shape);
-
-            m_shapes.push_back(shape);
-        }
-
-        // Commit to intersector
-        auto startime = std::chrono::high_resolution_clock::now();
-
-        m_api->Commit();
-
-        auto delta = std::chrono::high_resolution_clock::now() - startime;
-
-        std::cout << "Commited in " << std::chrono::duration_cast<std::chrono::milliseconds>(delta).count() / 1000.f << "s\n";
     }
 
     // Render the scene into the output
     void PtRenderer::Render(Scene const& scene)
     {
+        auto api = m_scene_tracker.GetIntersectionApi();
         auto& clwscene = m_scene_tracker.CompileScene(scene);
 
         // Check output
@@ -253,7 +176,7 @@ namespace Baikal
 
             // Intersect ray batch
             //Event* e = nullptr;
-            m_api->QueryIntersection(m_render_data->fr_rays[pass & 0x1], m_render_data->fr_hitcount, maxrays, m_render_data->fr_intersections, nullptr, nullptr);
+            api->QueryIntersection(m_render_data->fr_rays[pass & 0x1], m_render_data->fr_hitcount, maxrays, m_render_data->fr_intersections, nullptr, nullptr);
             //e->Wait();
             //m_api->DeleteEvent(e);
 
@@ -283,7 +206,7 @@ namespace Baikal
             if (pass == 0) ShadeMiss(clwscene, pass);
 
             // Intersect shadow rays
-            m_api->QueryOcclusion(m_render_data->fr_shadowrays, m_render_data->fr_hitcount, maxrays, m_render_data->fr_shadowhits, nullptr, nullptr);
+            api->QueryOcclusion(m_render_data->fr_shadowrays, m_render_data->fr_hitcount, maxrays, m_render_data->fr_shadowhits, nullptr, nullptr);
             //e->Wait();
             //m_api->DeleteEvent(e);
 
@@ -314,12 +237,6 @@ namespace Baikal
         m_vidmemws += output.width() * output.height() * sizeof(ray);
 
         m_render_data->rays[1] = m_context.CreateBuffer<ray>(output.width() * output.height(), CL_MEM_READ_WRITE);
-        m_vidmemws += output.width() * output.height() * sizeof(ray);
-
-        m_render_data->rays[2] = m_context.CreateBuffer<ray>(output.width() * output.height(), CL_MEM_READ_WRITE);
-        m_vidmemws += output.width() * output.height() * sizeof(ray);
-
-        m_render_data->rays[3] = m_context.CreateBuffer<ray>(output.width() * output.height(), CL_MEM_READ_WRITE);
         m_vidmemws += output.width() * output.height() * sizeof(ray);
 
         m_render_data->hits = m_context.CreateBuffer<int>(output.width() * output.height(), CL_MEM_READ_WRITE);
@@ -356,21 +273,27 @@ namespace Baikal
 
         m_render_data->pixelindices[1] = m_context.CreateBuffer<int>(output.width() * output.height(), CL_MEM_READ_WRITE);
         m_vidmemws += output.width() * output.height() * sizeof(int);
+        
+        m_render_data->hitcount = m_context.CreateBuffer<int>(1, CL_MEM_READ_WRITE);
+        
+        auto api = m_scene_tracker.GetIntersectionApi();
 
         // Recreate FR buffers
-        m_api->DeleteBuffer(m_render_data->fr_rays[0]);
-        m_api->DeleteBuffer(m_render_data->fr_rays[1]);
-        m_api->DeleteBuffer(m_render_data->fr_shadowrays);
-        m_api->DeleteBuffer(m_render_data->fr_hits);
-        m_api->DeleteBuffer(m_render_data->fr_shadowhits);
-        m_api->DeleteBuffer(m_render_data->fr_intersections);
+        api->DeleteBuffer(m_render_data->fr_rays[0]);
+        api->DeleteBuffer(m_render_data->fr_rays[1]);
+        api->DeleteBuffer(m_render_data->fr_shadowrays);
+        api->DeleteBuffer(m_render_data->fr_hits);
+        api->DeleteBuffer(m_render_data->fr_shadowhits);
+        api->DeleteBuffer(m_render_data->fr_intersections);
+        api->DeleteBuffer(m_render_data->fr_hitcount);
 
-        m_render_data->fr_rays[0] = m_api->CreateFromOpenClBuffer(m_render_data->rays[0]);
-        m_render_data->fr_rays[1] = m_api->CreateFromOpenClBuffer(m_render_data->rays[1]);
-        m_render_data->fr_shadowrays = m_api->CreateFromOpenClBuffer(m_render_data->shadowrays);
-        m_render_data->fr_hits = m_api->CreateFromOpenClBuffer(m_render_data->hits);
-        m_render_data->fr_shadowhits = m_api->CreateFromOpenClBuffer(m_render_data->shadowhits);
-        m_render_data->fr_intersections = m_api->CreateFromOpenClBuffer(m_render_data->intersections);
+        m_render_data->fr_rays[0] = api->CreateFromOpenClBuffer(m_render_data->rays[0]);
+        m_render_data->fr_rays[1] = api->CreateFromOpenClBuffer(m_render_data->rays[1]);
+        m_render_data->fr_shadowrays = api->CreateFromOpenClBuffer(m_render_data->shadowrays);
+        m_render_data->fr_hits = api->CreateFromOpenClBuffer(m_render_data->hits);
+        m_render_data->fr_shadowhits = api->CreateFromOpenClBuffer(m_render_data->shadowhits);
+        m_render_data->fr_intersections = api->CreateFromOpenClBuffer(m_render_data->intersections);
+        m_render_data->fr_hitcount = api->CreateFromOpenClBuffer(m_render_data->hitcount);
 
         std::cout << "Vidmem usage (working set): " << m_vidmemws / (1024 * 1024) << "Mb\n";
     }

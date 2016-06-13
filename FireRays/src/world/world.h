@@ -46,6 +46,8 @@ namespace FireRays
         void AttachShape(Shape const* shape);
         // Detach the shape 
         void DetachShape(Shape const* shape);
+        // Detach all
+        void DetachAll();
         // Call this as scene has been commited
         void OnCommit();
         // 

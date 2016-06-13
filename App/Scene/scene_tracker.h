@@ -3,6 +3,8 @@
 #include <map>
 #include "CLW.h"
 
+#include "firerays_cl.h"
+
 namespace Baikal
 {
     class Scene;
@@ -11,26 +13,28 @@ namespace Baikal
     class SceneTracker
     {
     public:
-        SceneTracker(CLWContext context);
+        SceneTracker(CLWContext context, int devidx);
 
-        virtual ~SceneTracker() = default;
+        virtual ~SceneTracker();
 
         virtual ClwScene& CompileScene(Scene const& scene) const;
+        
+        FireRays::IntersectionApiCL* GetIntersectionApi() { return  m_api; }
 
     protected:
         virtual void RecompileFull(Scene const& scene, ClwScene& out) const;
         virtual void BakeTextures(Scene const& scene, ClwScene& out) const;
+        virtual void ReloadIntersector(Scene const& scene, ClwScene& inout) const;
 
     private:
+        // Context
         CLWContext m_context;
+        // Intersection API
+        FireRays::IntersectionApiCL* m_api;
+        // Current scene
+        mutable Scene const* m_current_scene;
 
         mutable std::map<Scene const*, ClwScene> m_scene_cache;
         mutable std::size_t m_vidmem_usage;
     };
-
-    inline SceneTracker::SceneTracker(CLWContext context)
-    : m_context(context)
-    , m_vidmem_usage(0)
-    {
-    }
 }

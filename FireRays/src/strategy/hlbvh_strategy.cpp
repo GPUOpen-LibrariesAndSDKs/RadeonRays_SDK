@@ -96,6 +96,7 @@ namespace FireRays
 			device->DeleteBuffer(faces);
 			device->DeleteBuffer(shapes);
 			device->DeleteBuffer(raycnt);
+            device->DeleteBuffer(stack);
 			executable->DeleteFunction(isect_func);
 			executable->DeleteFunction(occlude_func);
 			executable->DeleteFunction(isect_indirect_func);
@@ -131,6 +132,14 @@ namespace FireRays
 		// If something has been changed we need to rebuild BVH
 		if (!m_bvh || world.has_changed())
 		{
+            if (m_bvh)
+            {
+                m_device->DeleteBuffer(m_gpudata->vertices);
+                m_device->DeleteBuffer(m_gpudata->faces);
+                m_device->DeleteBuffer(m_gpudata->shapes);
+                m_device->DeleteBuffer(m_gpudata->raycnt);
+            }
+            
 			int numshapes = (int)world.shapes_.size();
 			int numvertices = 0;
 			int numfaces = 0;

@@ -72,6 +72,8 @@ namespace FireRays
         void AttachShape(Shape const* shape) override;
         // Detach shape, i.e. it is not going to be considered part of the scene anymore
         void DetachShape(Shape const* shape) override;
+        // Detach all objects
+        void DetachAll() override;
         // Commit all geometry creations/changes
         void Commit() override;
 

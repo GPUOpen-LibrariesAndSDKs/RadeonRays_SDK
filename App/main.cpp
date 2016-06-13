@@ -76,8 +76,8 @@ using namespace FireRays;
 char const* kHelpMessage =
 "App [-p path_to_models][-f model_name][-b][-r][-ns number_of_shadow_rays][-ao ao_radius][-w window_width][-h window_height][-nb number_of_indirect_bounces]";
 char const* g_path =
-"../Resources/bmw";
-char const* g_modelname = "i8.obj";
+"../Resources/CornellBox";
+char const* g_modelname = "orig.objm";
 
 std::unique_ptr<ShaderManager>	g_shader_manager;
 

@@ -209,6 +209,8 @@ namespace FireRays
         virtual void AttachShape(Shape const* shape) = 0;
         // Detach shape, i.e. it is not going to be considered part of the scene anymore
         virtual void DetachShape(Shape const* shape) = 0;
+        // Detach all objects
+        virtual void DetachAll() = 0;
         // Commit all geometry creations/changes
         virtual void Commit() = 0;
 

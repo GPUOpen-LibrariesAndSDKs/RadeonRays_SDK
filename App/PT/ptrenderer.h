@@ -26,7 +26,7 @@ THE SOFTWARE.
 #include "Scene/scene_tracker.h"
 
 #include "CLW.h"
-#include "firerays_cl.h"
+
 
 
 namespace Baikal
@@ -83,15 +83,13 @@ namespace Baikal
         void ShadeVolume(ClwScene const& scene, int pass);
 
     public:
-        // Intersection API
-        FireRays::IntersectionApiCL* m_api;
         // CL context
         CLWContext m_context;
         // Output object
         ClwOutput* m_output;
         // Flag to reset the sampler
         mutable bool m_resetsampler;
-        //
+        // Scene tracker
         SceneTracker m_scene_tracker;
 
         // GPU data
