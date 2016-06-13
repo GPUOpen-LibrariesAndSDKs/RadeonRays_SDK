@@ -35,7 +35,7 @@ THE SOFTWARE.
 #include <../App/CL/path.cl>
 
 #define CRAZY_LOW_THROUGHPUT 0.0f
-#define CRAZY_HIGH_RADIANCE 50.f
+#define CRAZY_HIGH_RADIANCE 10.f
 #define CRAZY_HIGH_DISTANCE 1000000.f
 #define CRAZY_LOW_DISTANCE 0.001f
 #define REASONABLE_RADIANCE(x) (clamp((x), 0.f, CRAZY_HIGH_RADIANCE))
@@ -374,6 +374,8 @@ __kernel void ShadeSurface(
 
 		// Select BxDF
         Material_Select(&scene, wi, TEXTURE_ARGS, sample0.x, &diffgeo);
+        //ApplyBumpMap(&diffgeo, TEXTURE_ARGS);
+
 
 		// Terminate if emissive
 		if (Bxdf_IsEmissive(&diffgeo))
@@ -444,14 +446,14 @@ __kernel void ShadeSurface(
         {
             wo = lightwo;
 			float ndotwo = fabs(dot(diffgeo.n, normalize(wo)));
-			radiance = le * Bxdf_Evaluate(&diffgeo, wi, normalize(wo), TEXTURE_ARGS) * throughput * ndotwo * lightweight / lightpdf / selection_pdf / 0.5f;
+            radiance = le * Bxdf_Evaluate(&diffgeo, wi, normalize(wo), TEXTURE_ARGS) * throughput * ndotwo * lightweight / lightpdf / selection_pdf / 0.5f;
         }
 		else if (bxdfpdf > 0.f)
         {
             wo = bxdfwo;
 			float ndotwo = fabs(dot(diffgeo.n, normalize(wo)));
             le = Light_GetLe(lightidx, &scene, &diffgeo, &wo, TEXTURE_ARGS);
-			radiance = le * bxdf * throughput * ndotwo * bxdfweight / bxdfpdf / selection_pdf / 0.5f;
+            radiance = le * bxdf * throughput * ndotwo * bxdfweight / bxdfpdf / selection_pdf / 0.5f;
         }
 
 		// If we have some light here generate a shadow ray

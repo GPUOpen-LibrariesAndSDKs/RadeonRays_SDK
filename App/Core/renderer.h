@@ -43,12 +43,14 @@ namespace Baikal
         // Clear output
         virtual void Clear(FireRays::float3 const& val, Output& output) const = 0;
         // Do necessary precalculation and initialization
+        // TODO: is it really necessary? can be async? progress reporting?
         virtual void Preprocess(Scene const& scene) = 0;
         // Render single iteration
         virtual void Render(Scene const& scene) = 0;
         // Set output
         virtual void SetOutput(Output* output) = 0;
 
+        // Does not make sense to copy it
         Renderer(Renderer const&) = delete;
         Renderer& operator = (Renderer const&) = delete;
     };

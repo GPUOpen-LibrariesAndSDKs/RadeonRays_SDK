@@ -28,6 +28,7 @@ THE SOFTWARE.
 namespace Baikal
 {
     class PtRenderer;
+    class AoRenderer;
 }
 
 class ConfigManager
@@ -53,7 +54,7 @@ public:
     {
         DeviceType type;
         int devidx;
-        Baikal::PtRenderer* renderer;
+        Baikal::AoRenderer* renderer;
         CLWContext context;
         bool caninterop;
 

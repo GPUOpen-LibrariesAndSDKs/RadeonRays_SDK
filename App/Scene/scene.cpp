@@ -465,6 +465,7 @@ Scene* Scene::LoadFromObj(std::string const& filename, std::string const& basepa
 			specular.ns = 0.01f;
 			specular.type = kMicrofacetGGX;
 			specular.fresnel = 1.f;
+            specular.twosided = 1;
 
 			if (!objmaterials[i].normal_texname.empty())
 			{
@@ -674,7 +675,8 @@ Scene* Scene::LoadFromObj(std::string const& filename, std::string const& basepa
 
 		for (int i = 0; i < (int)objshapes[s].mesh.texcoords.size() / 2; ++i)
 		{
-			scene->uvs_.push_back(float2(objshapes[s].mesh.texcoords[2 * i], objshapes[s].mesh.texcoords[2 * i + 1]));
+            float2 uv = float2(objshapes[s].mesh.texcoords[2 * i], objshapes[s].mesh.texcoords[2 * i + 1]);
+			scene->uvs_.push_back(uv);
 		}
 
 		// Enumerate and copy indices (accounting for base index) and material indices

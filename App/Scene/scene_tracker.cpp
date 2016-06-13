@@ -3,6 +3,8 @@
 #include "CLW/clwscene.h"
 #include "perspective_camera.h"
 
+#include <chrono>
+
 using namespace FireRays;
 
 
@@ -46,11 +48,11 @@ namespace Baikal
             auto res = m_scene_cache.emplace(std::make_pair(&scene, ClwScene()));
             
             RecompileFull(scene, res.first->second);
-            
+
             ReloadIntersector(scene, res.first->second);
-            
+
             m_current_scene = &scene;
-            
+
             return res.first->second;
         }
         else
@@ -62,7 +64,7 @@ namespace Baikal
                 // Update camera data
                 m_context.WriteBuffer(0, out.camera, scene.camera_.get(), 1);
             }
-            
+
             if (m_current_scene != &scene)
             {
                 ReloadIntersector(scene, out);
@@ -76,7 +78,7 @@ namespace Baikal
 
     void SceneTracker::RecompileFull(Scene const& scene, ClwScene& out) const
     {
-        // This usually unnecessary, but just in case we reuse out here
+        // This usually unnecessary, but just in case we reuse out parameter here
         for (auto& s : out.isect_shapes)
         {
             m_api->DeleteShape(s);

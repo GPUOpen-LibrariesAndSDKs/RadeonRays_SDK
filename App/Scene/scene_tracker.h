@@ -8,7 +8,7 @@
 namespace Baikal
 {
     class Scene;
-    class ClwScene;
+    struct ClwScene;
 
     class SceneTracker
     {

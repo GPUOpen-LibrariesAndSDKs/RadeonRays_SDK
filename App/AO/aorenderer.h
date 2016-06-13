@@ -34,13 +34,13 @@ namespace Baikal
     class SceneTracker;
 
     ///< Renderer implementation
-    class PtRenderer : public Renderer
+    class AoRenderer : public Renderer
     {
     public:
         // Constructor
-        PtRenderer(CLWContext context, int devidx);
+        AoRenderer(CLWContext context, int devidx);
         // Destructor
-        ~PtRenderer();
+        ~AoRenderer();
 
         // Renderer overrides
         // Create output
@@ -66,19 +66,13 @@ namespace Baikal
         // Generate rays
         void GeneratePrimaryRays(ClwScene const& scene);
         // Shade first hit
-        void ShadeSurface(ClwScene const& scene, int pass);
-        // Evaluate volume
-        void EvaluateVolume(ClwScene const& scene, int pass);
-        // Handle missing rays
-        void ShadeMiss(ClwScene const& scene, int pass);
+        void SampleOcclusion(ClwScene const& scene);
         // Gather light samples and account for visibility
-        void GatherLightSamples(ClwScene const& scene, int pass);
+        void GatherOcclusion(ClwScene const& scene);
         // Restore pixel indices after compaction
-        void RestorePixelIndices(int pass);
+        void RestorePixelIndices();
         // Convert intersection info to compaction predicate
-        void FilterPathStream(int pass);
-        // Integrate volume
-        void ShadeVolume(ClwScene const& scene, int pass);
+        void FilterPathStream();
 
     public:
         // CL context
@@ -92,7 +86,6 @@ namespace Baikal
 
         // GPU data
         struct QmcSampler;
-        struct PathState;
         struct RenderData;
 
         std::unique_ptr<RenderData> m_render_data;
