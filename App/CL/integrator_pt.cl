@@ -449,14 +449,6 @@ __kernel void ShadeSurface(
 			float ndotwo = fabs(dot(diffgeo.n, normalize(wo)));
             radiance = le * Bxdf_Evaluate(&diffgeo, wi, normalize(wo), TEXTURE_ARGS) * throughput * ndotwo * lightweight / lightpdf / selection_pdf;
         }
-		
-        /*else if (bxdfpdf > 0.f)
-        {
-            wo = bxdfwo;
-			float ndotwo = fabs(dot(diffgeo.n, normalize(wo)));
-            le = Light_GetLe(lightidx, &scene, &diffgeo, &wo, TEXTURE_ARGS);
-            radiance = le * bxdf * throughput * ndotwo * bxdfweight / bxdfpdf / selection_pdf / 0.5f;
-        }*/
 
 		// If we have some light here generate a shadow ray
 		if (NON_BLACK(radiance))
@@ -487,14 +479,25 @@ __kernel void ShadeSurface(
 			lightsamples[globalid] = 0;
 		}
 
-        // Generate indirect ray
-		// bxdf = Bxdf_Sample(&diffgeo, wi, TEXTURE_ARGS, sample3, &bxdfwo, &bxdfpdf);
-		bxdfwo = normalize(bxdfwo);
-		float3 t = bxdf * fabs(dot(diffgeo.n, bxdfwo)) * bxdfweight;
+
+        // Apply Russian roulette
+        float q = min(0.5f,
+                      // Luminance
+                      0.2126f * throughput.x + 0.7152f * throughput.y + 0.0722f * throughput.z);
+        // Only if it is 3+ bounce
+        bool rr_apply = bounce > 3;
+        bool rr_stop = sample4 > q && rr_apply;
+        
+        if (rr_apply)
+        {
+            Path_MulThroughput(path, 1.f / q);
+        }
+        
+        bxdfwo = normalize(bxdfwo);
+        float3 t = bxdf * fabs(dot(diffgeo.n, bxdfwo)) * bxdfweight;
 
 		// Only continue if we have non-zero throughput & pdf
-		// TODO: apply Russian roulette
-		if (NON_BLACK(t) && bxdfpdf > 0.f)
+		if (NON_BLACK(t) && bxdfpdf > 0.f && !rr_stop)
 		{
 			// Update the throughput
 			Path_MulThroughput(path, t / bxdfpdf);
@@ -511,135 +514,6 @@ __kernel void ShadeSurface(
 			Path_Kill(path);
 			Ray_SetInactive(indirectrays + globalid);
 		}
-    }
-}
-
-
-
-///< Sample environemnt light and produce light samples and shadow rays into separate buffer
-__kernel void SampleOcclusion(
-                              // Ray batch
-                              __global ray const* rays,
-                              // Intersection data
-                              __global Intersection const* isects,
-                              // Hit indices
-                              __global int const* hitindices,
-                              // Pixel indices
-                              __global int const* pixelindices,
-                              // Number of rays
-                              __global int* numhits,
-                              // Vertices
-                              __global float3 const* vertices,
-                              // Normals
-                              __global float3 const* normals,
-                              // UVs
-                              __global float2 const* uvs,
-                              // Indices
-                              __global int const* indices,
-                              // Shapes
-                              __global Shape const* shapes,
-                              // Material IDs
-                              __global int const* materialids,
-                              // Materials
-                              __global Material const* materials,
-                              // Textures
-                              __global Texture const* textures,
-                              // Texture data
-                              __global char const* texturedata,
-                              // Environment texture index
-                              int envmapidx,
-                              // Envmap multiplier
-                              float envmapmul,
-                              // Emissives
-                              __global Emissive const* emissives,
-                              // Number of emissive objects
-                              int numemissives,
-                              // RNG seed
-                              int rngseed,
-                              // Shadow rays
-                              __global ray* shadowrays,
-                              // Light samples
-                              __global float3* lightsamples,
-                              // Path throughput
-                              __global float3* throughput,
-                              // Indirect rays
-                              __global ray* indirectrays
-                              )
-{
-    int globalid = get_global_id(0);
-
-    if (globalid < *numhits)
-    {
-        // Fetch index
-        int hitidx = hitindices[globalid];
-        int pixelidx = pixelindices[globalid];
-
-        // Fetch incoming ray
-        float3 wi = -normalize(rays[hitidx].d.xyz);
-        float time = rays[hitidx].d.w;
-
-        // Determine shape and polygon
-        int shapeid = isects[hitidx].shapeid - 1;
-        int primid = isects[hitidx].primid;
-        float2 uv = isects[hitidx].uvwt.xy;
-
-        // Extract shape data
-        Shape shape = shapes[shapeid];
-        float3 linearvelocity = shape.linearvelocity;
-        float4 angularvelocity = shape.angularvelocity;
-
-        // Fetch indices starting from startidx and offset by primid
-        int i0 = indices[shape.startidx + 3 * primid];
-        int i1 = indices[shape.startidx + 3 * primid + 1];
-        int i2 = indices[shape.startidx + 3 * primid + 2];
-
-        // Fetch normals
-        float3 n0 = normals[shape.startvtx + i0];
-        float3 n1 = normals[shape.startvtx + i1];
-        float3 n2 = normals[shape.startvtx + i2];
-
-        // Fetch positions
-        float3 v0 = vertices[shape.startvtx + i0];
-        float3 v1 = vertices[shape.startvtx + i1];
-        float3 v2 = vertices[shape.startvtx + i2];
-
-        // Fetch UVs
-        float2 uv0 = uvs[shape.startvtx + i0];
-        float2 uv1 = uvs[shape.startvtx + i1];
-        float2 uv2 = uvs[shape.startvtx + i2];
-
-        // Calculate barycentric position and normal
-        float3 n = normalize((1.f - uv.x - uv.y) * n0 + uv.x * n1 + uv.y * n2);
-        float3 v = (1.f - uv.x - uv.y) * v0 + uv.x * v1 + uv.y * v2;
-        //float2 t = (1.f - uv.x - uv.y) * uv0 + uv.x * uv1 + uv.y * uv2;
-
-        // Bail out if opposite facing normal
-        if (dot(wi, n) < 0.f)
-        {
-            //throughput[pixelidx] = 0;
-            //return;
-        }
-
-        n = transform_vector(n, shape.m0, shape.m1, shape.m2, shape.m3);
-
-        if (dot(wi, n) < 0.f)
-        {
-            n = -n;
-        }
-
-        // Prepare RNG for light sampling
-        Rng rng;
-        InitRng(rngseed + globalid * 157, &rng);
-
-        // Generate AO ray
-		float2 sample = UniformSampler_Sample2D(&rng);
-        float3 wo = Sample_MapToHemisphere(sample, n, 1.f);
-        shadowrays[globalid].d.xyz = wo;
-        shadowrays[globalid].o.xyz = v + 0.01f * wo;
-        shadowrays[globalid].o.w = envmapmul;
-        shadowrays[globalid].d.w = rays[hitidx].d.w;
-		shadowrays[globalid].extra.x = 0xFFFFFFFF;
-		shadowrays[globalid].extra.y = 0xFFFFFFFF;
     }
 }
 
