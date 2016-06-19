@@ -342,7 +342,7 @@ __kernel void ShadeSurface(
 		sample3.x = SobolSampler_Sample1D(sampler->seq, GetSampleDim(bounce, kIndirectU), sampler->s0, sobolmat);
 		sample3.y = SobolSampler_Sample1D(sampler->seq, GetSampleDim(bounce, kIndirectV), sampler->s0, sobolmat);
 
-		float sample4 = SobolSampler_Sample1D(sampler->seq, GetSampleDim(bounce, kMisSplit), sampler->s0, sobolmat);
+		float sample4 = SobolSampler_Sample1D(sampler->seq, GetSampleDim(bounce, kRR), sampler->s0, sobolmat);
 #else
 		// Prepare RNG
 		Rng rng;
