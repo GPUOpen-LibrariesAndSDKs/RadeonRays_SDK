@@ -182,6 +182,11 @@ namespace Baikal
 
             // Apply scattering
             EvaluateVolume(clwscene, pass);
+            
+            if (pass > 0)
+            {
+                ShadeBackground(clwscene, pass);
+            }
 
             // Convert intersections to predicates
             FilterPathStream(pass);
@@ -203,7 +208,8 @@ namespace Baikal
             ShadeSurface(clwscene, pass);
 
             // Shade missing rays
-            if (pass == 0) ShadeMiss(clwscene, pass);
+            if (pass == 0)
+                ShadeMiss(clwscene, pass);
 
             // Intersect shadow rays
             api->QueryOcclusion(m_render_data->fr_shadowrays, m_render_data->fr_hitcount, maxrays, m_render_data->fr_shadowhits, nullptr, nullptr);
@@ -538,5 +544,34 @@ namespace Baikal
     CLWKernel PtRenderer::GetAccumulateKernel()
     {
         return m_render_data->program.GetKernel("AccumulateData");
+    }
+    
+    // Shade background
+    void PtRenderer::ShadeBackground(ClwScene const& scene, int pass)
+    {
+        // Fetch kernel
+        CLWKernel misskernel = m_render_data->program.GetKernel("ShadeBackground");
+        
+        //int numrays = m_output->width() * m_output->height();
+        
+        // Set kernel parameters
+        int argc = 0;
+        misskernel.SetArg(argc++, m_render_data->rays[pass & 0x1]);
+        misskernel.SetArg(argc++, m_render_data->intersections);
+        misskernel.SetArg(argc++, m_render_data->pixelindices[(pass + 1) & 0x1]);
+        misskernel.SetArg(argc++, m_render_data->hitcount);
+        misskernel.SetArg(argc++, scene.textures);
+        misskernel.SetArg(argc++, scene.texturedata);
+        misskernel.SetArg(argc++, scene.envmapidx);
+        misskernel.SetArg(argc++, m_render_data->paths);
+        misskernel.SetArg(argc++, scene.volumes);
+        misskernel.SetArg(argc++, m_output->data());
+        
+        // Run shading kernel
+        {
+            int globalsize = m_output->width() * m_output->height();
+            m_context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, misskernel);
+        }
+        
     }
 }

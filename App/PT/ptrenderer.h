@@ -79,6 +79,8 @@ namespace Baikal
         void FilterPathStream(int pass);
         // Integrate volume
         void ShadeVolume(ClwScene const& scene, int pass);
+        // Shade background
+        void ShadeBackground(ClwScene const& scene, int pass);
 
     public:
         // CL context

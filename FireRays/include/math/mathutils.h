@@ -70,6 +70,11 @@ namespace FireRays
         return x < a ? a : (x > b ? b : x);
     }
 
+    inline unsigned clamp(unsigned x, unsigned a, unsigned b)
+    {
+        return x < a ? a : (x > b ? b : x);
+    }
+    
     /// Clamp each component of the vector to [a, b) range
     inline float3 clamp(float3 const& v, float3 const& v1, float3 const& v2)
     {

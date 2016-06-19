@@ -442,19 +442,21 @@ __kernel void ShadeSurface(
 
         // Apply MIS to account for both
 		float3 throughput = Path_GetThroughput(path);
-		if ((sample4 < 0.5f) && NON_BLACK(le) && lightpdf > 0.0f && !Bxdf_IsSingular(&diffgeo))
+        
+		if (NON_BLACK(le) && lightpdf > 0.0f && !Bxdf_IsSingular(&diffgeo))
         {
             wo = lightwo;
 			float ndotwo = fabs(dot(diffgeo.n, normalize(wo)));
-            radiance = le * Bxdf_Evaluate(&diffgeo, wi, normalize(wo), TEXTURE_ARGS) * throughput * ndotwo * lightweight / lightpdf / selection_pdf / 0.5f;
+            radiance = le * Bxdf_Evaluate(&diffgeo, wi, normalize(wo), TEXTURE_ARGS) * throughput * ndotwo * lightweight / lightpdf / selection_pdf;
         }
-		else if (bxdfpdf > 0.f)
+		
+        /*else if (bxdfpdf > 0.f)
         {
             wo = bxdfwo;
 			float ndotwo = fabs(dot(diffgeo.n, normalize(wo)));
             le = Light_GetLe(lightidx, &scene, &diffgeo, &wo, TEXTURE_ARGS);
             radiance = le * bxdf * throughput * ndotwo * bxdfweight / bxdfpdf / selection_pdf / 0.5f;
-        }
+        }*/
 
 		// If we have some light here generate a shadow ray
 		if (NON_BLACK(radiance))
@@ -486,9 +488,9 @@ __kernel void ShadeSurface(
 		}
 
         // Generate indirect ray
-		bxdf = Bxdf_Sample(&diffgeo, wi, TEXTURE_ARGS, sample3, &bxdfwo, &bxdfpdf);
+		// bxdf = Bxdf_Sample(&diffgeo, wi, TEXTURE_ARGS, sample3, &bxdfwo, &bxdfpdf);
 		bxdfwo = normalize(bxdfwo);
-		float3 t = bxdf * fabs(dot(diffgeo.n, bxdfwo));
+		float3 t = bxdf * fabs(dot(diffgeo.n, bxdfwo)) * bxdfweight;
 
 		// Only continue if we have non-zero throughput & pdf
 		// TODO: apply Russian roulette
@@ -826,6 +828,45 @@ __kernel void FilterPathStream(
 		}
     }
 }
+
+///< Illuminate missing rays
+__kernel void ShadeBackground(
+                        // Ray batch
+                        __global ray const* rays,
+                        // Intersection data
+                        __global Intersection const* isects,
+                        // Pixel indices
+                        __global int const* pixelindices,
+                        // Number of rays
+                        __global int const* numrays,
+                        // Textures
+                        TEXTURE_ARG_LIST,
+                        // Environment texture index
+                        int envmapidx,
+                        //
+                        __global Path const* paths,
+                        __global Volume const* volumes,
+                        // Output values
+                        __global float4* output
+                        )
+{
+    int globalid = get_global_id(0);
+    
+    if (globalid < *numrays)
+    {
+        int pixelidx = pixelindices[globalid];
+        
+        __global Path* path = paths + pixelidx;
+        
+        // In case of a miss
+        if (isects[globalid].shapeid < 0)
+        {
+            float3 t = Path_GetThroughput(path);
+            output[pixelidx].xyz += Texture_SampleEnvMap(rays[globalid].d.xyz, TEXTURE_ARGS_IDX(envmapidx)) * t;
+        }
+    }
+}
+
 
 // Copy data to interop texture if supported
 __kernel void AccumulateData(

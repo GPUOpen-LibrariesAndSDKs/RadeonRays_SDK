@@ -54,7 +54,7 @@ public:
     {
         DeviceType type;
         int devidx;
-        Baikal::AoRenderer* renderer;
+        Baikal::PtRenderer* renderer;
         CLWContext context;
         bool caninterop;
 

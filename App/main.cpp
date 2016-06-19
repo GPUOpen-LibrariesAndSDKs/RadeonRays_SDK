@@ -67,6 +67,7 @@ THE SOFTWARE.
 #include "shader_manager.h"
 #include "Scene/scene.h"
 #include "PT/ptrenderer.h"
+#include "AO/aorenderer.h"
 #include "CLW/clwoutput.h"
 #include "config_manager.h"
 

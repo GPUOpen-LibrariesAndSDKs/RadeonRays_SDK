@@ -24,6 +24,7 @@ THE SOFTWARE.
 #include "sh.h"
 #include "shproject.h"
 #include "OpenImageIO/imageio.h"
+#include "Light/Ibl.h"
 
 #include <algorithm>
 #include <iterator>
@@ -735,6 +736,11 @@ void Scene::SetEnvironment(std::string const& filename, std::string const& basep
 	{
 		LoadTexture(filename, texture, texturedata_);
 	}
+    
+    //
+    //Ibl* ibl = new Ibl((float3*)(texturedata_[texture.dataoffset].get()), texture.w, texture.h);
+    //ibl->Simulate("pdf.png");
+    
 
 	// Save index
 	envidx_ = (int)textures_.size();
