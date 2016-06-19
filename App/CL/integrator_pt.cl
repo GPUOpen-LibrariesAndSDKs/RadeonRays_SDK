@@ -733,7 +733,7 @@ __kernel void ShadeBackground(
         __global Path* path = paths + pixelidx;
         
         // In case of a miss
-        if (isects[globalid].shapeid < 0)
+        if (isects[globalid].shapeid < 0 && Path_IsAlive(path))
         {
             float3 t = Path_GetThroughput(path);
             output[pixelidx].xyz += Texture_SampleEnvMap(rays[globalid].d.xyz, TEXTURE_ARGS_IDX(envmapidx)) * t;
