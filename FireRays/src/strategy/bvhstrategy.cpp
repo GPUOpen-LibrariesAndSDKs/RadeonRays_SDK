@@ -35,6 +35,7 @@ THE SOFTWARE.
 #include "device.h"
 #include "executable.h"
 #include <algorithm>
+#include <iostream>
 
 // Preferred work group size for Radeon devices
 static int const kWorkGroupSize = 64;
@@ -131,6 +132,15 @@ namespace FireRays
 		// If something has been changed we need to rebuild BVH
 		if (!m_bvh || world.has_changed() || world.GetStateChange() != ShapeImpl::kStateChangeNone)
 		{
+            if (m_bvh)
+            {
+                m_device->DeleteBuffer(m_gpudata->bvh);
+                m_device->DeleteBuffer(m_gpudata->vertices);
+                m_device->DeleteBuffer(m_gpudata->faces);
+                m_device->DeleteBuffer(m_gpudata->shapes);
+                m_device->DeleteBuffer(m_gpudata->raycnt);
+            }
+            
 			int numshapes = (int)world.shapes_.size();
 			int numvertices = 0;
 			int numfaces = 0;

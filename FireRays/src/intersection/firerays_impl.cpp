@@ -112,6 +112,11 @@ namespace FireRays
     {
         world_.DetachShape(shape);
     }
+    
+    void IntersectionApiImpl::DetachAll()
+    {
+        world_.DetachAll();
+    }
 
 
     void IntersectionApiImpl::Commit()

@@ -65,8 +65,10 @@ THE SOFTWARE.
 #include "tiny_obj_loader.h"
 #include "perspective_camera.h"
 #include "shader_manager.h"
-#include "scene.h"
-#include "frrenderer.h"
+#include "Scene/scene.h"
+#include "PT/ptrenderer.h"
+#include "AO/aorenderer.h"
+#include "CLW/clwoutput.h"
 #include "config_manager.h"
 
 using namespace FireRays;
@@ -75,8 +77,8 @@ using namespace FireRays;
 char const* kHelpMessage =
 "App [-p path_to_models][-f model_name][-b][-r][-ns number_of_shadow_rays][-ao ao_radius][-w window_width][-h window_height][-nb number_of_indirect_bounces]";
 char const* g_path =
-"../Resources/bmw";
-char const* g_modelname = "i8.obj";
+"../Resources/CornellBox";
+char const* g_modelname = "orig.objm";
 
 std::unique_ptr<ShaderManager>	g_shader_manager;
 
@@ -109,19 +111,19 @@ using namespace tinyobj;
 
 struct OutputData
 {
-	FrOutput* output;
-	std::vector<float3> fdata;
-	std::vector<unsigned char> udata;
-	CLWBuffer<float3> copybuffer;
+    Baikal::ClwOutput* output;
+    std::vector<float3> fdata;
+    std::vector<unsigned char> udata;
+    CLWBuffer<float3> copybuffer;
 };
 
 struct ControlData
 {
-	std::atomic<int> clear;
-	std::atomic<int> stop;
-	std::atomic<int> newdata;
-	std::mutex datamutex;
-	int idx;
+    std::atomic<int> clear;
+    std::atomic<int> stop;
+    std::atomic<int> newdata;
+    std::mutex datamutex;
+    int idx;
 };
 
 std::vector<ConfigManager::Config> g_cfgs;
@@ -131,7 +133,7 @@ std::vector<std::thread> g_renderthreads;
 int g_primary = -1;
 
 
-std::unique_ptr<Scene> g_scene;
+std::unique_ptr<Baikal::Scene> g_scene;
 
 
 #define CAMERA_POSITION float3(0, 0.3f, 0.f)
@@ -260,39 +262,39 @@ void InitGraphics()
 
 void InitCl()
 {
-	ConfigManager::CreateConfigs(g_mode, g_interop, g_cfgs);
+    ConfigManager::CreateConfigs(g_mode, g_interop, g_cfgs);
 
-	std::cout << "Running on devices: \n";
+    std::cout << "Running on devices: \n";
 
-	for (int i = 0; i < g_cfgs.size(); ++i)
-	{
-		std::cout << i << ": " << g_cfgs[i].context.GetDevice(g_cfgs[i].devidx).GetName() << "\n";
-	}
+    for (int i = 0; i < g_cfgs.size(); ++i)
+    {
+        std::cout << i << ": " << g_cfgs[i].context.GetDevice(g_cfgs[i].devidx).GetName() << "\n";
+    }
 
-	g_interop = false;
+    g_interop = false;
 
-	g_outputs.resize(g_cfgs.size());
-	g_ctrl.reset(new ControlData[g_cfgs.size()]);
+    g_outputs.resize(g_cfgs.size());
+    g_ctrl.reset(new ControlData[g_cfgs.size()]);
 
-	for (int i = 0; i < g_cfgs.size(); ++i)
-	{
-		if (g_cfgs[i].type == ConfigManager::kPrimary)
-		{
-			g_primary = i;
+    for (int i = 0; i < g_cfgs.size(); ++i)
+    {
+        if (g_cfgs[i].type == ConfigManager::kPrimary)
+        {
+            g_primary = i;
 
-			if (g_cfgs[i].caninterop)
-			{
-				g_cl_interop_image = g_cfgs[i].context.CreateImage2DFromGLTexture(g_texture);
-				g_interop = true;
-			}
-		}
+            if (g_cfgs[i].caninterop)
+            {
+                g_cl_interop_image = g_cfgs[i].context.CreateImage2DFromGLTexture(g_texture);
+                g_interop = true;
+            }
+        }
 
-		g_ctrl[i].clear.store(1);
-		g_ctrl[i].stop.store(0);
-		g_ctrl[i].newdata.store(0);
-		g_ctrl[i].idx = i;
-	}
-   
+        g_ctrl[i].clear.store(1);
+        g_ctrl[i].stop.store(0);
+        g_ctrl[i].newdata.store(0);
+        g_ctrl[i].idx = i;
+    }
+
     if (g_interop)
     {
         std::cout << "OpenGL interop mode enabled\n";
@@ -313,39 +315,39 @@ void InitData()
     basepath += "/";
     std::string filename = basepath + g_modelname;
 
-    g_scene.reset(Scene::LoadFromObj(filename, basepath));
+    g_scene.reset(Baikal::Scene::LoadFromObj(filename, basepath));
 
     g_scene->camera_.reset(new PerspectiveCamera(
-        g_camera_pos
-        , g_camera_at
-        , CAMERA_UP
-        , CAMERA_ZCAP
-        , CAMERA_FOVY
-        , (float)g_window_width / g_window_height
-        ));
+    g_camera_pos
+    , g_camera_at
+    , CAMERA_UP
+    , CAMERA_ZCAP
+    , CAMERA_FOVY
+    , (float)g_window_width / g_window_height
+    ));
 
     g_scene->SetEnvironment("../Resources/Textures/studio015.hdr", "", g_envmapmul);
 
-#pragma omp parallel for
-	for (int i = 0; i < g_cfgs.size(); ++i)
-	{
-		g_cfgs[i].renderer->SetNumBounces(g_num_bounces);
-		g_cfgs[i].renderer->Preprocess(*g_scene);
+    #pragma omp parallel for
+    for (int i = 0; i < g_cfgs.size(); ++i)
+    {
+        //g_cfgs[i].renderer->SetNumBounces(g_num_bounces);
+        g_cfgs[i].renderer->Preprocess(*g_scene);
 
-		g_outputs[i].output = (FrOutput*)g_cfgs[i].renderer->CreateOutput(g_window_width, g_window_height);
-		
-		g_cfgs[i].renderer->SetOutput(g_outputs[i].output);
+        g_outputs[i].output = (Baikal::ClwOutput*)g_cfgs[i].renderer->CreateOutput(g_window_width, g_window_height);
 
-		g_outputs[i].fdata.resize(g_window_width * g_window_height);
-		g_outputs[i].udata.resize(g_window_width * g_window_height * 4);
+        g_cfgs[i].renderer->SetOutput(g_outputs[i].output);
 
-		if (g_cfgs[i].type == ConfigManager::kPrimary)
-		{
-			g_outputs[i].copybuffer = g_cfgs[i].context.CreateBuffer<float3>(g_window_width * g_window_height, CL_MEM_READ_WRITE);
-		}
-	}
+        g_outputs[i].fdata.resize(g_window_width * g_window_height);
+        g_outputs[i].udata.resize(g_window_width * g_window_height * 4);
 
-	g_cfgs[g_primary].renderer->Clear(float3(0, 0, 0), *g_outputs[g_primary].output);
+        if (g_cfgs[i].type == ConfigManager::kPrimary)
+        {
+            g_outputs[i].copybuffer = g_cfgs[i].context.CreateBuffer<float3>(g_window_width * g_window_height, CL_MEM_READ_WRITE);
+        }
+    }
+
+    g_cfgs[g_primary].renderer->Clear(float3(0, 0, 0), *g_outputs[g_primary].output);
 }
 
 void Reshape(GLint w, GLint h)
@@ -402,14 +404,14 @@ void OnKey(int key, int x, int y)
     case GLUT_KEY_F3:
         g_benchmark = true;
         break;
-	case GLUT_KEY_F4:
-		if (!g_interop)
-		{
-			std::ostringstream oss;
-			oss << "aov_color_" << g_frame_count << ".hdr";
-			SaveFrameBuffer(oss.str(), &g_outputs[g_primary].fdata[0]);
-			break;
-		}
+    case GLUT_KEY_F4:
+        if (!g_interop)
+        {
+            std::ostringstream oss;
+            oss << "aov_color_" << g_frame_count << ".hdr";
+            SaveFrameBuffer(oss.str(), &g_outputs[g_primary].fdata[0]);
+            break;
+        }
     default:
         break;
     }
@@ -431,31 +433,31 @@ void OnKeyUp(int key, int x, int y)
     case GLUT_KEY_RIGHT:
         g_is_right_pressed = false;
         break;
-	case GLUT_KEY_PAGE_DOWN:
-	{
-		++g_num_bounces;
-		for (int i = 0; i < g_cfgs.size(); ++i)
-		{
-			g_cfgs[i].renderer->SetNumBounces(g_num_bounces);
-			g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
-		}
-		g_samplecount = 0;
-		break;
-	}
-	case GLUT_KEY_PAGE_UP:
-	{
-		if (g_num_bounces > 1)
-		{
-			--g_num_bounces;
-			for (int i = 0; i < g_cfgs.size(); ++i)
-			{
-				g_cfgs[i].renderer->SetNumBounces(g_num_bounces);
-				g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
-			}
-			g_samplecount = 0;
-		}
-		break;
-	}
+    case GLUT_KEY_PAGE_DOWN:
+        {
+            ++g_num_bounces;
+            for (int i = 0; i < g_cfgs.size(); ++i)
+            {
+                //g_cfgs[i].renderer->SetNumBounces(g_num_bounces);
+                g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
+            }
+            g_samplecount = 0;
+            break;
+        }
+    case GLUT_KEY_PAGE_UP:
+        {
+            if (g_num_bounces > 1)
+            {
+                --g_num_bounces;
+                for (int i = 0; i < g_cfgs.size(); ++i)
+                {
+                    //g_cfgs[i].renderer->SetNumBounces(g_num_bounces);
+                    g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
+                }
+                g_samplecount = 0;
+            }
+            break;
+        }
     default:
         break;
     }
@@ -464,7 +466,7 @@ void OnKeyUp(int key, int x, int y)
 void Update()
 {
     static auto prevtime = std::chrono::high_resolution_clock::now();
-	static auto updatetime = std::chrono::high_resolution_clock::now();
+    static auto updatetime = std::chrono::high_resolution_clock::now();
 
     static int numbnc = 1;
     static int framesperbnc = 2;
@@ -476,13 +478,6 @@ void Update()
     float camrotx = 0.f;
     float camroty = 0.f;
 
-    /*if (g_benchmark)
-    {
-        g_renderer->RunBenchmark(*g_scene);
-        g_benchmark = false;
-        update = true;
-    }*/
-
     const float kMouseSensitivity = 0.001125f;
     float2 delta = g_mouse_delta * float2(kMouseSensitivity, kMouseSensitivity);
     camrotx = -delta.x;
@@ -490,7 +485,7 @@ void Update()
 
     if (std::abs(camroty) > 0.001f)
     {
-		g_scene->camera_->Tilt(camroty);
+        g_scene->camera_->Tilt(camroty);
         //g_scene->camera_->ArcballRotateVertically(float3(0, 0, 0), camroty);
         update = true;
     }
@@ -498,12 +493,12 @@ void Update()
     if (std::abs(camrotx) > 0.001f)
     {
 
-		g_scene->camera_->Rotate(camrotx);
-		//g_scene->camera_->ArcballRotateHorizontally(float3(0, 0, 0), camrotx);
+        g_scene->camera_->Rotate(camrotx);
+        //g_scene->camera_->ArcballRotateHorizontally(float3(0, 0, 0), camrotx);
         update = true;
     }
 
-	const float kMovementSpeed = g_cspeed;
+    const float kMovementSpeed = g_cspeed;
     if (g_is_fwd_pressed)
     {
         g_scene->camera_->MoveForward((float)dt.count() * kMovementSpeed);
@@ -523,191 +518,154 @@ void Update()
             g_samplecount = 0;
         }
 
-		for (int i = 0; i < g_cfgs.size(); ++i)
-		{
-			if (i == g_primary)
-				g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
-			else
-				g_ctrl[i].clear.store(true);
-		}
-
-        numbnc = 1;
-		for (int i = 0; i < g_cfgs.size(); ++i)
-		{
-			g_cfgs[i].renderer->SetNumBounces(numbnc);
-		}
-    }
-
-    if (g_num_samples == -1 || g_samplecount++ < g_num_samples)
-    {
-        if (g_ao_enabled)
+        for (int i = 0; i < g_cfgs.size(); ++i)
         {
-			//for (int i = 0; i < g_cfgs.size(); ++i)
-			//{
-				g_cfgs[g_primary].renderer->RenderAmbientOcclusion(*g_scene.get(), g_ao_radius);
-			//}
-        }
-        else
-        {
-			//for (int i = 0; i < g_cfgs.size(); ++i)
-			//{
-				g_cfgs[g_primary].renderer->Render(*g_scene.get());
-			//}
-        }
-
-		//if (std::chrono::duration_cast<std::chrono::seconds>(time - updatetime).count() > 1)
-		//{
-			for (int i = 0; i < g_cfgs.size(); ++i)
-			{
-				if (g_cfgs[i].type == ConfigManager::kPrimary)
-					continue;
-
-				int desired = 1;
-				if (std::atomic_compare_exchange_strong(&g_ctrl[i].newdata, &desired, 0))
-				{
-					{
-						//std::unique_lock<std::mutex> lock(g_ctrl[i].datamutex);
-						//std::cout << "Start updating acc buffer\n"; std::cout.flush();
-						g_cfgs[g_primary].context.WriteBuffer(0, g_outputs[g_primary].copybuffer, &g_outputs[i].fdata[0], g_window_width * g_window_height);
-						//std::cout << "Finished updating acc buffer\n"; std::cout.flush();
-					}
-
-					CLWKernel acckernel = g_cfgs[g_primary].renderer->GetAccumulateKernel();
-
-					int argc = 0;
-					acckernel.SetArg(argc++, g_outputs[g_primary].copybuffer);
-					acckernel.SetArg(argc++, g_window_width * g_window_width);
-					acckernel.SetArg(argc++, g_outputs[g_primary].output->data());
-
-					int globalsize = g_window_width * g_window_height;
-					g_cfgs[g_primary].context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, acckernel);
-				}
-			}
-
-			//updatetime = time;
-		//}
-
-        if (!g_interop)
-        {
-            g_outputs[g_primary].output->GetData(&g_outputs[g_primary].fdata[0]);
-
-            float gamma = 2.2f;
-            for (int i = 0; i < (int)g_outputs[g_primary].fdata.size(); ++i)
-            {
-				g_outputs[g_primary].udata[4 * i] = (unsigned char)clamp(clamp(pow(g_outputs[g_primary].fdata[i].x / g_outputs[g_primary].fdata[i].w, 1.f / gamma), 0.f, 1.f) * 255, 0, 255);
-				g_outputs[g_primary].udata[4 * i + 1] = (unsigned char)clamp(clamp(pow(g_outputs[g_primary].fdata[i].y / g_outputs[g_primary].fdata[i].w, 1.f / gamma), 0.f, 1.f) * 255, 0, 255);
-				g_outputs[g_primary].udata[4 * i + 2] = (unsigned char)clamp(clamp(pow(g_outputs[g_primary].fdata[i].z / g_outputs[g_primary].fdata[i].w, 1.f / gamma), 0.f, 1.f) * 255, 0, 255);
-				g_outputs[g_primary].udata[4 * i + 3] = 1;
-            }
-
-		
-            glActiveTexture(GL_TEXTURE0);
-
-            glBindTexture(GL_TEXTURE_2D, g_texture);
-
-            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, g_outputs[g_primary].output->width(), g_outputs[g_primary].output->height(), GL_RGBA, GL_UNSIGNED_BYTE, &g_outputs[g_primary].udata[0]);
-
-            glBindTexture(GL_TEXTURE_2D, 0);
-        }
-        else
-        {
-            std::vector<cl_mem> objects;
-            objects.push_back(g_cl_interop_image);
-			g_cfgs[g_primary].context.AcquireGLObjects(0, objects);
-
-            CLWKernel copykernel = g_cfgs[g_primary].renderer->GetCopyKernel();
-
-            int argc = 0;
-            copykernel.SetArg(argc++, g_outputs[g_primary].output->data());
-            copykernel.SetArg(argc++, g_outputs[g_primary].output->width());
-            copykernel.SetArg(argc++, g_outputs[g_primary].output->height());
-            copykernel.SetArg(argc++, 2.2f);
-            copykernel.SetArg(argc++, g_cl_interop_image);
-
-            int globalsize = g_outputs[g_primary].output->width() * g_outputs[g_primary].output->height();
-			g_cfgs[g_primary].context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, copykernel);
-
-			g_cfgs[g_primary].context.ReleaseGLObjects(0, objects);
-            g_cfgs[g_primary].context.Finish(0);
-        }
-
-        if (numbnc < g_num_bounces)
-        {
-            if (framesperbnc > 0)
-            {
-                framesperbnc--;
-            }
+            if (i == g_primary)
+                g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
             else
-            {
-                framesperbnc = 10;
-                numbnc++;
-            }
-
-			for (int i = 0; i < g_cfgs.size(); ++i)
-			{
-				g_cfgs[i].renderer->SetNumBounces(numbnc);
-			}
+                g_ctrl[i].clear.store(true);
         }
+
+        /*        numbnc = 1;
+        for (int i = 0; i < g_cfgs.size(); ++i)
+        {
+        g_cfgs[i].renderer->SetNumBounces(numbnc);
+    }*/
+}
+
+if (g_num_samples == -1 || g_samplecount++ < g_num_samples)
+{
+    g_cfgs[g_primary].renderer->Render(*g_scene.get());
+}
+
+//if (std::chrono::duration_cast<std::chrono::seconds>(time - updatetime).count() > 1)
+//{
+for (int i = 0; i < g_cfgs.size(); ++i)
+{
+    if (g_cfgs[i].type == ConfigManager::kPrimary)
+    continue;
+
+    int desired = 1;
+    if (std::atomic_compare_exchange_strong(&g_ctrl[i].newdata, &desired, 0))
+    {
+        {
+            //std::unique_lock<std::mutex> lock(g_ctrl[i].datamutex);
+            //std::cout << "Start updating acc buffer\n"; std::cout.flush();
+            g_cfgs[g_primary].context.WriteBuffer(0, g_outputs[g_primary].copybuffer, &g_outputs[i].fdata[0], g_window_width * g_window_height);
+            //std::cout << "Finished updating acc buffer\n"; std::cout.flush();
+        }
+
+        CLWKernel acckernel = g_cfgs[g_primary].renderer->GetAccumulateKernel();
+
+        int argc = 0;
+        acckernel.SetArg(argc++, g_outputs[g_primary].copybuffer);
+        acckernel.SetArg(argc++, g_window_width * g_window_width);
+        acckernel.SetArg(argc++, g_outputs[g_primary].output->data());
+
+        int globalsize = g_window_width * g_window_height;
+        g_cfgs[g_primary].context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, acckernel);
+    }
+}
+
+//updatetime = time;
+//}
+
+if (!g_interop)
+{
+    g_outputs[g_primary].output->GetData(&g_outputs[g_primary].fdata[0]);
+
+    float gamma = 2.2f;
+    for (int i = 0; i < (int)g_outputs[g_primary].fdata.size(); ++i)
+    {
+        g_outputs[g_primary].udata[4 * i] = (unsigned char)clamp(clamp(pow(g_outputs[g_primary].fdata[i].x / g_outputs[g_primary].fdata[i].w, 1.f / gamma), 0.f, 1.f) * 255, 0, 255);
+        g_outputs[g_primary].udata[4 * i + 1] = (unsigned char)clamp(clamp(pow(g_outputs[g_primary].fdata[i].y / g_outputs[g_primary].fdata[i].w, 1.f / gamma), 0.f, 1.f) * 255, 0, 255);
+        g_outputs[g_primary].udata[4 * i + 2] = (unsigned char)clamp(clamp(pow(g_outputs[g_primary].fdata[i].z / g_outputs[g_primary].fdata[i].w, 1.f / gamma), 0.f, 1.f) * 255, 0, 255);
+        g_outputs[g_primary].udata[4 * i + 3] = 1;
     }
 
-    glutPostRedisplay();
+
+    glActiveTexture(GL_TEXTURE0);
+
+    glBindTexture(GL_TEXTURE_2D, g_texture);
+
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, g_outputs[g_primary].output->width(), g_outputs[g_primary].output->height(), GL_RGBA, GL_UNSIGNED_BYTE, &g_outputs[g_primary].udata[0]);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+else
+{
+    std::vector<cl_mem> objects;
+    objects.push_back(g_cl_interop_image);
+    g_cfgs[g_primary].context.AcquireGLObjects(0, objects);
+
+    CLWKernel copykernel = g_cfgs[g_primary].renderer->GetCopyKernel();
+
+    int argc = 0;
+    copykernel.SetArg(argc++, g_outputs[g_primary].output->data());
+    copykernel.SetArg(argc++, g_outputs[g_primary].output->width());
+    copykernel.SetArg(argc++, g_outputs[g_primary].output->height());
+    copykernel.SetArg(argc++, 2.2f);
+    copykernel.SetArg(argc++, g_cl_interop_image);
+
+    int globalsize = g_outputs[g_primary].output->width() * g_outputs[g_primary].output->height();
+    g_cfgs[g_primary].context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, copykernel);
+
+    g_cfgs[g_primary].context.ReleaseGLObjects(0, objects);
+    g_cfgs[g_primary].context.Finish(0);
+}
+//}
+
+glutPostRedisplay();
 }
 
 void RenderThread(ControlData& cd)
 {
-	FrRenderer* renderer = g_cfgs[cd.idx].renderer;
-	FrOutput* output = g_outputs[cd.idx].output;
+    auto renderer = g_cfgs[cd.idx].renderer;
+    auto output = g_outputs[cd.idx].output;
 
-	auto updatetime = std::chrono::high_resolution_clock::now();
+    auto updatetime = std::chrono::high_resolution_clock::now();
 
-	while (!cd.stop.load())
-	{
-		int result = 1;
-		bool update = false;
+    while (!cd.stop.load())
+    {
+        int result = 1;
+        bool update = false;
 
-		if (std::atomic_compare_exchange_strong(&cd.clear, &result, 0))
-		{
-			renderer->Clear(float3(0, 0, 0), *output);
-			update = true;
-		}
+        if (std::atomic_compare_exchange_strong(&cd.clear, &result, 0))
+        {
+            renderer->Clear(float3(0, 0, 0), *output);
+            update = true;
+        }
 
-		if (g_ao_enabled)
-		{
-			renderer->RenderAmbientOcclusion(*g_scene.get(), g_ao_radius);
-		}
-		else
-		{
-			renderer->Render(*g_scene.get());
-		}
+        renderer->Render(*g_scene.get());
 
-		auto now = std::chrono::high_resolution_clock::now();
+        auto now = std::chrono::high_resolution_clock::now();
 
-		update = update || (std::chrono::duration_cast<std::chrono::seconds>(now - updatetime).count() > 1);
+        update = update || (std::chrono::duration_cast<std::chrono::seconds>(now - updatetime).count() > 1);
 
-		if (update)
-		{
-			g_outputs[cd.idx].output->GetData(&g_outputs[cd.idx].fdata[0]);
-			updatetime = now;
-			cd.newdata.store(1);
-		}
+        if (update)
+        {
+            g_outputs[cd.idx].output->GetData(&g_outputs[cd.idx].fdata[0]);
+            updatetime = now;
+            cd.newdata.store(1);
+        }
 
-		g_cfgs[cd.idx].context.Finish(0);
-	}
+        g_cfgs[cd.idx].context.Finish(0);
+    }
 }
 
 
 void StartRenderThreads()
 {
-	for (int i = 0; i < g_cfgs.size(); ++i)
-	{
-		if (i != g_primary)
-		{
-			g_renderthreads.push_back(std::thread(RenderThread, std::ref(g_ctrl[i])));
-			g_renderthreads.back().detach();
-		}
-	}
+    for (int i = 0; i < g_cfgs.size(); ++i)
+    {
+        if (i != g_primary)
+        {
+            g_renderthreads.push_back(std::thread(RenderThread, std::ref(g_ctrl[i])));
+            g_renderthreads.back().detach();
+        }
+    }
 
-	std::cout << g_cfgs.size() << " OpenCL submission threads started\n";
+    std::cout << g_cfgs.size() << " OpenCL submission threads started\n";
 }
 
 int main(int argc, char * argv[])
@@ -758,24 +716,24 @@ int main(int argc, char * argv[])
     char* interop = GetCmdOption(argv, argv + argc, "-interop");
     g_interop = interop ? (atoi(interop) > 0) : g_interop;
 
-	char* cfg = GetCmdOption(argv, argv + argc, "-config");
+    char* cfg = GetCmdOption(argv, argv + argc, "-config");
 
-	if (cfg)
-	{
-		if (strcmp(cfg, "cpu") == 0)
-			g_mode = ConfigManager::Mode::kUseSingleCpu;
-		else if (strcmp(cfg, "gpu") == 0)
-			g_mode = ConfigManager::Mode::kUseSingleGpu;
-		else if (strcmp(cfg, "mcpu") == 0)
-			g_mode = ConfigManager::Mode::kUseCpus;
-		else if (strcmp(cfg, "mgpu") == 0)
-			g_mode = ConfigManager::Mode::kUseGpus;
-		else if (strcmp(cfg, "all") == 0)
-			g_mode = ConfigManager::Mode::kUseAll;
-	}
+    if (cfg)
+    {
+        if (strcmp(cfg, "cpu") == 0)
+        g_mode = ConfigManager::Mode::kUseSingleCpu;
+        else if (strcmp(cfg, "gpu") == 0)
+        g_mode = ConfigManager::Mode::kUseSingleGpu;
+        else if (strcmp(cfg, "mcpu") == 0)
+        g_mode = ConfigManager::Mode::kUseCpus;
+        else if (strcmp(cfg, "mgpu") == 0)
+        g_mode = ConfigManager::Mode::kUseGpus;
+        else if (strcmp(cfg, "all") == 0)
+        g_mode = ConfigManager::Mode::kUseAll;
+    }
 
-	char* cspeed = GetCmdOption(argv, argv + argc, "-cspeed");
-	g_cspeed = cspeed ? atof(cspeed) : g_cspeed;
+    char* cspeed = GetCmdOption(argv, argv + argc, "-cspeed");
+    g_cspeed = cspeed ? atof(cspeed) : g_cspeed;
 
     if (aorays)
     {
@@ -794,14 +752,14 @@ int main(int argc, char * argv[])
     glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
     glutCreateWindow("App");
 
-#ifndef __APPLE__
+    #ifndef __APPLE__
     GLenum err = glewInit();
     if (err != GLEW_OK)
     {
         std::cout << "GLEW initialization failed\n";
         return -1;
     }
-#endif
+    #endif
 
     try
     {
@@ -819,17 +777,17 @@ int main(int argc, char * argv[])
         glutMotionFunc(OnMouseMove);
         glutIdleFunc(Update);
 
-		StartRenderThreads();
+        StartRenderThreads();
 
         glutMainLoop();
 
-		for (int i = 0; i < g_cfgs.size(); ++i)
-		{
-			if (i == g_primary)
-				continue;
+        for (int i = 0; i < g_cfgs.size(); ++i)
+        {
+            if (i == g_primary)
+            continue;
 
-			g_ctrl[i].stop.store(true);
-		}
+            g_ctrl[i].stop.store(true);
+        }
     }
     catch (std::runtime_error& err)
     {
@@ -863,28 +821,26 @@ void ShowHelpAndDie()
 void SaveImage(std::string const& name, float3 const* data, int w, int h)
 {
 
-	
+
 }
 
 void SaveFrameBuffer(std::string const& name, float3 const* data)
 {
-	OIIO_NAMESPACE_USING;
+    OIIO_NAMESPACE_USING;
 
-	std::vector<float3> tempbuf(g_window_width * g_window_height);
-	tempbuf.assign(data, data + g_window_width*g_window_height);
+    std::vector<float3> tempbuf(g_window_width * g_window_height);
+    tempbuf.assign(data, data + g_window_width*g_window_height);
 
-	ImageOutput* out = ImageOutput::create(name);
+    ImageOutput* out = ImageOutput::create(name);
 
-	if (!out)
-	{
-		throw std::runtime_error("Can't create image file on disk");
-	}
+    if (!out)
+    {
+        throw std::runtime_error("Can't create image file on disk");
+    }
 
-	ImageSpec spec(g_window_width, g_window_height, 3, TypeDesc::FLOAT);
+    ImageSpec spec(g_window_width, g_window_height, 3, TypeDesc::FLOAT);
 
-	out->open(name, spec);
-	out->write_image(TypeDesc::FLOAT, &tempbuf[0], sizeof(float3));
-	out->close();
+    out->open(name, spec);
+    out->write_image(TypeDesc::FLOAT, &tempbuf[0], sizeof(float3));
+    out->close();
 }
-
-

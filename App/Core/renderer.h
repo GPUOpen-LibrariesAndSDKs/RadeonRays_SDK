@@ -19,61 +19,39 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
-#ifndef RENDERER_H
-#define RENDERER_H
+#pragma once
 
-#include "math/mathutils.h"
+#include "math/float3.h"
+#include <cstdint>
 
-class Scene;
-
-class Output
+namespace Baikal
 {
-public:
-    Output(int w, int h)
-    : width_(w)
-    , height_(h)
+    class Output;
+    class Scene;
+
+    ///< Renderer interface
+    class Renderer
     {
-    }
-    
-    virtual ~Output(){}
-    virtual void GetData(FireRays::float3* data) const = 0;
-    
-    int width() const { return width_; }
-    int height() const { return height_; }
-    
-private:
-    int width_;
-    int height_;
-};
+    public:
+        Renderer() = default;
+        // Destructor
+        virtual ~Renderer() = default;
+        // Create output
+        virtual Output* CreateOutput(std::uint32_t w, std::uint32_t h) const = 0;
+        // Delete output
+        virtual void DeleteOutput(Output* output) const = 0;
+        // Clear output
+        virtual void Clear(FireRays::float3 const& val, Output& output) const = 0;
+        // Do necessary precalculation and initialization
+        // TODO: is it really necessary? can be async? progress reporting?
+        virtual void Preprocess(Scene const& scene) = 0;
+        // Render single iteration
+        virtual void Render(Scene const& scene) = 0;
+        // Set output
+        virtual void SetOutput(Output* output) = 0;
 
-///< Renderer interface
-class Renderer
-{
-public:
-    // Destructor
-    virtual ~Renderer(){}
-    
-    // Create output
-    virtual Output* CreateOutput(int w, int h) = 0;
-    
-    // Delete output
-    virtual void DeleteOutput(Output* output) = 0;
-    
-    // Clear output
-    virtual void Clear(FireRays::float3 const& val, Output& output) = 0;
-    
-    // Do necessary precalculation and initialization
-    virtual void Preprocess(Scene const& scene) = 0;
-    
-    // Render the scene into the output
-    virtual void Render(Scene const& scene) = 0;
-
-    // Render the scene occlusion into the output
-    virtual void RenderAmbientOcclusion(Scene const& scene, float radius) = 0;
-    
-    // Set output
-    virtual void SetOutput(Output* output) = 0;
-};
-
-
-#endif // RENDERER_H
+        // Does not make sense to copy it
+        Renderer(Renderer const&) = delete;
+        Renderer& operator = (Renderer const&) = delete;
+    };
+}

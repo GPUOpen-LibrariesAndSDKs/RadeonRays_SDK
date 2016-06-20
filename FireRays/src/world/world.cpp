@@ -43,6 +43,12 @@ namespace FireRays
             has_changed_ = true;
         }
     }
+    
+    void World::DetachAll()
+    {
+        shapes_.clear();
+        has_changed_ = true;
+    }
 
     int World::GetStateChange() const
     {

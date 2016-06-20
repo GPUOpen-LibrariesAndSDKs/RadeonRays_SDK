@@ -154,6 +154,14 @@ namespace FireRays
 		// Full rebuild in case number of objects changes
 		if (m_bvhs.size() == 0 || world.has_changed())
 		{
+            if (m_bvhs.size() != 0)
+            {
+                m_device->DeleteBuffer(m_gpudata->bvh);
+                m_device->DeleteBuffer(m_gpudata->vertices);
+                m_device->DeleteBuffer(m_gpudata->faces);
+                m_device->DeleteBuffer(m_gpudata->shapes);
+            }
+            
 			//std::cout << "Rebuild\n";
 			auto builder = world.options_.GetOption("bvh.builder");
 			bool enablesah = false;

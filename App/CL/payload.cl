@@ -193,7 +193,7 @@ typedef enum
 	kBrdfV = 5,
 	kIndirectU = 6,
 	kIndirectV = 7,
-	kMisSplit = 8,
+	kRR = 8,
     kVolume = 9,
 	kVolumeLight = 10,
 	kVolumeLightU = 11,

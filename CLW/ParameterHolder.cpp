@@ -29,34 +29,34 @@ void ParameterHolder::SetArg(cl_kernel kernel, unsigned int idx)
     switch (type_)
     {
         case ParameterHolder::kMem:
-            clSetKernelArg(kernel, idx, sizeof(cl_mem), &mem_);
+            status = clSetKernelArg(kernel, idx, sizeof(cl_mem), &mem_);
             break;
         case ParameterHolder::kInt:
-            clSetKernelArg(kernel, idx, sizeof(cl_int), &intValue_);
+            status = clSetKernelArg(kernel, idx, sizeof(cl_int), &intValue_);
             break;
             
         case ParameterHolder::kUInt:
-            clSetKernelArg(kernel, idx, sizeof(cl_uint), &uintValue_);
+            status = clSetKernelArg(kernel, idx, sizeof(cl_uint), &uintValue_);
             break;
             
         case ParameterHolder::kFloat:
-            clSetKernelArg(kernel, idx, sizeof(cl_float), &floatValue_);
+            status = clSetKernelArg(kernel, idx, sizeof(cl_float), &floatValue_);
             break;
         
         case ParameterHolder::kFloat2:
-            clSetKernelArg(kernel, idx, sizeof(cl_float2), &floatValue2_);
+            status = clSetKernelArg(kernel, idx, sizeof(cl_float2), &floatValue2_);
             break;
         
         case ParameterHolder::kFloat4:
-            clSetKernelArg(kernel, idx, sizeof(cl_float4), &floatValue4_);
+            status = clSetKernelArg(kernel, idx, sizeof(cl_float4), &floatValue4_);
             break;
         
         case ParameterHolder::kDouble:
-            clSetKernelArg(kernel, idx, sizeof(cl_double), &doubleValue_);
+            status = clSetKernelArg(kernel, idx, sizeof(cl_double), &doubleValue_);
             break;
             
         case ParameterHolder::kShmem:
-            clSetKernelArg(kernel, idx, uintValue_, nullptr);
+            status = clSetKernelArg(kernel, idx, uintValue_, nullptr);
             break;
             
         default:
