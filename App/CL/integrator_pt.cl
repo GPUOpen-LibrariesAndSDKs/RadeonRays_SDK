@@ -378,12 +378,12 @@ __kernel void ShadeSurface(
 
 
 		// Terminate if emissive
-		if (Bxdf_IsEmissive(&diffgeo))
+		if (Bxdf_IsEmissive(&diffgeo) )
 		{
-			if (bounce == 0)
+			if (ndotwi > 0.f)
 			{
 				// TODO: need to account for volume extinction just in case
-				output[pixelidx] += Path_GetThroughput(path) * Emissive_GetLe(&diffgeo, TEXTURE_ARGS);
+                output[pixelidx] += Path_GetThroughput(path) * Emissive_GetLe(&diffgeo, TEXTURE_ARGS) * ndotwi;
 			}
 
 			Path_Kill(path);
