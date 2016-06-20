@@ -4,6 +4,9 @@
 
 #include "OpenImageIO/imageio.h"
 
+#define _USE_MATH_DEFINES
+#include <math.h>
+
 namespace Baikal
 {
     void Ibl::CalculateDistributions()
@@ -12,9 +15,9 @@ namespace Baikal
         for (auto y = 0U; y < m_height; ++y)
             for (auto x = 0U; x < m_width; ++x)
             {
-                auto sin_theta = sinf(M_PI * float(y + .5f) / m_height);
+                auto sin_theta = sinf((float)M_PI * float(y + .5f) / m_height);
                 auto val = m_data[y * m_width + x];
-                m_img[y * m_width + x] = (0.7f * val.x + 0.5f * val.y + 0.05 * val.z) * sin_theta;
+                m_img[y * m_width + x] = (0.2126f * val.x + 0.7152f * val.y + 0.0722f * val.z) * sin_theta;
             }
         
         // Calculate U-direction CDFs
@@ -100,8 +103,8 @@ namespace Baikal
     
     void Ibl::DumpPdf(std::string const& filename)
     {
-        auto width = 2000;
-        auto height = 1000;
+        auto width = 2000U;
+        auto height = 1000U;
         
         
         std::vector<float> data(width * height);
@@ -139,8 +142,8 @@ namespace Baikal
     
     void Ibl::Simulate(std::string const& filename)
     {
-        auto width = 2000;
-        auto height = 1000;
+        auto width = 2000U;
+        auto height = 1000U;
         
         
         std::vector<float> data(width * height);
