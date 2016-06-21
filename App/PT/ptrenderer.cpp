@@ -182,8 +182,8 @@ namespace Baikal
 
             // Apply scattering
             EvaluateVolume(clwscene, pass);
-            
-            if (pass > 0)
+
+            if (pass > 0 && clwscene.envmapidx > -1)
             {
                 ShadeBackground(clwscene, pass);
             }

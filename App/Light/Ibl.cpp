@@ -4,6 +4,9 @@
 
 #include "OpenImageIO/imageio.h"
 
+#define _USE_MATH_DEFINES
+#include <math.h>
+
 namespace Baikal
 {
     void Ibl::CalculateDistributions()
