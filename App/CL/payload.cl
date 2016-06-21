@@ -89,7 +89,8 @@ typedef enum _PathFlags
 {
 	kNone = 0x0,
 	kKilled = 0x1,
-	kScattered = 0x2
+	kScattered = 0x2,
+    kSpecularBounce = 0x4
 } PathFlags;
 
 // Material description

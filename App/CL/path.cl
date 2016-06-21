@@ -38,6 +38,11 @@ bool Path_IsScattered(__global Path const* path)
 	return path->flags & kScattered;
 }
 
+bool Path_IsSpecular(__global Path const* path)
+{
+    return path->flags & kSpecularBounce;
+}
+
 bool Path_IsAlive(__global Path const* path)
 {
 	return ((path->flags & kKilled) == 0);
@@ -52,6 +57,18 @@ void Path_SetScatterFlag(__global Path* path)
 {
 	path->flags |= kScattered;
 }
+
+
+void Path_ClearSpecularFlag(__global Path* path)
+{
+    path->flags &= ~kSpecularBounce;
+}
+
+void Path_SetSpecularFlag(__global Path* path)
+{
+    path->flags |= kSpecularBounce;
+}
+
 
 void Path_Restart(__global Path* path)
 {
