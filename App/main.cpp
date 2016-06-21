@@ -77,8 +77,8 @@ using namespace FireRays;
 char const* kHelpMessage =
 "App [-p path_to_models][-f model_name][-b][-r][-ns number_of_shadow_rays][-ao ao_radius][-w window_width][-h window_height][-nb number_of_indirect_bounces]";
 char const* g_path =
-"../Resources/CornellBox";
-char const* g_modelname = "orig.objm";
+"../Resources/bmw";
+char const* g_modelname = "i8.obj";
 
 std::unique_ptr<ShaderManager>	g_shader_manager;
 
@@ -86,19 +86,19 @@ GLuint g_vertex_buffer;
 GLuint g_index_buffer;
 GLuint g_texture;
 
-int g_window_width = 640;
-int g_window_height = 480;
+int g_window_width = 800;
+int g_window_height = 600;
 int g_num_shadow_rays = 1;
 int g_num_ao_rays = 1;
 int g_ao_enabled = false;
 int g_progressive = false;
-int g_num_bounces = 10;
+int g_num_bounces = 2;
 int g_num_samples = -1;
 int g_samplecount = 0;
 float g_ao_radius = 1.f;
 float g_envmapmul = 1.f;
 float g_cspeed = 100.25f;
-float3 g_camera_pos = float3(0, 1, 3);
+float3 g_camera_pos = float3(0, 1, 2);
 float3 g_camera_at = float3(0, 1, 0);
 bool g_recording_enabled = false;
 int g_frame_count = 0;
