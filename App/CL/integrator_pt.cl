@@ -395,10 +395,11 @@ __kernel void ShadeSurface(
                     // In this case we hit after an application of MIS process at previous step.
                     // That means BRDF weight has been already applied. We simply need to pretend 
                     // we sampled this light with our BRDF based ray, evaluate PDF and intensity.
-                    float lpdf = envmapidx == -1 ? (1.f / numemissives) : (1.f / (numemissives + 1));
-                    float pdf = lpdf / (ndotwi * diffgeo.area);
-                    float3 le = Emissive_GetLe(&diffgeo, TEXTURE_ARGS) * ndotwi;
-                    output[pixelidx] += Path_GetThroughput(path) * le / pdf;
+                    float lpdf = (1.f / numemissives);
+                    float ld = isect.uvwt.w;
+                    float pdf = ld * ld / (ndotwi * diffgeo.area);
+                    float3 le = Emissive_GetLe(&diffgeo, TEXTURE_ARGS) * ndotwi / (ld * ld);
+                    output[pixelidx] += Path_GetThroughput(path) * le / pdf / lpdf;
                 }
             }
 
@@ -443,27 +444,35 @@ __kernel void ShadeSurface(
         float3 lightwo;
         float3 bxdfwo;
         float3 wo;
+        float bxdfweight = 1.f;
+        float lightweight = 1.f;
 
-        int lightidx = Scene_SampleLight(&scene, sample0.y, &selection_pdf);
+        int lightidx = numemissives > 0 ? Scene_SampleLight(&scene, sample0.y, &selection_pdf) : -1;
 
-        // Sample light
-        float3 le = Light_Sample(lightidx, &scene, &diffgeo, TEXTURE_ARGS, sample1, &lightwo, &lightpdf);
-        lightbxdfpdf = Bxdf_GetPdf(&diffgeo, wi, normalize(lightwo), TEXTURE_ARGS);
-        float lightweight = BalanceHeuristic(1, lightpdf, 1, lightbxdfpdf);
-
-        // Sample BxDF
-        float3 bxdf = Bxdf_Sample(&diffgeo, wi, TEXTURE_ARGS, sample2, &bxdfwo, &bxdfpdf);
-        bxdflightpdf = Light_GetPdf(lightidx, &scene, &diffgeo, bxdfwo, TEXTURE_ARGS);
-        float bxdfweight = BalanceHeuristic(1, bxdfpdf, 1, bxdflightpdf);
-
-        // Apply MIS to account for both
         float3 throughput = Path_GetThroughput(path);
 
-        if (NON_BLACK(le) && lightpdf > 0.0f && !Bxdf_IsSingular(&diffgeo))
+        // Sample bxdf
+        float3 bxdf = Bxdf_Sample(&diffgeo, wi, TEXTURE_ARGS, sample2, &bxdfwo, &bxdfpdf);
+
+        // If we have light to sample we can hopefully do mis
+        if (lightidx > -1)
         {
-            wo = lightwo;
-            float ndotwo = fabs(dot(diffgeo.n, normalize(wo)));
-            radiance = le * Bxdf_Evaluate(&diffgeo, wi, normalize(wo), TEXTURE_ARGS) * throughput * ndotwo * lightweight / lightpdf / selection_pdf;
+            // Sample light
+            float3 le = Light_Sample(lightidx, &scene, &diffgeo, TEXTURE_ARGS, sample1, &lightwo, &lightpdf);
+            lightbxdfpdf = Bxdf_GetPdf(&diffgeo, wi, normalize(lightwo), TEXTURE_ARGS);
+            lightweight = BalanceHeuristic(1, lightpdf, 1, lightbxdfpdf);
+
+            // Sample BxDF
+            bxdflightpdf = Light_GetPdf(lightidx, &scene, &diffgeo, bxdfwo, TEXTURE_ARGS);
+            bxdfweight = BalanceHeuristic(1, bxdfpdf, 1, bxdflightpdf);
+
+            // Apply MIS to account for both
+            if (NON_BLACK(le) && lightpdf > 0.0f && !Bxdf_IsSingular(&diffgeo))
+            {
+                wo = lightwo;
+                float ndotwo = fabs(dot(diffgeo.n, normalize(wo)));
+                radiance = le * Bxdf_Evaluate(&diffgeo, wi, normalize(wo), TEXTURE_ARGS) * throughput * ndotwo * lightweight / lightpdf / selection_pdf;
+            }
         }
 
         // If we have some light here generate a shadow ray
@@ -509,12 +518,18 @@ __kernel void ShadeSurface(
             Path_MulThroughput(path, 1.f / q);
         }
 
+        if (Bxdf_IsSingular(&diffgeo))
+        {
+            bxdfweight = 1.f;
+        }
+
         bxdfwo = normalize(bxdfwo);
         float3 t = bxdf * fabs(dot(diffgeo.n, bxdfwo)) * bxdfweight;
 
         // Only continue if we have non-zero throughput & pdf
         if (NON_BLACK(t) && bxdfpdf > 0.f && !rr_stop)
         {
+
             // Update the throughput
             Path_MulThroughput(path, t / bxdfpdf);
 
@@ -754,7 +769,7 @@ __kernel void ShadeBackground(
         if (isects[globalid].shapeid < 0 && Path_IsAlive(path))
         {
             float3 t = Path_GetThroughput(path);
-            output[pixelidx].xyz += envmapmul * Texture_SampleEnvMap(rays[globalid].d.xyz, TEXTURE_ARGS_IDX(envmapidx)) * t;
+            output[pixelidx].xyz += REASONABLE_RADIANCE(envmapmul * Texture_SampleEnvMap(rays[globalid].d.xyz, TEXTURE_ARGS_IDX(envmapidx)) * t);
         }
     }
 }
