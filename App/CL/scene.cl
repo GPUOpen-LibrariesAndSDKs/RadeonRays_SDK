@@ -74,8 +74,7 @@ void FillDifferentialGeometry(// Scene
     // Get material at shading point
     int matidx = scene->materialids[shape.startidx / 3 + primid];
     diffgeo->mat = scene->materials[matidx];
-    
-    
+
     /// From PBRT book
     /// Construct tangent basis on the fly and apply normal map
     float du1 = uv0.x - uv2.x;
@@ -107,6 +106,12 @@ void FillDifferentialGeometry(// Scene
 
     // Fix all to be orthogonal
     diffgeo->dpdv = normalize(cross(diffgeo->ng, diffgeo->dpdu));
+
+    float3 p0 = transform_point(v0, shape.m0, shape.m1, shape.m2, shape.m3);
+    float3 p1 = transform_point(v1, shape.m0, shape.m1, shape.m2, shape.m3);
+    float3 p2 = transform_point(v2, shape.m0, shape.m1, shape.m2, shape.m3);
+
+    diffgeo->area = 0.5f * length(cross(p2 - p0, p2 - p1));
     
     // Apply transform & linear motion blur
     //v += (linearvelocity * time);

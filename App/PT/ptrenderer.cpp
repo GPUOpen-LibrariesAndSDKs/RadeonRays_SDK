@@ -563,6 +563,8 @@ namespace Baikal
         misskernel.SetArg(argc++, scene.textures);
         misskernel.SetArg(argc++, scene.texturedata);
         misskernel.SetArg(argc++, scene.envmapidx);
+        misskernel.SetArg(argc++, scene.envmapmul);
+        misskernel.SetArg(argc++, scene.numemissive);
         misskernel.SetArg(argc++, m_render_data->paths);
         misskernel.SetArg(argc++, scene.volumes);
         misskernel.SetArg(argc++, m_output->data());

@@ -380,10 +380,26 @@ __kernel void ShadeSurface(
         // Terminate if emissive
         if (Bxdf_IsEmissive(&diffgeo))
         {
-            if ((bounce == 0 || Path_IsSpecular(path)) && ndotwi > 0.f)
+            if (ndotwi > 0.f)
             {
-                // TODO: need to account for volume extinction just in case
-                output[pixelidx] += Path_GetThroughput(path) * Emissive_GetLe(&diffgeo, TEXTURE_ARGS) * ndotwi;
+                // There can be two cases: first we hit after specular vertex or primary ray
+                // where MIS can't be applied. In this case we simply pass radiance as is
+                // because we were using BRDF based estimator at previous step
+                if (bounce == 0)
+                {
+                    // TODO: need to account for volume extinction just in case
+                    output[pixelidx] += Path_GetThroughput(path) * Emissive_GetLe(&diffgeo, TEXTURE_ARGS) * ndotwi;
+                }
+                else
+                {
+                    // In this case we hit after an application of MIS process at previous step.
+                    // That means BRDF weight has been already applied. We simply need to pretend 
+                    // we sampled this light with our BRDF based ray, evaluate PDF and intensity.
+                    float lpdf = envmapidx == -1 ? (1.f / numemissives) : (1.f / (numemissives + 1));
+                    float pdf = lpdf / (ndotwi * diffgeo.area);
+                    float3 le = Emissive_GetLe(&diffgeo, TEXTURE_ARGS) * ndotwi;
+                    output[pixelidx] += Path_GetThroughput(path) * le / pdf;
+                }
             }
 
             Path_Kill(path);
@@ -481,9 +497,9 @@ __kernel void ShadeSurface(
 
 
         // Apply Russian roulette
-        float q = min(0.5f,
+        float q = max(min(0.5f,
             // Luminance
-            0.2126f * throughput.x + 0.7152f * throughput.y + 0.0722f * throughput.z);
+            0.2126f * throughput.x + 0.7152f * throughput.y + 0.0722f * throughput.z), 0.01f);
         // Only if it is 3+ bounce
         bool rr_apply = bounce > 3;
         bool rr_stop = sample4 > q && rr_apply;
@@ -499,11 +515,6 @@ __kernel void ShadeSurface(
         // Only continue if we have non-zero throughput & pdf
         if (NON_BLACK(t) && bxdfpdf > 0.f && !rr_stop)
         {
-            if (Bxdf_IsSingular(&diffgeo))
-                Path_SetSpecularFlag(path);
-            else
-                Path_ClearSpecularFlag(path);
-
             // Update the throughput
             Path_MulThroughput(path, t / bxdfpdf);
 
@@ -722,7 +733,9 @@ __kernel void ShadeBackground(
     TEXTURE_ARG_LIST,
     // Environment texture index
     int envmapidx,
+    float envmapmul,
     //
+    int numemissives,
     __global Path const* paths,
     __global Volume const* volumes,
     // Output values
@@ -741,7 +754,7 @@ __kernel void ShadeBackground(
         if (isects[globalid].shapeid < 0 && Path_IsAlive(path))
         {
             float3 t = Path_GetThroughput(path);
-            output[pixelidx].xyz += Texture_SampleEnvMap(rays[globalid].d.xyz, TEXTURE_ARGS_IDX(envmapidx)) * t;
+            output[pixelidx].xyz += envmapmul * Texture_SampleEnvMap(rays[globalid].d.xyz, TEXTURE_ARGS_IDX(envmapidx)) * t;
         }
     }
 }
