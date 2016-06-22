@@ -146,6 +146,8 @@ static bool     g_is_left_pressed = false;
 static bool     g_is_right_pressed = false;
 static bool     g_is_fwd_pressed = false;
 static bool     g_is_back_pressed = false;
+static bool     g_is_home_pressed = false;
+static bool     g_is_end_pressed = false;
 static bool     g_is_mouse_tracking = false;
 static float2   g_mouse_pos = float2(0, 0);
 static float2   g_mouse_delta = float2(0, 0);
@@ -398,6 +400,13 @@ void OnKey(int key, int x, int y)
         break;
     case GLUT_KEY_RIGHT:
         g_is_right_pressed = true;
+		break;
+	case GLUT_KEY_HOME:
+		g_is_home_pressed = true;
+		break;
+	case GLUT_KEY_END:
+		g_is_end_pressed = true;
+		break;
     case GLUT_KEY_F1:
         g_mouse_delta = float2(0, 0);
         break;
@@ -433,6 +442,12 @@ void OnKeyUp(int key, int x, int y)
     case GLUT_KEY_RIGHT:
         g_is_right_pressed = false;
         break;
+	case GLUT_KEY_HOME:
+		g_is_home_pressed = false;
+		break;
+	case GLUT_KEY_END:
+		g_is_end_pressed = false;
+		break;
     case GLUT_KEY_PAGE_DOWN:
         {
             ++g_num_bounces;
@@ -510,6 +525,30 @@ void Update()
         g_scene->camera_->MoveForward(-(float)dt.count() * kMovementSpeed);
         update = true;
     }
+
+	if (g_is_right_pressed)
+	{
+		g_scene->camera_->MoveRight((float)dt.count() * kMovementSpeed);
+		update = true;
+	}
+
+	if (g_is_left_pressed)
+	{
+		g_scene->camera_->MoveRight(-(float)dt.count() * kMovementSpeed);
+		update = true;
+	}
+
+	if (g_is_home_pressed)
+	{
+		g_scene->camera_->MoveUp((float)dt.count() * kMovementSpeed);
+		update = true;
+	}
+
+	if (g_is_end_pressed)
+	{
+		g_scene->camera_->MoveUp(-(float)dt.count() * kMovementSpeed);
+		update = true;
+	}
 
     if (update)
     {
