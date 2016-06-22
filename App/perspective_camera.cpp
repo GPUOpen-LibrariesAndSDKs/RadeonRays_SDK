@@ -109,6 +109,18 @@ void PerspectiveCamera::MoveForward(float distance)
     p_ += distance * forward_;
 }
 
+// Move along camera X direction
+void PerspectiveCamera::MoveRight(float distance)
+{
+	p_ += distance * right_;
+}
+
+// Move along camera Y direction
+void PerspectiveCamera::MoveUp(float distance)
+{
+	p_ += distance * up_;
+}
+
 // Arcball rotation
 void PerspectiveCamera::ArcballRotateHorizontally(float3 c, float angle)
 {

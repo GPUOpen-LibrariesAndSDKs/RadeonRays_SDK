@@ -46,6 +46,10 @@ public:
     void Tilt(float angle);
     // Move along camera Z direction
     void MoveForward(float distance);
+	// Move along camera X direction
+	void MoveRight(float distance);
+	// Move along camera Y direction
+	void MoveUp(float distance);
 	//
 	void ArcballRotateHorizontally(FireRays::float3 c, float angle);
 	//
