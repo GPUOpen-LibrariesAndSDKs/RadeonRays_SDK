@@ -95,6 +95,7 @@ int g_progressive = false;
 int g_num_bounces = 2;
 int g_num_samples = -1;
 int g_samplecount = 0;
+int g_num_passes = 5;
 float g_ao_radius = 1.f;
 float g_envmapmul = 1.f;
 float g_cspeed = 100.25f;
@@ -264,7 +265,7 @@ void InitGraphics()
 
 void InitCl()
 {
-    ConfigManager::CreateConfigs(g_mode, g_interop, g_cfgs);
+    ConfigManager::CreateConfigs(g_mode, g_interop, g_cfgs, g_num_passes);
 
     std::cout << "Running on devices: \n";
 
@@ -473,6 +474,29 @@ void OnKeyUp(int key, int x, int y)
             }
             break;
         }
+	case GLUT_KEY_F7:
+	{
+		++g_num_passes;
+		for (int i = 0; i < g_cfgs.size(); ++i)
+		{
+			g_cfgs[i].renderer->SetNumPasses(g_num_passes);
+			// works fine without clear
+		}
+		break;
+	}
+	case GLUT_KEY_F6:
+	{
+		if (g_num_passes > 1)
+		{
+			--g_num_passes;
+			for (int i = 0; i < g_cfgs.size(); ++i)
+			{
+				g_cfgs[i].renderer->SetNumPasses(g_num_passes);
+				g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
+			}
+		}
+		break;
+	}
     default:
         break;
     }
@@ -751,6 +775,9 @@ int main(int argc, char * argv[])
 
     char* numsamples = GetCmdOption(argv, argv + argc, "-ns");
     g_num_samples = numsamples ? atoi(numsamples) : g_num_samples;
+
+	char* numpasses = GetCmdOption(argv, argv + argc, "-np");
+	g_num_passes = numpasses ? atoi(numpasses) : g_num_passes;
 
     char* interop = GetCmdOption(argv, argv + argc, "-interop");
     g_interop = interop ? (atoi(interop) > 0) : g_interop;

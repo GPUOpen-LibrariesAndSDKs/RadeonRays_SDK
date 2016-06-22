@@ -60,7 +60,7 @@ public:
 
     };
 
-    static void CreateConfigs(Mode mode, bool interop, std::vector<Config>& renderers);
+    static void CreateConfigs(Mode mode, bool interop, std::vector<Config>& renderers, int initial_num_passes);
 
 private:
 
