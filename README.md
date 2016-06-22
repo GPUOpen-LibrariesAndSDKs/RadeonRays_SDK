@@ -79,6 +79,10 @@ SDK repo location expected to be `../FireRays_SDK`. checkout & clean -dfx made b
 example of usage :
 `./Tools/premake/win/premake5.exe --submit`
 
+- `--use_embree` will enable using of embree. Embree device will be the last one in IntersectionApi device list.
+ example of usage :
+ `./Tools/premake/win/premake5.exe --use_embree vs2015`
+
 ## Run
 
 ## Run standalone app
