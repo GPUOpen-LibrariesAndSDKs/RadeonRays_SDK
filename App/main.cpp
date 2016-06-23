@@ -92,7 +92,7 @@ int g_num_shadow_rays = 1;
 int g_num_ao_rays = 1;
 int g_ao_enabled = false;
 int g_progressive = false;
-int g_num_bounces = 2;
+int g_num_bounces = 5;
 int g_num_samples = -1;
 int g_samplecount = 0;
 float g_ao_radius = 1.f;
@@ -264,7 +264,7 @@ void InitGraphics()
 
 void InitCl()
 {
-    ConfigManager::CreateConfigs(g_mode, g_interop, g_cfgs);
+    ConfigManager::CreateConfigs(g_mode, g_interop, g_cfgs, g_num_bounces);
 
     std::cout << "Running on devices: \n";
 
@@ -453,7 +453,7 @@ void OnKeyUp(int key, int x, int y)
             ++g_num_bounces;
             for (int i = 0; i < g_cfgs.size(); ++i)
             {
-                //g_cfgs[i].renderer->SetNumBounces(g_num_bounces);
+                g_cfgs[i].renderer->SetNumBounces(g_num_bounces);
                 g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
             }
             g_samplecount = 0;
@@ -466,7 +466,7 @@ void OnKeyUp(int key, int x, int y)
                 --g_num_bounces;
                 for (int i = 0; i < g_cfgs.size(); ++i)
                 {
-                    //g_cfgs[i].renderer->SetNumBounces(g_num_bounces);
+                    g_cfgs[i].renderer->SetNumBounces(g_num_bounces);
                     g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
                 }
                 g_samplecount = 0;

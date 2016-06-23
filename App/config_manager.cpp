@@ -40,7 +40,7 @@ THE SOFTWARE.
 #include <GL/glx.h>
 #endif
 
-void ConfigManager::CreateConfigs(Mode mode, bool interop, std::vector<Config>& configs)
+void ConfigManager::CreateConfigs(Mode mode, bool interop, std::vector<Config>& configs, int initial_num_bounces)
 {
 	std::vector<CLWPlatform> platforms;
 
@@ -157,6 +157,6 @@ void ConfigManager::CreateConfigs(Mode mode, bool interop, std::vector<Config>& 
 
 	for (int i = 0; i < configs.size(); ++i)
 	{
-		configs[i].renderer = new Baikal::PtRenderer(configs[i].context, configs[i].devidx);
+		configs[i].renderer = new Baikal::PtRenderer(configs[i].context, configs[i].devidx, initial_num_bounces);
 	}
 }
