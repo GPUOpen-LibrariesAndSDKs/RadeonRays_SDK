@@ -51,7 +51,7 @@ static void LoadTexture(std::string const& filename, Scene::Texture& texture, st
 {
 	OIIO_NAMESPACE_USING
 
-		ImageInput* input = ImageInput::open(filename);
+	ImageInput* input = ImageInput::open(filename);
 
 	if (!input)
 	{
@@ -286,6 +286,57 @@ Scene* Scene::LoadFromObj(std::string const& filename, std::string const& basepa
 			matmap[i] = scene->materials_.size() - 1;
 			continue;
 		}
+        else if (objmaterials[i].name == "Test_Material.003")
+        {
+            Material specular;
+            specular.kx = float3(1.f, 1.f, 1.f);
+            specular.ni = 1.33f;
+            specular.ns = 0.001f;
+            specular.type = kIdealReflect;
+            specular.fresnel = 1.f;
+
+            scene->materials_.push_back(specular);
+            scene->material_names_.push_back(objmaterials[i].name);
+
+            Material refract;
+            refract.kx = float3(1.f, 1.f, 1.f);
+            refract.ni = 1.33f;
+            refract.type = kIdealRefract;
+            refract.fresnel = 1.f;
+
+            scene->materials_.push_back(refract);
+            scene->material_names_.push_back(objmaterials[i].name);
+
+            Material diffuse;
+            diffuse.kx = float3(0.f, 0.7f, 0.f);
+            diffuse.ni = 1.33f;
+            diffuse.ns = 0.001f;
+            diffuse.type = kLambert;
+            diffuse.fresnel = 1.f;
+
+            scene->materials_.push_back(diffuse);
+            scene->material_names_.push_back(objmaterials[i].name);
+
+            Material layered;
+            layered.ni = 2.33f;
+            layered.type = kFresnelBlend;
+            layered.brdftopidx = scene->materials_.size() - 1;
+            layered.brdfbaseidx = scene->materials_.size() - 2;
+
+            scene->materials_.push_back(layered);
+            scene->material_names_.push_back(objmaterials[i].name);
+
+            layered.ni = 1.33f;
+            layered.type = kFresnelBlend;
+            layered.brdftopidx = scene->materials_.size() - 4;
+            layered.brdfbaseidx = scene->materials_.size() - 1;
+
+            scene->materials_.push_back(layered);
+            scene->material_names_.push_back(objmaterials[i].name);
+
+            matmap[i] = scene->materials_.size() - 1;
+            continue;
+        }
 		else if (objmaterials[i].name == "red_glass")
 		{
 

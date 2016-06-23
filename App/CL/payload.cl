@@ -21,7 +21,7 @@ THE SOFTWARE.
 ********************************************************************/
 #ifndef PAYLOAD_CL
 #define PAYLOAD_CL
-#define SOBOL
+//#define SOBOL
 #define MULTISCATTER
 
 /// Ray descriptor
@@ -200,12 +200,13 @@ typedef enum
     kVolumeLight = 10,
     kVolumeLightU = 11,
     kVolumeLightV = 12,
+    kMaterial = 13,
 #ifdef MULTISCATTER
-    kVolumeIndirectU = 13,
-    kVolumeIndirectV = 14,
-    kNumPerBounce = 15
+    kVolumeIndirectU = 24,
+    kVolumeIndirectV = 25,
+    kNumPerBounce = 26,
 #else
-    kNumPerBounce = 13
+    kNumPerBounce = 24
 #endif
 }  SampleDim;
 
