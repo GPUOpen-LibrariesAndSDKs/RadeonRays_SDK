@@ -102,13 +102,14 @@ namespace Baikal
     };
 
     // Constructor
-    PtRenderer::PtRenderer(CLWContext context, int devidx)
+    PtRenderer::PtRenderer(CLWContext context, int devidx, int num_bounces)
     : m_context(context)
     , m_output(nullptr)
     , m_render_data(new RenderData)
     , m_vidmemws(0)
     , m_resetsampler(true)
     , m_scene_tracker(context, devidx)
+	, m_num_bounces(num_bounces)
     {
         
         // Create parallel primitives
@@ -144,6 +145,11 @@ namespace Baikal
         m_resetsampler = true;
     }
 
+	void PtRenderer::SetNumBounces(int num_bounces)
+	{
+		m_num_bounces = num_bounces;
+	}
+
     void PtRenderer::Preprocess(Scene const& scene)
     {
     }
@@ -169,7 +175,7 @@ namespace Baikal
         m_context.FillBuffer(0, m_render_data->hitcount, maxrays, 1);
 
         // Initialize first pass
-        for (int pass = 0; pass < 5; ++pass)
+        for (int pass = 0; pass < m_num_bounces; ++pass)
         {
             // Clear ray hits buffer
             m_context.FillBuffer(0, m_render_data->hits, 0, m_render_data->hits.GetElementCount());
