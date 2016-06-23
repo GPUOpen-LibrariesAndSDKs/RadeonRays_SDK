@@ -28,132 +28,171 @@ THE SOFTWARE.
 #include <../App/CL/payload.cl>
 #include <../App/CL/bxdf.cl>
 
-void Material_Select(// Scene data
-                     Scene const* scene,
-                     // Incoming direction
-                     float3 wi,
-                     // Texture args
-                     TEXTURE_ARG_LIST,
-                     // Sample
-                     float sample,
-                     // Geometry
-                     DifferentialGeometry* dg
-                   )
+void Material_Select(
+    // Scene data
+    Scene const* scene,
+    // Incoming direction
+    float3 wi,
+    // Texture args
+    TEXTURE_ARG_LIST,
+
+#ifdef SOBOL
+    // Sampler state
+    __global SobolSampler* sampler,
+    // Sobol matrices
+    __global uint const* sobolmat,
+    // Current bounce
+    int bounce,
+#else
+    Rng* rng,
+#endif
+
+    // Geometry
+    DifferentialGeometry* dg
+)
 {
-	switch(dg->mat.type)
+    // Check material type
+    int type = dg->mat.type;
+
+    // If material is regular BxDF we do not have to sample it
+    if (type != kFresnelBlend && type != kMix)
     {
-		case kFresnelBlend:
-		{
-			float etai = 1.f;
-			float etat = dg->mat.ni;
-			float cosi = dot(dg->n, wi);
+        // If fresnel > 0 here we need to calculate Frensle factor (remove this workaround)
+        if (dg->mat.fresnel > 0.f)
+        {
+            float etai = 1.f;
+            float etat = dg->mat.ni;
+            float cosi = dot(dg->n, wi);
 
-			bool entering = cosi > 0.f;
+            bool entering = cosi > 0.f;
 
-			// Revert normal and eta if needed
-			if (!entering)
-			{
-				float tmp = etai;
-				etai = etat;
-				etat = tmp;
-				cosi = -cosi;
-			}
+            // Revert normal and eta if needed
+            if (!entering)
+            {
+                float tmp = etai;
+                etai = etat;
+                etat = tmp;
+                cosi = -cosi;
+            }
 
-			float eta = etai / etat;
-			float sini2 = 1.f - cosi * cosi;
-			float sint2 = eta * eta * sini2;
+            float eta = etai / etat;
+            float sini2 = 1.f - cosi * cosi;
+            float sint2 = eta * eta * sini2;
 
-			int idx = 0;
+            if (sint2 >= 1.f)
+            {
+                dg->mat.fresnel = 1.f;
+            }
+            else
+            {
+                float cost = native_sqrt(max(0.f, 1.f - sint2));
+                dg->mat.fresnel = FresnelDielectric(etai, etat, cosi, cost);
+            }
+        }
+        else
+        {
+            // Otherwise set multiplier to 1
+            dg->mat.fresnel = 1.f;
+        }
+    }
+    // Here we deal with combined material and we have to sample
+    else
+    {
+        // Prefetch current material
+        Material mat = dg->mat;
+        int iter = 0;
 
-			if (sint2 >= 1.f)
-			{
-				// Sample top
-				idx = dg->mat.brdftopidx;
-				//
-				dg->mat = scene->materials[idx];
-				dg->mat.fresnel = 1.f;
-				break;
-			}
+        // Might need several passes of sampling
+        while (mat.type == kFresnelBlend || mat.type == kMix)
+        {
+            if (mat.type == kFresnelBlend)
+            {
+                float etai = 1.f;
+                float etat = mat.ni;
+                float cosi = dot(dg->n, wi);
 
-			float cost = native_sqrt(max(0.f, 1.f - sint2));
-			float F = FresnelDielectric(etai, etat, cosi, cost);
+                bool entering = cosi > 0.f;
 
-			if (sample < F)
-			{
-				// Sample top
-				idx = dg->mat.brdftopidx;
-				//
-				dg->mat = scene->materials[idx];
-				dg->mat.fresnel = 1.f;
-			}
-			else
-			{
-				// Sample base
-				idx = dg->mat.brdfbaseidx;
-				//
-				dg->mat = scene->materials[idx];
-				dg->mat.fresnel = 1.f;
-			}
-		}
-		break;
-		case kMix:
-		{
-			if (sample < dg->mat.ns)
-			{
-				// Sample top
-				int idx = dg->mat.brdftopidx;
-				//
-				dg->mat = scene->materials[idx];
-				dg->mat.fresnel = 1.f;
-			}
-			else
-			{
-				// Sample base
-				int idx = dg->mat.brdfbaseidx;
-				//
-				dg->mat = scene->materials[idx];
-				dg->mat.fresnel = 1.f;
-			}
-			break; 
-		}
-		default:
-		{
-			if (dg->mat.fresnel > 0.f)
-			{
-				float etai = 1.f;
-				float etat = dg->mat.ni;
-				float cosi = dot(dg->n, wi);
+                // Revert normal and eta if needed
+                if (!entering)
+                {
+                    float tmp = etai;
+                    etai = etat;
+                    etat = tmp;
+                    cosi = -cosi;
+                }
 
-				bool entering = cosi > 0.f;
+                float eta = etai / etat;
+                float sini2 = 1.f - cosi * cosi;
+                float sint2 = eta * eta * sini2;
 
-				// Revert normal and eta if needed
-				if (!entering)
-				{
-					float tmp = etai;
-					etai = etat;
-					etat = tmp;
-					cosi = -cosi;
-				}
+                int idx = 0;
 
-				float eta = etai / etat;
-				float sini2 = 1.f - cosi * cosi;
-				float sint2 = eta * eta * sini2;
+                if (sint2 >= 1.f)
+                {
+                    // Sample top
+                    idx = mat.brdftopidx;
+                    //
+                    mat = scene->materials[idx];
+                    mat.fresnel = 1.f;
+                    continue;
+                }
 
-				if (sint2 >= 1.f)
-				{
-					dg->mat.fresnel = 1.f;
-					break;
-				}
+                float cost = native_sqrt(max(0.f, 1.f - sint2));
+                float F = FresnelDielectric(etai, etat, cosi, cost);
 
-				float cost = native_sqrt(max(0.f, 1.f - sint2));
-				dg->mat.fresnel = FresnelDielectric(etai, etat, cosi, cost);
-			}
-			else
-			{
-				dg->mat.fresnel = 1.f;
-			}
-		}
-		break;
+#ifdef SOBOL
+                float sample = SobolSampler_Sample1D(sampler->seq, GetSampleDim(bounce, kMaterial + iter), sampler->s0, sobolmat);
+#else
+                float sample = UniformSampler_Sample2D(rng).x;
+#endif
+
+                if (sample < F)
+                {
+                    // Sample top
+                    idx = mat.brdftopidx;
+                    //
+                    mat = scene->materials[idx];
+                    mat.fresnel = 1.f;
+                }
+                else
+                {
+                    // Sample base
+                    idx = mat.brdfbaseidx;
+                    //
+                    mat = scene->materials[idx];
+                    mat.fresnel = 1.f;
+                }
+            }
+            else
+            {
+
+#ifdef SOBOL
+                float sample = SobolSampler_Sample1D(sampler->seq, GetSampleDim(bounce, kMaterial + iter), sampler->s0, sobolmat);
+#else
+                float sample = UniformSampler_Sample2D(rng).x;
+#endif
+
+                if (sample < mat.ns)
+                {
+                    // Sample top
+                    int idx = mat.brdftopidx;
+                    //
+                    mat = scene->materials[idx];
+                    mat.fresnel = 1.f;
+                }
+                else
+                {
+                    // Sample base
+                    int idx = mat.brdfbaseidx;
+                    //
+                    mat = scene->materials[idx];
+                    mat.fresnel = 1.f;
+                }
+            }
+        }
+
+        dg->mat = mat;
     }
 }
 

@@ -373,8 +373,15 @@ __kernel void ShadeSurface(
         }
 
         // Select BxDF
-        Material_Select(&scene, wi, TEXTURE_ARGS, sample0.x, &diffgeo);
-        //ApplyBumpMap(&diffgeo, TEXTURE_ARGS);
+        Material_Select(
+            &scene, wi, TEXTURE_ARGS,
+#ifdef SOBOL
+            sampler, sobolmat, bounce,
+#else
+            &rng,
+#endif
+            &diffgeo
+        );
 
 
         // Terminate if emissive
