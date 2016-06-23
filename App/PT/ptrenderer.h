@@ -38,7 +38,7 @@ namespace Baikal
     {
     public:
         // Constructor
-        PtRenderer(CLWContext context, int devidx, int num_passes);
+        PtRenderer(CLWContext context, int devidx, int num_bounces);
         // Destructor
         ~PtRenderer();
 
@@ -55,8 +55,8 @@ namespace Baikal
         void Render(Scene const& scene) override;
         // Set output
         void SetOutput(Output* output) override;
-		// Set number of passes
-		void SetNumPasses(int num_passes);
+		// Set number of light bounces
+		void SetNumBounces(int num_bounces);
         // Interop function
         CLWKernel GetCopyKernel();
         // Add function
@@ -109,7 +109,7 @@ namespace Baikal
         size_t m_vidmemws;
 
 	private:
-		int m_num_passes;
+		int m_num_bounces;
     };
 
 }
