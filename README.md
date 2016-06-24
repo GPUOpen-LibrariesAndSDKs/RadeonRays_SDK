@@ -59,7 +59,7 @@ install complimentary libraries:
 
 install build dependencies:
 
-`sudo apt-get install libopenimageio-dev libglew-dev freeglut3-dev´
+`sudo apt-get install libopenimageio-dev libglew-dev freeglut3-dev`
 
 Also make sure you have the `opencl-dev` headers installed. Then create the Makefile:
 
