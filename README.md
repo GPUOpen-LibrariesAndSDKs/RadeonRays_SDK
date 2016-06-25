@@ -57,11 +57,11 @@ install complimentary libraries:
 
 `sudo apt-get install g++`
 
-install OpenImageIO:
+install build dependencies:
 
-`sudo apt-get install libopenimageio-dev`
+`sudo apt-get install libopenimageio-dev libglew-dev freeglut3-dev`
 
-Create Makefile:
+Also make sure you have the `opencl-dev` headers installed. Then create the Makefile:
 
 `./Tools/premake/linux64/premake5 gmake`
 
