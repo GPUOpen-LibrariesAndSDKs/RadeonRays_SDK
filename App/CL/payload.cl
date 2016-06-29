@@ -21,7 +21,7 @@ THE SOFTWARE.
 ********************************************************************/
 #ifndef PAYLOAD_CL
 #define PAYLOAD_CL
-//#define SOBOL
+#define SOBOL
 #define MULTISCATTER
 
 /// Ray descriptor
