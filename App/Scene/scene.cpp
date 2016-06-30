@@ -286,6 +286,21 @@ Scene* Scene::LoadFromObj(std::string const& filename, std::string const& basepa
 			matmap[i] = scene->materials_.size() - 1;
 			continue;
 		}
+        else if (objmaterials[i].name == "tallBox")
+        {
+
+            Material refract;
+            refract.kx = float3(1.f, 1.f, 1.f);
+            refract.ns = 0.05f;
+            refract.ni = 1.33f;
+            refract.type = kMicrofacetRefractionGGX;
+            refract.fresnel = 0.f;
+
+            scene->materials_.push_back(refract);
+            scene->material_names_.push_back(objmaterials[i].name);
+            matmap[i] = scene->materials_.size() - 1;
+            continue;
+        }
         else if (objmaterials[i].name == "Test_Material.003")
         {
             Material specular;

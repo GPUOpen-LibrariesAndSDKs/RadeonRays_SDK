@@ -41,7 +41,8 @@ enum Bxdf
 	kMix,
 	kEmissive,
 	kPassthrough,
-	kTranslucent
+	kTranslucent,
+    kMicrofacetRefractionGGX
 };
 
 enum BxdfFlags
@@ -272,7 +273,7 @@ float3 MicrofacetBeckmann_Sample(
 // Distribution fucntion
 float MicrofacetDistribution_GGX_D(float roughness, float3 m, float3 n)
 {
-    float ndotm = dot(m, n);
+    float ndotm = fabs(dot(m, n));
     float ndotm2 = ndotm * ndotm;
     float sinmn = native_sqrt(1.f - clamp(ndotm * ndotm, 0.f, 1.f));
     float tanmn = sinmn / ndotm;
@@ -283,6 +284,8 @@ float MicrofacetDistribution_GGX_D(float roughness, float3 m, float3 n)
 
 // PDF of the given direction
 float MicrofacetDistribution_GGX_GetPdf(
+    // Halfway vector
+    float3 m,
     // Rougness
     float roughness,
     // Geometry
@@ -295,16 +298,14 @@ float MicrofacetDistribution_GGX_GetPdf(
     TEXTURE_ARG_LIST
     )
 {
-    // We need to convert pdf(wh)->pdf(wo)
-    float3 m = normalize(wi + wo);
-    //
-    float mpdf = MicrofacetDistribution_GGX_D(roughness, m, dg->n) * dot(dg->n, m);
+    float mpdf = MicrofacetDistribution_GGX_D(roughness, m, dg->n) * fabs(dot(dg->n, m));
     // See Humphreys and Pharr for derivation
-    return mpdf / (4.f * dot(wo, m));
+    return mpdf / (4.f * fabs(dot(wo, m)));
 }
 
 // Sample the distribution
-void MicrofacetDistribution_GGX_Sample(// Roughness
+void MicrofacetDistribution_GGX_Sample(
+    // Roughness
     float roughness,
     // Geometry
     DifferentialGeometry const* dg,
@@ -338,20 +339,17 @@ void MicrofacetDistribution_GGX_Sample(// Roughness
     float3 wh = normalize(dg->dpdu * sintheta * cosphi + dg->dpdv * sintheta * sinphi + dg->n * costheta);
 
     // Reflect wi around wh
-    *wo = -wi + 2.f*dot(wi, wh) * wh;
+    *wo = -wi + 2.f*fabs(dot(wi, wh)) * wh;
 
     // Calc pdf
-    *pdf = MicrofacetDistribution_GGX_GetPdf(roughness, dg, wi, *wo, TEXTURE_ARGS);
+    *pdf = MicrofacetDistribution_GGX_GetPdf(wh, roughness, dg, wi, *wo, TEXTURE_ARGS);
 }
 
 //
 float MicrofacetDistribution_GGX_G1(float roughness, float3 v, float3 m, float3 n)
 {
-    float ndotv = dot(n, v);
-    float mdotv = dot(m, v);
-
-    if (ndotv * mdotv <= 0.f)
-        return 0.f;
+    float ndotv = fabs(dot(n, v));
+    float mdotv = fabs(dot(m, v));
 
     float sinnv = native_sqrt(1.f - clamp(ndotv * ndotv, 0.f, 1.f));
     float tannv = sinnv / ndotv;
@@ -377,7 +375,6 @@ float3 MicrofacetGGX_Evaluate(
     )
 {
     const float3 ks = Texture_GetValue3f(dg->mat.kx.xyz, dg->uv, TEXTURE_ARGS_IDX(dg->mat.kxmapidx));
-    const float eta = dg->mat.ni;
     const float roughness = Texture_GetValue1f(dg->mat.ns, dg->uv, TEXTURE_ARGS_IDX(dg->mat.nsmapidx));
 
     // Incident and reflected zenith angles
@@ -409,7 +406,10 @@ float MicrofacetGGX_GetPdf(
     )
 {
     const float roughness = Texture_GetValue1f(dg->mat.ns, dg->uv, TEXTURE_ARGS_IDX(dg->mat.nsmapidx));
-    return MicrofacetDistribution_GGX_GetPdf(roughness, dg, wi, wo, TEXTURE_ARGS);
+
+    float3 wh = normalize(wo + wi);
+
+    return MicrofacetDistribution_GGX_GetPdf(wh, roughness, dg, wi, wo, TEXTURE_ARGS);
 }
 
 float3 MicrofacetGGX_Sample(
@@ -892,6 +892,74 @@ float3 IdealRefract_Sample(
 	return cost > 0.0001f ? F * (((etai * etai) / (etat * etat)) * ks / cost) : 0.f;
 }
 
+float3 MicrofacetRefractionGGX_Sample(
+    // Geometry
+    DifferentialGeometry const* dg,
+    // Incoming direction
+    float3 wi,
+    // Texture args
+    TEXTURE_ARG_LIST,
+    // Sample
+    float2 sample,
+    // Outgoing  direction
+    float3* wo,
+    // PDF at wo
+    float* pdf
+    )
+{
+    const float3 ks = Texture_GetValue3f(dg->mat.kx.xyz, dg->uv, TEXTURE_ARGS_IDX(dg->mat.kxmapidx));
+    const float roughness = Texture_GetValue1f(dg->mat.ns, dg->uv, TEXTURE_ARGS_IDX(dg->mat.nsmapidx));
+
+    // Incident and reflected zenith angles
+    float costhetao = dot(dg->n, wo);
+    float costhetai = dot(dg->n, wi);
+
+    if (costhetai == 0.f || costhetao == 0.f)
+        return 0.f;
+
+    // Calc halfway vector
+    // float3 wh = normalize(etai * wi + etat * wo);
+
+    // float F = dg->mat.fresnel;
+
+    // F(eta) * D * G * ks / (4 * cosa * cosi)
+    // return F * ks * MicrofacetDistribution_GGX_G(roughness, wi, wo, wh, dg->n) * MicrofacetDistribution_GGX_D(roughness, wh, dg->n) / (4.f * costhetao * costhetai);
+
+    *pdf = 0.f;
+    return 0.f;
+}
+
+
+float3 MicrofacetRefractionGGX_Evaluate(
+    // Geometry
+    DifferentialGeometry const* dg,
+    // Incoming direction
+    float3 wi,
+    // Outgoing direction
+    float3 wo,
+    // Texture args
+    TEXTURE_ARG_LIST
+    )
+{
+    return 0.f;
+}
+
+float MicrofacetRefractionGGX_GetPdf(
+    // Geometry
+    DifferentialGeometry const* dg,
+    // Incoming direction
+    float3 wi,
+    // Outgoing direction
+    float3 wo,
+    // Texture args
+    TEXTURE_ARG_LIST
+    )
+{
+    return 0.f;
+}
+
+
+
 float3 Passthrough_Sample(
 	// Geometry
 	DifferentialGeometry const* dg,
@@ -950,6 +1018,8 @@ float3 Bxdf_Evaluate(
         return IdealRefract_Evaluate(dg, wi, wo, TEXTURE_ARGS);
 	case kTranslucent:
 		return Translucent_Evaluate(dg, wi, wo, TEXTURE_ARGS);
+    case kMicrofacetRefractionGGX:
+        return MicrofacetRefractionGGX_Evaluate(dg, wi, wo, TEXTURE_ARGS);
     }
 
     return 0.f;
@@ -989,7 +1059,8 @@ float3 Bxdf_Sample(
 		return Translucent_Sample(dg, wi, TEXTURE_ARGS, sample, wo, pdf);
 	case kPassthrough:
 		return Passthrough_Sample(dg, wi, TEXTURE_ARGS, sample, wo, pdf);
-    
+    case kMicrofacetRefractionGGX:
+        return MicrofacetRefractionGGX_Sample(dg, wi, TEXTURE_ARGS, sample, wo, pdf);
     }
 
     *pdf = 0.f;
@@ -1026,6 +1097,8 @@ float Bxdf_GetPdf(
 		return Translucent_GetPdf(dg, wi, wo, TEXTURE_ARGS);
 	case kPassthrough:
 		return 0.f;
+    case kMicrofacetRefractionGGX:
+        return MicrofacetRefractionGGX_GetPdf(dg, wi, wo, TEXTURE_ARGS);
     }
 
 	return 0.f;
@@ -1058,7 +1131,7 @@ bool Bxdf_IsEmissive(DifferentialGeometry const* dg)
 /// BxDF singularity check
 bool Bxdf_IsBtdf(DifferentialGeometry const* dg)
 {
-	return dg->mat.type == kIdealRefract || dg->mat.type == kPassthrough || dg->mat.type == kTranslucent;
+	return dg->mat.type == kIdealRefract || dg->mat.type == kPassthrough || dg->mat.type == kTranslucent || dg->mat.type == kMicrofacetRefractionGGX;
 }
 
 #endif // BXDF_CL
