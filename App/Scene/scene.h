@@ -35,6 +35,10 @@ namespace Baikal
         // Load the scene from OBJ file
         static Scene* LoadFromObj(std::string const& filename, std::string const& basepath = "");
 
+        Scene() : dirty_(kCamera)
+        {
+        }
+
         void SetEnvironment(std::string const& filename, std::string const& basepath = "", float envmapmul = 1.f);
 
         void SetBackground(std::string const& filename, std::string const& basepath = "");
@@ -42,7 +46,13 @@ namespace Baikal
         enum DirtyFlags
         {
             kNone = 0x0,
-            kCamera = 0x1
+            kCamera = 0x1,
+            kGeometry = 0x2,
+            kGeometryTransform = 0x4,
+            kMaterials = 0x8,
+            kMaterialInputs = 0x16,
+            kTextures = 0x32,
+            kEnvironmentLight = 0x64,
         };
 
         enum Bxdf
@@ -179,7 +189,9 @@ namespace Baikal
                 FireRays::float3 sigma_e;
             };
 
-            std::uint32_t dirty() const { return kCamera; }
+            void clear_dirty() const { dirty_ = kNone;  }
+            std::uint32_t dirty() const { return dirty_; }
+            void set_dirty(int dirty) const { dirty_ = dirty_ | dirty; }
 
             // Scene data
             // Vertices
@@ -211,5 +223,7 @@ namespace Baikal
             float envmapmul_;
             // Background image
             int bgimgidx_;
+            // Dirty flags
+            mutable int dirty_;
         };
     }

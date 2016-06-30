@@ -46,7 +46,7 @@ namespace Baikal
         if (iter == m_scene_cache.cend())
         {
             auto res = m_scene_cache.emplace(std::make_pair(&scene, ClwScene()));
-            
+
             RecompileFull(scene, res.first->second);
 
             ReloadIntersector(scene, res.first->second);
@@ -59,21 +59,73 @@ namespace Baikal
         {
             auto& out = iter->second;
 
-            if (scene.dirty() == Scene::DirtyFlags::kCamera)
+            if (scene.dirty() & Scene::DirtyFlags::kCamera)
             {
-                // Update camera data
-                m_context.WriteBuffer(0, out.camera, scene.camera_.get(), 1);
+                UpdateCamera(scene, out);
+            }
+
+            if (scene.dirty() & Scene::DirtyFlags::kGeometry)
+            {
+                UpdateGeometry(scene, out);
+            }
+            else if (scene.dirty() & Scene::DirtyFlags::kGeometryTransform)
+            {
+                // TODO: this is not yet supported in the renderer
+            }
+
+            if (scene.dirty() & Scene::DirtyFlags::kMaterials)
+            {
+                UpdateMaterials(scene, out);
+            }
+            else if (scene.dirty() & Scene::DirtyFlags::kMaterialInputs)
+            {
+                UpdateMaterialInputs(scene, out);
             }
 
             if (m_current_scene != &scene)
             {
                 ReloadIntersector(scene, out);
-                
+
                 m_current_scene = &scene;
             }
 
+            scene.clear_dirty();
+
             return out;
         }
+    }
+
+    void SceneTracker::UpdateCamera(Scene const& scene, ClwScene& out) const
+    {
+        // Update camera data
+        m_context.WriteBuffer(0, out.camera, scene.camera_.get(), 1);
+    }
+
+    void SceneTracker::UpdateGeometry(Scene const& scene, ClwScene& out) const
+    {
+        out.vertices = m_context.CreateBuffer<float3>(scene.vertices_.size(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, (void*)&scene.vertices_[0]);
+
+        out.normals = m_context.CreateBuffer<float3>(scene.normals_.size(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, (void*)&scene.normals_[0]);
+
+        out.uvs = m_context.CreateBuffer<float2>(scene.uvs_.size(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, (void*)&scene.uvs_[0]);
+
+        out.indices = m_context.CreateBuffer<int>(scene.indices_.size(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, (void*)&scene.indices_[0]);
+
+        out.shapes = m_context.CreateBuffer<Scene::Shape>(scene.shapes_.size(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, (void*)&scene.shapes_[0]);
+    }
+
+    void SceneTracker::UpdateMaterials(Scene const& scene, ClwScene& out) const
+    {
+        // Material IDs
+        out.materialids = m_context.CreateBuffer<int>(scene.materialids_.size(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, (void*)&scene.materialids_[0]);
+
+        // Material descriptions
+        out.materials = m_context.CreateBuffer<Scene::Material>(scene.materials_.size(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, (void*)&scene.materials_[0]);
+    }
+
+    void SceneTracker::UpdateMaterialInputs(Scene const& scene, ClwScene& out) const
+    {
+        m_context.WriteBuffer(0, out.materials, &scene.materials_[0], out.materials.GetElementCount());
     }
 
     void SceneTracker::RecompileFull(Scene const& scene, ClwScene& out) const

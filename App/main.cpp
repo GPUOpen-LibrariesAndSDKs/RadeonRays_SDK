@@ -552,6 +552,8 @@ void Update()
 
     if (update)
     {
+        g_scene->set_dirty(Baikal::Scene::kCamera);
+
         if (g_num_samples > -1)
         {
             g_samplecount = 0;

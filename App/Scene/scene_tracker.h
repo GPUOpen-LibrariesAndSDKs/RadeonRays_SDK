@@ -27,6 +27,14 @@ namespace Baikal
         virtual void ReloadIntersector(Scene const& scene, ClwScene& inout) const;
 
     private:
+        void UpdateCamera(Scene const& scene, ClwScene& out) const;
+        void UpdateGeometry(Scene const& scene, ClwScene& out) const;
+        void UpdateMaterials(Scene const& scene, ClwScene& out) const;
+        void UpdateMaterialInputs(Scene const& scene, ClwScene& out) const;
+
+
+
+    private:
         // Context
         CLWContext m_context;
         // Intersection API

@@ -330,7 +330,7 @@ TEST_F(CLW, RadixSortLarge)
     // Init rand
     std::srand((unsigned)std::time(0));
     // Large array test
-    int arraysize = 64;
+    int arraysize = 64237846;
 
     // Device buffers
     auto devinput = context_.CreateBuffer<cl_int>(arraysize, CL_MEM_READ_WRITE);
