@@ -774,7 +774,7 @@ int main(int argc, char * argv[])
     }
 
     char* cspeed = GetCmdOption(argv, argv + argc, "-cspeed");
-    g_cspeed = cspeed ? atof(cspeed) : g_cspeed;
+    g_cspeed = cspeed ? (float)atof(cspeed) : g_cspeed;
 
     if (aorays)
     {
