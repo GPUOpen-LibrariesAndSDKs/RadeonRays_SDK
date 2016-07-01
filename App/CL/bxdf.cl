@@ -345,6 +345,38 @@ void MicrofacetDistribution_GGX_Sample(
     *pdf = MicrofacetDistribution_GGX_GetPdf(wh, roughness, dg, wi, *wo, TEXTURE_ARGS);
 }
 
+// Sample the distribution
+void MicrofacetDistribution_GGX_SampleNormal(
+    // Roughness
+    float roughness,
+    // Geometry
+    DifferentialGeometry const* dg,
+    // Texture args
+    TEXTURE_ARG_LIST,
+    // Sample
+    float2 sample,
+    // Outgoing  direction
+    float3* wh
+    )
+{
+    float r1 = sample.x;
+    float r2 = sample.y;
+
+    // Sample halfway vector first, then reflect wi around that
+    float temp = atan(roughness * native_sqrt(r1) / native_sqrt(1.f - r1));
+    float theta = (float)((temp >= 0) ? temp : (temp + 2 * PI));
+
+    float costheta = native_cos(theta);
+    float sintheta = native_sqrt(1.f - clamp(costheta * costheta, 0.f, 1.f));
+
+    // phi = 2*PI*ksi2
+    float cosphi = native_cos(2.f*PI*r2);
+    float sinphi = native_sqrt(1.f - clamp(cosphi * cosphi, 0.f, 1.f));
+
+    // Calculate wh
+    *wh = normalize(dg->dpdu * sintheta * cosphi + dg->dpdv * sintheta * sinphi + dg->n * costheta);
+}
+
 //
 float MicrofacetDistribution_GGX_G1(float roughness, float3 v, float3 m, float3 n)
 {
@@ -892,6 +924,109 @@ float3 IdealRefract_Sample(
 	return cost > 0.0001f ? F * (((etai * etai) / (etat * etat)) * ks / cost) : 0.f;
 }
 
+
+
+
+float3 MicrofacetRefractionGGX_Evaluate(
+    // Geometry
+    DifferentialGeometry const* dg,
+    // Incoming direction
+    float3 wi,
+    // Outgoing direction
+    float3 wo,
+    // Texture args
+    TEXTURE_ARG_LIST
+    )
+{
+    const float3 ks = Texture_GetValue3f(dg->mat.kx.xyz, dg->uv, TEXTURE_ARGS_IDX(dg->mat.kxmapidx));
+    const float roughness = Texture_GetValue1f(dg->mat.ns, dg->uv, TEXTURE_ARGS_IDX(dg->mat.nsmapidx));
+
+    float ndotwi = dot(dg->n, wi);
+    float ndotwo = dot(dg->n, wo);
+
+    if (ndotwi * ndotwo > 0.f || ndotwi == 0.f || ndotwo == 0.f)
+        return 0.f;
+
+
+    float etai = 1.f;
+    float etat = dg->mat.ni;
+
+    // Revert normal and eta if needed
+    if (ndotwi < 0.f)
+    {
+        float tmp = etai;
+        etai = etat;
+        etat = tmp;
+    }
+
+    // Calc halfway vector
+    float3 ht = -(etai * wi + etat * wo);
+    float3 wh = normalize(ht);
+
+    float widotwh = fabs(dot(wh, wi));
+    float wodotwh = fabs(dot(wh, wo));
+
+    float F = dg->mat.fresnel;
+
+    float denom = etai * dot(wh, wi) + etat * dot(wh, wo);
+    denom *= denom;
+    denom *= (fabs(ndotwi) * fabs(ndotwo));
+
+    return denom > 0.0001f ? (F * ks * (widotwh * wodotwh)  * (etat) * (etat) *
+        MicrofacetDistribution_GGX_G(roughness, wi, wo, wh, dg->n) * MicrofacetDistribution_GGX_D(roughness, wh, dg->n) / denom) : 0.f;
+}
+
+
+
+float MicrofacetRefractionGGX_GetPdf(
+    // Geometry
+    DifferentialGeometry const* dg,
+    // Incoming direction
+    float3 wi,
+    // Outgoing direction
+    float3 wo,
+    // Texture args
+    TEXTURE_ARG_LIST
+    )
+{
+    const float roughness = Texture_GetValue1f(dg->mat.ns, dg->uv, TEXTURE_ARGS_IDX(dg->mat.nsmapidx));
+    float ndotwi = dot(dg->n, wi);
+    float ndotwo = dot(dg->n, wo);
+
+    if (ndotwi * ndotwo > 0)
+        return 0.f;
+
+    float etai = 1.f;
+    float etat = dg->mat.ni;
+    float s = 1;
+
+    // Revert normal and eta if needed
+    if (ndotwi < 0.f)
+    {
+        float tmp = etai;
+        etai = etat;
+        etat = tmp;
+        s = -s;
+    }
+
+    // Calc halfway vector
+    float3 ht = -(etai * wi + etat * wo);
+
+    float3 wh = normalize(ht);
+
+    float wodotwh = fabs(dot(wo, wh));
+
+    float whpdf = MicrofacetDistribution_GGX_D(roughness, wh, dg->n) * fabs(dot(wh, dg->n));
+
+    float whwo = wodotwh * etat * etat;
+
+    float denom = etai * dot(wh, wi) + etat * dot(wh, wo);
+
+    denom *= denom;
+
+    return denom > 0.0001f ? whpdf * whwo / denom : 0.f;
+}
+
 float3 MicrofacetRefractionGGX_Sample(
     // Geometry
     DifferentialGeometry const* dg,
@@ -910,52 +1045,43 @@ float3 MicrofacetRefractionGGX_Sample(
     const float3 ks = Texture_GetValue3f(dg->mat.kx.xyz, dg->uv, TEXTURE_ARGS_IDX(dg->mat.kxmapidx));
     const float roughness = Texture_GetValue1f(dg->mat.ns, dg->uv, TEXTURE_ARGS_IDX(dg->mat.nsmapidx));
 
-    // Incident and reflected zenith angles
-    float costhetao = dot(dg->n, wo);
-    float costhetai = dot(dg->n, wi);
+    float ndotwi = dot(dg->n, wi);
 
-    if (costhetai == 0.f || costhetao == 0.f)
+    if (ndotwi == 0.f)
         return 0.f;
 
-    // Calc halfway vector
-    // float3 wh = normalize(etai * wi + etat * wo);
+    float etai = 1.f;
+    float etat = dg->mat.ni;
+    float s = 1;
 
-    // float F = dg->mat.fresnel;
+    // Revert normal and eta if needed
+    if (ndotwi < 0.f)
+    {
+        float tmp = etai;
+        etai = etat;
+        etat = tmp;
+        s = -s;
+    }
 
-    // F(eta) * D * G * ks / (4 * cosa * cosi)
-    // return F * ks * MicrofacetDistribution_GGX_G(roughness, wi, wo, wh, dg->n) * MicrofacetDistribution_GGX_D(roughness, wh, dg->n) / (4.f * costhetao * costhetai);
+    float3 wh;
+    MicrofacetDistribution_GGX_SampleNormal(roughness, dg, TEXTURE_ARGS, sample, &wh);
 
-    *pdf = 0.f;
-    return 0.f;
-}
+    float c = dot(wi, wh);
+    float eta = etai / etat;
 
+    float d = 1 + eta * (c * c - 1);
 
-float3 MicrofacetRefractionGGX_Evaluate(
-    // Geometry
-    DifferentialGeometry const* dg,
-    // Incoming direction
-    float3 wi,
-    // Outgoing direction
-    float3 wo,
-    // Texture args
-    TEXTURE_ARG_LIST
-    )
-{
-    return 0.f;
-}
+    if (d <= 0)
+    {
+        *pdf = 0.f;
+        return 0.f;
+    }
 
-float MicrofacetRefractionGGX_GetPdf(
-    // Geometry
-    DifferentialGeometry const* dg,
-    // Incoming direction
-    float3 wi,
-    // Outgoing direction
-    float3 wo,
-    // Texture args
-    TEXTURE_ARG_LIST
-    )
-{
-    return 0.f;
+    *wo = normalize((eta * c - s * native_sqrt(clamp(d, 0.f, 1.f))) * wh - eta * wi);
+
+    *pdf = MicrofacetRefractionGGX_GetPdf(dg, wi, *wo, TEXTURE_ARGS);
+
+    return MicrofacetRefractionGGX_Evaluate(dg, wi, *wo, TEXTURE_ARGS);
 }
 
 

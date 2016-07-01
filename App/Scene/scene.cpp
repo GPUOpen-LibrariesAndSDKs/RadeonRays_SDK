@@ -236,7 +236,7 @@ Scene* Scene::LoadFromObj(std::string const& filename, std::string const& basepa
 			specular.kx = float3(0.7f, 0.7f, 0.7f);
 			specular.ni = 1.3f;
 			specular.ns = 0.1f;
-			specular.type = kMicrofacetGGX;
+			specular.type = kMicrofacetBeckmann;
 			specular.fresnel = 1.f;
 
 			scene->materials_.push_back(specular);
@@ -291,14 +291,34 @@ Scene* Scene::LoadFromObj(std::string const& filename, std::string const& basepa
 
             Material refract;
             refract.kx = float3(1.f, 1.f, 1.f);
-            refract.ns = 0.05f;
+            refract.ns = 0.35f;
             refract.ni = 1.33f;
             refract.type = kMicrofacetRefractionGGX;
             refract.fresnel = 0.f;
 
             scene->materials_.push_back(refract);
             scene->material_names_.push_back(objmaterials[i].name);
+
+            Material specular;
+            specular.kx = float3(1.f, 1.f, 1.f);
+            specular.ni = 1.33f;
+            specular.ns = 0.35f;
+            specular.type = kIdealReflect;
+            specular.fresnel = 0.f;
+
+            scene->materials_.push_back(specular);
+            scene->material_names_.push_back(objmaterials[i].name);
+
+            Material layered;
+            layered.ni = 1.33f;
+            layered.type = kFresnelBlend;
+            layered.brdftopidx = scene->materials_.size() - 1;
+            layered.brdfbaseidx = scene->materials_.size() - 2;
+
+            scene->materials_.push_back(layered);
+            scene->material_names_.push_back(objmaterials[i].name);
             matmap[i] = scene->materials_.size() - 1;
+
             continue;
         }
         else if (objmaterials[i].name == "Test_Material.003")
