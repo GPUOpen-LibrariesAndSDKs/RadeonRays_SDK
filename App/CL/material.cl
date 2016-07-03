@@ -79,15 +79,15 @@ void Material_Select(
             float sini2 = 1.f - cosi * cosi;
             float sint2 = eta * eta * sini2;
 
-            if (sint2 >= 1.f)
-            {
-                dg->mat.fresnel = 1.f;
-            }
-            else
+            float fresnel = 1.f;
+
+            if (sint2 < 1.f)
             {
                 float cost = native_sqrt(max(0.f, 1.f - sint2));
-                dg->mat.fresnel = FresnelDielectric(etai, etat, cosi, cost);
+                fresnel = FresnelDielectric(etai, etat, cosi, cost);
             }
+
+            dg->mat.fresnel = Bxdf_IsBtdf(dg) ? (1.f - fresnel) : fresnel;
         }
         else
         {
