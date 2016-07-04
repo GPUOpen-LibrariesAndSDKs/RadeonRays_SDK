@@ -37,7 +37,7 @@ THE SOFTWARE.
 #define CRAZY_LOW_THROUGHPUT 0.0f
 #define CRAZY_HIGH_RADIANCE 10.f
 #define CRAZY_HIGH_DISTANCE 1000000.f
-#define CRAZY_LOW_DISTANCE 0.001f
+#define CRAZY_LOW_DISTANCE 0.000001f
 #define REASONABLE_RADIANCE(x) (clamp((x), 0.f, CRAZY_HIGH_RADIANCE))
 #define NON_BLACK(x) (length(x) > 0.f)
 
@@ -359,18 +359,18 @@ __kernel void ShadeSurface(
         FillDifferentialGeometry(&scene, &isect, &diffgeo);
 
         // Check if we are hitting from the inside
-        float ndotwi = dot(diffgeo.n, wi);
-        int twosided = diffgeo.mat.twosided;
-        if (twosided && ndotwi < 0.f)
-        {
+        //float ndotwi = dot(diffgeo.n, wi);
+        //int twosided = diffgeo.mat.twosided;
+        //if (twosided && ndotwi < 0.f)
+        //{
             // Reverse normal and tangents in this case
             // but not for BTDFs, since BTDFs rely
             // on normal direction in order to arrange
             // indices of refraction
-            diffgeo.n = -diffgeo.n;
-            diffgeo.dpdu = -diffgeo.dpdu;
-            diffgeo.dpdv = -diffgeo.dpdv;
-        }
+            //diffgeo.n = -diffgeo.n;
+            //diffgeo.dpdu = -diffgeo.dpdu;
+            //diffgeo.dpdv = -diffgeo.dpdv;
+        //}
 
         // Select BxDF
         Material_Select(
@@ -383,6 +383,7 @@ __kernel void ShadeSurface(
             &diffgeo
         );
 
+        float ndotwi = dot(diffgeo.n, wi);
 
         // Terminate if emissive
         if (Bxdf_IsEmissive(&diffgeo))
@@ -418,9 +419,9 @@ __kernel void ShadeSurface(
             return;
         }
 
-        ndotwi = dot(diffgeo.n, wi);
+
         float s = Bxdf_IsBtdf(&diffgeo) ? (-sign(ndotwi)) : 1.f;
-        if (!twosided && ndotwi < 0.f && !Bxdf_IsBtdf(&diffgeo))
+        if (ndotwi < 0.f && !Bxdf_IsBtdf(&diffgeo))
         {
             // Reverse normal and tangents in this case
             // but not for BTDFs, since BTDFs rely

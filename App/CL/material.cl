@@ -64,10 +64,8 @@ void Material_Select(
             float etat = dg->mat.ni;
             float cosi = dot(dg->n, wi);
 
-            bool entering = cosi > 0.f;
-
             // Revert normal and eta if needed
-            if (!entering)
+            if (cosi < 0.f)
             {
                 float tmp = etai;
                 etai = etat;
@@ -111,10 +109,8 @@ void Material_Select(
                 float etat = mat.ni;
                 float cosi = dot(dg->n, wi);
 
-                bool entering = cosi > 0.f;
-
                 // Revert normal and eta if needed
-                if (!entering)
+                if (cosi < 0.f)
                 {
                     float tmp = etai;
                     etai = etat;
@@ -128,18 +124,13 @@ void Material_Select(
 
                 int idx = 0;
 
-                if (sint2 >= 1.f)
-                {
-                    // Sample top
-                    idx = mat.brdftopidx;
-                    //
-                    mat = scene->materials[idx];
-                    mat.fresnel = 1.f;
-                    continue;
-                }
+                float fresnel = 1.f;
 
-                float cost = native_sqrt(max(0.f, 1.f - sint2));
-                float F = FresnelDielectric(etai, etat, cosi, cost);
+                if (sint2 < 1.f)
+                {
+                    float cost = native_sqrt(max(0.f, 1.f - sint2));
+                    fresnel = FresnelDielectric(etai, etat, cosi, cost);
+                }
 
 #ifdef SOBOL
                 float sample = SobolSampler_Sample1D(sampler->seq, GetSampleDim(bounce, kMaterial + iter), sampler->s0, sobolmat);
@@ -147,11 +138,11 @@ void Material_Select(
                 float sample = UniformSampler_Sample2D(rng).x;
 #endif
 
-                if (sample < F)
+                if (sample < fresnel)
                 {
                     // Sample top
                     idx = mat.brdftopidx;
-                    //
+                    // 
                     mat = scene->materials[idx];
                     mat.fresnel = 1.f;
                 }
@@ -159,7 +150,7 @@ void Material_Select(
                 {
                     // Sample base
                     idx = mat.brdfbaseidx;
-                    //
+                    // 
                     mat = scene->materials[idx];
                     mat.fresnel = 1.f;
                 }
