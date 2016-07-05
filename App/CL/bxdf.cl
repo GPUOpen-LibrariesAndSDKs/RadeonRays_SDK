@@ -207,7 +207,7 @@ float MicrofacetDistribution_Beckmann_G1(float roughness, float3 v, float3 m, fl
 
     float sinnv = native_sqrt(1.f - clamp(ndotv * ndotv, 0.f, 1.f));
     float tannv = sinnv / ndotv;
-    float a = tannv > 0.f ? 1.f / (roughness * tannv) : 0.f;
+    float a = tannv > DENOM_EPS ? 1.f / (roughness * tannv) : 0.f;
     float a2 = a * a;
 
     if (a < 1.6f)
@@ -418,7 +418,7 @@ float MicrofacetDistribution_GGX_G1(float roughness, float3 v, float3 m, float3 
     float mdotv = fabs(dot(m, v));
 
     float sinnv = native_sqrt(1.f - clamp(ndotv * ndotv, 0.f, 1.f));
-    float tannv = sinnv / ndotv;
+    float tannv = ndotv > 0.f ? sinnv / ndotv : 0.f;
     float a2 = roughness * roughness;
     return 2.f / (1.f + native_sqrt(1.f + a2 * tannv * tannv));
 }
@@ -452,8 +452,10 @@ float3 MicrofacetGGX_Evaluate(
 
     float F = dg->mat.fresnel;
 
+    float denom = (4.f * costhetao * costhetai);
+
     // F(eta) * D * G * ks / (4 * cosa * cosi)
-    return costhetao * costhetai > 0.f ? F * ks * MicrofacetDistribution_GGX_G(roughness, wi, wo, wh, dg->n) * MicrofacetDistribution_GGX_D(roughness, wh, dg->n) / (4.f * costhetao * costhetai) : 0.f;
+    return denom > 0.f ? F * ks * MicrofacetDistribution_GGX_G(roughness, wi, wo, wh, dg->n) * MicrofacetDistribution_GGX_D(roughness, wh, dg->n) / denom : 0.f;
 }
 
 
@@ -527,7 +529,8 @@ float MicrofacetDistribution_Blinn_GetPdf(// Shininess
     // costheta
     float ndotwh = dot(dg->n, wh);
     // See Humphreys and Pharr for derivation
-    return ((shininess + 1.f) * native_powr(ndotwh, shininess)) / (2.f * PI * 4.f * dot(wo, wh));
+    float denom = (2.f * PI * 4.f * dot(wo, wh));
+    return denom > DENOM_EPS ? ((shininess + 1.f) * native_powr(ndotwh, shininess)) / denom : 0.f;
 }
 
 
@@ -602,16 +605,15 @@ float3 MicrofacetBlinn_Evaluate(
     float costhetao = dot(dg->n, wo);
     float costhetai = dot(dg->n, wi);
 
-    if (costhetai == 0.f || costhetao == 0.f)
-        return 0.f;
-
     // Calc halfway vector
     float3 wh = normalize(wi + wo);
 
     float F = dg->mat.fresnel;
 
+    float denom = (4.f * costhetao * costhetai);
+
     // F(eta) * D * G * ks / (4 * cosa * cosi)
-    return F * ks * MicrofacetDistribution_Blinn_G(wi, wo, wh, dg->n) * MicrofacetDistribution_Blinn_D(shininess, wh, dg->n) / (4.f * costhetao * costhetai);
+    return denom > DENOM_EPS ? F * ks * MicrofacetDistribution_Blinn_G(wi, wo, wh, dg->n) * MicrofacetDistribution_Blinn_D(shininess, wh, dg->n) / denom : 0.f;
 }
 
 /// Lambert BRDF PDF
@@ -758,7 +760,7 @@ float3 Translucent_Sample(
 
     float ndotwi = dot(dg->n, wi);
 
-    float3 n = ndotwi > 0.f ? -dg->n : dg->n;
+    float3 n = ndotwi > DENOM_EPS ? -dg->n : dg->n;
 
     *wo = normalize(Sample_MapToHemisphere(sample, n, 1.f));
 
@@ -784,7 +786,7 @@ float3 Translucent_Evaluate(
     float ndotwi = dot(dg->n, wi);
     float ndotwo = dot(dg->n, wo);
 
-    if (ndotwi * ndotwo > 0)
+    if (ndotwi * ndotwo > 0.f)
         return 0.f;
 
     return kd / PI;
@@ -857,7 +859,7 @@ float3 IdealReflect_Sample(
     float coswo = fabs(dot(dg->n, *wo));
 
     // Return reflectance value
-    return coswo > 0.0001f ? (F * ks * (1.f / coswo)) : 0.f;
+    return coswo > DENOM_EPS ? (F * ks * (1.f / coswo)) : 0.f;
 }
 
 /*
@@ -971,6 +973,11 @@ float3 MicrofacetRefractionGGX_Evaluate(
     float ndotwi = dot(dg->n, wi);
     float ndotwo = dot(dg->n, wo);
 
+    if (ndotwi * ndotwo >= 0.f)
+    {
+        return 0.f;
+    }
+
     float etai = 1.f;
     float etat = dg->mat.ni;
 
@@ -1018,6 +1025,11 @@ float MicrofacetRefractionGGX_GetPdf(
     float etai = 1.f;
     float etat = dg->mat.ni;
 
+    if (ndotwi * ndotwo >= 0.f)
+    {
+        return 0.f;
+    }
+
     // Revert normal and eta if needed
     if (ndotwi < 0.f)
     {
@@ -1062,6 +1074,12 @@ float3 MicrofacetRefractionGGX_Sample(
 
     float ndotwi = dot(dg->n, wi);
 
+    if (ndotwi == 0.f)
+    {
+        *pdf = 0.f;
+        return 0.f;
+    }
+
     float etai = 1.f;
     float etat = dg->mat.ni;
     float s = 1.f;
@@ -1083,7 +1101,7 @@ float3 MicrofacetRefractionGGX_Sample(
 
     float d = 1 + eta * (c * c - 1);
 
-    if (d <= 0)
+    if (d <= 0.f)
     {
         *pdf = 0.f;
         return 0.f;

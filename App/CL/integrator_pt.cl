@@ -415,7 +415,7 @@ __kernel void ShadeSurface(
             Ray_SetInactive(shadowrays + globalid);
             Ray_SetInactive(indirectrays + globalid);
 
-            lightsamples[globalid] = 0;
+            lightsamples[globalid] = 0.f;
             return;
         }
 
@@ -512,7 +512,6 @@ __kernel void ShadeSurface(
             lightsamples[globalid] = 0;
         }
 
-
         // Apply Russian roulette
         float q = max(min(0.5f,
             // Luminance
@@ -537,7 +536,6 @@ __kernel void ShadeSurface(
         // Only continue if we have non-zero throughput & pdf
         if (NON_BLACK(t) && bxdfpdf > 0.f && !rr_stop)
         {
-
             // Update the throughput
             Path_MulThroughput(path, t / bxdfpdf);
 
@@ -598,6 +596,11 @@ __kernel void ShadeMiss(
 
                 output[pixelidx].xyz += Volume_Emission(&volumes[volidx], &rays[globalid], rays[globalid].o.w);
             }
+        }
+
+        if (isnan(output[pixelidx].x) || isnan(output[pixelidx].y) || isnan(output[pixelidx].z))
+        {
+            output[pixelidx] = make_float4(100.f, 0.f, 0.f, 1.f);
         }
 
         output[pixelidx].w += 1.f;
