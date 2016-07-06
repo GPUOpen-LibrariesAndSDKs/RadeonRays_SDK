@@ -182,7 +182,8 @@ float3 AreaLight_GetLe(// Emissive object
 		if (ndotv > 0.f)
 		{
 			*wo = d;
-			return ke * ndotv / (ld * ld);
+            float denom = ld * ld;
+			return  denom > 0.f ? ke * ndotv / denom : 0.f;
 		}
 		else
 		{
@@ -265,7 +266,8 @@ float3 AreaLight_Sample(// Emissive object
 
 	if (ndotv > 0.f)
 	{
-		return ke * ndotv / (length(*wo) * length(*wo));
+        float denom = (length(*wo) * length(*wo));
+		return denom > 0.f ? ke * ndotv / denom : 0.f;
 	}
 	else
 	{

@@ -359,18 +359,18 @@ __kernel void ShadeSurface(
         FillDifferentialGeometry(&scene, &isect, &diffgeo);
 
         // Check if we are hitting from the inside
-        //float ndotwi = dot(diffgeo.n, wi);
-        //int twosided = diffgeo.mat.twosided;
-        //if (twosided && ndotwi < 0.f)
-        //{
+        float ndotwi = dot(diffgeo.n, wi);
+        int twosided = diffgeo.mat.twosided;
+        if (twosided && ndotwi < 0.f)
+        {
             // Reverse normal and tangents in this case
             // but not for BTDFs, since BTDFs rely
             // on normal direction in order to arrange
             // indices of refraction
-            //diffgeo.n = -diffgeo.n;
-            //diffgeo.dpdu = -diffgeo.dpdu;
-            //diffgeo.dpdv = -diffgeo.dpdv;
-        //}
+            diffgeo.n = -diffgeo.n;
+            diffgeo.dpdu = -diffgeo.dpdu;
+            diffgeo.dpdv = -diffgeo.dpdv;
+        }
 
         // Select BxDF
         Material_Select(
@@ -383,7 +383,7 @@ __kernel void ShadeSurface(
             &diffgeo
         );
 
-        float ndotwi = dot(diffgeo.n, wi);
+        ndotwi = dot(diffgeo.n, wi);
 
         // Terminate if emissive
         if (Bxdf_IsEmissive(&diffgeo))
@@ -396,18 +396,19 @@ __kernel void ShadeSurface(
                 if (bounce == 0)
                 {
                     // TODO: need to account for volume extinction just in case
-                    output[pixelidx] += Path_GetThroughput(path) * Emissive_GetLe(&diffgeo, TEXTURE_ARGS) * ndotwi;
+                    output[pixelidx] += Path_GetThroughput(path) * Emissive_GetLe(&diffgeo, TEXTURE_ARGS);
                 }
                 else
                 {
                     // In this case we hit after an application of MIS process at previous step.
                     // That means BRDF weight has been already applied. We simply need to pretend 
                     // we sampled this light with our BRDF based ray, evaluate PDF and intensity.
-                    float lpdf = (1.f / numemissives);
-                    float ld = isect.uvwt.w;
-                    float pdf = ld * ld / (ndotwi * diffgeo.area);
-                    float3 le = Emissive_GetLe(&diffgeo, TEXTURE_ARGS) * ndotwi / (ld * ld);
-                    output[pixelidx] += Path_GetThroughput(path) * le / pdf / lpdf;
+                    //float lpdf = (1.f / numemissives);
+                    //float ld = isect.uvwt.w;
+                    //float pdf = ld * ld / (ndotwi * diffgeo.area);
+                    //float3 le = ld > 0.0f ? Emissive_GetLe(&diffgeo, TEXTURE_ARGS) * ndotwi / (ld * ld) : 0.f;
+                    output[pixelidx] += Path_GetThroughput(path) * Emissive_GetLe(&diffgeo, TEXTURE_ARGS) * ndotwi;
+                        //(pdf > 0.0f ? Path_GetThroughput(path) * le / pdf / lpdf : 0.f);
                 }
             }
 
@@ -421,7 +422,7 @@ __kernel void ShadeSurface(
 
 
         float s = Bxdf_IsBtdf(&diffgeo) ? (-sign(ndotwi)) : 1.f;
-        if (ndotwi < 0.f && !Bxdf_IsBtdf(&diffgeo))
+        if (!twosided && ndotwi < 0.f && !Bxdf_IsBtdf(&diffgeo))
         {
             // Reverse normal and tangents in this case
             // but not for BTDFs, since BTDFs rely
