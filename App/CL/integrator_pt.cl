@@ -401,14 +401,8 @@ __kernel void ShadeSurface(
                 else
                 {
                     // In this case we hit after an application of MIS process at previous step.
-                    // That means BRDF weight has been already applied. We simply need to pretend 
-                    // we sampled this light with our BRDF based ray, evaluate PDF and intensity.
-                    //float lpdf = (1.f / numemissives);
-                    //float ld = isect.uvwt.w;
-                    //float pdf = ld * ld / (ndotwi * diffgeo.area);
-                    //float3 le = ld > 0.0f ? Emissive_GetLe(&diffgeo, TEXTURE_ARGS) * ndotwi / (ld * ld) : 0.f;
+                    // That means BRDF weight has been already applied.
                     output[pixelidx] += Path_GetThroughput(path) * Emissive_GetLe(&diffgeo, TEXTURE_ARGS) * ndotwi;
-                        //(pdf > 0.0f ? Path_GetThroughput(path) * le / pdf / lpdf : 0.f);
                 }
             }
 
