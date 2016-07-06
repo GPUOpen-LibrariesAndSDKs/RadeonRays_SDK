@@ -37,7 +37,7 @@ THE SOFTWARE.
 #define CRAZY_LOW_THROUGHPUT 0.0f
 #define CRAZY_HIGH_RADIANCE 10.f
 #define CRAZY_HIGH_DISTANCE 1000000.f
-#define CRAZY_LOW_DISTANCE 0.001f
+#define CRAZY_LOW_DISTANCE 0.000001f
 #define REASONABLE_RADIANCE(x) (clamp((x), 0.f, CRAZY_HIGH_RADIANCE))
 #define NON_BLACK(x) (length(x) > 0.f)
 
@@ -383,6 +383,7 @@ __kernel void ShadeSurface(
             &diffgeo
         );
 
+        ndotwi = dot(diffgeo.n, wi);
 
         // Terminate if emissive
         if (Bxdf_IsEmissive(&diffgeo))
@@ -395,18 +396,13 @@ __kernel void ShadeSurface(
                 if (bounce == 0)
                 {
                     // TODO: need to account for volume extinction just in case
-                    output[pixelidx] += Path_GetThroughput(path) * Emissive_GetLe(&diffgeo, TEXTURE_ARGS) * ndotwi;
+                    output[pixelidx] += Path_GetThroughput(path) * Emissive_GetLe(&diffgeo, TEXTURE_ARGS);
                 }
                 else
                 {
                     // In this case we hit after an application of MIS process at previous step.
-                    // That means BRDF weight has been already applied. We simply need to pretend 
-                    // we sampled this light with our BRDF based ray, evaluate PDF and intensity.
-                    float lpdf = (1.f / numemissives);
-                    float ld = isect.uvwt.w;
-                    float pdf = ld * ld / (ndotwi * diffgeo.area);
-                    float3 le = Emissive_GetLe(&diffgeo, TEXTURE_ARGS) * ndotwi / (ld * ld);
-                    output[pixelidx] += Path_GetThroughput(path) * le / pdf / lpdf;
+                    // That means BRDF weight has been already applied.
+                    output[pixelidx] += Path_GetThroughput(path) * Emissive_GetLe(&diffgeo, TEXTURE_ARGS) * ndotwi;
                 }
             }
 
@@ -414,11 +410,11 @@ __kernel void ShadeSurface(
             Ray_SetInactive(shadowrays + globalid);
             Ray_SetInactive(indirectrays + globalid);
 
-            lightsamples[globalid] = 0;
+            lightsamples[globalid] = 0.f;
             return;
         }
 
-        ndotwi = dot(diffgeo.n, wi);
+
         float s = Bxdf_IsBtdf(&diffgeo) ? (-sign(ndotwi)) : 1.f;
         if (!twosided && ndotwi < 0.f && !Bxdf_IsBtdf(&diffgeo))
         {
@@ -511,7 +507,6 @@ __kernel void ShadeSurface(
             lightsamples[globalid] = 0;
         }
 
-
         // Apply Russian roulette
         float q = max(min(0.5f,
             // Luminance
@@ -536,7 +531,6 @@ __kernel void ShadeSurface(
         // Only continue if we have non-zero throughput & pdf
         if (NON_BLACK(t) && bxdfpdf > 0.f && !rr_stop)
         {
-
             // Update the throughput
             Path_MulThroughput(path, t / bxdfpdf);
 
@@ -597,6 +591,11 @@ __kernel void ShadeMiss(
 
                 output[pixelidx].xyz += Volume_Emission(&volumes[volidx], &rays[globalid], rays[globalid].o.w);
             }
+        }
+
+        if (isnan(output[pixelidx].x) || isnan(output[pixelidx].y) || isnan(output[pixelidx].z))
+        {
+            output[pixelidx] = make_float4(100.f, 0.f, 0.f, 1.f);
         }
 
         output[pixelidx].w += 1.f;

@@ -69,7 +69,9 @@ namespace Baikal
             kMix,
             kEmissive,
             kPassthrough,
-            kTranslucent
+            kTranslucent,
+            kMicrofacetRefractionGGX,
+            kMicrofacetRefractionBeckmann
         };
 
         // Material description

@@ -94,7 +94,7 @@ float3 EnvironmentLight_Sample(// Scene
 	*wo = 100000.f * d;
     
     // Envmap PDF
-	*pdf = dot(dg->n, normalize(d)) / PI;
+	*pdf = fabs(dot(dg->n, normalize(d))) / PI;
     
     // Sample envmap
     return scene->envmapmul * Texture_SampleEnvMap(d, TEXTURE_ARGS_IDX(scene->envmapidx));
@@ -111,7 +111,7 @@ float EnvironmentLight_GetPdf(// Scene
                               TEXTURE_ARG_LIST
                               )
 {
-	return max(0.f, dot(dg->n, normalize(wo))/ PI);
+	return max(0.f, fabs(dot(dg->n, normalize(wo)))/ PI);
 }
 
 
@@ -182,7 +182,8 @@ float3 AreaLight_GetLe(// Emissive object
 		if (ndotv > 0.f)
 		{
 			*wo = d;
-			return ke * ndotv / (ld * ld);
+            float denom = ld * ld;
+			return  denom > 0.f ? ke * ndotv / denom : 0.f;
 		}
 		else
 		{
@@ -265,7 +266,8 @@ float3 AreaLight_Sample(// Emissive object
 
 	if (ndotv > 0.f)
 	{
-		return ke * ndotv / (length(*wo) * length(*wo));
+        float denom = (length(*wo) * length(*wo));
+		return denom > 0.f ? ke * ndotv / denom : 0.f;
 	}
 	else
 	{
@@ -288,7 +290,7 @@ float AreaLight_GetPdf(// Emissive object
                        )
 {
 	ray r;
-	r.o.xyz = dg->p + normalize(wo) * 0.01f;
+	r.o.xyz = dg->p + normalize(wo) * 0.001f;
 	r.d.xyz = wo;
 
 	int shapeidx = light->shapeidx;
@@ -326,8 +328,9 @@ float AreaLight_GetPdf(// Emissive object
 		float3 p2 = transform_point(v2, shape.m0, shape.m1, shape.m2, shape.m3);
 
 		float area = 0.5f * length(cross(p2 - p0, p2 - p1));
+        float denom = (fabs(dot(normalize(d), dg->n)) * area);
 
-		return ld * ld / (dot(normalize(d), dg->n) * area);
+		return denom > 0.f ? ld * ld / denom : 0.f;
 	}
 	else
 	{
