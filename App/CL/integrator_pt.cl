@@ -35,9 +35,9 @@ THE SOFTWARE.
 #include <../App/CL/path.cl>
 
 #define CRAZY_LOW_THROUGHPUT 0.0f
-#define CRAZY_HIGH_RADIANCE 10.f
+#define CRAZY_HIGH_RADIANCE 3.f
 #define CRAZY_HIGH_DISTANCE 1000000.f
-#define CRAZY_LOW_DISTANCE 0.000001f
+#define CRAZY_LOW_DISTANCE 0.001f
 #define REASONABLE_RADIANCE(x) (clamp((x), 0.f, CRAZY_HIGH_RADIANCE))
 #define NON_BLACK(x) (length(x) > 0.f)
 

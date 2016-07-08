@@ -72,6 +72,8 @@ private:
     FireRays::float2 zcap_;
     float  fovy_;
     float  aspect_;
+    float  focal_length_;
+    float  aperture_;
 
     friend std::ostream& operator << (std::ostream& o, PerspectiveCamera const& p);
 };

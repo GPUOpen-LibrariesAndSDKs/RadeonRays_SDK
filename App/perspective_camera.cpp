@@ -37,6 +37,8 @@ PerspectiveCamera::PerspectiveCamera(float3 const& eye, float3 const& at, float3
                        , zcap_(zcap)
                        , fovy_(fovy)
                        , aspect_(aspect)
+                       , aperture_(0.025f)
+                       , focal_length_(1.5f)
 {
     // Construct camera frame
     forward_ = normalize(at - eye);

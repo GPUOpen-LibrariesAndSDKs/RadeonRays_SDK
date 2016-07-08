@@ -41,15 +41,15 @@ void ApplyNormalMap(DifferentialGeometry* dg, TEXTURE_ARG_LIST)
 
 void ApplyBumpMap(DifferentialGeometry* dg, TEXTURE_ARG_LIST)
 {
-	int nmapidx = dg->mat.nmapidx;
-	if (nmapidx != -1)
-	{
-		// Now n, dpdu, dpdv is orthonormal basis
-		float3 mappednormal = 2.f * Texture_SampleBump(dg->uv, TEXTURE_ARGS_IDX(nmapidx)) - make_float3(1.f, 1.f, 1.f);
+    int nmapidx = dg->mat.nmapidx;
+    if (nmapidx != -1)
+    {
+        // Now n, dpdu, dpdv is orthonormal basis
+        float3 mappednormal = 2.f * Texture_SampleBump(dg->uv, TEXTURE_ARGS_IDX(nmapidx)) - make_float3(1.f, 1.f, 1.f);
 
-		// Return mapped version
-		dg->n = normalize(mappednormal.z * dg->n - mappednormal.x * dg->dpdu - mappednormal.y * dg->dpdv);
-	}
+        // Return mapped version
+        dg->n = normalize(mappednormal.z * dg->n + mappednormal.x * dg->dpdu + mappednormal.y * dg->dpdv);
+    }
 }
 
 #endif // NORMALMAP_CL

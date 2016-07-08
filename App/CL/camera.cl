@@ -47,7 +47,9 @@ typedef struct _Camera
         // Vertical field of view in radians
         float  fovy;
         // Camera aspect ratio
-        float  aspect;
+        float aspect;
+        float focal_length;
+        float aperture;
     } Camera;
 
 
@@ -138,6 +140,111 @@ __kernel void PerspectiveCamera_GeneratePaths(
 		mypath->volume = -1;
 		mypath->flags = 0;
 		mypath->active = 0xFF;
+#endif
+    }
+}
+
+/// Ray generation kernel for perspective camera.
+/// Rays are generated from camera position to viewing plane
+/// using random sample distribution within the pixel.
+///
+__kernel void PerspectiveCameraDof_GeneratePaths(
+    // Camera descriptor
+    __global Camera const* camera,
+    // Image resolution
+    int imgwidth,
+    int imgheight,
+    // RNG seed value
+    int randseed,
+    // Output rays
+    __global ray* rays,
+    __global SobolSampler* samplers,
+    __global uint const* sobolmat,
+    int reset
+#ifndef NO_PATH_DATA
+    , __global Path* paths
+#endif
+    )
+{
+    int2 globalid;
+    globalid.x = get_global_id(0);
+    globalid.y = get_global_id(1);
+
+    // Check borders
+    if (globalid.x < imgwidth && globalid.y < imgheight)
+    {
+        // Get pointer to ray to handle
+        __global ray* myray = rays + globalid.y * imgwidth + globalid.x;
+
+#ifndef NO_PATH_DATA
+        __global Path* mypath = paths + globalid.y * imgwidth + globalid.x;
+#endif
+
+        // Prepare RNG
+        Rng rng;
+        InitRng(randseed + globalid.x * 157 + 10433 * globalid.y, &rng);
+
+#ifdef SOBOL
+        __global SobolSampler* sampler = samplers + globalid.y * imgwidth + globalid.x;
+
+        if (reset)
+        {
+            sampler->seq = 0;
+            sampler->s0 = RandUint(&rng);
+        }
+        else
+        {
+            sampler->seq++;
+        }
+
+        float2 sample0;
+        sample0.x = SobolSampler_Sample1D(sampler->seq, kPixelX, sampler->s0, sobolmat);
+        sample0.y = SobolSampler_Sample1D(sampler->seq, kPixelY, sampler->s0, sobolmat);
+
+        float2 sample1;
+        sample1.x = SobolSampler_Sample1D(sampler->seq, kLensX, sampler->s0, sobolmat);
+        sample1.y = SobolSampler_Sample1D(sampler->seq, kLensY, sampler->s0, sobolmat);
+#else
+        float2 sample0 = UniformSampler_Sample2D(&rng);
+        float2 sample1 = UniformSampler_Sample2D(&rng);
+#endif
+
+        // Calculate [0..1] image plane sample
+        float2 imgsample;
+        imgsample.x = (float)globalid.x / imgwidth + sample0.x / imgwidth;
+        imgsample.y = (float)globalid.y / imgheight + sample0.y / imgheight;
+
+        // Transform into [-0.5, 0.5]
+        float2 hsample = imgsample - make_float2(0.5f, 0.5f);
+        // Transform into [-dim/2, dim/2]
+        float2 csample = hsample * camera->dim;
+
+
+        float2 lsample = camera->aperture * Sample_MapToDisk(sample1);
+        float2 fpsample = csample * camera->focal_length / camera->zcap.x;
+        float2 cdir = fpsample - lsample;
+
+        float3 o = camera->p + lsample.x * camera->right + lsample.y * camera->up;
+        float3 d = normalize(camera->forward * camera->focal_length + camera->right * cdir.x + camera->up * cdir.y);
+
+
+        // Calculate direction to image plane
+        myray->d.xyz = d;
+        // Origin == camera position + nearz * d
+        myray->o.xyz = o;
+        // Max T value = zfar - znear since we moved origin to znear
+        myray->o.w = camera->zcap.y - camera->zcap.x;
+        // Generate random time from 0 to 1
+        myray->d.w = sample0.x;
+        // Set ray max
+        myray->extra.x = 0xFFFFFFFF;
+        myray->extra.y = 0xFFFFFFFF;
+
+#ifndef NO_PATH_DATA
+        mypath->throughput = make_float3(1.f, 1.f, 1.f);
+        mypath->volume = -1;
+        mypath->flags = 0;
+        mypath->active = 0xFF;
 #endif
     }
 }

@@ -185,8 +185,9 @@ typedef enum
 {
     kPixelX = 0,
     kPixelY = 1,
-    kPathBase = 2,
-
+    kLensX = 2,
+    kLensY = 3,
+    kPathBase = 4,
     kBrdf = 0,
     kLight = 1,
     kLightU = 2,

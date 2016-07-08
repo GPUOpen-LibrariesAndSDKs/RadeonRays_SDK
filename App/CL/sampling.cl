@@ -55,6 +55,16 @@ float3 Sample_MapToHemisphere(
     return normalize(u * sintheta * cospsi + v * sintheta * sinpsi + n * costheta);
 }
 
+float2 Sample_MapToDisk(
+    // Sample
+    float2 sample
+    )
+{
+    float r = native_sqrt(sample.x); 
+    float theta = 2 * PI * sample.y;
+    return make_float2(r * native_cos(theta), r * native_sin(theta));
+}
+
 /// Sample hemisphere with cos weight
 float3 Sample_MapToSphere(
                         // Sample
