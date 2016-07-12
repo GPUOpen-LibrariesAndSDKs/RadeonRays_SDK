@@ -145,7 +145,9 @@ The library has been tested on the following hardware and OSes:
 
 ## Linux
 
-If <CL/cl.h> is missing try to specify OpenCL SDK location.
+ - If <CL/cl.h> is missing try to specify OpenCL SDK location.
+ - If your are experiencing problems creating your CL context with a default config chances are CL-GL interop is broken on your system, try running the sample app with -interop 0 command line option (expect performance drop). 
+ 
 AMD:
 `export $AMDAPPSDKROOT=<SDK_PATH>`
 NVIDIA:
