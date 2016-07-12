@@ -96,10 +96,11 @@ Possible command line args:
 - `-f file` mesh file to render
 - `-w` set window width
 - `-h` set window height
-- `-ao r` run in ambient occlusion mode and set AO radius
 - `-nb num` run in GI mode and calculate num bounces of light
 - `-cpx x -cpy y -cpz z` set camera position
 - `-tpx x -tpy y -tpz z` set camera target
+- `-interop [0|1]` disable | enable OpenGL interop (enabled by default, might be broken on some Linux systems)
+- `-config [gpu|cpu|mgpu|mcpu|all]` set device configuration to run on: single gpu (default) | single cpu | all available gpus | all available cpus | all devices
 
 The app only supports loading of pure triangle .obj meshes. The list of supported texture formats:
 
