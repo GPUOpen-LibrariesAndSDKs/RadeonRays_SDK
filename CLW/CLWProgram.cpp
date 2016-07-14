@@ -72,7 +72,7 @@ CLWProgram CLWProgram::CreateFromSource(char const* sourcecode, size_t sourcesiz
 
     char const* buildopts = 
 #if defined(__APPLE__)
-        "-D APPLE -cl-mad-enable -cl-fast-relaxed-math -cl-std=CL1.2 -I."
+        "-D APPLE -cl-mad-enable -cl-fast-relaxed-math -cl-std=CL1.2 -I ."
 #elif defined(_WIN32) || defined (WIN32)
         "-D WIN32 -cl-mad-enable -cl-std=CL1.2 -I."
 #elif defined(__linux__)
@@ -125,7 +125,7 @@ CLWProgram CLWProgram::CreateFromSource(char const* sourcecode,
     
     char const* buildopts =
 #if defined(__APPLE__)
-    "-D APPLE -cl-mad-enable -cl-fast-relaxed-math -cl-std=CL1.2 -I."
+    "-D APPLE -cl-mad-enable -cl-fast-relaxed-math -cl-std=CL1.2 -I ."
 #elif defined(_WIN32) || defined (WIN32)
     "-D WIN32 -cl-mad-enable -cl-fast-relaxed-math -cl-std=CL1.2 -I."
 #elif defined(__linux__)
