@@ -7,6 +7,14 @@
 
 namespace Baikal
 {
+    enum class CameraType
+    {
+        kDefault,
+        kPhysical,
+        kSpherical,
+        kFisheye
+    };
+
     struct ClwScene
     {
         CLWBuffer<FireRays::float3> vertices;
@@ -28,6 +36,7 @@ namespace Baikal
         int numemissive;
         int envmapidx;
         float envmapmul;
+        CameraType camera_type;
         
         std::vector<FireRays::Shape*> isect_shapes;
     };

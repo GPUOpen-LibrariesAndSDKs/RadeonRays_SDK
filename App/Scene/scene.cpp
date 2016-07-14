@@ -603,25 +603,25 @@ Scene* Scene::LoadFromObj(std::string const& filename, std::string const& basepa
             }
 
            
-                auto iter = textures.find("rm.jpg");
-                if (iter != textures.end())
-                {
-                    specular.kxmapidx = iter->second;
-                }
-                else
-                {
-                    Texture texture;
+                //auto iter = textures.find("rm.jpg");
+                //if (iter != textures.end())
+                //{
+                //    specular.kxmapidx = iter->second;
+                //}
+                //else
+                //{
+                //    Texture texture;
 
-                    // Load texture
-                    LoadTexture(basepath + "/rm.jpg", texture, scene->texturedata_);
+                //    // Load texture
+                //    LoadTexture(basepath + "/rm.jpg", texture, scene->texturedata_);
 
-                    // Add texture desc
-                    specular.nsmapidx= (int)scene->textures_.size();
-                    scene->textures_.push_back(texture);
+                //    // Add texture desc
+                //    specular.nsmapidx= (int)scene->textures_.size();
+                //    scene->textures_.push_back(texture);
 
-                    // Save in the map
-                    textures["rm.jpg"] = specular.nsmapidx;
-                }
+                //    // Save in the map
+                //    textures["rm.jpg"] = specular.nsmapidx;
+                //}
 
 			scene->materials_.push_back(specular);
 			scene->material_names_.push_back(objmaterials[i].name);
@@ -729,7 +729,7 @@ Scene* Scene::LoadFromObj(std::string const& filename, std::string const& basepa
 		else if (objmaterials[i].name == "light" || objmaterials[i].name == "Emit" || objmaterials[i].name == "Light3" || objmaterials[i].name == "dayLight_portal")
 		{
 			Material emissive;
-			emissive.kx = 12.f * float3(0.8f, 0.8f, 0.8f);
+			emissive.kx = 5.f * float3(0.8f, 0.8f, 0.8f);
 			emissive.type = kEmissive;
 
 			if (!objmaterials[i].diffuse_texname.empty())
@@ -761,10 +761,10 @@ Scene* Scene::LoadFromObj(std::string const& filename, std::string const& basepa
 			matmap[i] = scene->materials_.size() - 1;
 			continue;
 		}
-        else if (objmaterials[i].name == "HeadLightAngelEye")
+        else if (objmaterials[i].name == "HeadLightAngelEye1")
         {
             Material emissive;
-            emissive.kx = 5.f * float3(0.53f, 0.7f, 0.95f);
+            emissive.kx = 50.f * float3(0.53f, 0.7f, 0.95f);
             emissive.type = kEmissive;
 
             if (!objmaterials[i].diffuse_texname.empty())
@@ -796,7 +796,7 @@ Scene* Scene::LoadFromObj(std::string const& filename, std::string const& basepa
             matmap[i] = scene->materials_.size() - 1;
             continue;
         }
-        else if (objmaterials[i].name == "HeadLightGlass")
+        else if (objmaterials[i].name == "HeadLightGlass1")
         {
             Material emissive;
             emissive.kx = 50.f * float3(0.64f, 0.723f, 0.8f);

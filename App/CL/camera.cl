@@ -44,11 +44,11 @@ typedef struct _Camera
         
         // Near and far Z
         float2 zcap;
-        // Vertical field of view in radians
-        float  fovy;
+        // Focal lenght
+        float focal_length;
         // Camera aspect ratio
         float aspect;
-        float focal_length;
+        float focus_distance;
         float aperture;
     } Camera;
 
@@ -124,7 +124,7 @@ __kernel void PerspectiveCamera_GeneratePaths(
         float2 csample = hsample * camera->dim;
         
         // Calculate direction to image plane
-        myray->d.xyz = normalize(camera->zcap.x * camera->forward + csample.x * camera->right + csample.y * camera->up);
+        myray->d.xyz = normalize(camera->focal_length * camera->forward + csample.x * camera->right + csample.y * camera->up);
         // Origin == camera position + nearz * d
         myray->o.xyz = camera->p + camera->zcap.x * myray->d.xyz;
         // Max T value = zfar - znear since we moved origin to znear
@@ -184,6 +184,7 @@ __kernel void PerspectiveCameraDof_GeneratePaths(
         Rng rng;
         InitRng(randseed + globalid.x * 157 + 10433 * globalid.y, &rng);
 
+        //
 #ifdef SOBOL
         __global SobolSampler* sampler = samplers + globalid.y * imgwidth + globalid.x;
 
@@ -221,11 +222,11 @@ __kernel void PerspectiveCameraDof_GeneratePaths(
 
 
         float2 lsample = camera->aperture * Sample_MapToDisk(sample1);
-        float2 fpsample = csample * camera->focal_length / camera->zcap.x;
+        float2 fpsample = csample * camera->focus_distance / camera->focal_length;
         float2 cdir = fpsample - lsample;
 
         float3 o = camera->p + lsample.x * camera->right + lsample.y * camera->up;
-        float3 d = normalize(camera->forward * camera->focal_length + camera->right * cdir.x + camera->up * cdir.y);
+        float3 d = normalize(camera->forward * camera->focus_distance + camera->right * cdir.x + camera->up * cdir.y);
 
 
         // Calculate direction to image plane

@@ -203,11 +203,11 @@ typedef enum
     kVolumeLightV = 12,
     kMaterial = 13,
 #ifdef MULTISCATTER
-    kVolumeIndirectU = 24,
-    kVolumeIndirectV = 25,
-    kNumPerBounce = 26,
+    kVolumeIndirectU = 14,
+    kVolumeIndirectV = 15,
+    kNumPerBounce = 16,
 #else
-    kNumPerBounce = 24
+    kNumPerBounce = 14
 #endif
 }  SampleDim;
 
