@@ -98,8 +98,18 @@ int g_samplecount = 0;
 float g_ao_radius = 1.f;
 float g_envmapmul = 1.f;
 float g_cspeed = 100.25f;
-float3 g_camera_pos = float3(0, 1, 2);
-float3 g_camera_at = float3(0, 1, 0);
+
+float3 g_camera_pos = float3(0.f, 1.f, 4.f);
+float3 g_camera_at = float3(0.f, 1.f, 0.f);
+float3 g_camera_up = float3(0.f, 1.f, 0.f);
+
+float2 g_camera_sensor_size = float2(0.036f, 0.024f);  // default full frame sensor 36x24 mm
+float2 g_camera_zcap = float2(0.0f, 100000.f);
+float g_camera_focal_length = 0.035f; // 35mm lens
+float g_camera_focus_distance = 0.f;
+float g_camera_aperture = 0.f;
+
+
 bool g_recording_enabled = false;
 int g_frame_count = 0;
 bool g_benchmark = false;
@@ -135,12 +145,6 @@ int g_primary = -1;
 
 std::unique_ptr<Baikal::Scene> g_scene;
 
-
-#define CAMERA_POSITION float3(0, 0.3f, 0.f)
-#define CAMERA_AT float3(1.f, 0.3f, 0.f)
-#define CAMERA_UP float3(0, 1, 0)
-#define CAMERA_ZCAP float2 (0.00001f, 100000.f)
-#define CAMERA_FOVY ((float)M_PI_4 * 1.5f)
 
 static bool     g_is_left_pressed = false;
 static bool     g_is_right_pressed = false;
@@ -322,11 +326,23 @@ void InitData()
     g_scene->camera_.reset(new PerspectiveCamera(
     g_camera_pos
     , g_camera_at
-    , CAMERA_UP
-    , CAMERA_ZCAP
-    , CAMERA_FOVY
-    , (float)g_window_width / g_window_height
-    ));
+    , g_camera_up));
+
+    // Adjust sensor size based on current aspect ratio
+    float aspect = (float)g_window_width / g_window_height;
+    g_camera_sensor_size.y = g_camera_sensor_size.x / aspect;
+
+    g_scene->camera_->SetSensorSize(g_camera_sensor_size);
+    g_scene->camera_->SetDepthRange(g_camera_zcap);
+    g_scene->camera_->SetFocalLength(g_camera_focal_length);
+    g_scene->camera_->SetFocusDistance(g_camera_focus_distance);
+    g_scene->camera_->SetAperture(g_camera_aperture);
+
+    std::cout << "Camera type: " << (g_scene->camera_->GetAperture() > 0.f ? "Physical" : "Pinhole") << "\n";
+    std::cout << "Lens focal length: " << g_scene->camera_->GetFocalLength() * 1000.f << "mm\n";
+    std::cout << "Lens focus distance: " << g_scene->camera_->GetFocusDistance() << "m\n";
+    std::cout << "F-Stop: " << 1.f / (g_scene->camera_->GetAperture() * 10.f)  << "\n";
+    std::cout << "Sensor size: " << g_camera_sensor_size.x * 1000.f << "x"  << g_camera_sensor_size.y * 1000.f << "mm\n";
 
     g_scene->SetEnvironment("../Resources/Textures/studio015.hdr", "", g_envmapmul);
 
@@ -754,8 +770,21 @@ int main(int argc, char * argv[])
     char* numsamples = GetCmdOption(argv, argv + argc, "-ns");
     g_num_samples = numsamples ? atoi(numsamples) : g_num_samples;
 
+    char* camera_aperture = GetCmdOption(argv, argv + argc, "-a");
+    g_camera_aperture = camera_aperture ? atof(camera_aperture) : g_camera_aperture;
+
+    char* camera_dist = GetCmdOption(argv, argv + argc, "-fd");
+    g_camera_focus_distance = camera_dist ? atof(camera_dist) : g_camera_focus_distance;
+
+    char* camera_focal_length = GetCmdOption(argv, argv + argc, "-fl");
+    g_camera_focal_length = camera_focal_length ? atof(camera_focal_length) : g_camera_focal_length;
+
     char* interop = GetCmdOption(argv, argv + argc, "-interop");
     g_interop = interop ? (atoi(interop) > 0) : g_interop;
+
+    char* cspeed = GetCmdOption(argv, argv + argc, "-cs");
+    g_cspeed = cspeed ? (atof(cspeed) > 0) : g_cspeed;
+
 
     char* cfg = GetCmdOption(argv, argv + argc, "-config");
 
@@ -772,9 +801,6 @@ int main(int argc, char * argv[])
         else if (strcmp(cfg, "all") == 0)
         g_mode = ConfigManager::Mode::kUseAll;
     }
-
-    char* cspeed = GetCmdOption(argv, argv + argc, "-cspeed");
-    g_cspeed = cspeed ? (float)atof(cspeed) : g_cspeed;
 
     if (aorays)
     {

@@ -171,7 +171,7 @@ float3 Texture_GetValue3f(
     if (texidx != -1)
     {
         // Sample texture
-        return Texture_Sample2D(uv, TEXTURE_ARGS_IDX(texidx));
+        return native_powr(Texture_Sample2D(uv, TEXTURE_ARGS_IDX(texidx)), 2.2f);
     }
     
     // Return fixed color otherwise

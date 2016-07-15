@@ -34,11 +34,37 @@ class PerspectiveCamera
 public:
     // Pass camera position, camera aim, camera up vector, depth limits, vertical field of view
     // and image plane aspect ratio
-    PerspectiveCamera(FireRays::float3 const& eye, FireRays::float3 const& at, FireRays::float3 const& up,
-                       FireRays::float2 const& zcap, float fovy, float aspect);
+    PerspectiveCamera(FireRays::float3 const& eye, 
+        FireRays::float3 const& at, 
+        FireRays::float3 const& up);
 
-    // Sample is a value in [0,1] square describing where to sample the image plane
-    void GenerateRay(FireRays::float2 const& sample, FireRays::ray& r) const;
+    // Set camera focus distance in meters,
+    // this is essentially a distance from the lens to the focal plane.
+    // Altering this is similar to rotating the focus ring on real lens.
+    void SetFocusDistance(float distance);
+    float GetFocusDistance() const;
+
+    // Set camera focal length in meters,
+    // this is essentially a distance between a camera sensor and a lens.
+    // Altering this is similar to rotating zoom ring on a lens.
+    void SetFocalLength(float length);
+    float GetFocalLength() const;
+
+    // Set aperture value in meters.
+    // This is a radius of a lens. 
+    void SetAperture(float aperture);
+    float GetAperture() const;
+
+    // Set camera sensor size in meters.
+    // This distinguishes APC-S vs full-frame, etc 
+    void SetSensorSize(FireRays::float2 const& size);
+    FireRays::float2 GetSensorSize() const;
+
+    // Set camera depth range.
+    // Does not really make sence for physical camera
+    void SetDepthRange(FireRays::float2 const& range);
+    FireRays::float2 GetDepthRange() const;
+
 
     // Rotate camera around world Z axis
     void Rotate(float angle);
@@ -46,41 +72,96 @@ public:
     void Tilt(float angle);
     // Move along camera Z direction
     void MoveForward(float distance);
-	// Move along camera X direction
-	void MoveRight(float distance);
-	// Move along camera Y direction
-	void MoveUp(float distance);
-	//
-	void ArcballRotateHorizontally(FireRays::float3 c, float angle);
-	//
-	void ArcballRotateVertically(FireRays::float3 c, float angle);
+    // Move along camera X direction
+    void MoveRight(float distance);
+    // Move along camera Y direction
+    void MoveUp(float distance);
+
+    // 
+    void ArcballRotateHorizontally(FireRays::float3 c, float angle);
+    //
+    void ArcballRotateVertically(FireRays::float3 c, float angle);
+
 
 private:
     // Rotate camera around world Z axis
     void Rotate(FireRays::float3, float angle);
 
     // Camera coordinate frame
-    FireRays::float3 forward_;
-    FireRays::float3 right_;
-    FireRays::float3 up_;
-    FireRays::float3 p_;
+    FireRays::float3 m_forward;
+    FireRays::float3 m_right;
+    FireRays::float3 m_up;
+    FireRays::float3 m_p;
 
     // Image plane width & hight in scene units
-    FireRays::float2 dim_;
+    FireRays::float2 m_dim;
 
     // Near and far Z
-    FireRays::float2 zcap_;
-    float  fovy_;
-    float  aspect_;
+    FireRays::float2 m_zcap;
+
+    float  m_focal_length;
+    float  m_aspect;
+    float  m_focus_distance;
+    float  m_aperture;
 
     friend std::ostream& operator << (std::ostream& o, PerspectiveCamera const& p);
 };
 
 inline std::ostream& operator << (std::ostream& o, PerspectiveCamera const& p)
 {
-    o << "Position: " << p.p_.x << " " << p.p_.y << " " << p.p_.z << "\n";
-    o << "At: " << p.p_.x + p.forward_.x << " " << p.p_.y + p.forward_.y << " " << p.p_.z + p.forward_.z << "\n";
+    o << "Position: " << p.m_p.x << " " << p.m_p.y << " " << p.m_p.z << "\n";
+    o << "At: " << p.m_p.x + p.m_forward.x << " " << p.m_p.y + p.m_forward.y << " " << p.m_p.z + p.m_forward.z << "\n";
     return o;
 }
+
+inline void PerspectiveCamera::SetFocusDistance(float distance)
+{
+    m_focus_distance = distance;
+}
+
+inline void PerspectiveCamera::SetFocalLength(float length)
+{
+    m_focal_length = length;
+}
+
+inline void PerspectiveCamera::SetAperture(float aperture)
+{
+    m_aperture = aperture;
+}
+
+inline float PerspectiveCamera::GetFocusDistance() const
+{
+    return m_focus_distance;
+}
+
+inline float PerspectiveCamera::GetFocalLength() const
+{
+    return m_focal_length;
+}
+
+inline float PerspectiveCamera::GetAperture() const
+{
+    return m_aperture;
+}
+
+inline FireRays::float2 PerspectiveCamera::GetSensorSize() const
+{
+    return m_dim;
+}
+
+inline void PerspectiveCamera::SetSensorSize(FireRays::float2 const& size)
+{
+    m_dim = size;
+}
+inline void PerspectiveCamera::SetDepthRange(FireRays::float2 const& range)
+{
+    m_zcap = range;
+}
+
+inline FireRays::float2 PerspectiveCamera::GetDepthRange() const
+{
+    return m_zcap;
+}
+
 
 #endif // PERSPECTIVE_CAMERA_H

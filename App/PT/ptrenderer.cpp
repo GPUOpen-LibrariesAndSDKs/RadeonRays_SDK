@@ -313,7 +313,9 @@ namespace Baikal
     void PtRenderer::GeneratePrimaryRays(ClwScene const& scene)
     {
         // Fetch kernel
-        CLWKernel genkernel = m_render_data->program.GetKernel("PerspectiveCamera_GeneratePaths");
+        std::string kernel_name = (scene.camera_type == CameraType::kDefault) ? "PerspectiveCamera_GeneratePaths" : "PerspectiveCameraDof_GeneratePaths";
+
+        CLWKernel genkernel = m_render_data->program.GetKernel(kernel_name);
 
         // Set kernel parameters
         genkernel.SetArg(0,scene.camera);

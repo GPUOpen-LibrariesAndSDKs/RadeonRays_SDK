@@ -87,7 +87,7 @@ void FillDifferentialGeometry(// Scene
     
     float det = du1 * dv2 - dv1 * du2;
     
-    if (det != 0.f)
+    if (0 && det != 0.f)
     {
         float invdet = 1.f / det;
         diffgeo->dpdu = normalize( (dv2 * dp1 - dv1 * dp2) * invdet );
@@ -101,11 +101,12 @@ void FillDifferentialGeometry(// Scene
     
     diffgeo->ng = normalize(cross(diffgeo->dpdv, diffgeo->dpdu));
 
-    if (dot(diffgeo->ng, diffgeo->n) < 0.f)
-        diffgeo->ng = -diffgeo->ng;
+    //if (dot(diffgeo->ng, diffgeo->n) < 0.f)
+        //diffgeo->ng = -diffgeo->ng;
 
     // Fix all to be orthogonal
-    diffgeo->dpdv = normalize(cross(diffgeo->ng, diffgeo->dpdu));
+    //diffgeo->dpdv = normalize(cross(diffgeo->ng, diffgeo->dpdu));
+    //diffgeo->dpdu = normalize(cross(diffgeo->dpdv, diffgeo->ng));
 
     float3 p0 = transform_point(v0, shape.m0, shape.m1, shape.m2, shape.m3);
     float3 p1 = transform_point(v1, shape.m0, shape.m1, shape.m2, shape.m3);

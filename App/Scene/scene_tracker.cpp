@@ -97,6 +97,9 @@ namespace Baikal
 
     void SceneTracker::UpdateCamera(Scene const& scene, ClwScene& out) const
     {
+        // Update camere type
+        out.camera_type = scene.camera_->GetAperture() > 0.f ? CameraType::kPhysical : CameraType::kDefault;
+
         // Update camera data
         m_context.WriteBuffer(0, out.camera, scene.camera_.get(), 1);
     }

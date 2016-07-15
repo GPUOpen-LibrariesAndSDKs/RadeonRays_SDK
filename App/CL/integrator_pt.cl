@@ -35,9 +35,9 @@ THE SOFTWARE.
 #include <../App/CL/path.cl>
 
 #define CRAZY_LOW_THROUGHPUT 0.0f
-#define CRAZY_HIGH_RADIANCE 10.f
+#define CRAZY_HIGH_RADIANCE 3.f
 #define CRAZY_HIGH_DISTANCE 1000000.f
-#define CRAZY_LOW_DISTANCE 0.000001f
+#define CRAZY_LOW_DISTANCE 0.001f
 #define REASONABLE_RADIANCE(x) (clamp((x), 0.f, CRAZY_HIGH_RADIANCE))
 #define NON_BLACK(x) (length(x) > 0.f)
 
@@ -393,16 +393,10 @@ __kernel void ShadeSurface(
                 // There can be two cases: first we hit after specular vertex or primary ray
                 // where MIS can't be applied. In this case we simply pass radiance as is
                 // because we were using BRDF based estimator at previous step
-                if (bounce == 0)
-                {
-                    // TODO: need to account for volume extinction just in case
-                    output[pixelidx] += Path_GetThroughput(path) * Emissive_GetLe(&diffgeo, TEXTURE_ARGS);
-                }
-                else
                 {
                     // In this case we hit after an application of MIS process at previous step.
                     // That means BRDF weight has been already applied.
-                    output[pixelidx] += Path_GetThroughput(path) * Emissive_GetLe(&diffgeo, TEXTURE_ARGS) * ndotwi;
+                    output[pixelidx] += Path_GetThroughput(path) * Emissive_GetLe(&diffgeo, TEXTURE_ARGS);
                 }
             }
 

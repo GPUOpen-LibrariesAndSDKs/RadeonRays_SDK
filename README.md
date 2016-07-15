@@ -97,8 +97,13 @@ Possible command line args:
 - `-w` set window width
 - `-h` set window height
 - `-nb num` run in GI mode and calculate num bounces of light
+- `-ns num` limit the number of samples per pixel
+- `-cs speed` set camera movement speed
 - `-cpx x -cpy y -cpz z` set camera position
 - `-tpx x -tpy y -tpz z` set camera target
+- `-fd distance` set camera focus distance in meters
+- `-fl length` set lens focal length in meters (default 35mm)
+- `-a aperture` set lens aperture value in meters (values > 0 switches camera model from pinhole to physical)
 - `-interop [0|1]` disable | enable OpenGL interop (enabled by default, might be broken on some Linux systems)
 - `-config [gpu|cpu|mgpu|mcpu|all]` set device configuration to run on: single gpu (default) | single cpu | all available gpus | all available cpus | all devices
 
