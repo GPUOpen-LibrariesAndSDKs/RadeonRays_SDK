@@ -221,7 +221,7 @@ __kernel void PerspectiveCameraDof_GeneratePaths(
         float2 csample = hsample * camera->dim;
 
 
-        float2 lsample = camera->aperture * Sample_MapToDisk(sample1);
+        float2 lsample = camera->aperture * Sample_MapToDiskConcentric(sample1);
         float2 fpsample = csample * camera->focus_distance / camera->focal_length;
         float2 cdir = fpsample - lsample;
 

@@ -101,8 +101,8 @@ void FillDifferentialGeometry(// Scene
     
     diffgeo->ng = normalize(cross(diffgeo->dpdv, diffgeo->dpdu));
 
-    if (dot(diffgeo->ng, diffgeo->n) < 0.f)
-        diffgeo->ng = -diffgeo->ng;
+    //if (dot(diffgeo->ng, diffgeo->n) < 0.f)
+        //diffgeo->ng = -diffgeo->ng;
 
     // Fix all to be orthogonal
     //diffgeo->dpdv = normalize(cross(diffgeo->ng, diffgeo->dpdu));

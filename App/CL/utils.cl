@@ -157,7 +157,7 @@ float3 GetOrthoVector(float3 n)
 {
     float3 p;
     
-    if (fabs(n.z) > 0.7) {
+    if (fabs(n.z) > 0.f) {
         float k = sqrt(n.y*n.y + n.z*n.z);
         p.x = 0; p.y = -n.z/k; p.z = n.y/k;
     }

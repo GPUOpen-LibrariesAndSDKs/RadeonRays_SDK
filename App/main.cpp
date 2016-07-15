@@ -328,6 +328,10 @@ void InitData()
     , g_camera_at
     , g_camera_up));
 
+    // Adjust sensor size based on current aspect ratio
+    float aspect = (float)g_window_width / g_window_height;
+    g_camera_sensor_size.y = g_camera_sensor_size.x / aspect;
+
     g_scene->camera_->SetSensorSize(g_camera_sensor_size);
     g_scene->camera_->SetDepthRange(g_camera_zcap);
     g_scene->camera_->SetFocalLength(g_camera_focal_length);
@@ -338,8 +342,9 @@ void InitData()
     std::cout << "Lens focal length: " << g_scene->camera_->GetFocalLength() * 1000.f << "mm\n";
     std::cout << "Lens focus distance: " << g_scene->camera_->GetFocusDistance() << "m\n";
     std::cout << "F-Stop: " << 1.f / (g_scene->camera_->GetAperture() * 10.f)  << "\n";
+    std::cout << "Sensor size: " << g_camera_sensor_size.x * 1000.f << "x"  << g_camera_sensor_size.y * 1000.f << "mm\n";
 
-    //g_scene->SetEnvironment("../Resources/Textures/studio015.hdr", "", g_envmapmul);
+    g_scene->SetEnvironment("../Resources/Textures/studio015.hdr", "", g_envmapmul);
 
     #pragma omp parallel for
     for (int i = 0; i < g_cfgs.size(); ++i)
@@ -777,6 +782,10 @@ int main(int argc, char * argv[])
     char* interop = GetCmdOption(argv, argv + argc, "-interop");
     g_interop = interop ? (atoi(interop) > 0) : g_interop;
 
+    char* cspeed = GetCmdOption(argv, argv + argc, "-cs");
+    g_cspeed = cspeed ? (atof(cspeed) > 0) : g_cspeed;
+
+
     char* cfg = GetCmdOption(argv, argv + argc, "-config");
 
     if (cfg)
@@ -792,9 +801,6 @@ int main(int argc, char * argv[])
         else if (strcmp(cfg, "all") == 0)
         g_mode = ConfigManager::Mode::kUseAll;
     }
-
-    char* cspeed = GetCmdOption(argv, argv + argc, "-cspeed");
-    g_cspeed = cspeed ? (float)atof(cspeed) : g_cspeed;
 
     if (aorays)
     {

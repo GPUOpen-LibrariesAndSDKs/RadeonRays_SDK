@@ -761,7 +761,7 @@ Scene* Scene::LoadFromObj(std::string const& filename, std::string const& basepa
 			matmap[i] = scene->materials_.size() - 1;
 			continue;
 		}
-        else if (objmaterials[i].name == "HeadLightAngelEye1")
+        else if (objmaterials[i].name == "HeadLightAngelEye")
         {
             Material emissive;
             emissive.kx = 50.f * float3(0.53f, 0.7f, 0.95f);
@@ -796,7 +796,7 @@ Scene* Scene::LoadFromObj(std::string const& filename, std::string const& basepa
             matmap[i] = scene->materials_.size() - 1;
             continue;
         }
-        else if (objmaterials[i].name == "HeadLightGlass1")
+        else if (objmaterials[i].name == "HeadLightGlass")
         {
             Material emissive;
             emissive.kx = 50.f * float3(0.64f, 0.723f, 0.8f);

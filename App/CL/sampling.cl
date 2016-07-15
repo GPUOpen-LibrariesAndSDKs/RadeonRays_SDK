@@ -65,6 +65,31 @@ float2 Sample_MapToDisk(
     return make_float2(r * native_cos(theta), r * native_sin(theta));
 }
 
+float2 Sample_MapToDiskConcentric(
+    // Sample
+    float2 sample
+    )
+{
+    float2 offset = 2.f * sample - make_float2(1.f, 1.f);
+
+    if (offset.x == 0 && offset.y == 0) return 0.f;
+
+    float theta, r;
+
+    if (fabs(offset.x) > fabs(offset.y)) 
+    {
+        r = offset.x;
+        theta = PI / 4.f * (offset.y / offset.x);
+    }
+    else 
+    {
+        r = offset.y;
+        theta = PI / 2.f * ( 1.f - 0.5f * (offset.x / offset.y));
+    }
+    
+    return make_float2(r * native_cos(theta), r * native_sin(theta));
+}
+
 /// Sample hemisphere with cos weight
 float3 Sample_MapToSphere(
                         // Sample
