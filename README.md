@@ -98,8 +98,13 @@ Possible command line args:
 - `-h` set window height
 - `-ao r` run in ambient occlusion mode and set AO radius
 - `-nb num` run in GI mode and calculate num bounces of light
+- `-ns num` limit the number of samples per pixel
+- `-cs speed` set camera movement speed
 - `-cpx x -cpy y -cpz z` set camera position
 - `-tpx x -tpy y -tpz z` set camera target
+- `-fd distance` set camera focus distance in meters
+- `-fl length` set lens focal length in meters (default 35mm)
+- `-a aperture` set lens aperture value in meters (values > 0 switches camera model from pinhole to physical)
 
 The app only supports loading of pure triangle .obj meshes. The list of supported texture formats:
 
