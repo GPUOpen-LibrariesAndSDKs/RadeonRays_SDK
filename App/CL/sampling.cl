@@ -106,6 +106,23 @@ float3 Sample_MapToSphere(
     return make_float3(x,y,z);
 }
 
+float2 Sample_MapToPolygon(int n, float2 sample, float sample1)
+{
+    float theta = 2.f * PI / n;
+
+    int edge = clamp((int)(sample1 * n), 0, n - 1);
+
+    float t = native_sqrt(sample.x);
+    float u = 1.f - t;
+    float v = t * sample.y;
+
+    float2 v1 = make_float2(native_cos(theta * edge), native_sin(theta * edge));
+    float2 v2 = make_float2(native_cos(theta * (edge + 1)), native_sin(theta * (edge + 1)));
+
+
+    return u*v1 + v*v2;;
+}
+
 /// Power heuristic for multiple importance sampling
 float PowerHeuristic(int nf, float fpdf, int ng, float gpdf)
 {
