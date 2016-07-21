@@ -5,7 +5,7 @@
 
 #include <chrono>
 
-using namespace FireRays;
+using namespace RadeonRays;
 
 
 namespace Baikal

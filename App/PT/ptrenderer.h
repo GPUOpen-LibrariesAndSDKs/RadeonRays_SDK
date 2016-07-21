@@ -48,7 +48,7 @@ namespace Baikal
         // Delete output
         void DeleteOutput(Output* output) const override;
         // Clear output
-        void Clear(FireRays::float3 const& val, Output& output) const override;
+        void Clear(RadeonRays::float3 const& val, Output& output) const override;
         // Do necessary precalculation and initialization
         void Preprocess(Scene const& scene) override;
         // Render the scene into the output
@@ -102,7 +102,7 @@ namespace Baikal
         std::unique_ptr<RenderData> m_render_data;
 
         // Intersector data
-        std::vector<FireRays::Shape*> m_shapes;
+        std::vector<RadeonRays::Shape*> m_shapes;
 
         // Vidmem usage
         // Working set

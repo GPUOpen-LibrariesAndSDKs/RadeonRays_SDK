@@ -1,9 +1,9 @@
 project "App"
     kind "ConsoleApp"
     location "../App"
-    links {"FireRays", "CLW"}
+    links {"RadeonRays", "CLW"}
     files { "../App/**.h", "../App/**.cpp", "../App/**.cl", "../App/**.fsh", "../App/**.vsh" }
-    includedirs{ "../FireRays/include", "../CLW", "." } 
+    includedirs{ "../RadeonRays/include", "../CLW", "." } 
 
     if os.is("macosx") then
         includedirs {"../3rdParty/oiio16/include"}
@@ -15,7 +15,7 @@ project "App"
 
     if os.is("windows") then
         includedirs { "../3rdParty/glew/include", "../3rdParty/freeglut/include", "../3rdParty/oiio/include"  }
-		links {"FireRays", "freeglut", "glew"}
+		links {"RadeonRays", "freeglut", "glew"}
 
 		configuration {"x32"}
 			libdirs { "../3rdParty/glew/lib/x86", "../3rdParty/freeglut/lib/x86", "../3rdParty/embree/lib/x86", "../3rdParty/oiio/lib/x86" }

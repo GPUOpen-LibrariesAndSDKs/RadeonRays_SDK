@@ -1,12 +1,12 @@
 # Summary
-FireRays is ray intersection acceleration library provided by AMD which makes the most of AMD hardware and allows for efficient ray queries independently of the generation of underlying AMD hardware.
+Radeon Rays is ray intersection acceleration library provided by AMD which makes the most of AMD hardware and allows for efficient ray queries independently of the generation of underlying AMD hardware.
 
 # Description
 The source tree consist of the following subdirectories:
 
- - FireRays: library binaries
+ - Radeon Rays: library binaries
 
-- App: Standalone application featuring FireRays library
+- App: Standalone application featuring Radeon Rays library
 
 # Preliminaries
 ## System requirements
@@ -75,7 +75,7 @@ Available premake options:
 
 - `--submit` submit SDK. This option will generate project with `--embed_kernels` and build release version, run unit tests, pack it using script `--package` option, check standalone SDK build and push changes to SDK repo.
 `devenv` should be in `PATH` to have possibility to build solution via command line.
-SDK repo location expected to be `../FireRays_SDK`. checkout & clean -dfx made before adding changes to SDK git. Commit will be pushed to remote named `origin`.  
+SDK repo location expected to be `../Radeon Rays_SDK`. checkout & clean -dfx made before adding changes to SDK git. Commit will be pushed to remote named `origin`.  
 example of usage :
 `./Tools/premake/win/premake5.exe --submit`
 
@@ -86,7 +86,7 @@ example of usage :
 ## Run
 
 ## Run standalone app
- - `export LD_LIBRARY_PATH=<FireRays_SDK path>/FireRays/lib/x64/:${LD_LIBRARY_PATH}`
+ - `export LD_LIBRARY_PATH=<Radeon Rays_SDK path>/Radeon Rays/lib/x64/:${LD_LIBRARY_PATH}`
  - `cd App`
  - `../Bin/Release/x64/App64`
 

@@ -26,7 +26,7 @@ THE SOFTWARE.
 #include <algorithm>
 #include <vector>
 
-using namespace FireRays;
+using namespace RadeonRays;
 
 // Taken from PBRT book
 static void EvaluateLegendrePolynomial(float x, int lmax, float* out)

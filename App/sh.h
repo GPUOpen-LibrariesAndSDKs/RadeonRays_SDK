@@ -50,11 +50,11 @@ inline int ShIndex(int l, int m)
 
 ///< The function evaluates the value of Y_l_m(p) coefficient up to lmax band. 
 ///< coeffs array should have at least NumShTerms(lmax) elements.
-void ShEvaluate(FireRays::float3 const&p, int lmax, float* out);
+void ShEvaluate(RadeonRays::float3 const&p, int lmax, float* out);
 
 
 ///< Apply convolution with dot(n,wi) term
-void ShConvolveCosTheta(int lmax, FireRays::float3 const* cin, FireRays::float3* cout);
+void ShConvolveCosTheta(int lmax, RadeonRays::float3 const* cin, RadeonRays::float3* cout);
 
 
 

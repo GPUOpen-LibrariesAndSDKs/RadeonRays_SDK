@@ -21,9 +21,9 @@ THE SOFTWARE.
 ********************************************************************/
 #include "clw_test.h"
 #include "clw_cl_test.h"
-#include "firerays_test.h"
-#include "firerays_conformance_test.h"
-#include "firerays_cl_test.h"
+#include "radeon_rays_test.h"
+#include "radeon_rays_conformance_test.h"
+#include "radeon_rays_cl_test.h"
 #include "calc_test_cl.h"
 
 #include "gtest/gtest.h"

@@ -38,7 +38,7 @@ extern unsigned g_SobolMatrices[];
 
 namespace Baikal
 {
-    using namespace FireRays;
+    using namespace RadeonRays;
 
     static int const kMaxLightSamples = 1;
 
@@ -71,7 +71,7 @@ namespace Baikal
         CLWProgram program;
         CLWParallelPrimitives pp;
 
-        // FireRays stuff
+        // RadeonRays stuff
         Buffer* fr_rays;
         Buffer* fr_shadowrays;
         Buffer* fr_shadowhits;
@@ -127,7 +127,7 @@ namespace Baikal
         delete output;
     }
 
-    void AoRenderer::Clear(FireRays::float3 const& val, Output& output) const
+    void AoRenderer::Clear(RadeonRays::float3 const& val, Output& output) const
     {
         static_cast<ClwOutput&>(output).Clear(val);
         m_resetsampler = true;

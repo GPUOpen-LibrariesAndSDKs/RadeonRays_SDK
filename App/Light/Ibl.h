@@ -12,7 +12,7 @@ namespace Baikal
     class Ibl
     {
     public:
-        Ibl(FireRays::float3 const* data, std::uint32_t w, std::uint32_t h)
+        Ibl(RadeonRays::float3 const* data, std::uint32_t w, std::uint32_t h)
         : m_data(data)
         , m_width(w)
         , m_height(h)
@@ -27,12 +27,12 @@ namespace Baikal
         std::uint32_t width() const { return m_width; }
         std::uint32_t height() const { return m_height; }
         
-        float GetPdf(FireRays::float2 uv) const;
+        float GetPdf(RadeonRays::float2 uv) const;
         
         
         
         // This is temporary code
-        FireRays::int2 SampleCoord(FireRays::float2 uv) const;
+        RadeonRays::int2 SampleCoord(RadeonRays::float2 uv) const;
         void DumpPdf(std::string const& filename);
         void Simulate(std::string const& filename);
         
@@ -50,6 +50,6 @@ namespace Baikal
         std::vector<float> m_u_int;
         float m_v_int;
         std::vector<float> m_img;
-        FireRays::float3 const* m_data;
+        RadeonRays::float3 const* m_data;
     };
 }

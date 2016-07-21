@@ -25,12 +25,12 @@ newoption {
 
 newoption {
     trigger = "submit",
-    description = "Submit FireRays SDK."
+    description = "Submit RadeonRays SDK."
 }
 
 function build(config)
 	if os.is("windows") then
-		buildcmd="devenv FireRays.sln /build \"" .. config .. "|x64\""
+		buildcmd="devenv RadeonRays.sln /build \"" .. config .. "|x64\""
 	else
 		config=config .. "_x64"
 		buildcmd="make config=" .. config
@@ -41,16 +41,16 @@ end
 
 
 if _OPTIONS["package"] then
-    print ">> FireRays: Packaging mode"
+    print ">> RadeonRays: Packaging mode"
         os.execute("rm -rf dist")
     os.execute("mkdir dist")
     os.execute("echo $(pwd)")
-    os.execute("cd dist && mkdir FireRays && cd FireRays && mkdir include && mkdir lib && cd lib && mkdir x64 && cd .. && mkdir bin && cd bin && mkdir x64 && cd .. && cd include && mkdir math && cd ../.. && mkdir 3rdParty")
-    os.execute("cp -r ./FireRays/include ./dist/FireRays/")
-        os.execute("cp ./Bin/Release/x64/Fire*.lib ./dist/FireRays/lib/x64")
-        os.execute("cp ./Bin/Release/x64/Fire*.dll ./dist/FireRays/bin/x64")
-        os.execute("cp ./Bin/Release/x64/libFire*.so ./dist/FireRays/lib/x64")
-        os.execute("cp ./Bin/Release/x64/Fire*.dylib ./dist/FireRays/bin/x64")
+    os.execute("cd dist && mkdir RadeonRays && cd RadeonRays && mkdir include && mkdir lib && cd lib && mkdir x64 && cd .. && mkdir bin && cd bin && mkdir x64 && cd .. && cd include && mkdir math && cd ../.. && mkdir 3rdParty")
+    os.execute("cp -r ./RadeonRays/include ./dist/RadeonRays/")
+        os.execute("cp ./Bin/Release/x64/Radeon*.lib ./dist/RadeonRays/lib/x64")
+        os.execute("cp ./Bin/Release/x64/Radeon*.dll ./dist/RadeonRays/bin/x64")
+        os.execute("cp ./Bin/Release/x64/libRadeon*.so ./dist/RadeonRays/lib/x64")
+        os.execute("cp ./Bin/Release/x64/Radeon*.dylib ./dist/RadeonRays/bin/x64")
     os.execute("rm -rf ./App/obj")
     os.execute("rm -rf ./CLW/obj")
     os.execute("cp -r ./App ./dist")
@@ -92,10 +92,10 @@ elseif _OPTIONS["submit"] then
 	result = os.execute("cd App && \"../Bin/Release/x64/UnitTest64\"")
 	assert(result == 0, "Unit tests failed.")
 	os.execute("echo packaging && " .. "\"./Tools/premake/".. osPremakeFolder .. "/premake5\" " .. " --package")
-	os.execute("cd ../FireRays_SDK/ && git clean -dfx && git checkout .")
-	os.execute("cp -r ./dist/* ../FireRays_SDK/")
-	os.execute("cd ../FireRays_SDK/ && git add .")
-	os.chdir("../FireRays_SDK/")
+	os.execute("cd ../RadeonRays_SDK/ && git clean -dfx && git checkout .")
+	os.execute("cp -r ./dist/* ../RadeonRays_SDK/")
+	os.execute("cd ../RadeonRays_SDK/ && git add .")
+	os.chdir("../RadeonRays_SDK/")
 	result =  os.execute("echo generate project && " .. "\"./premake/".. osPremakeFolder .. "/premake5\" " .. project)
 	assert(result == 0, "failed to generate SDK project.")
 	result = build("release")
@@ -104,7 +104,7 @@ elseif _OPTIONS["submit"] then
 	result = os.execute("git push origin master")
 
 else
-solution "FireRays"
+solution "RadeonRays"
     configurations { "Debug", "Release" }           
     language "C++"
     flags { "NoMinimalRebuild", "EnableSSE", "EnableSSE2" }
@@ -148,8 +148,8 @@ solution "FireRays"
     
     configuration {} -- back to all configurations
 
-    if fileExists("./FireRays/FireRays.lua") then
-        dofile("./FireRays/FireRays.lua")
+    if fileExists("./RadeonRays/RadeonRays.lua") then
+        dofile("./RadeonRays/RadeonRays.lua")
     end
     
     if fileExists("./Gtest/gtest.lua") then

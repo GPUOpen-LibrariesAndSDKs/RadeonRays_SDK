@@ -61,20 +61,20 @@ namespace Baikal
         }
     }
     
-    float Ibl::GetPdf(FireRays::float2 uv) const
+    float Ibl::GetPdf(RadeonRays::float2 uv) const
     {
         //auto v_iter = std::lower_bound(m_v_dist.cbegin(), m_v_dist.cend(), uv.y) - 1;
         
         //auto v_offset = std::distance(m_v_dist.cbegin(), v_iter);
         
-        auto v_offset = FireRays::clamp((std::uint32_t)(uv.y * m_height), 0U, m_height - 1);
+        auto v_offset = RadeonRays::clamp((std::uint32_t)(uv.y * m_height), 0U, m_height - 1);
         
         float v_pdf = m_u_int[v_offset] / m_v_int;
         
         //auto u_iter = std::lower_bound(m_u_dist.cbegin() + v_offset * (m_width + 1),
         //m_u_dist.cbegin() + (v_offset + 1) * (m_width + 1), uv.x) - 1;
         
-        auto u_offset = FireRays::clamp((std::uint32_t)(uv.x * m_width), 0U, m_width - 1);
+        auto u_offset = RadeonRays::clamp((std::uint32_t)(uv.x * m_width), 0U, m_width - 1);
         //std::distance(m_u_dist.cbegin() + v_offset * (m_width + 1), u_iter);
         
         
@@ -83,22 +83,22 @@ namespace Baikal
         return u_pdf * v_pdf;
     }
     
-    FireRays::int2 Ibl::SampleCoord(FireRays::float2 uv) const
+    RadeonRays::int2 Ibl::SampleCoord(RadeonRays::float2 uv) const
     {
         auto v_iter = std::lower_bound(m_v_dist.cbegin(), m_v_dist.cend(), uv.y) - 1;
         
         auto v_offset = std::distance(m_v_dist.cbegin(), v_iter);
         
-        v_offset = FireRays::clamp(v_offset, 0U, m_height - 1);
+        v_offset = RadeonRays::clamp(v_offset, 0U, m_height - 1);
         
         auto u_iter = std::lower_bound(m_u_dist.cbegin() + v_offset * (m_width + 1),
                                        m_u_dist.cbegin() + (v_offset + 1) * (m_width + 1), uv.x) - 1;
         
         auto u_offset = std::distance(m_u_dist.cbegin() + v_offset * (m_width + 1), u_iter);
         
-        u_offset = FireRays::clamp(u_offset, 0U, m_width - 1);
+        u_offset = RadeonRays::clamp(u_offset, 0U, m_width - 1);
     
-        return FireRays::int2(u_offset, v_offset);
+        return RadeonRays::int2(u_offset, v_offset);
     }
     
     void Ibl::DumpPdf(std::string const& filename)
@@ -112,7 +112,7 @@ namespace Baikal
         for (auto x = 0U; x < width; ++x)
             for (auto y = 0U; y < height; ++y)
             {
-                data[y * width + x] = GetPdf(FireRays::float2((float)x / m_width, (float)y / m_height));
+                data[y * width + x] = GetPdf(RadeonRays::float2((float)x / m_width, (float)y / m_height));
             }
         
         auto max = std::max_element(data.cbegin(), data.cend());
@@ -151,7 +151,7 @@ namespace Baikal
         
         for (int i = 0; i < 100000; ++i)
         {
-            auto xy = SampleCoord(FireRays::float2(FireRays::rand_float(), FireRays::rand_float()));
+            auto xy = SampleCoord(RadeonRays::float2(RadeonRays::rand_float(), RadeonRays::rand_float()));
             data[xy.y * width + xy.x] += 1.f;
         }
         

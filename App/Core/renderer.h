@@ -41,7 +41,7 @@ namespace Baikal
         // Delete output
         virtual void DeleteOutput(Output* output) const = 0;
         // Clear output
-        virtual void Clear(FireRays::float3 const& val, Output& output) const = 0;
+        virtual void Clear(RadeonRays::float3 const& val, Output& output) const = 0;
         // Do necessary precalculation and initialization
         // TODO: is it really necessary? can be async? progress reporting?
         virtual void Preprocess(Scene const& scene) = 0;

@@ -34,9 +34,9 @@ class PerspectiveCamera
 public:
     // Pass camera position, camera aim, camera up vector, depth limits, vertical field of view
     // and image plane aspect ratio
-    PerspectiveCamera(FireRays::float3 const& eye, 
-        FireRays::float3 const& at, 
-        FireRays::float3 const& up);
+    PerspectiveCamera(RadeonRays::float3 const& eye, 
+        RadeonRays::float3 const& at, 
+        RadeonRays::float3 const& up);
 
     // Set camera focus distance in meters,
     // this is essentially a distance from the lens to the focal plane.
@@ -57,13 +57,13 @@ public:
 
     // Set camera sensor size in meters.
     // This distinguishes APC-S vs full-frame, etc 
-    void SetSensorSize(FireRays::float2 const& size);
-    FireRays::float2 GetSensorSize() const;
+    void SetSensorSize(RadeonRays::float2 const& size);
+    RadeonRays::float2 GetSensorSize() const;
 
     // Set camera depth range.
     // Does not really make sence for physical camera
-    void SetDepthRange(FireRays::float2 const& range);
-    FireRays::float2 GetDepthRange() const;
+    void SetDepthRange(RadeonRays::float2 const& range);
+    RadeonRays::float2 GetDepthRange() const;
 
 
     // Rotate camera around world Z axis
@@ -78,26 +78,26 @@ public:
     void MoveUp(float distance);
 
     // 
-    void ArcballRotateHorizontally(FireRays::float3 c, float angle);
+    void ArcballRotateHorizontally(RadeonRays::float3 c, float angle);
     //
-    void ArcballRotateVertically(FireRays::float3 c, float angle);
+    void ArcballRotateVertically(RadeonRays::float3 c, float angle);
 
 
 private:
     // Rotate camera around world Z axis
-    void Rotate(FireRays::float3, float angle);
+    void Rotate(RadeonRays::float3, float angle);
 
     // Camera coordinate frame
-    FireRays::float3 m_forward;
-    FireRays::float3 m_right;
-    FireRays::float3 m_up;
-    FireRays::float3 m_p;
+    RadeonRays::float3 m_forward;
+    RadeonRays::float3 m_right;
+    RadeonRays::float3 m_up;
+    RadeonRays::float3 m_p;
 
     // Image plane width & hight in scene units
-    FireRays::float2 m_dim;
+    RadeonRays::float2 m_dim;
 
     // Near and far Z
-    FireRays::float2 m_zcap;
+    RadeonRays::float2 m_zcap;
 
     float  m_focal_length;
     float  m_aspect;
@@ -144,21 +144,21 @@ inline float PerspectiveCamera::GetAperture() const
     return m_aperture;
 }
 
-inline FireRays::float2 PerspectiveCamera::GetSensorSize() const
+inline RadeonRays::float2 PerspectiveCamera::GetSensorSize() const
 {
     return m_dim;
 }
 
-inline void PerspectiveCamera::SetSensorSize(FireRays::float2 const& size)
+inline void PerspectiveCamera::SetSensorSize(RadeonRays::float2 const& size)
 {
     m_dim = size;
 }
-inline void PerspectiveCamera::SetDepthRange(FireRays::float2 const& range)
+inline void PerspectiveCamera::SetDepthRange(RadeonRays::float2 const& range)
 {
     m_zcap = range;
 }
 
-inline FireRays::float2 PerspectiveCamera::GetDepthRange() const
+inline RadeonRays::float2 PerspectiveCamera::GetDepthRange() const
 {
     return m_zcap;
 }

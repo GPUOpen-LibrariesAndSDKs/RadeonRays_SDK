@@ -25,10 +25,10 @@ THE SOFTWARE.
 #include "../App/CL/utils.cl"
 #include "../App/CL/payload.cl"
 
-/// Fill DifferentialGeometry structure based on intersection info from FireRays
+/// Fill DifferentialGeometry structure based on intersection info from RadeonRays
 void FillDifferentialGeometry(// Scene
                               Scene const* scene,
-                              // FireRays intersection
+                              // RadeonRays intersection
                               Intersection const* isect,
                               // Differential geometry
                               DifferentialGeometry* diffgeo
