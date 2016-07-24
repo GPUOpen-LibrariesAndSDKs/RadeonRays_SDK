@@ -60,9 +60,9 @@ public:
                 gpuidx = idx;
             }
         }
-        
-        //ASSERT_NE(nativeidx, -1);
-        
+
+        ASSERT_TRUE(-1 != cpuidx) << "OpenCL CPU device v1.2+ is not available (missing OpenCL runtime?)";
+        ASSERT_TRUE(-1 != gpuidx) << "OpenCL GPU device v1.2+ is not available (missing OpenCL runtime?)";
         apicpu_ = IntersectionApi::Create(cpuidx);
         apigpu_ = IntersectionApi::Create(gpuidx);
 
