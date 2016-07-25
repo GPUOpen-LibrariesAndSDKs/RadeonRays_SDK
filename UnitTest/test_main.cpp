@@ -22,7 +22,11 @@ THE SOFTWARE.
 #include "clw_test.h"
 #include "clw_cl_test.h"
 #include "firerays_test.h"
+// TODO: CPU on Apple is not supported because Apple doesn't allow creation of
+// work group size > 1 on CPU devices, see CLW/CLWPlatform.cpp. So disabling the test.
+#ifndef __APPLE__
 #include "firerays_conformance_test.h"
+#endif
 #include "firerays_cl_test.h"
 #include "calc_test_cl.h"
 
