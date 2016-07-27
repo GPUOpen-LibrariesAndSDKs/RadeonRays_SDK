@@ -268,12 +268,15 @@ void InitGraphics()
 
 void InitCl()
 {
-    bool forceDisableInterop = false;
+    bool force_disable_itnerop = false;
 
-    try {
+    try
+    {
         ConfigManager::CreateConfigs(g_mode, g_interop, g_cfgs, g_num_bounces);
-    } catch(CLWException & exc) {
-        forceDisableInterop = true;
+    }
+    catch(CLWException & exc)
+    {
+        force_disable_itnerop = true;
         ConfigManager::CreateConfigs(g_mode, false, g_cfgs, g_num_bounces);
     }
 
@@ -309,10 +312,12 @@ void InitCl()
         g_ctrl[i].idx = i;
     }
 
-    if(forceDisableInterop)
+    if (force_disable_itnerop)
     {
         std::cout << "OpenGL interop is not supported, disabled, -interop flag is ignored\n";
-    } else {
+    }
+    else
+    {
         if (g_interop)
         {
             std::cout << "OpenGL interop mode enabled\n";
