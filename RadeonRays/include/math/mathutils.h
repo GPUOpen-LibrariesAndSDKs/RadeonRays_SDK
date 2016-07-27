@@ -180,7 +180,6 @@ namespace RadeonRays
     matrix perspective_proj_fovy(float fovy, float aspect, float n, float f);
     matrix perspective_proj_fovy_lh_dx(float fovy, float aspect, float n, float f);
     matrix perspective_proj_fovy_lh_gl(float fovy, float aspect, float n, float f);
-    matrix perspective_proj_fovy_rh_gl(float fovy, float& aspect, float n, float f);
 
     matrix lookat_lh_dx( float3 const& pos, float3 const& at, float3 const& up);
 
@@ -333,17 +332,17 @@ namespace RadeonRays
     inline matrix perspective_proj_lh_dx(float l, float r, float b, float t, float n, float f)
     {
         return matrix(2*n/(r-l), 0, 0, 0, 
-            0, 2*n/(t-b), 0, -(r + l)/(r - l),
+            0, 2*n/(t-b), 0, (r + l)/(r - l),
             0, -(t + b)/(t - b), f/(f - n), -f*n/(f - n),
             0, 0, 1, 0);  
     }
 
     inline matrix perspective_proj_lh_gl(float l, float r, float b, float t, float n, float f)
     {
-        return matrix(2*n/(r-l), 0, 0, 0,
-            0, 2*n/(t-b), 0, -(r + l)/(r - l),
-            0, -(t + b)/(t - b), -2*f*n/(f - n), 1,
-            0, 0, (n + f)/(f - n), 0);
+        return matrix(2*n/(r-l), 0, (r+l)/(r-l), 0,
+                      0, 2*n/(t-b), (t+b) / (t-b), 0,
+                      0, 0, (n+f)/(n-f), 2*f*n/(n - f),
+                      0, 0, -1, 0).transpose();
     }
 
     inline matrix perspective_proj_fovy_lh_gl(float fovy, float aspect, float n, float f)
