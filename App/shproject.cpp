@@ -25,7 +25,7 @@ THE SOFTWARE.
 #include <vector>
 #include <cmath>
 
-using namespace FireRays;
+using namespace RadeonRays;
 
 ///< The function projects latitude-longitude environment map to SH basis up to lmax band
 void ShProjectEnvironmentMap(float3 const* envmap, int width, int height, int lmax, float3* coeffs)

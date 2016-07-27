@@ -17,7 +17,7 @@ namespace Baikal
 
         virtual ~Output() = default;
 
-        virtual void GetData(FireRays::float3* data) const = 0;
+        virtual void GetData(RadeonRays::float3* data) const = 0;
 
         std::uint32_t width() const { return m_width; }
         std::uint32_t height() const { return m_height; }

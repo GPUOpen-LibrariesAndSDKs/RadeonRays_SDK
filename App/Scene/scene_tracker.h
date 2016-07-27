@@ -3,7 +3,7 @@
 #include <map>
 #include "CLW.h"
 
-#include "firerays_cl.h"
+#include "radeon_rays_cl.h"
 
 namespace Baikal
 {
@@ -19,7 +19,7 @@ namespace Baikal
 
         virtual ClwScene& CompileScene(Scene const& scene) const;
         
-        FireRays::IntersectionApiCL* GetIntersectionApi() { return  m_api; }
+        RadeonRays::IntersectionApiCL* GetIntersectionApi() { return  m_api; }
 
     protected:
         virtual void RecompileFull(Scene const& scene, ClwScene& out) const;
@@ -38,7 +38,7 @@ namespace Baikal
         // Context
         CLWContext m_context;
         // Intersection API
-        FireRays::IntersectionApiCL* m_api;
+        RadeonRays::IntersectionApiCL* m_api;
         // Current scene
         mutable Scene const* m_current_scene;
 

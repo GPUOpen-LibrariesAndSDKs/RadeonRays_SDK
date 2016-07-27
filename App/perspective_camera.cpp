@@ -29,7 +29,7 @@ THE SOFTWARE.
 #include "math/mathutils.h"
 
 
-using namespace FireRays;
+using namespace RadeonRays;
 
 PerspectiveCamera::PerspectiveCamera(float3 const& eye, float3 const& at, float3 const& up) 
                        : m_p(eye)

@@ -1,8 +1,8 @@
 project "UnitTest"
     location "../UnitTest"
     kind "ConsoleApp"
-	includedirs { "../FireRays/include", "../Gtest/include", "../CLW", "../Calc/inc", "." }
-    links {"Gtest", "FireRays", "CLW", "Calc"}
+	includedirs { "../RadeonRays/include", "../Gtest/include", "../CLW", "../Calc/inc", "." }
+    links {"Gtest", "RadeonRays", "CLW", "Calc"}
     files { "**.cpp", "**.h" }
     
     if os.is("macosx") then

@@ -36,7 +36,7 @@ typedef struct _ray
     int2 padding;
 } ray;
 
-/// Intersection data returned by FireRays
+/// Intersection data returned by RadeonRays
 typedef struct _Intersection
 {
     // uv - hit barycentrics, w - ray distance

@@ -71,7 +71,7 @@ THE SOFTWARE.
 #include "CLW/clwoutput.h"
 #include "config_manager.h"
 
-using namespace FireRays;
+using namespace RadeonRays;
 
 // Help message
 char const* kHelpMessage =

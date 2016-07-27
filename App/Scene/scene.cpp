@@ -32,7 +32,7 @@ THE SOFTWARE.
 namespace Baikal
 {
 
-using namespace FireRays;
+using namespace RadeonRays;
 
 static int GetTextureForemat(OIIO_NAMESPACE::ImageSpec const& spec)
 {

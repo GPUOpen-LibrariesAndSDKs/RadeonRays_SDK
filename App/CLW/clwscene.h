@@ -3,7 +3,7 @@
 #include "CLW.h"
 #include "math/float3.h"
 #include "Scene/scene.h"
-#include "firerays.h"
+#include "radeon_rays.h"
 
 namespace Baikal
 {
@@ -17,9 +17,9 @@ namespace Baikal
 
     struct ClwScene
     {
-        CLWBuffer<FireRays::float3> vertices;
-        CLWBuffer<FireRays::float3> normals;
-        CLWBuffer<FireRays::float2> uvs;
+        CLWBuffer<RadeonRays::float3> vertices;
+        CLWBuffer<RadeonRays::float3> normals;
+        CLWBuffer<RadeonRays::float2> uvs;
         CLWBuffer<int> indices;
 
         CLWBuffer<Scene::Shape> shapes;
@@ -38,6 +38,6 @@ namespace Baikal
         float envmapmul;
         CameraType camera_type;
         
-        std::vector<FireRays::Shape*> isect_shapes;
+        std::vector<RadeonRays::Shape*> isect_shapes;
     };
 }

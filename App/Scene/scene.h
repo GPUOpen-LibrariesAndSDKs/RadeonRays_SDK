@@ -77,7 +77,7 @@ namespace Baikal
         // Material description
         struct Material
         {
-            FireRays::float3 kx;
+            RadeonRays::float3 kx;
             float ni;
             float ns;
 
@@ -159,11 +159,11 @@ namespace Baikal
                 // Number of vertices
                 int numvertices;
                 // Linear velocity
-                FireRays::float3 linearvelocity;
+                RadeonRays::float3 linearvelocity;
                 // Angular velocity
-                FireRays::quaternion angularvelocity;
+                RadeonRays::quaternion angularvelocity;
                 // Transform
-                FireRays::matrix m;
+                RadeonRays::matrix m;
             };
 
             // Emissive object
@@ -186,9 +186,9 @@ namespace Baikal
                 int data;
                 int extra;
 
-                FireRays::float3 sigma_a;
-                FireRays::float3 sigma_s;
-                FireRays::float3 sigma_e;
+                RadeonRays::float3 sigma_a;
+                RadeonRays::float3 sigma_s;
+                RadeonRays::float3 sigma_e;
             };
 
             void clear_dirty() const { dirty_ = kNone;  }
@@ -197,9 +197,9 @@ namespace Baikal
 
             // Scene data
             // Vertices
-            std::vector<FireRays::float3> vertices_;
-            std::vector<FireRays::float3> normals_;
-            std::vector<FireRays::float2> uvs_;
+            std::vector<RadeonRays::float3> vertices_;
+            std::vector<RadeonRays::float3> normals_;
+            std::vector<RadeonRays::float2> uvs_;
             // Primitive indices
             std::vector<int> indices_;
             // Shapes: index which points to indices array

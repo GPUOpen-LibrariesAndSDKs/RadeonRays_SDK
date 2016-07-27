@@ -27,9 +27,9 @@ THE SOFTWARE.
 #include "math/mathutils.h"
 
 ///< The function projects latitude-longitude environment map to SH basis up to lmax band
-void ShProjectEnvironmentMap(FireRays::float3 const* envmap, int width, int height, int lmax, FireRays::float3* coeffs);
+void ShProjectEnvironmentMap(RadeonRays::float3 const* envmap, int width, int height, int lmax, RadeonRays::float3* coeffs);
 
 ///< The function evaluates SH functions and dumps values to latitude-longitude map
-void ShEvaluateAndDump(int width, int height, int lmax, FireRays::float3 const* coeffs, FireRays::float3* envmap);
+void ShEvaluateAndDump(int width, int height, int lmax, RadeonRays::float3 const* coeffs, RadeonRays::float3* envmap);
 
 #endif // SHPROJECT_H
