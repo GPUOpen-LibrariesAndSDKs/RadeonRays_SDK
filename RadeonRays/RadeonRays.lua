@@ -17,7 +17,27 @@ project "RadeonRays"
     if os.is("macosx") then
         buildoptions "-std=c++11 -stdlib=libc++"
     elseif os.is("linux") then
-        buildoptions "-std=c++11" 
+        buildoptions "-std=c++11"
+
+        --get API version from header.
+        local handle = io.popen("grep -r RADEONRAYS_API_VERSION include/radeon_rays.h | cut -d \" \" -f 3")
+        local lib_version = (handle:read("*a")):gsub("\n", "")
+        handle:close()
+
+        --specify soname for linker
+        configuration {"x64", "Debug"}
+            linkoptions {"-Wl,-soname,libRadeonRays64D.so." .. lib_version}
+        configuration {"x32", "Debug"}
+            linkoptions {"-Wl,-soname,libRadeonRaysD.so." .. lib_version}
+        configuration {"x64", "Release"}
+            linkoptions {"-Wl,-soname,libRadeonRays64.so." .. lib_version}
+        configuration {"x32", "Release"}
+            linkoptions {"-Wl,-soname,libRadeonRays.so." .. lib_version}
+        configuration{}
+
+        --replacing lib by soft link
+        postbuildcommands {"mv $(TARGET) $(TARGET)." .. lib_version}
+        postbuildcommands {"ln -s `basename $(TARGET)." .. lib_version .. "` $(TARGET)"}
     end
 
     configuration {}
@@ -46,12 +66,12 @@ project "RadeonRays"
             libdirs { "../3rdParty/embree/lib/x64"}
         configuration {}
 
-    if os.is("macosx") then
-        links {"embree.2"}
+        if os.is("macosx") then
+            links {"embree.2"}
         elseif os.is("linux") then
-        links {"embree"}
+            links {"embree"}
         elseif os.is("windows") then
-        links {"embree"}
+            links {"embree"}
         end
     end
 
