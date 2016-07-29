@@ -28,10 +28,7 @@ THE SOFTWARE.
 #include "math/matrix.h"
 #include "math/ray.h"
 #include "math/mathutils.h"
-
-// TEMP move to build system
-#define USE_OPENCL 1
-
+		
 #define RADEONRAYS_API_VERSION 2.0
 
 #ifdef WIN32

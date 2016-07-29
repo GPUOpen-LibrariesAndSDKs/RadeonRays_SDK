@@ -40,6 +40,11 @@ newoption {
     description = "Submit RadeonRays SDK."
 }
 
+if not _OPTIONS["use_opencl"] and not _OPTIONS["use_vulkan"] and not _OPTIONS["use_embree"] then
+    _OPTIONS["use_opencl"] = 1
+end
+
+
 function build(config)
 	if os.is("windows") then
 		buildcmd="devenv RadeonRays.sln /build \"" .. config .. "|x64\""
@@ -54,15 +59,15 @@ end
 
 if _OPTIONS["package"] then
     print ">> RadeonRays: Packaging mode"
-        os.execute("rm -rf dist")
+    os.execute("rm -rf dist")
     os.execute("mkdir dist")
     os.execute("echo $(pwd)")
     os.execute("cd dist && mkdir RadeonRays && cd RadeonRays && mkdir include && mkdir lib && cd lib && mkdir x64 && cd .. && mkdir bin && cd bin && mkdir x64 && cd .. && cd include && mkdir math && cd ../.. && mkdir 3rdParty")
     os.execute("cp -r ./RadeonRays/include ./dist/RadeonRays/")
-        os.execute("cp ./Bin/Release/x64/Radeon*.lib ./dist/RadeonRays/lib/x64")
-        os.execute("cp ./Bin/Release/x64/Radeon*.dll ./dist/RadeonRays/bin/x64")
-        os.execute("cp ./Bin/Release/x64/libRadeon*.so ./dist/RadeonRays/lib/x64")
-        os.execute("cp ./Bin/Release/x64/Radeon*.dylib ./dist/RadeonRays/bin/x64")
+    os.execute("cp ./Bin/Release/x64/Radeon*.lib ./dist/RadeonRays/lib/x64")
+    os.execute("cp ./Bin/Release/x64/Radeon*.dll ./dist/RadeonRays/bin/x64")
+    os.execute("cp ./Bin/Release/x64/libRadeon*.so ./dist/RadeonRays/lib/x64")
+    os.execute("cp ./Bin/Release/x64/Radeon*.dylib ./dist/RadeonRays/bin/x64")
     os.execute("rm -rf ./App/obj")
     os.execute("rm -rf ./CLW/obj")
     os.execute("cp -r ./App ./dist")
@@ -95,31 +100,33 @@ elseif _OPTIONS["submit"] then
         project = "gmake"
     end
 
-	result = os.execute("echo generate project && " .. "\"./Tools/premake/".. osPremakeFolder .. "/premake5\" " .. project .. " --embed_kernels")
-	assert(result == 0, "failed to generate project.")
+    result = os.execute("echo generate project && " .. "\"./Tools/premake/".. osPremakeFolder .. "/premake5\" " .. project .. " --embed_kernels")
+    assert(result == 0, "failed to generate project.")
 
-	result = build("release")
-	assert(result == 0, "failed to build project.")
+    result = build("release")
+    assert(result == 0, "failed to build project.")
 
-	result = os.execute("cd App && \"../Bin/Release/x64/UnitTest64\"")
-	assert(result == 0, "Unit tests failed.")
-	os.execute("echo packaging && " .. "\"./Tools/premake/".. osPremakeFolder .. "/premake5\" " .. " --package")
-	os.execute("cd ../RadeonRays_SDK/ && git clean -dfx && git checkout .")
-	os.execute("cp -r ./dist/* ../RadeonRays_SDK/")
-	os.execute("cd ../RadeonRays_SDK/ && git add .")
-	os.chdir("../RadeonRays_SDK/")
-	result =  os.execute("echo generate project && " .. "\"./premake/".. osPremakeFolder .. "/premake5\" " .. project)
-	assert(result == 0, "failed to generate SDK project.")
-	result = build("release")
-	assert(result == 0, "failed to build SDK.")
-	result = os.execute("git commit -m \"Update SDK\"")
-	result = os.execute("git push origin master")
+    result = os.execute("cd App && \"../Bin/Release/x64/UnitTest64\"")
+    assert(result == 0, "Unit tests failed.")
+    os.execute("echo packaging && " .. "\"./Tools/premake/".. osPremakeFolder .. "/premake5\" " .. " --package")
+    os.execute("cd ../RadeonRays_SDK/ && git clean -dfx && git checkout .")
+    os.execute("cp -r ./dist/* ../RadeonRays_SDK/")
+    os.execute("cd ../RadeonRays_SDK/ && git add .")
+    os.chdir("../RadeonRays_SDK/")
+    result =  os.execute("echo generate project && " .. "\"./premake/".. osPremakeFolder .. "/premake5\" " .. project)
+    assert(result == 0, "failed to generate SDK project.")
+    result = build("release")
+    assert(result == 0, "failed to build SDK.")
+    result = os.execute("git commit -m \"Update SDK\"")
+    result = os.execute("git push origin master")
 
 else
-solution "RadeonRays"
+    solution "RadeonRays"
+
     configurations { "Debug", "Release" }           
     language "C++"
     flags { "NoMinimalRebuild", "EnableSSE", "EnableSSE2" }
+
     -- find and add path to Opencl headers
     dofile ("./OpenCLSearch.lua" )
     -- define common includes
@@ -141,6 +148,13 @@ solution "RadeonRays"
         defines {"_CRT_SECURE_NO_WARNINGS"}
     elseif os.is("linux") then
         buildoptions {"-fvisibility=hidden"}
+    end
+
+    if _OPTIONS["use_opencl"] then
+        defines{"USE_OPENCL=1"}        
+    end
+    if _OPTIONS["use_vulcan"] then
+        defines{"USE_VULKAN=1"} 
     end
 
     --make configuration specific definitions
@@ -172,12 +186,14 @@ solution "RadeonRays"
         dofile("./UnitTest/UnitTest.lua")
     end
     
-    if fileExists("./CLW/CLW.lua") then
-        dofile("./CLW/CLW.lua")
-    end
-    
-    if fileExists("./App/App.lua") then
-        dofile("./App/App.lua")
+    if _OPTIONS["use_opencl"] then
+        if fileExists("./CLW/CLW.lua") then
+            dofile("./CLW/CLW.lua")
+        end
+        
+        if fileExists("./App/App.lua") then
+            dofile("./App/App.lua")
+        end
     end
 
     if fileExists("./Calc/Calc.lua") then

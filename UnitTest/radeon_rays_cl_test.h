@@ -21,6 +21,7 @@ THE SOFTWARE.
 ********************************************************************/
 #pragma once
 
+#if USE_OPENCL
 /// This test suite is testing RadeonRays OpenCL interoperability
 ///
 
@@ -586,3 +587,5 @@ TEST_F(ApiCl, Intersection_DependencyEvents)
     ASSERT_NO_THROW(api_->DetachShape(mesh));
     ASSERT_NO_THROW(api_->DeleteShape(mesh));
 }
+
+#endif // USE_OPENCL

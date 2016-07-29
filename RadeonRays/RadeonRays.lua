@@ -1,10 +1,10 @@
 project "RadeonRays"
     kind "SharedLib"
     location "../RadeonRays"
-    includedirs { "./include", "../CLW", "../Calc/inc" }
-    links {"Calc", "CLW"}
+    includedirs { "./include", "../Calc/inc" }
+    links {"Calc"}
     defines {"EXPORT_API"}
-    files { "../RadeonRays/**.h", "../RadeonRays/**.cpp", "../RadeonRays/**.cl" }
+    files { "../RadeonRays/**.h", "../RadeonRays/**.cpp"}
     
     if not os.is("macosx") then
         linkoptions {"-Wl,--no-undefined"}
@@ -35,6 +35,12 @@ project "RadeonRays"
         includedirs { "../3rdParty/tbb/include" }
     end
 
+    if _OPTIONS["use_opencl"] then
+        includedirs { "../CLW" }
+        links {"CLW"}
+        files {"../RadeonRays/**.cl" }
+    end
+
     if _OPTIONS["use_embree"] then
         files {"../RadeonRays/src/device/embree*"}
         defines {"USE_EMBREE"}
@@ -46,12 +52,12 @@ project "RadeonRays"
             libdirs { "../3rdParty/embree/lib/x64"}
         configuration {}
 
-    if os.is("macosx") then
-        links {"embree.2"}
+        if os.is("macosx") then
+            links {"embree.2"}
         elseif os.is("linux") then
-        links {"embree"}
+            links {"embree"}
         elseif os.is("windows") then
-        links {"embree"}
+            links {"embree"}
         end
     end
 
