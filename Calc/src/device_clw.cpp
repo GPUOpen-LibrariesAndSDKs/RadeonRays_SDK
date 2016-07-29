@@ -34,35 +34,17 @@ namespace Calc
 	class BufferClw : public Buffer
 	{
 	public:
-		BufferClw(CLWBuffer<char> buffer);
-		~BufferClw();
+		BufferClw(CLWBuffer<char> buffer) : m_buffer(buffer) {}
+		~BufferClw() override {};
 
-		std::size_t GetSize() const override;
+		std::size_t GetSize() const override { return m_buffer.GetElementCount(); }
 
-		CLWBuffer<char> GetData() const;
+		CLWBuffer<char> GetData() const { return m_buffer; }
 
 	private:
 		CLWBuffer<char> m_buffer;
 	};
 
-	BufferClw::BufferClw(CLWBuffer<char> buffer)
-		: m_buffer(buffer)
-	{
-	}
-
-	BufferClw::~BufferClw()
-	{
-	}
-
-	CLWBuffer<char> BufferClw::GetData() const
-	{
-		return m_buffer;
-	}
-
-	std::size_t BufferClw::GetSize() const
-	{
-		return m_buffer.GetElementCount();
-	}
 
 	// Event implementation with CLW
 	class EventClw : public Event
@@ -244,17 +226,17 @@ namespace Calc
 			m_event_pool.push(new EventClw());
 		}
 	}
-    
-    DeviceClw::DeviceClw(CLWDevice device, CLWContext context)
-    : m_device(device)
-    , m_context(context)
-    {
-        // Initialize event pool
-        for (auto i = 0; i < EVENT_POOL_INITIAL_SIZE; ++i)
-        {
-            m_event_pool.push(new EventClw());
-        }
-    }
+	
+	DeviceClw::DeviceClw(CLWDevice device, CLWContext context)
+	: m_device(device)
+	, m_context(context)
+	{
+		// Initialize event pool
+		for (auto i = 0; i < EVENT_POOL_INITIAL_SIZE; ++i)
+		{
+			m_event_pool.push(new EventClw());
+		}
+	}
 
 	DeviceClw::~DeviceClw()
 	{
@@ -270,6 +252,8 @@ namespace Calc
 	{
 		spec.name = m_device.GetName().c_str();
 		spec.vendor = m_device.GetVendor().c_str();
+		spec.sourceTypes = SourceType::kOpenCL;
+
 		spec.type = Convert2CalcDeviceType(m_device.GetType());
 
 		spec.global_mem_size = m_device.GetGlobalMemSize();
@@ -404,22 +388,22 @@ namespace Calc
 		}
 
 	}
-    
-    Executable* DeviceClw::CompileExecutable(char const* filename,
-                                             char const** headernames,
-                                             int numheaders)
-    {
-        try
-        {
-            return new ExecutableClw(
-                                     CLWProgram::CreateFromFile(filename, headernames, numheaders, m_context)
-                                     );
-        }
-        catch (CLWException& e)
-        {
-            throw ExceptionClw(e.what());
-        }
-    }
+	
+	Executable* DeviceClw::CompileExecutable(char const* filename,
+											 char const** headernames,
+											 int numheaders)
+	{
+		try
+		{
+			return new ExecutableClw(
+									 CLWProgram::CreateFromFile(filename, headernames, numheaders, m_context)
+									 );
+		}
+		catch (CLWException& e)
+		{
+			throw ExceptionClw(e.what());
+		}
+	}
 
 	Executable* DeviceClw::CompileExecutable(std::uint8_t const* binary_code, std::size_t size, char const* options)
 	{
@@ -523,18 +507,18 @@ namespace Calc
 	{
 		m_event_pool.push(e);
 	}
-    
-    Buffer* DeviceClw::CreateBuffer(cl_mem buffer)
-    {
-        try
-        {
-            return new BufferClw(CLWBuffer<char>::CreateFromClBuffer(buffer));
-        }
-        catch (CLWException& e)
-        {
-            throw ExceptionClw(e.what());
-        }
-    }
+	
+	Buffer* DeviceClw::CreateBuffer(cl_mem buffer)
+	{
+		try
+		{
+			return new BufferClw(CLWBuffer<char>::CreateFromClBuffer(buffer));
+		}
+		catch (CLWException& e)
+		{
+			throw ExceptionClw(e.what());
+		}
+	}
 
 
 	class PrimitivesClw : public Primitives

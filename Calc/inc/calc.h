@@ -60,6 +60,6 @@ namespace Calc
 	};
 
 	// Create corresponding calc
-	Calc* CreateCalc(int reserved);
+	Calc* CreateCalc( Platform inPlatform, int reserved);
 	void DeleteCalc(Calc* calc);
 }

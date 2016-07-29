@@ -21,10 +21,6 @@ THE SOFTWARE.
 ********************************************************************/
 #include "radeon_rays.h"
 #include "radeon_rays_impl.h"
-
-#include "radeon_rays_cl.h"
-
-
 #include <memory>
 
 #include "calc.h"
@@ -37,6 +33,9 @@ THE SOFTWARE.
 #include "../device/intersection_device.h"
 #include "../device/calc_intersection_device.h"
 #include "../device/calc_intersection_device_cl.h"
+#include "../../../Calc/src/calc_vkw.h"
+#include "../device/calc_intersection_device_vk.h"
+#include <calc_vk.h>
 
 #ifdef USE_EMBREE
     #include "../device/embree_intersection_device.h"
@@ -44,59 +43,113 @@ THE SOFTWARE.
 
 namespace RadeonRays
 {
-    // Device manager to query and build configurations
-    static Calc::Calc* GetCalc()
-    {
-        static Calc::Calc* s_calc = nullptr;
-        if (!s_calc)
-        {
-            s_calc = Calc::CreateCalc(0);
-        }
+	static RadeonRays::DeviceInfo::Platform s_calc_platform = RadeonRays::DeviceInfo::Platform::kAny;
 
-        return s_calc;
+#define GetCalc_impl(platform)														\
+    static Calc::Calc* GetCalc##platform()											\
+    {																				\
+        static Calc::Calc* s_calc##platform = nullptr;								\
+        if (!s_calc##platform)														\
+        {																			\
+            s_calc##platform = Calc::CreateCalc(Calc::Platform::k##platform, 0);	\
+        }																			\
+        return s_calc##platform;													\
     }
+
+	GetCalc_impl(OpenCL)
+
+	GetCalc_impl(Vulkan)
+#undef GetCalc_impl
+
+	static Calc::Calc* GetCalc()
+	{
+		// if CL allowed see if we have any devices if not
+		// try Vulkan if allowed, if neither try embree if allowed
+		if( s_calc_platform & DeviceInfo::Platform::kOpenCL )
+		{
+			auto* calc = GetCalcOpenCL();
+			if (calc != nullptr) { return calc; }
+		}
+#ifdef USE_VULKAN
+		if ( s_calc_platform & DeviceInfo::Platform::kVulkan )
+		{
+			auto* calc = GetCalcVulkan();
+			if (calc != nullptr) { return calc; }
+		}
+#endif
+		return nullptr;
+	}
+	void IntersectionApi::SetPlatform(const DeviceInfo::Platform platform)
+	{
+		s_calc_platform = platform;
+	}
 
     std::uint32_t IntersectionApi::GetDeviceCount()
     {
-        std::uint32_t result = GetCalc()->GetDeviceCount();
+		auto* calc = GetCalc();
+		std::uint32_t result = 0;
+		if (calc != nullptr)
+		{
+			result += GetCalc()->GetDeviceCount();
+		} else 
+		{
 #ifdef USE_EMBREE
-        ++result; // last one - embree device
+	        ++result;
 #endif //USE_EMBREE
+		}
         return result;
     }
 
     void IntersectionApi::GetDeviceInfo(std::uint32_t devidx, DeviceInfo& devinfo)
     {
-#ifdef USE_EMBREE
-        if (devidx == GetCalc()->GetDeviceCount())
-        {
-            devinfo.name = "embree";
-            devinfo.vendor = "intel";
-            devinfo.type = DeviceInfo::kCpu;
-        }
-        else
-#endif //USE_EMBREE
-        {
-            Calc::DeviceSpec spec;
-            GetCalc()->GetDeviceSpec(devidx, spec);
+		auto* calc = GetCalc();
+		std::uint32_t result = 0;
+		if (calc != nullptr)
+		{
+			Calc::DeviceSpec spec;
+			calc->GetDeviceSpec(devidx, spec);
 
-            // TODO: careful with memory management of strings
-            devinfo.name = spec.name;
-            devinfo.vendor = spec.vendor;
-            devinfo.type = spec.type == Calc::DeviceType::kGpu ? DeviceInfo::kGpu : DeviceInfo::kCpu;
-        }
+			// TODO: careful with memory management of strings
+			devinfo.name = spec.name;
+			devinfo.vendor = spec.vendor;
+			devinfo.type = spec.type == Calc::DeviceType::kGpu ? DeviceInfo::kGpu : DeviceInfo::kCpu;
+		}
+		else
+		{
+#ifdef USE_EMBREE
+			if (devidx == 0) 
+			{
+				devinfo.name = "embree";
+				devinfo.vendor = "intel";
+				devinfo.type = DeviceInfo::kCpu;
+				devinfo.platform = kEmbree;
+			}
+			else
+			{
+				assert(false);
+			}
+#endif //USE_EMBREE
+		}
     }
 
     IntersectionApi* IntersectionApi::Create(std::uint32_t devidx)
     {
-            IntersectionApi* result = nullptr;
+		auto* calc = GetCalc();
+		if (calc != nullptr)
+		{
+			return new IntersectionApiImpl(new CalcIntersectionDevice(calc, calc->CreateDevice(devidx)));
+		}
+		else
+		{
 #ifdef USE_EMBREE
-        if (devidx == GetCalc()->GetDeviceCount())
-            result = new IntersectionApiImpl(new EmbreeIntersectionDevice());
-        else
-#endif //USE_EMBREE
-            result = new IntersectionApiImpl(new CalcIntersectionDevice(GetCalc(), GetCalc()->CreateDevice(devidx)));
-        return result;
+			if (devidx == 0)
+			{
+				return new IntersectionApiImpl(new EmbreeIntersectionDevice());
+			}
+#endif
+		}
+
+        return nullptr;
     }
 
     // Deallocation (to simplify DLL scenario)
@@ -104,20 +157,35 @@ namespace RadeonRays
     {
         delete api;
     }
-
-    IntersectionApiCL* IntersectionApiCL::CreateFromOpenClContext(cl_context context, cl_device_id device, cl_command_queue queue)
+#ifdef USE_VULKAN
+	RRAPI IntersectionApi* CreateFromVulkan(Anvil::Device* device, Anvil::CommandPool* cmd_pool)
+	{
+		auto calc = dynamic_cast<Calc::Calc*>(GetCalcVulkan());
+		if (calc)
+		{
+			return new IntersectionApiImpl(new CalcIntersectionDeviceVK(calc, Calc::CreateDeviceFromVulkan(device, cmd_pool)));
+		}
+		else
+		{
+			return nullptr;	
+		}
+	}
+#endif
+#ifdef USE_OPENCL
+    RRAPI IntersectionApi* CreateFromOpenClContext(cl_context		context, cl_device_id device, cl_command_queue queue)
     {
-        auto calc = dynamic_cast<Calc::CalcCl*>(GetCalc());
-        
-        if (calc)
+        auto calc = dynamic_cast<Calc::Calc*>(GetCalcOpenCL());
+		if (calc)
         {
-            return new IntersectionApiImpl(new CalcIntersectionDeviceCl(calc, calc->CreateDevice(context, device, queue)));
-        }
-
-        
-        return nullptr;
-
+            return new IntersectionApiImpl(new CalcIntersectionDeviceCl(calc, Calc::CreateDeviceFromOpenCL(context, device, queue)));
+		}
+		else
+		{
+			return nullptr;
+		}
     }
+#endif
+
 }
 
 

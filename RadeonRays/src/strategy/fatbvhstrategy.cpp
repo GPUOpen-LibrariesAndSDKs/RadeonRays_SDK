@@ -115,12 +115,19 @@ namespace RadeonRays
     , m_bvh(nullptr)
     {
 #ifndef FR_EMBED_KERNELS
-        char const* headers[] = { "../RadeonRays/src/kernel/CL/common.cl" };
-        
-        int numheaders = sizeof(headers) / sizeof(char const*);
-        
-        m_gpudata->executable = m_device->CompileExecutable("../RadeonRays/src/kernel/CL/fatbvh.cl", headers, numheaders);
-        
+			if (device->GetPlatform() == Calc::Platform::kOpenCL)
+			{
+				char const* headers[] = { "../RadeonRays/src/kernel/CL/common.cl" };
+
+				int numheaders = sizeof(headers) / sizeof(char const*);
+
+				m_gpudata->executable = m_device->CompileExecutable("../RadeonRays/src/kernel/CL/fatbvh.cl", headers, numheaders);
+			} 
+			else
+			{
+				assert(device->GetPlatform() == Calc::Platform::kVulkan);
+				m_gpudata->executable = m_device->CompileExecutable("../RadeonRays/src/kernel/GLSL/fatbvh.comp", nullptr, 0);
+			}
 #else
         m_gpudata->executable = m_device->CompileExecutable(cl_fatbvh, std::strlen(cl_fatbvh), nullptr);
 #endif

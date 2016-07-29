@@ -32,6 +32,9 @@ THE SOFTWARE.
 #include <chrono>
 #include <cstring>
 #include <iostream>
+#include <assert.h>
+
+
 
 
 #ifdef FR_EMBED_KERNELS
@@ -84,7 +87,16 @@ namespace RadeonRays
     void Hlbvh::InitGpuData()
     {
 #ifndef FR_EMBED_KERNELS
-        m_gpudata->executable = m_device->CompileExecutable("../RadeonRays/src/kernel/CL/hlbvh_build.cl", nullptr, 0);
+		if ( m_device->GetPlatform() == Calc::Platform::kOpenCL )
+		{
+			m_gpudata->executable = m_device->CompileExecutable( "../RadeonRays/kernel/CL/hlbvh_build.cl", nullptr, 0 );
+		}
+
+		else
+		{
+			assert( m_device->GetPlatform() == Calc::Platform::kVulkan );
+			m_gpudata->executable = m_device->CompileExecutable( "../RadeonRays/kernel/GLSL/hlbvh_build", nullptr, 0 );
+		}
 #else
 		m_gpudata->executable = m_device->CompileExecutable(cl_hlbvh_build, std::strlen(cl_hlbvh_build), "");
 #endif
@@ -125,7 +137,8 @@ namespace RadeonRays
     bbox const& Hlbvh::Bounds() const
     {
         // TODO: implement me
-        return bbox();
+		static bbox s_tmp;
+        return s_tmp;
     }
     
     // Build function

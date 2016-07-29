@@ -36,11 +36,43 @@ namespace Calc
 		kMapWrite = 0x2
 	};
 
-	enum class DeviceType
+	enum class DeviceType : uint8_t
 	{
 		kUnknown,
 		kGpu,
 		kCpu,
 		kAccelerator
 	};
+
+	enum Platform
+	{
+		kOpenCL			= (1 << 0),
+		kVulkan			= (1 << 1),
+
+		kAny			= 0xFF
+	};
+
+	enum class SourceType : uint8_t
+	{
+		kOpenCL			= (1 << 0),
+		kGLSL			= (1 << 1),
+		kCL_SPIRV		= (1 << 2),
+		kGLSL_SPIRV		= (1 << 3),
+
+		kHostNative		= (1 << 4),
+		kAccelNative	= (1 << 5),
+	};
+
+	inline SourceType operator | (const SourceType lhs, const SourceType rhs)
+	{
+		using T = std::underlying_type_t <SourceType>;
+		return static_cast<SourceType>(static_cast<T>(lhs) | static_cast<T>(rhs));
+	}
+
+	inline SourceType operator & (const SourceType lhs, const SourceType rhs)
+	{
+		using T = std::underlying_type_t <SourceType>;
+		return static_cast<SourceType>(static_cast<T>(lhs) & static_cast<T>(rhs));
+	}
+
 }

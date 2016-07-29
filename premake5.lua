@@ -13,9 +13,21 @@ newoption {
     description = "Use Intel(R) TBB library for multithreading"
 }
 
+
+newoption {
+    trigger = "use_opencl",
+    description = "Use OpenCL for GPU hit testing"
+}
+
 newoption {
     trigger = "use_embree",
     description = "Use Intel(R) Embree for CPU hit testing"
+}
+
+
+newoption {
+	trigger = "use_vulkan",
+	description = "Use vulkan for GPU hit testing"
 }
 
 newoption {
@@ -171,4 +183,11 @@ solution "RadeonRays"
     if fileExists("./Calc/Calc.lua") then
         dofile("./Calc/Calc.lua")
     end
+
+    if os.is("macosx") ~= true and _OPTIONS["use_vulkan"] then
+        if fileExists("./Anvil_premake/anvil.lua") then
+            dofile("./Anvil_premake/anvil.lua")
+        end
+    end
+
 end

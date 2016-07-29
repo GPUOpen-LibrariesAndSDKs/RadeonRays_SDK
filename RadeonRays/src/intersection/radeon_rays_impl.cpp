@@ -19,16 +19,23 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
+#include "radeon_rays.h"
 #include "radeon_rays_impl.h"
 #include "../primitive/mesh.h"
 #include "../primitive/instance.h"
 #include "../except/except.h"
 
+#ifdef USE_OPENCL
 #include "../device/intersection_device.h"
 #include "../device/calc_intersection_device_cl.h"
+#endif
+
+#ifdef USE_VULKAN
+#include "../device/calc_intersection_device_vk.h"
+#include <wrappers/buffer.h>
+#endif
 
 #include <vector>
-#include <algorithm>
 
 namespace RadeonRays
 {
@@ -49,23 +56,8 @@ namespace RadeonRays
         world_.options_.SetValue(name, value);
     }
 
-    Buffer* IntersectionApiImpl::CreateFromOpenClBuffer(cl_mem buffer) const
-    {
-        auto cldev = dynamic_cast<CalcIntersectionDeviceCl*>(m_device.get());
-        
-        if (cldev)
-        {
-            return cldev->CreateBuffer(buffer);
-        }
-        
-        Throw("CL interop not supported");
-        
-        return nullptr;
-    }
-
     IntersectionApiImpl::~IntersectionApiImpl()
     {
-
     }
 
     Shape* IntersectionApiImpl::CreateMesh(
@@ -171,6 +163,38 @@ namespace RadeonRays
     {
         return m_device->UnmapBuffer(buffer, ptr, event);
     }
+#ifdef USE_OPENCL
+	RRAPI Buffer* CreateFromOpenClBuffer(RadeonRays::IntersectionApi* api, cl_mem buffer)
+	{
+		auto apii = dynamic_cast<IntersectionApiImpl*>(api);
+		auto cldev = dynamic_cast<CalcIntersectionDeviceCl*>(apii->GetDevice());
 
+		if (cldev)
+		{
+			return cldev->CreateBuffer(buffer);
+		}
+
+		Throw("CL interop not supported");
+
+		return nullptr;
+	}
+#endif
+
+#ifdef USE_VULKAN
+	RRAPI Buffer* CreateFromVulkanBuffer(RadeonRays::IntersectionApi* api, Anvil::Buffer* buffer)
+	{
+		auto apii = dynamic_cast<IntersectionApiImpl*>(api);
+		auto cldev = dynamic_cast<CalcIntersectionDeviceVK*>(apii->GetDevice());
+
+		if (cldev)
+		{
+			return cldev->AdoptBuffer(buffer);
+		}
+
+		Throw("Vulkan interop not supported");
+
+		return nullptr;
+	}
+#endif
 }
 

@@ -23,7 +23,6 @@ THE SOFTWARE.
 
 #include "intersection_device.h"
 
-#include "CLW.h"
 #include "calc.h"
 
 #include <memory>

@@ -26,7 +26,7 @@ THE SOFTWARE.
 namespace RadeonRays
 {
     
-    CalcIntersectionDeviceCl::CalcIntersectionDeviceCl(Calc::CalcCl* calc, Calc::DeviceCl* device)
+    CalcIntersectionDeviceCl::CalcIntersectionDeviceCl(Calc::Calc* calc, Calc::DeviceCl* device)
     : CalcIntersectionDevice(calc, device)
     {
         

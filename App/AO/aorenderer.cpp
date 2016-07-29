@@ -255,12 +255,12 @@ namespace Baikal
         api->DeleteBuffer(m_render_data->fr_intersections);
         api->DeleteBuffer(m_render_data->fr_hitcount);
 
-        m_render_data->fr_rays = api->CreateFromOpenClBuffer(m_render_data->rays);
-        m_render_data->fr_shadowrays = api->CreateFromOpenClBuffer(m_render_data->shadowrays);
-        m_render_data->fr_hits = api->CreateFromOpenClBuffer(m_render_data->hits);
-        m_render_data->fr_shadowhits = api->CreateFromOpenClBuffer(m_render_data->shadowhits);
-        m_render_data->fr_intersections = api->CreateFromOpenClBuffer(m_render_data->intersections);
-        m_render_data->fr_hitcount = api->CreateFromOpenClBuffer(m_render_data->hitcount);
+        m_render_data->fr_rays = CreateFromOpenClBuffer(api, m_render_data->rays);
+        m_render_data->fr_shadowrays = CreateFromOpenClBuffer(api, m_render_data->shadowrays);
+        m_render_data->fr_hits = CreateFromOpenClBuffer(api, m_render_data->hits);
+        m_render_data->fr_shadowhits = CreateFromOpenClBuffer(api, m_render_data->shadowhits);
+        m_render_data->fr_intersections = CreateFromOpenClBuffer(api, m_render_data->intersections);
+        m_render_data->fr_hitcount = CreateFromOpenClBuffer(api, m_render_data->hitcount);
 
         std::cout << "Vidmem usage (working set): " << m_vidmemws / (1024 * 1024) << "Mb\n";
     }

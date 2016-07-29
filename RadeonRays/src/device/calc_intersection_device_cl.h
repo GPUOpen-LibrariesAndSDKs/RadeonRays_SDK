@@ -39,7 +39,7 @@ namespace RadeonRays
     class CalcIntersectionDeviceCl : public CalcIntersectionDevice
     {
     public:
-        CalcIntersectionDeviceCl(Calc::CalcCl* calc, Calc::DeviceCl* device);
+        CalcIntersectionDeviceCl(Calc::Calc* calc, Calc::DeviceCl* device);
         
         virtual Buffer* CreateBuffer(cl_mem mem) const;
     };

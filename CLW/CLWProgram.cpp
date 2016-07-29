@@ -235,7 +235,8 @@ CLWProgram::CLWProgram(cl_program program)
     cl_int status = CL_SUCCESS;
     cl_uint numKernels;
     status = clCreateKernelsInProgram(*this, 0, nullptr, &numKernels);
-    
+	ThrowIf(numKernels == 0, CL_BUILD_ERROR, "clCreateKernelsInProgram return 0 kernels");
+
     ThrowIf(status != CL_SUCCESS, status, "clCreateKernelsInProgram failed");
     
     std::vector<cl_kernel> kernels(numKernels);

@@ -95,6 +95,11 @@ namespace RadeonRays
 			, faces(nullptr)
 			, shapes(nullptr)
 			, bvhrootidx(-1)
+			, executable(nullptr)
+			, isect_func(nullptr)
+			, occlude_func(nullptr)
+			, isect_indirect_func(nullptr)
+			, occlude_indirect_func(nullptr)
 		{
 		}
 
@@ -104,11 +109,14 @@ namespace RadeonRays
 			device->DeleteBuffer(vertices);
 			device->DeleteBuffer(faces);
 			device->DeleteBuffer(shapes);
-			executable->DeleteFunction(isect_func);
-			executable->DeleteFunction(occlude_func);
-			executable->DeleteFunction(isect_indirect_func);
-			executable->DeleteFunction(occlude_indirect_func);
-			device->DeleteExecutable(executable);
+			if(executable != nullptr)
+			{
+				executable->DeleteFunction(isect_func);
+				executable->DeleteFunction(occlude_func);
+				executable->DeleteFunction(isect_indirect_func);
+				executable->DeleteFunction(occlude_indirect_func);
+				device->DeleteExecutable(executable);
+			}
 		}
 	};
 
@@ -130,11 +138,19 @@ namespace RadeonRays
 		, m_cpudata(new CpuData)
 	{
 #ifndef FR_EMBED_KERNELS
-		char const* headers[] = { "../RadeonRays/src/kernel/CL/common.cl" };
+		if ( device->GetPlatform() == Calc::Platform::kOpenCL )
+		{
+			char const* headers[] = { "../RadeonRays/src/kernel/CL/common.cl" };
 
-		int numheaders = sizeof(headers) / sizeof(char const*);
+			int numheaders = sizeof(headers) / sizeof(char const*);
 
-		m_gpudata->executable = m_device->CompileExecutable("../RadeonRays/src/kernel/CL/bvh2l.cl", headers, numheaders);
+			m_gpudata->executable = m_device->CompileExecutable("../RadeonRays/src/kernel/CL/bvh2l.cl", headers, numheaders);
+		}
+		else
+		{
+			assert( device->GetPlatform() == Calc::Platform::kVulkan );
+			m_gpudata->executable = m_device->CompileExecutable( "../RadeonRays/src/kernel/GLSL/bvh2l.comp", nullptr, 0 );
+		}
 
 #else
 		m_gpudata->executable = m_device->CompileExecutable(cl_bvh2l, std::strlen(cl_bvh2l), nullptr);

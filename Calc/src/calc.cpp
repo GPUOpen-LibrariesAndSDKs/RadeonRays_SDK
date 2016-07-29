@@ -21,19 +21,28 @@ THE SOFTWARE.
 ********************************************************************/
 #include "calc.h"
 #include "calc_clw.h"
-
-#define USE_OPENCL
+#include "calc_vk.h"
+#include "calc_vkw.h"
 
 namespace Calc
 {
 	// Create corresponding calc
-	Calc* CreateCalc(int reserved)
+	Calc* CreateCalc( Platform inPlatform, int reserved )
 	{
-#ifdef USE_OPENCL
-		return new CalcClw();
-#else
-		return nullptr;
-#endif
+		if ( inPlatform & Platform::kOpenCL )
+		{
+			return new CalcClw();
+		}
+#if defined(USE_VULKAN)
+		else if ( inPlatform & Platform::kVulkan )
+		{
+			return new CalcVulkanw();
+		}
+#endif // USE_VULKAN
+		else
+		{
+			return nullptr;
+		}
 	}
 
 	void DeleteCalc(Calc* calc)

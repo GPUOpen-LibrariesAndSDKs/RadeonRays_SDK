@@ -24,8 +24,6 @@ THE SOFTWARE.
 #include <string>
 #include <cstdint>
 
-#include "calc.h"
-
 #ifdef __APPLE__
 #include <OpenCL/OpenCL.h>
 #else
@@ -35,15 +33,10 @@ THE SOFTWARE.
 namespace Calc
 {
     class DeviceCl;
+	class Buffer;
     
-    class CalcCl : public Calc
-    {
-    public:
-        CalcCl() = default;
-        virtual ~CalcCl() = default;
-        
-        // Create the device with specified index
-        virtual DeviceCl* CreateDevice(cl_context context, cl_device_id device, cl_command_queue queue) const = 0;
-    };
+	DeviceCl* CreateDeviceFromOpenCL(cl_context context, cl_device_id device, cl_command_queue queue);
+
+	Buffer* CreateBufferFromOpenCL(DeviceCl* device, cl_mem buffer);
 }
 

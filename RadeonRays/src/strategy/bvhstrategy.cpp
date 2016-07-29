@@ -35,7 +35,6 @@ THE SOFTWARE.
 #include "device.h"
 #include "executable.h"
 #include <algorithm>
-#include <iostream>
 
 // Preferred work group size for Radeon devices
 static int const kWorkGroupSize = 64;
@@ -87,6 +86,7 @@ namespace RadeonRays
 			, faces(nullptr)
 			, shapes(nullptr)
 			, raycnt(nullptr)
+			, executable(nullptr)
 		{
 		}
 
@@ -97,11 +97,14 @@ namespace RadeonRays
 			device->DeleteBuffer(faces);
 			device->DeleteBuffer(shapes);
 			device->DeleteBuffer(raycnt);
-			executable->DeleteFunction(isect_func);
-			executable->DeleteFunction(occlude_func);
-			executable->DeleteFunction(isect_indirect_func);
-			executable->DeleteFunction(occlude_indirect_func);
-			device->DeleteExecutable(executable);
+			if (executable)
+			{
+				executable->DeleteFunction(isect_func);
+				executable->DeleteFunction(occlude_func);
+				executable->DeleteFunction(isect_indirect_func);
+				executable->DeleteFunction(occlude_indirect_func);
+				device->DeleteExecutable(executable);
+			}
 		}
 	};
 
@@ -111,15 +114,25 @@ namespace RadeonRays
 		, m_bvh(nullptr)
 	{
 #ifndef FR_EMBED_KERNELS
-		char const* headers[] = { "../RadeonRays/src/kernel/CL/common.cl" };
+		if ( device->GetPlatform() == Calc::Platform::kOpenCL )
+		{
+			char const* headers[] = { "../RadeonRays/src/kernel/CL/common.cl" };
 
-		int numheaders = sizeof(headers) / sizeof(char const*);
+			int numheaders = sizeof( headers ) / sizeof( char const* );
 
-		m_gpudata->executable = m_device->CompileExecutable("../RadeonRays/src/kernel/CL/bvh.cl", headers, numheaders);
+			m_gpudata->executable = m_device->CompileExecutable( "../RadeonRays/src/kernel/CL/bvh.cl", headers, numheaders );
+		}
 
+		else
+		{
+			assert( device->GetPlatform() == Calc::Platform::kVulkan );
+			m_gpudata->executable = m_device->CompileExecutable( "../Resources/kernels/GLSL/bvh.comp", nullptr, 0 );
+		}
 #else
 		m_gpudata->executable = m_device->CompileExecutable(cl_bvh, std::strlen(cl_bvh), nullptr);
 #endif
+
+		assert(m_gpudata->executable);
 
 		m_gpudata->isect_func = m_gpudata->executable->CreateFunction("IntersectClosest");
 		m_gpudata->occlude_func = m_gpudata->executable->CreateFunction("IntersectAny");
@@ -323,6 +336,8 @@ namespace RadeonRays
 					int id;
 					// Idx count
 					int cnt;
+
+					int padding[ 2 ];
 				};
 
 				// Create face buffer

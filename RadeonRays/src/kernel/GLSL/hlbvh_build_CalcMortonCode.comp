@@ -1,0 +1,77 @@
+/**********************************************************************
+Copyright ©2015 Advanced Micro Devices, Inc. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+•   Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+•   Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or
+other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY
+DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
+OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+********************************************************************/
+
+#version 430
+layout( local_size_x = 1, local_size_y = 1, local_size_z = 1 ) in;
+
+struct bbox
+{
+	vec3 pmin;
+	vec3 pmax;
+};
+
+layout( std140, binding = 0 ) buffer restrict readonly BoundsBlock
+{
+	bbox Bounds[];
+};
+
+layout( std140, binding = 1 ) buffer restrict readonly NumpositionsBlock
+{
+	int Numpositions;
+};
+
+layout( std430, binding = 2 ) buffer restrict writeonly MortoncodesBlock
+{
+	uint Mortoncodes[];
+};
+
+// The following two functions are from
+// http://devblogs.nvidia.com/parallelforall/thinking-parallel-part-iii-tree-construction-gpu/
+// Expands a 10-bit integer into 30 bits
+// by inserting 2 zeros after each bit.
+uint ExpandBits( in uint v)
+{
+    v = (v * 0x00010001u) & 0xFF0000FFu;
+    v = (v * 0x00000101u) & 0x0F00F00Fu;
+    v = (v * 0x00000011u) & 0xC30C30C3u;
+    v = (v * 0x00000005u) & 0x49249249u;
+    return v;
+}
+
+// Calculates a 30-bit Morton code for the
+// given 3D point located within the unit cube [0,1].
+uint CalculateMortonCode( in vec3 p)
+{
+    float x = min(max(p.x * 1024.0f, 0.0f), 1023.0f);
+    float y = min(max(p.y * 1024.0f, 0.0f), 1023.0f);
+    float z = min(max(p.z * 1024.0f, 0.0f), 1023.0f);
+    uint xx = ExpandBits(uint(x));
+    uint yy = ExpandBits(uint(y));
+    uint zz = ExpandBits(uint(z));
+    return xx * 4 + yy * 2 + zz;
+}
+
+void main()
+{
+	uint globalID = gl_GlobalInvocationID.x;
+
+    if (globalID < Numpositions)
+    {
+		bbox bound = Bounds[globalID];
+		vec3 center = 0.5f * (bound.pmax + bound.pmin);
+        Mortoncodes[globalID] = CalculateMortonCode(center);
+    }
+}

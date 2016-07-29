@@ -1,0 +1,107 @@
+/**********************************************************************
+Copyright ©2015 Advanced Micro Devices, Inc. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+•   Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+•   Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or
+other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY
+DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
+OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+********************************************************************/
+
+#version 430
+layout( local_size_x = 1, local_size_y = 1, local_size_z = 1 ) in;
+
+struct bbox
+{
+	vec3 pmin;
+	vec3 pmax;
+};
+
+struct HlbvhNode
+{
+        int parent;
+        int left;
+        int right;
+        int next;
+};
+
+layout( std430, binding = 0 ) buffer BoundsBlock
+{
+	bbox Bounds[];
+};
+
+layout( std140, binding = 1 ) buffer restrict readonly NumprimsBlock
+{
+	int Numprims;
+};
+
+layout( std140, binding = 2 ) buffer restrict readonly NodesBlock
+{
+	HlbvhNode Nodes[];
+};
+
+layout( std430, binding = 3 ) buffer FlagsBlock
+{
+	int Flags[];
+};
+
+#define LEAFIDX(i) ((Numprims-1) + int(i))
+#define NODEIDX(i) (i)
+
+bbox bboxunion(bbox b1, bbox b2)
+{
+    bbox res;
+    res.pmin = min(b1.pmin, b2.pmin);
+    res.pmax = max(b1.pmax, b2.pmax);
+    return res;
+}
+
+// Propagate bounds up to the root
+void main()
+{
+    uint globalID = gl_GlobalInvocationID.x;
+
+    // Start from leaf nodes
+    if (int(globalID) < Numprims)
+    {
+        // Get my leaf index
+        int idx = LEAFIDX(globalID);
+
+        do
+        {
+            // Move to parent node
+            idx = Nodes[idx].parent;
+
+            // Check node's flag
+            if (atomicCompSwap(Flags[ idx ], 0, 1) == 1)
+            {
+                // If the flag was 1 the second child is ready and 
+                // this thread calculates bbox for the node
+
+                // Fetch kids
+                int lc = Nodes[idx].left;
+                int rc = Nodes[idx].right;
+
+                // Calculate bounds
+                bbox b = bboxunion(Bounds[lc], Bounds[rc]);
+
+                // Write bounds
+                Bounds[idx] = b;
+            }
+            else
+            {
+                // If the flag was 0 set it to 1 and bail out.
+                // The thread handling the second child will
+                // handle this node.
+                break;
+            }
+        }
+        while (idx != 0);
+    }
+}

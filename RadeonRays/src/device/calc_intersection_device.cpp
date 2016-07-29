@@ -35,6 +35,7 @@ THE SOFTWARE.
 #include "../strategy/fatbvhstrategy.h"
 #include "../strategy/hlbvh_strategy.h"
 #include "../world/world.h"
+#include <iostream>
 
 namespace RadeonRays
 {

@@ -77,7 +77,7 @@ public:
         //try
         //{
         api_ = nullptr;
-        ASSERT_NO_THROW(api_ = IntersectionApiCL::CreateFromOpenClContext(rawcontext_, device, queue_));
+        ASSERT_NO_THROW(api_ = CreateFromOpenClContext(rawcontext_, device, queue_));
         //}
         //catch (Exception& e)
         //{
@@ -96,7 +96,7 @@ public:
     cl_context rawcontext_;
     cl_command_queue queue_;
     // Api
-    IntersectionApiCL* api_;
+    IntersectionApi* api_;
 };
 
 // The test creates a single triangle mesh and tests attach/detach functionality
@@ -179,7 +179,7 @@ TEST_F(ApiCl, ClBuffer)
     
     Buffer* apibuffer = nullptr;
     
-    ASSERT_NO_THROW(apibuffer = api_->CreateFromOpenClBuffer(buffer));
+    ASSERT_NO_THROW(apibuffer = CreateFromOpenClBuffer(api_, buffer));
     
     ASSERT_NO_THROW(api_->DeleteBuffer(apibuffer));
 }
@@ -231,8 +231,8 @@ TEST_F(ApiCl, Intersection_1Ray_Buffer)
     Buffer* hitinfos = nullptr;
     
     // Create API objects
-    ASSERT_NO_THROW(rays = api_->CreateFromOpenClBuffer(rays_buffer));
-    ASSERT_NO_THROW(hitinfos = api_->CreateFromOpenClBuffer(hitinfos_buffer));
+    ASSERT_NO_THROW(rays = CreateFromOpenClBuffer(api_, rays_buffer));
+    ASSERT_NO_THROW(hitinfos = CreateFromOpenClBuffer(api_, hitinfos_buffer));
     
     // Commit geometry update
     ASSERT_NO_THROW(api_->Commit());
@@ -308,8 +308,8 @@ TEST_F(ApiCl, Intersection_3Rays_Buffer)
     Buffer* hitinfos = nullptr;
     
     // Create API objects
-    ASSERT_NO_THROW(rays = api_->CreateFromOpenClBuffer(rays_buffer));
-    ASSERT_NO_THROW(hitinfos = api_->CreateFromOpenClBuffer(hitinfos_buffer));
+    ASSERT_NO_THROW(rays = CreateFromOpenClBuffer(api_, rays_buffer));
+    ASSERT_NO_THROW(hitinfos = CreateFromOpenClBuffer(api_, hitinfos_buffer));
     
     // Commit geometry update
     ASSERT_NO_THROW(api_->Commit());
@@ -393,9 +393,9 @@ TEST_F(ApiCl, Intersection_3Rays_Buffer_Indirect)
     Buffer* numrays = nullptr;
 
     // Create API objects
-    ASSERT_NO_THROW(rays = api_->CreateFromOpenClBuffer(rays_buffer));
-    ASSERT_NO_THROW(hitinfos = api_->CreateFromOpenClBuffer(hitinfos_buffer));
-    ASSERT_NO_THROW(numrays = api_->CreateFromOpenClBuffer(numrays_buffer));
+    ASSERT_NO_THROW(rays = CreateFromOpenClBuffer(api_,rays_buffer));
+    ASSERT_NO_THROW(hitinfos = CreateFromOpenClBuffer(api_,hitinfos_buffer));
+    ASSERT_NO_THROW(numrays = CreateFromOpenClBuffer(api_,numrays_buffer));
 
     // Commit geometry update
     ASSERT_NO_THROW(api_->Commit());
@@ -468,8 +468,8 @@ TEST_F(ApiCl, Intersection_Events)
     Buffer* hitinfos = nullptr;
     
     // Create API objects
-    ASSERT_NO_THROW(rays = api_->CreateFromOpenClBuffer(rays_buffer));
-    ASSERT_NO_THROW(hitinfos = api_->CreateFromOpenClBuffer(hitinfos_buffer));
+    ASSERT_NO_THROW(rays = CreateFromOpenClBuffer(api_,rays_buffer));
+    ASSERT_NO_THROW(hitinfos = CreateFromOpenClBuffer(api_,hitinfos_buffer));
     
     // Commit geometry update
     ASSERT_NO_THROW(api_->Commit());
@@ -547,8 +547,8 @@ TEST_F(ApiCl, Intersection_DependencyEvents)
     Buffer* hitinfos = nullptr;
     
     // Create API objects
-    ASSERT_NO_THROW(rays = api_->CreateFromOpenClBuffer(rays_buffer));
-    ASSERT_NO_THROW(hitinfos = api_->CreateFromOpenClBuffer(hitinfos_buffer));
+    ASSERT_NO_THROW(rays = CreateFromOpenClBuffer(api_,rays_buffer));
+    ASSERT_NO_THROW(hitinfos = CreateFromOpenClBuffer(api_,hitinfos_buffer));
     
     // Commit geometry update
     ASSERT_NO_THROW(api_->Commit());

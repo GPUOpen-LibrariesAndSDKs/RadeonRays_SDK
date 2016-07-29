@@ -1,0 +1,325 @@
+/**********************************************************************
+Copyright ©2015 Advanced Micro Devices, Inc. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+•   Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+•   Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or
+other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY
+DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
+OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+********************************************************************/
+
+#version 430
+layout( local_size_x = 64, local_size_y = 1, local_size_z = 1 ) in;
+
+struct bbox
+{
+	vec4 pmin;
+	vec4 pmax;
+};
+
+struct HlbvhNode
+{
+	int parent;
+	int left;
+	int right;
+	int next;
+};
+
+struct ray
+{
+	vec4 o;
+	vec4 d;
+	ivec2 extra;
+	ivec2 padding;
+};
+
+struct ShapeData
+{
+	vec4 m0;
+	vec4 m1;
+	vec4 m2;
+	vec4 m3;
+	vec4  linearvelocity;
+	vec4  angularvelocity;
+	int id;
+	int bvhidx;
+	int mask;
+	int padding1;
+};
+
+struct Face
+{
+	// Vertex indices
+	int idx0;
+	int idx1;
+	int idx2;
+	int shapeidx;
+	// Primitive ID
+	int id;
+	// Idx count
+	int cnt;
+
+	ivec2 padding;
+};
+
+struct Intersection
+{
+	vec4 uvwt;
+	int shapeid;
+	int primid;
+	ivec2 padding;
+	vec4 debug[ 3 ];
+	ivec4 intDebug[ 3 ];
+};
+
+layout( std140, binding = 0 ) buffer restrict readonly NodesBlock
+{
+	HlbvhNode Nodes[];
+};
+
+layout( std140, binding = 1 ) buffer restrict readonly BoundsBlock
+{
+	bbox Bounds[];
+};
+
+layout( std140, binding = 2 ) buffer restrict readonly VerticesBlock
+{
+	vec4 Vertices[];
+};
+
+layout( std140, binding = 3 ) buffer restrict readonly FacesBlock
+{
+	Face Faces[];
+};
+
+layout( std140, binding = 4 ) buffer restrict readonly ShapesBlock
+{
+	ShapeData Shapes[];
+};
+
+layout( std140, binding = 5 ) buffer restrict readonly RaysBlock
+{
+	ray Rays[];
+};
+
+layout( std140, binding = 6 ) buffer restrict readonly OffsetBlock
+{
+	int Offset;
+};
+
+layout( std140, binding = 7 ) buffer restrict readonly NumraysBlock
+{
+	int Numrays;
+};
+
+layout( std430, binding = 8 ) buffer restrict writeonly HitsBlock
+{
+	Intersection Hits[];
+};
+
+layout( std430, binding = 9 ) buffer StackBlock
+{
+	int GlobalStack[];
+};
+
+
+#define PI 3.14159265358979323846f
+
+/*************************************************************************
+TYPE DEFINITIONS
+**************************************************************************/
+
+bool Ray_IsActive( in ray r )
+{
+	return 0 != r.extra.y ;
+}
+
+int Ray_GetMask( in ray r )
+{
+	return r.extra.x;
+}
+
+#define STARTIDX(x)     ((int((x).left)))
+#define LEAFNODE(x)     (((x).left) == ((x).right))
+#define STACK_SIZE 64
+#define SHORT_STACK_SIZE 16
+
+bool IntersectSceneClosest( in ray r, inout Intersection isect );
+
+void main()
+{
+	uint globalID = gl_GlobalInvocationID.x;
+
+	// Handle only working subset
+	if (globalID < Numrays)
+	{
+		// Fetch ray
+		ray r = Rays[globalID];
+
+		if (Ray_IsActive(r))
+		{
+			// Calculate closest hit
+			Intersection isect;
+			IntersectSceneClosest(r, isect);
+
+			// Write data back in case of a hit
+			Hits[globalID] = isect;
+		}
+	}
+}
+
+/*************************************************************************
+ HELPER FUNCTIONS
+ **************************************************************************/
+
+ float IntersectBoxF( in ray r, in vec3 invdir, in bbox box, in float maxt )
+{
+	const vec3 f = (box.pmax.xyz - r.o.xyz) * invdir;
+	const vec3 n = (box.pmin.xyz - r.o.xyz) * invdir;
+
+	const vec3 tmax = max(f, n);
+	const vec3 tmin = min(f, n);
+
+	const float t1 = min(min(tmax.x, min(tmax.y, tmax.z)), maxt);
+	const float t0 = max(max(tmin.x, max(tmin.y, tmin.z)), 0.f);
+
+	return (t1 >= t0) ? (t0 > 0.f ? t0 : t1) : -1.f;
+}
+
+bool IntersectTriangle( in ray r, in vec3 v1, in vec3 v2, in vec3 v3, inout Intersection isect)
+{
+	const vec3 e1 = v2 - v1;
+	const vec3 e2 = v3 - v1;
+	const vec3 s1 = cross(r.d.xyz, e2);
+	const float  invd = 1.0f/(dot(s1, e1));
+	const vec3 d = r.o.xyz - v1;
+	const float  b1 = dot(d, s1) * invd;
+	const vec3 s2 = cross(d, e1);
+	const float  b2 = dot(r.d.xyz, s2) * invd;
+	const float temp = dot(e2, s2) * invd;
+	
+	if (b1 < 0.f || b1 > 1.f || b2 < 0.f || b1 + b2 > 1.f || temp < 0.f || temp > isect.uvwt.w)
+	{
+		return false;
+	}
+	else
+	{
+		isect.uvwt = vec4(b1, b2, 0.f, temp);
+		return true;
+	}
+}
+
+ /*************************************************************************
+  BVH FUNCTIONS
+  **************************************************************************/
+  //  intersect a ray with leaf BVH node
+bool IntersectLeafClosest( in int faceidx, in ray r, inout Intersection isect )
+{
+	vec3 v1, v2, v3;
+	Face face;
+
+	face = Faces[faceidx];
+	v1 = Vertices[face.idx0].xyz;
+	v2 = Vertices[face.idx1].xyz;
+	v3 = Vertices[face.idx2].xyz;
+
+	int shapemask = Shapes[face.shapeidx].mask;
+
+	if (( Ray_GetMask(r) & shapemask) != 0 )
+	{
+		if (IntersectTriangle(r, v1, v2, v3, isect))
+		{
+			isect.primid = face.id;
+			isect.shapeid = Shapes[face.shapeidx].id;
+			return true;
+		}
+	}
+
+	return false;
+}
+
+// intersect Ray against the whole BVH structure
+bool IntersectSceneClosest( in ray r, inout Intersection isect )
+{
+	const vec3 invdir = 1.0f / (r.d.xyz);
+
+	isect.uvwt = vec4(0.f, 0.f, 0.f, r.o.w);
+	isect.shapeid = -1;
+	isect.primid = -1;
+
+	int stack[STACK_SIZE];
+	//int* ptr = stack;
+	int ptr = 0;
+
+	//*ptr++ = -1;
+	stack[ ptr++ ] = -1;
+
+	int idx = 0;
+
+	HlbvhNode node;
+	bbox lbox;
+	bbox rbox;
+
+	float lefthit = 0.f;
+	float righthit = 0.f;
+
+	while (idx > -1)
+	{
+		node = Nodes[idx];
+
+		if (LEAFNODE(node))
+		{
+			IntersectLeafClosest(STARTIDX(node), r, isect);
+		}
+		else
+		{
+			lbox = Bounds[node.left];
+			rbox = Bounds[node.right];
+
+			lefthit = IntersectBoxF(r, invdir, lbox, isect.uvwt.w);
+			righthit = IntersectBoxF(r, invdir, rbox, isect.uvwt.w);
+
+			if (lefthit > 0.f && righthit > 0.f)
+			{
+				int deferred = -1;
+				if (lefthit > righthit)
+				{
+					idx = node.right;
+					deferred = node.left;
+				}
+				else
+				{
+					idx = node.left;
+					deferred = node.right;
+				}
+
+				//*ptr++ = deferred;
+				stack[ ptr++ ] = deferred;
+				continue;
+			}
+			else if (lefthit > 0)
+			{
+				idx = node.left;
+				continue;
+			}
+			else if (righthit > 0)
+			{
+				idx = node.right;
+				continue;
+			}
+		}
+
+		//idx = *--ptr;
+		idx = stack[ --ptr ];
+	}
+
+
+	return isect.shapeid >= 0;
+}
+

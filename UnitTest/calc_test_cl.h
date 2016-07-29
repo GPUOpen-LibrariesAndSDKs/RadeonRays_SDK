@@ -42,7 +42,7 @@ class CalcTest : public ::testing::Test
 public:
 	virtual void SetUp()
 	{	
-		m_calc = Calc::CreateCalc(0);
+		m_calc = Calc::CreateCalc(Calc::kOpenCL, 0);
 	}
 
 	virtual void TearDown()

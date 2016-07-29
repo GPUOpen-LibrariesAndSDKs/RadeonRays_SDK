@@ -111,12 +111,19 @@ namespace RadeonRays
 		, m_bvh(nullptr)
 	{
 #ifndef FR_EMBED_KERNELS
-		char const* headers[] = { "../RadeonRays/src/kernel/CL/common.cl" };
+		if ( device->GetPlatform() == Calc::Platform::kOpenCL )
+		{
+			char const* headers[] = { "../RadeonRays/kernel/CL/common.cl" };
 
-		int numheaders = sizeof(headers) / sizeof(char const*);
+			int numheaders = sizeof( headers ) / sizeof( char const* );
 
-		m_gpudata->executable = m_device->CompileExecutable("../RadeonRays/src/kernel/CL/hlbvh.cl", headers, numheaders);
-
+			m_gpudata->executable = m_device->CompileExecutable( "../RadeonRays/kernel/CL/hlbvh.cl", headers, numheaders );
+		}
+		else
+		{
+			assert( device->GetPlatform() == Calc::Platform::kVulkan );
+			m_gpudata->executable = m_device->CompileExecutable( "../RadeonRays/kernel/GLSL/hlbvh", nullptr, 0 );
+		}
 #else
 		m_gpudata->executable = m_device->CompileExecutable(cl_hlbvh, std::strlen(cl_hlbvh), nullptr);
 #endif
@@ -138,6 +145,7 @@ namespace RadeonRays
                 m_device->DeleteBuffer(m_gpudata->faces);
                 m_device->DeleteBuffer(m_gpudata->shapes);
                 m_device->DeleteBuffer(m_gpudata->raycnt);
+				m_device->DeleteBuffer(m_gpudata->stack);
             }
             
 			int numshapes = (int)world.shapes_.size();

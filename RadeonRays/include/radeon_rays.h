@@ -20,12 +20,17 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
 #pragma once
+#ifndef RADEON_RAYS_H
+#define RADEON_RAYS_H
 
 #include "math/float3.h"
 #include "math/float2.h"
 #include "math/matrix.h"
 #include "math/ray.h"
 #include "math/mathutils.h"
+
+// TEMP move to build system
+#define USE_OPENCL 1
 
 #define RADEONRAYS_API_VERSION 2.0
 
@@ -59,12 +64,22 @@ namespace RadeonRays
             kAccelerator
         };
 
+		enum Platform
+		{
+			kOpenCL = 0x1,
+			kVulkan = 0x2,
+			kEmbree = 0x4,
+
+			kAny = 0xFF
+		};
+
         // Device name
         char const* name;
         // Device vendor
         char const* vendor;
         // Device type
         Type type;
+		Platform platform;
     };
 
     // Forward declaration of entities
@@ -126,17 +141,19 @@ namespace RadeonRays
         virtual char const* what() const = 0;
     };
 
+	// must match Intersection struct on the GPU side exactly!
     struct Intersection
     {
-        // UV parametrization
-        float4 uvwt;
-        // Shape ID
-        Id shapeid;
-        // Primitve ID
-        Id primid;
+		// Shape ID
+		Id shapeid;
+		// Primitve ID
+		Id primid;
 
-        int padding0;
-        int padding1;
+		int padding0;
+		int padding1;
+		
+		// UV parametrization
+        float4 uvwt;
 
         Intersection();
     };
@@ -158,6 +175,19 @@ namespace RadeonRays
     class RRAPI IntersectionApi
     {
     public:
+
+		/******************************************
+		Backend management
+		*******************************************/
+		// By default RadeonRays will any platform with potential GPU accelerations,
+		// if you prefer to specify which platform call SetPlatform before 
+		// GetDeviceInfo/GetDeviceCount for each specific platform
+		// By default will choose OpenCL if available, and if not Vulkan
+		// Note: this may be sub optimal in some case. to avoid enum all devices
+		// across all platforms explicitly before deciding on platform and 
+		// device(s) to use
+		static void SetPlatform(const DeviceInfo::Platform platform);
+
 
         /******************************************
         Device management
@@ -290,3 +320,5 @@ namespace RadeonRays
     inline Exception::~Exception(){}
 }
 
+
+#endif // RADEON_RAYS_H

@@ -42,11 +42,14 @@ namespace Calc
 		char const* vendor;
 
 		DeviceType  type;
+		SourceType  sourceTypes;
+
+		std::uint32_t min_alignment;
+		std::uint32_t max_num_queues;
+
 		std::size_t global_mem_size;
 		std::size_t local_mem_size;
 		std::size_t max_alloc_size;
-		std::uint32_t min_alignment;
-		std::uint32_t max_num_queues;
 		std::size_t max_local_size;
 	};
 
@@ -111,6 +114,8 @@ namespace Calc
 		virtual bool HasBuiltinPrimitives() const = 0;
 		virtual Primitives* CreatePrimitives() const = 0;
 		virtual void DeletePrimitives(Primitives* prims) = 0;
+
+		virtual Platform GetPlatform() = 0;
 
 		// Helper methods
 		template <typename T> void ReadTypedBuffer(Buffer const* buffer, std::uint32_t queue, std::size_t offset, std::size_t size, T* dst, Event** e) const;

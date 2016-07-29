@@ -21,32 +21,27 @@ THE SOFTWARE.
 ********************************************************************/
 #pragma once
 
+#ifndef RADEON_RAYS_CL_H
+#define RADEON_RAYS_CL_H
+
 #include "radeon_rays.h"
 
+#if USE_OPENCL
 #ifdef __APPLE__
 #include <OpenCL/OpenCL.h>
 #else
 #include <CL/cl.h>
 #endif
 
-namespace RadeonRays
-{
-    class RRAPI IntersectionApiCL : public IntersectionApi
-    {
-    public:
-        static IntersectionApiCL* CreateFromOpenClContext(cl_context context, cl_device_id device, cl_command_queue queue);
+namespace RadeonRays {
+	class IntersectionApi;
+	class Buffer;
 
-        /******************************************
-        Memory management
-        ******************************************/
-        // Create a buffer from CL memory object
-        virtual Buffer* CreateFromOpenClBuffer(cl_mem buffer) const = 0;
-
-    protected:
-        IntersectionApiCL();
-        IntersectionApiCL(IntersectionApiCL const&);
-        IntersectionApiCL const& operator = (IntersectionApiCL const&);
-    };
-
-    inline IntersectionApiCL::IntersectionApiCL(){}
+	RRAPI IntersectionApi* CreateFromOpenClContext(cl_context context, cl_device_id device, cl_command_queue queue);
+	RRAPI Buffer* CreateFromOpenClBuffer(IntersectionApi* api, cl_mem buffer);
 }
+
+
+#endif
+
+#endif // RADEON_RAYS_CL_H
