@@ -38,6 +38,7 @@ class Api : public ::testing::Test
 public:
     virtual void SetUp()
     {
+		api_ = nullptr;
         int nativeidx = -1;
         for (int idx=0; idx < IntersectionApi::GetDeviceCount(); ++idx)
         {
@@ -57,7 +58,7 @@ public:
 
     virtual void TearDown()
     {
-        IntersectionApi::Delete(api_);
+        if(api_ != nullptr) IntersectionApi::Delete(api_);
     }
 
 	void Wait()

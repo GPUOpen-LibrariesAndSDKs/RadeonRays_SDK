@@ -41,6 +41,9 @@ class ApiConformance : public ::testing::Test
 public:
     virtual void SetUp()
     {
+		apicpu_ = nullptr;
+		apigpu_ = nullptr;
+
         //Search for native CPU
         int cpuidx = -1;
         int gpuidx = -1;
@@ -65,7 +68,10 @@ public:
         apicpu_ = IntersectionApi::Create(cpuidx);
         apigpu_ = IntersectionApi::Create(gpuidx);
 
-        // Load obj file 
+		ASSERT_TRUE(apicpu_ != nullptr);
+		ASSERT_TRUE(apigpu_ != nullptr);
+
+		// Load obj file 
         std::string res = LoadObj(shapes_, materials_, "../Resources/CornellBox/orig.objm");
 
         // Create meshes within IntersectionApi
@@ -94,19 +100,28 @@ public:
 
     virtual void TearDown()
     {
-        // Commit update
-        ASSERT_NO_THROW(apicpu_->Commit());
-        ASSERT_NO_THROW(apigpu_->Commit());
+		if(apicpu_ != nullptr )
+		{
+			// Commit update
+			ASSERT_NO_THROW(apicpu_->Commit());
+			for (int i = 0; i < (int)apishapes_cpu_.size(); ++i)
+			{
+				ASSERT_NO_THROW(apicpu_->DeleteShape(apishapes_cpu_[i]));
+			}
+			IntersectionApi::Delete(apicpu_);
+		}
+		
+		if(apigpu_ != nullptr)
+		{
+			ASSERT_NO_THROW(apigpu_->Commit());
+			// Delete meshes
+			for (int i = 0; i<(int)apishapes_gpu_.size(); ++i)
+			{
+				ASSERT_NO_THROW(apigpu_->DeleteShape(apishapes_gpu_[i]));
+			}
+			IntersectionApi::Delete(apigpu_);
 
-        // Delete meshes
-        for (int i=0; i<(int)apishapes_cpu_.size(); ++i)
-        {
-            ASSERT_NO_THROW(apicpu_->DeleteShape(apishapes_cpu_[i]));
-            ASSERT_NO_THROW(apigpu_->DeleteShape(apishapes_gpu_[i]));
-        }
-
-        IntersectionApi::Delete(apicpu_);
-        IntersectionApi::Delete(apigpu_);
+		}
     }
 
 	void Wait(IntersectionApi* api)

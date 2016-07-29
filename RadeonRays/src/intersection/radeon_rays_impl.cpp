@@ -24,13 +24,13 @@ THE SOFTWARE.
 #include "../primitive/mesh.h"
 #include "../primitive/instance.h"
 #include "../except/except.h"
-
-#ifdef USE_OPENCL
 #include "../device/intersection_device.h"
+
+#if USE_OPENCL
 #include "../device/calc_intersection_device_cl.h"
 #endif
 
-#ifdef USE_VULKAN
+#if USE_VULKAN
 #include "../device/calc_intersection_device_vk.h"
 #include <wrappers/buffer.h>
 #endif

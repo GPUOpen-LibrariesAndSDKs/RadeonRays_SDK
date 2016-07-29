@@ -65,12 +65,14 @@ namespace RadeonRays
 	{
 		// if CL allowed see if we have any devices if not
 		// try Vulkan if allowed, if neither try embree if allowed
+#if USE_OPENCL
 		if( s_calc_platform & DeviceInfo::Platform::kOpenCL )
 		{
 			auto* calc = GetCalcOpenCL();
 			if (calc != nullptr) { return calc; }
 		}
-#ifdef USE_VULKAN
+#endif
+#if USE_VULKAN
 		if ( s_calc_platform & DeviceInfo::Platform::kVulkan )
 		{
 			auto* calc = GetCalcVulkan();

@@ -1,8 +1,8 @@
 project "UnitTest"
     location "../UnitTest"
     kind "ConsoleApp"
-	includedirs { "../RadeonRays/include", "../Gtest/include", "../CLW", "../Calc/inc", "." }
-    links {"Gtest", "RadeonRays", "CLW", "Calc"}
+	includedirs { "../RadeonRays/include", "../Gtest/include", "../Calc/inc", "." }
+    links {"Gtest", "RadeonRays", "Calc"}
     files { "**.cpp", "**.h" }
     
     if os.is("macosx") then
@@ -15,6 +15,29 @@ project "UnitTest"
 
     if _ACTION == "vs2012" then
 	defines{ "GTEST_HAS_TR1_TUPLE=0" }
+    end
+
+    if _OPTIONS["use_opencl"] then
+        includedirs { "../CLW" }
+        links {"CLW"}
+    end
+
+    if _OPTIONS["use_vulkan"] then
+        local vulkanSDKPath = os.getenv( "VK_SDK_PATH" );
+        if vulkanSDKPath ~= nil then
+            configuration {"x32"}
+            libdirs { vulkanSDKPath .. "/Bin32" }
+            configuration {"x64"}
+            libdirs { vulkanSDKPath .. "/Bin" }
+            configuration {}
+        end
+        if os.is("macosx") then
+            --no Vulkan on macOs need to error out TODO
+        elseif os.is("linux") then
+            links {"Anvil", "vulkan"}
+        elseif os.is("windows") then
+            links {"Anvil", "vulkan-1"}
+        end
     end
 
     configuration {"x32", "Debug"}

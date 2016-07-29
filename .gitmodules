@@ -1,0 +1,3 @@
+[submodule "Anvil"]
+	path = Anvil
+	url = https://github.com/GPUOpen-LibrariesAndSDKs/Anvil.git

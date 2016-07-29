@@ -43,6 +43,7 @@ public:
 	virtual void SetUp()
 	{	
 		m_calc = Calc::CreateCalc(Calc::kOpenCL, 0);
+		ASSERT_TRUE(m_calc != nullptr);
 	}
 
 	virtual void TearDown()

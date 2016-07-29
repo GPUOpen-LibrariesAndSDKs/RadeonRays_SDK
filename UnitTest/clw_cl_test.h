@@ -22,6 +22,8 @@ THE SOFTWARE.
 #ifndef CLW_CL_TEST_H
 #define CLW_CL_TEST_H
 
+
+#if USE_OPENCL
 /// This test suite is testing CLW library interop with pure OpenCL
 ///
 
@@ -140,5 +142,6 @@ TEST_F(CLWCL, BufferWrite)
     ASSERT_EQ(mismatch.first, initdata.cend());
 }
 
+#endif // use opengl
 
 #endif // CLW_CL_TEST

@@ -22,6 +22,7 @@ THE SOFTWARE.
 #ifndef CLW_TEST_H
 #define CLW_TEST_H
 
+#if USE_OPENCL
 /// This test suite is testing CLW library functionality
 ///
 
@@ -32,6 +33,7 @@ THE SOFTWARE.
 #include <ctime>
 
 #include "gtest/gtest.h"
+
 #include "CLW.h"
 
 // Api creation fixture, prepares api_ for further tests
@@ -362,3 +364,5 @@ TEST_F(CLW, RadixSortLarge)
 }
 
 #endif
+
+#endif //USE_OPENCL
