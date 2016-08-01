@@ -289,7 +289,7 @@ TEST_F(ApiConformanceVK, CornellBox_10000RaysRandom_ClosestHit_Events_Bruteforce
 	ray* r_cpu = nullptr;
 	ray* r_gpu = nullptr;
 
-	Event* egpu, *ecpu;
+	Event* egpu;
 	EXPECT_NO_THROW(apigpu_->MapBuffer(ray_buffer_gpu, kMapWrite, 0, kNumRays * sizeof(ray), (void**)&r_gpu, &egpu));
 	egpu->Wait(); apigpu_->DeleteEvent(egpu);
 
