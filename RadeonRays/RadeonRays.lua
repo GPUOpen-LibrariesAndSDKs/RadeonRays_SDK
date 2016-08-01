@@ -74,9 +74,11 @@ project "RadeonRays"
         if os.is("macosx") then
             --no Vulkan on macOs need to error out TODO
         elseif os.is("linux") then
-            links {"Anvil", "vulkan"}
+            links {"Anvil"}
+            links {"vulkan"}
         elseif os.is("windows") then
-            links {"Anvil", "vulkan-1"}
+            links {"Anvil"}
+            links {"vulkan-1"}
         end
     end
 

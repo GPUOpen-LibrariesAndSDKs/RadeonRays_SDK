@@ -45,12 +45,6 @@ namespace RadeonRays
 {
 	struct HlbvhStrategy::ShapeData
 	{
-		// Transform
-		matrix minv;
-		// Motion blur data
-		float3 linearvelocity;
-		// Angular veocity (quaternion)
-		quaternion angularvelocity;
 		// Shape ID
 		Id id;
 		// Index of root bvh node
@@ -58,6 +52,12 @@ namespace RadeonRays
 		// Shape mask
 		int mask;
 		int padding1;
+		// Transform
+		matrix minv;
+		// Motion blur data
+		float3 linearvelocity;
+		// Angular veocity (quaternion)
+		quaternion angularvelocity;
 	};
 
 	struct HlbvhStrategy::GpuData
@@ -113,16 +113,16 @@ namespace RadeonRays
 #ifndef FR_EMBED_KERNELS
 		if ( device->GetPlatform() == Calc::Platform::kOpenCL )
 		{
-			char const* headers[] = { "../RadeonRays/kernel/CL/common.cl" };
+			char const* headers[] = { "kernels/CL/common.cl" };
 
 			int numheaders = sizeof( headers ) / sizeof( char const* );
 
-			m_gpudata->executable = m_device->CompileExecutable( "../RadeonRays/kernel/CL/hlbvh.cl", headers, numheaders );
+			m_gpudata->executable = m_device->CompileExecutable( "kernels/CL/hlbvh.cl", headers, numheaders );
 		}
 		else
 		{
 			assert( device->GetPlatform() == Calc::Platform::kVulkan );
-			m_gpudata->executable = m_device->CompileExecutable( "../RadeonRays/kernel/GLSL/hlbvh", nullptr, 0 );
+			m_gpudata->executable = m_device->CompileExecutable( "kernels/GLSL/hlbvh.comp", nullptr, 0 );
 		}
 #else
 		m_gpudata->executable = m_device->CompileExecutable(cl_hlbvh, std::strlen(cl_hlbvh), nullptr);

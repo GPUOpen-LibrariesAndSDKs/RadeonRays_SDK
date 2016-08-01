@@ -1,4 +1,4 @@
-﻿#version 430
+#version 430
 
 // Note Anvil define system assumes first line is alway a #version so don't rearrange
 
@@ -48,16 +48,17 @@ struct ray
 
 struct ShapeData
 {
+	int id;
+	int bvhidx;
+	int mask;
+	int padding1;
+
 	vec4 m0;
 	vec4 m1;
 	vec4 m2;
 	vec4 m3;
 	vec4  linearvelocity;
 	vec4  angularvelocity;
-	int id;
-	int bvhidx;
-	int mask;
-	int padding1;
 };
 
 struct Face
@@ -123,6 +124,11 @@ layout( std430, binding = 7 ) buffer restrict writeonly HitsBlock
 	Intersection Hits[];
 };
 
+layout( std430, binding = 7 ) buffer restrict writeonly HitsResults
+{
+	int Hitresults[];
+};
+
 layout( std430, binding = 8 ) buffer StackBlock
 {
 	int GlobalStack[];
@@ -168,7 +174,7 @@ void IntersectAny()
 		if (Ray_IsActive(r))
 		{
 			// Calculate any intersection
-			Hits[globalID].shapeid = IntersectSceneAny( r, int( groupID * 64 * 32 + localID * 32 ), int( localID ) ) ? 1 : -1;
+			Hitsresults[globalID] = IntersectSceneAny( r, int( groupID * 64 * 32 + localID * 32 ), int( localID ) ) ? 1 : -1;
 		}
 	}
 }

@@ -1,3 +1,4 @@
+
 /**********************************************************************
 Copyright (c) 2016 Advanced Micro Devices, Inc. All rights reserved.
 
@@ -21,6 +22,8 @@ THE SOFTWARE.
 ********************************************************************/
 #pragma once
 
+#if USE_OPENCL
+
 #include <vector>
 #include <algorithm>
 #include <numeric>
@@ -37,13 +40,12 @@ THE SOFTWARE.
 #include "executable.h"
 
 // Api creation fixture, prepares api_ for further tests
-class CalcTest : public ::testing::Test
+class CalcTestkOpenCL : public ::testing::Test
 {
 public:
 	virtual void SetUp()
-	{	
-		m_calc = Calc::CreateCalc(Calc::kOpenCL, 0);
-		ASSERT_TRUE(m_calc != nullptr);
+	{
+		m_calc = Calc::CreateCalc(Calc::Platform::kOpenCL, 0);
 	}
 
 	virtual void TearDown()
@@ -52,13 +54,43 @@ public:
 	}
 
 	Calc::Calc* m_calc;
+
+	std::string const cl_source_code =
+		" __kernel void add(__global int const* a, __global int const* b, __global int* c) {"
+		"int idx = get_global_id(0);"
+		"c[idx] = a[idx] + b[idx];}";
+
+	std::string const gl_source_code =
+		"#version 430\n"
+		"layout( local_size_x = 64, local_size_y = 1, local_size_z = 1 ) in;\n"
+		"layout(std430, binding = 0) buffer restrict readonly aBlk { int a[]; };\n"
+		"layout(std430, binding = 1) buffer restrict readonly bBlk { int b[]; };\n"
+		"layout(std430, binding = 2) buffer cBlk { int c[]; };\n"
+		"void main() {\n"
+		"uint idx = gl_GlobalInvocationID.x;\n"
+		"c[idx] = a[idx] + b[idx];\n}\n";
+
+	std::string const cl_source_code2 =
+		" __kernel void add(__global int const* a, int b, __global int* c) {"
+		"int idx = get_global_id(0);"
+		"c[idx] = a[idx] + b;}";
+
+	std::string const gl_source_code2 =
+		"#version 430\n"
+		"layout( local_size_x = 64, local_size_y = 1, local_size_z = 1 ) in;\n"
+		"layout(std430, binding = 0) buffer restrict readonly aBlk { int a[]; };\n"
+		"layout(std430, binding = 1) buffer restrict readonly bBlk { int b; };\n"
+		"layout(std430, binding = 2) buffer cBlk { int c[]; };\n"
+		"void main() {\n"
+		"uint idx = gl_GlobalInvocationID.x;\n"
+		"c[idx] = a[idx] + b;\n}\n";
 };
 
-TEST_F(CalcTest, Create)
+TEST_F(CalcTestkOpenCL, Create)
 {
 }
 
-TEST_F(CalcTest, EnumDevices)
+TEST_F(CalcTestkOpenCL, EnumDevices)
 {
 	auto num_devices = m_calc->GetDeviceCount();
 
@@ -71,7 +103,7 @@ TEST_F(CalcTest, EnumDevices)
 	}
 }
 
-TEST_F(CalcTest, CreateDevice)
+TEST_F(CalcTestkOpenCL, CreateDevice)
 {
 	auto num_devices = m_calc->GetDeviceCount();
 
@@ -83,7 +115,7 @@ TEST_F(CalcTest, CreateDevice)
 	ASSERT_NO_THROW(m_calc->DeleteDevice(device));
 }
 
-TEST_F(CalcTest, CreateBuffer)
+TEST_F(CalcTestkOpenCL, CreateBuffer)
 {
 	auto num_devices = m_calc->GetDeviceCount();
 
@@ -94,14 +126,14 @@ TEST_F(CalcTest, CreateBuffer)
 	ASSERT_NO_THROW(device = m_calc->CreateDevice(0));
 
 	Calc::Buffer* buffer = nullptr;
-	
+
 	ASSERT_NO_THROW(buffer = device->CreateBuffer(256, Calc::BufferType::kWrite));
 
 	ASSERT_NO_THROW(device->DeleteBuffer(buffer));
 	ASSERT_NO_THROW(m_calc->DeleteDevice(device));
 }
 
-TEST_F(CalcTest, CreateBufferZeroSize)
+TEST_F(CalcTestkOpenCL, CreateBufferZeroSize)
 {
 	auto num_devices = m_calc->GetDeviceCount();
 
@@ -132,7 +164,7 @@ TEST_F(CalcTest, CreateBufferZeroSize)
 	ASSERT_NO_THROW(m_calc->DeleteDevice(device));
 }
 
-TEST_F(CalcTest, CreateBufferInitialData)
+TEST_F(CalcTestkOpenCL, CreateBufferInitialData)
 {
 	auto num_devices = m_calc->GetDeviceCount();
 
@@ -168,7 +200,7 @@ TEST_F(CalcTest, CreateBufferInitialData)
 }
 
 
-TEST_F(CalcTest, ReadWriteBuffer)
+TEST_F(CalcTestkOpenCL, ReadWriteBuffer)
 {
 	auto num_devices = m_calc->GetDeviceCount();
 
@@ -209,7 +241,7 @@ TEST_F(CalcTest, ReadWriteBuffer)
 	ASSERT_NO_THROW(m_calc->DeleteDevice(device));
 }
 
-TEST_F(CalcTest, ReadWriteTypedBuffer)
+TEST_F(CalcTestkOpenCL, ReadWriteTypedBuffer)
 {
 	auto num_devices = m_calc->GetDeviceCount();
 
@@ -250,7 +282,7 @@ TEST_F(CalcTest, ReadWriteTypedBuffer)
 	ASSERT_NO_THROW(m_calc->DeleteDevice(device));
 }
 
-TEST_F(CalcTest, MapBuffer)
+TEST_F(CalcTestkOpenCL, MapBuffer)
 {
 	auto num_devices = m_calc->GetDeviceCount();
 
@@ -304,7 +336,7 @@ TEST_F(CalcTest, MapBuffer)
 	ASSERT_NO_THROW(m_calc->DeleteDevice(device));
 }
 
-TEST_F(CalcTest, MapTypedBuffer)
+TEST_F(CalcTestkOpenCL, MapTypedBuffer)
 {
 	auto num_devices = m_calc->GetDeviceCount();
 
@@ -355,7 +387,7 @@ TEST_F(CalcTest, MapTypedBuffer)
 }
 
 
-TEST_F(CalcTest, CompileExecutable)
+TEST_F(CalcTestkOpenCL, CompileExecutable)
 {
 	auto num_devices = m_calc->GetDeviceCount();
 
@@ -365,23 +397,31 @@ TEST_F(CalcTest, CompileExecutable)
 
 	ASSERT_NO_THROW(device = m_calc->CreateDevice(0));
 
-	std::string const source_code =
-		" __kernel void add(__global int const* a, __global int const* b, __global int* c) {"
-		"int idx = get_global_id(0);"
-		"c[idx] = a[idx] + b[idx];}";
+	Calc::DeviceSpec spec;
+	device->GetSpec(spec);
+
+	std::string source_code;
+	if ((spec.sourceTypes & Calc::SourceType::kOpenCL) == Calc::SourceType::kOpenCL)
+	{
+		source_code = cl_source_code;
+	}
+	else if ((spec.sourceTypes & Calc::SourceType::kGLSL) == Calc::SourceType::kGLSL)
+	{
+		source_code = gl_source_code;
+	}
 
 	Calc::Executable* executable = nullptr;
 	ASSERT_NO_THROW(executable = device->CompileExecutable(source_code.c_str(), source_code.size(), ""));
-	
+
 	Calc::Function* func = nullptr;
 	ASSERT_NO_THROW(func = executable->CreateFunction("add"));
-	
+
 	ASSERT_NO_THROW(executable->DeleteFunction(func));
 	ASSERT_NO_THROW(device->DeleteExecutable(executable));
 	ASSERT_NO_THROW(m_calc->DeleteDevice(device));
 }
 
-TEST_F(CalcTest, Execute)
+TEST_F(CalcTestkOpenCL, Execute)
 {
 	auto num_devices = m_calc->GetDeviceCount();
 
@@ -391,10 +431,19 @@ TEST_F(CalcTest, Execute)
 
 	ASSERT_NO_THROW(device = m_calc->CreateDevice(0));
 
-	std::string const source_code =
-		" __kernel void add(__global int const* a, __global int const* b, __global int* c) {"
-		"int idx = get_global_id(0);"
-		"c[idx] = a[idx] + b[idx];}";
+	Calc::DeviceSpec spec;
+	device->GetSpec(spec);
+
+	std::string source_code;
+	if ((spec.sourceTypes & Calc::SourceType::kOpenCL) == Calc::SourceType::kOpenCL)
+	{
+		source_code = cl_source_code;
+	}
+	else if ((spec.sourceTypes & Calc::SourceType::kGLSL) == Calc::SourceType::kGLSL)
+	{
+		source_code = gl_source_code;
+	}
+
 
 	Calc::Executable* executable = nullptr;
 	ASSERT_NO_THROW(executable = device->CompileExecutable(source_code.c_str(), source_code.size(), ""));
@@ -445,64 +494,72 @@ TEST_F(CalcTest, Execute)
 	ASSERT_NO_THROW(m_calc->DeleteDevice(device));
 }
 
-TEST_F(CalcTest, ExecuteRawParams)
+TEST_F(CalcTestkOpenCL, ExecuteRawParams)
 {
-    auto num_devices = m_calc->GetDeviceCount();
-    
-    ASSERT_GE(num_devices, 0U);
-    
-    Calc::Device* device = nullptr;
-    
-    ASSERT_NO_THROW(device = m_calc->CreateDevice(0));
-    
-    std::string const source_code =
-    " __kernel void add(__global int const* a, int b, __global int* c) {"
-    "int idx = get_global_id(0);"
-    "c[idx] = a[idx] + b;}";
-    
-    Calc::Executable* executable = nullptr;
-    ASSERT_NO_THROW(executable = device->CompileExecutable(source_code.c_str(), source_code.size(), ""));
-    
-    Calc::Function* func = nullptr;
-    ASSERT_NO_THROW(func = executable->CreateFunction("add"));
-    
-    
-    Calc::Buffer* buffer_a = nullptr;
-    Calc::Buffer* buffer_c = nullptr;
-    
-    const auto kBufferSize = 1000;
-    std::vector<int> numbers_a(kBufferSize);
-    
-    std::generate(numbers_a.begin(), numbers_a.end(), std::rand);
-    
-    ASSERT_NO_THROW(buffer_a = device->CreateBuffer(kBufferSize * sizeof(int), Calc::BufferType::kWrite, &numbers_a[0]));
-    ASSERT_NO_THROW(buffer_c = device->CreateBuffer(kBufferSize * sizeof(int), Calc::BufferType::kWrite));
-    
-    std::uint32_t b = 5;
-    ASSERT_NO_THROW(func->SetArg(0, buffer_a));
-    ASSERT_NO_THROW(func->SetArg(1, sizeof(b), &b));
-    ASSERT_NO_THROW(func->SetArg(2, buffer_c));
-    ASSERT_NO_THROW(device->Execute(func, 0, kBufferSize, 1, nullptr));
-    
-    std::vector<int> numbers_c(kBufferSize);
-    
+	auto num_devices = m_calc->GetDeviceCount();
+
+	ASSERT_GE(num_devices, 0U);
+
+	Calc::Device* device = nullptr;
+
+	ASSERT_NO_THROW(device = m_calc->CreateDevice(0));
+
+	Calc::DeviceSpec spec;
+	device->GetSpec(spec);
+
+	std::string source_code;
+	if ((spec.sourceTypes & Calc::SourceType::kOpenCL) == Calc::SourceType::kOpenCL)
+	{
+		source_code = cl_source_code2;
+	}
+	else if ((spec.sourceTypes & Calc::SourceType::kGLSL) == Calc::SourceType::kGLSL)
+	{
+		source_code = gl_source_code2;
+	}
+
+	Calc::Executable* executable = nullptr;
+	ASSERT_NO_THROW(executable = device->CompileExecutable(source_code.c_str(), source_code.size(), ""));
+
+	Calc::Function* func = nullptr;
+	ASSERT_NO_THROW(func = executable->CreateFunction("add"));
+
+
+	Calc::Buffer* buffer_a = nullptr;
+	Calc::Buffer* buffer_c = nullptr;
+
+	const auto kBufferSize = 1000;
+	std::vector<int> numbers_a(kBufferSize);
+
+	std::generate(numbers_a.begin(), numbers_a.end(), std::rand);
+
+	ASSERT_NO_THROW(buffer_a = device->CreateBuffer(kBufferSize * sizeof(int), Calc::BufferType::kWrite, &numbers_a[0]));
+	ASSERT_NO_THROW(buffer_c = device->CreateBuffer(kBufferSize * sizeof(int), Calc::BufferType::kWrite));
+
+	std::uint32_t b = 5;
+	ASSERT_NO_THROW(func->SetArg(0, buffer_a));
+	ASSERT_NO_THROW(func->SetArg(1, sizeof(b), &b));
+	ASSERT_NO_THROW(func->SetArg(2, buffer_c));
+	ASSERT_NO_THROW(device->Execute(func, 0, kBufferSize, 1, nullptr));
+
+	std::vector<int> numbers_c(kBufferSize);
+
 	Calc::Event* e = nullptr;
 
-    ASSERT_NO_THROW(device->ReadBuffer(buffer_c, 0, 0, kBufferSize * sizeof(int), &numbers_c[0], &e));
+	ASSERT_NO_THROW(device->ReadBuffer(buffer_c, 0, 0, kBufferSize * sizeof(int), &numbers_c[0], &e));
 
 	e->Wait();
 	device->DeleteEvent(e);
-    
-    for (auto i = 0; i < kBufferSize; ++i)
-    {
-        ASSERT_EQ(numbers_c[i], numbers_a[i] + b);
-    }
-    
-    ASSERT_NO_THROW(device->DeleteBuffer(buffer_a));
-    ASSERT_NO_THROW(device->DeleteBuffer(buffer_c));
-    ASSERT_NO_THROW(executable->DeleteFunction(func));
-    ASSERT_NO_THROW(device->DeleteExecutable(executable));
-    ASSERT_NO_THROW(m_calc->DeleteDevice(device));
+
+	for (auto i = 0; i < kBufferSize; ++i)
+	{
+		ASSERT_EQ(numbers_c[i], numbers_a[i] + b);
+	}
+
+	ASSERT_NO_THROW(device->DeleteBuffer(buffer_a));
+	ASSERT_NO_THROW(device->DeleteBuffer(buffer_c));
+	ASSERT_NO_THROW(executable->DeleteFunction(func));
+	ASSERT_NO_THROW(device->DeleteExecutable(executable));
+	ASSERT_NO_THROW(m_calc->DeleteDevice(device));
 }
 
-
+#endif //USE_OPENCL

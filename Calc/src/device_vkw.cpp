@@ -17,10 +17,8 @@
 #include "misc/glsl_to_spirv.h"
 
 #include "calc_common.h"
-#include "calc.h"
 #include "buffer.h"
 #include "event.h"
-#include "except.h"
 #include "executable.h"
 
 #include "common_vk.h"

@@ -41,16 +41,16 @@ struct ray
 
 struct ShapeData
 {
+	int id;
+	int bvhidx;
+	int mask;
+	int padding1;
 	vec4 m0;
 	vec4 m1;
 	vec4 m2;
 	vec4 m3;
 	vec4  linearvelocity;
 	vec4  angularvelocity;
-	int id;
-	int bvhidx;
-	int mask;
-	int padding1;
 };
 
 struct Face

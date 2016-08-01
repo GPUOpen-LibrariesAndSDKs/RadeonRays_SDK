@@ -27,16 +27,16 @@ DEFINES
 
 typedef struct _bbox
 {
-	float4 pmin;
-	float4 pmax;
+    float4 pmin;
+    float4 pmax;
 } bbox;
 
 typedef struct _ray
 {
-	float4 o;
-	float4 d;
-	int2 extra;
-	int2 padding;
+    float4 o;
+    float4 d;
+    int2 extra;
+    int2 padding;
 } ray;
 
 typedef struct _Intersection
@@ -46,37 +46,37 @@ typedef struct _Intersection
     int padding0;
     int padding1;
 
-	float4 uvwt;
+    float4 uvwt;
 } Intersection;
 
 typedef struct _ShapeData
 {
-	float4 m0;
-	float4 m1;
-	float4 m2;
-	float4 m3;
-	float4  linearvelocity;
-	float4  angularvelocity;
-	int id;
-	int bvhidx;
-	int mask;
-	int padding1;
+    int id;
+    int bvhidx;
+    int mask;
+    int padding1;
+    float4 m0;
+    float4 m1;
+    float4 m2;
+    float4 m3;
+    float4  linearvelocity;
+    float4  angularvelocity;
 } ShapeData;
 
 typedef bbox BvhNode;
 
 typedef struct _Face
-    {
-        // Vertex indices
-        int idx[3];
-		int shapeidx;
-        // Primitive ID
-        int id;
-        // Idx count
-        int cnt;
+{
+    // Vertex indices
+    int idx[3];
+    int shapeidx;
+    // Primitive ID
+    int id;
+    // Idx count
+    int cnt;
 
-		int2 padding;
-    } Face;
+    int2 padding;
+} Face;
 
 #ifndef APPLE
 
@@ -128,30 +128,30 @@ int3 make_int3(int x, int y, int z)
 
 float3 transform_point(float3 p, float4 m0, float4 m1, float4 m2, float4 m3)
 {
-	float3 res;
-	res.x = m0.s0 * p.x + m0.s1 * p.y + m0.s2 * p.z + m0.s3;
-	res.y = m1.s0 * p.x + m1.s1 * p.y + m1.s2 * p.z + m1.s3;
-	res.z = m2.s0 * p.x + m2.s1 * p.y + m2.s2 * p.z + m2.s3;
-	return res;
+    float3 res;
+    res.x = m0.s0 * p.x + m0.s1 * p.y + m0.s2 * p.z + m0.s3;
+    res.y = m1.s0 * p.x + m1.s1 * p.y + m1.s2 * p.z + m1.s3;
+    res.z = m2.s0 * p.x + m2.s1 * p.y + m2.s2 * p.z + m2.s3;
+    return res;
 }
 
 float3 transform_vector(float3 p, float4 m0, float4 m1, float4 m2, float4 m3)
 {
-	float3 res;
-	res.x = m0.s0 * p.x + m0.s1 * p.y + m0.s2 * p.z;
-	res.y = m1.s0 * p.x + m1.s1 * p.y + m1.s2 * p.z;
-	res.z = m2.s0 * p.x + m2.s1 * p.y + m2.s2 * p.z;
-	return res;
+    float3 res;
+    res.x = m0.s0 * p.x + m0.s1 * p.y + m0.s2 * p.z;
+    res.y = m1.s0 * p.x + m1.s1 * p.y + m1.s2 * p.z;
+    res.z = m2.s0 * p.x + m2.s1 * p.y + m2.s2 * p.z;
+    return res;
 }
 
 ray transform_ray(ray r, float4 m0, float4 m1, float4 m2, float4 m3)
 {
-	ray res;
-	res.o.xyz = transform_point(r.o.xyz, m0, m1, m2, m3);
-	res.d.xyz = transform_vector(r.d.xyz, m0, m1, m2, m3);
-	res.o.w = r.o.w;
-	res.d.w = r.d.w;
-	return res;
+    ray res;
+    res.o.xyz = transform_point(r.o.xyz, m0, m1, m2, m3);
+    res.d.xyz = transform_vector(r.d.xyz, m0, m1, m2, m3);
+    res.o.w = r.o.w;
+    res.d.w = r.d.w;
+    return res;
 }
 
 float4 quaternion_mul(float4 q1, float4 q2)

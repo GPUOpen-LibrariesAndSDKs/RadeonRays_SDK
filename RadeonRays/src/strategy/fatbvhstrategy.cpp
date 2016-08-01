@@ -46,18 +46,18 @@ namespace RadeonRays
 {
     struct FatBvhStrategy::ShapeData
     {
-        // Transform
+		// Shape ID
+		Id id;
+		// Index of root bvh node
+		int bvhidx;
+		int mask;
+		int padding1;
+		// Transform
         matrix minv;
         // Motion blur data
         float3 linearvelocity;
         // Angular veocity (quaternion)
         quaternion angularvelocity;
-        // Shape ID
-        Id id;
-        // Index of root bvh node
-        int bvhidx;
-        int mask;
-        int padding1;
     };
     
     struct FatBvhStrategy::GpuData
@@ -117,16 +117,16 @@ namespace RadeonRays
 #ifndef FR_EMBED_KERNELS
 			if (device->GetPlatform() == Calc::Platform::kOpenCL)
 			{
-				char const* headers[] = { "../RadeonRays/src/kernel/CL/common.cl" };
+				char const* headers[] = { "kernels/CL/common.cl" };
 
 				int numheaders = sizeof(headers) / sizeof(char const*);
 
-				m_gpudata->executable = m_device->CompileExecutable("../RadeonRays/src/kernel/CL/fatbvh.cl", headers, numheaders);
+				m_gpudata->executable = m_device->CompileExecutable("kernels/CL/fatbvh.cl", headers, numheaders);
 			} 
 			else
 			{
 				assert(device->GetPlatform() == Calc::Platform::kVulkan);
-				m_gpudata->executable = m_device->CompileExecutable("../RadeonRays/src/kernel/GLSL/fatbvh.comp", nullptr, 0);
+				m_gpudata->executable = m_device->CompileExecutable("kernels/GLSL/fatbvh.comp", nullptr, 0);
 			}
 #else
         m_gpudata->executable = m_device->CompileExecutable(cl_fatbvh, std::strlen(cl_fatbvh), nullptr);

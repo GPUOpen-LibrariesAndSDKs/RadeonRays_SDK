@@ -127,8 +127,10 @@ else
     language "C++"
     flags { "NoMinimalRebuild", "EnableSSE", "EnableSSE2" }
 
-    -- find and add path to Opencl headers
-    dofile ("./OpenCLSearch.lua" )
+    if _OPTIONS["use_opencl"] then
+        -- find and add path to Opencl headers
+        dofile ("./OpenCLSearch.lua" )
+    end
     -- define common includes
     includedirs { ".","./3rdParty/include" }
 
@@ -153,8 +155,20 @@ else
     if _OPTIONS["use_opencl"] then
         defines{"USE_OPENCL=1"}        
     end
-    if _OPTIONS["use_vulcan"] then
+    if _OPTIONS["use_vulkan"] then
         defines{"USE_VULKAN=1"} 
+        vulkanPath = ""
+        vulkanSDKPath = os.getenv( "VK_SDK_PATH" );
+        
+        if vulkanSDKPath ~= nil then
+            vulkanPath = os.getenv( "VK_SDK_PATH" ) .. "/Include"
+        end
+
+        includedirs {   "./Anvil",
+            "./Anvil/deps",
+            "./Anvil/include",
+            "./Anvil_premake",
+            vulkanPath }
     end
 
     --make configuration specific definitions
@@ -173,6 +187,12 @@ else
         targetsuffix "64"   
     
     configuration {} -- back to all configurations
+
+    if  _OPTIONS["use_vulkan"] then
+        if fileExists("./Anvil_premake/anvil.lua") then
+            dofile("./Anvil_premake/anvil.lua")
+        end
+    end
 
     if fileExists("./RadeonRays/RadeonRays.lua") then
         dofile("./RadeonRays/RadeonRays.lua")
@@ -198,12 +218,6 @@ else
 
     if fileExists("./Calc/Calc.lua") then
         dofile("./Calc/Calc.lua")
-    end
-
-    if os.is("macosx") ~= true and _OPTIONS["use_vulkan"] then
-        if fileExists("./Anvil_premake/anvil.lua") then
-            dofile("./Anvil_premake/anvil.lua")
-        end
     end
 
 end

@@ -23,7 +23,7 @@ THE SOFTWARE.
 /*************************************************************************
  INCLUDES
  **************************************************************************/
-#include <../RadeonRays/src/kernel/CL/common.cl>
+#include <kernels/CL/common.cl>
 /*************************************************************************
 EXTENSIONS
 **************************************************************************/
@@ -79,16 +79,16 @@ void IntersectLeafClosest(
     v2 = scenedata->vertices[face.idx[1]];
     v3 = scenedata->vertices[face.idx[2]];
 
-	int shapemask = scenedata->shapes[face.shapeidx].mask;
+    int shapemask = scenedata->shapes[face.shapeidx].mask;
 
-	if (Ray_GetMask(r) & shapemask)
-	{
-		if (IntersectTriangle(r, v1, v2, v3, isect))
-		{
-			isect->primid = face.id;
-			isect->shapeid = scenedata->shapes[face.shapeidx].id;
-		}
-	}
+    if (Ray_GetMask(r) & shapemask)
+    {
+        if (IntersectTriangle(r, v1, v2, v3, isect))
+        {
+            isect->primid = face.id;
+            isect->shapeid = scenedata->shapes[face.shapeidx].id;
+        }
+    }
 }
 
 //  intersect a ray with leaf BVH node

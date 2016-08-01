@@ -21,21 +21,16 @@ THE SOFTWARE.
 ********************************************************************/
 #include "radeon_rays.h"
 #include "radeon_rays_impl.h"
-#include <memory>
 
 #include "calc.h"
-#include "calc_cl.h"
-
 #include "device.h"
-#include "device_cl.h"
 
-#include "../except/except.h"
-#include "../device/intersection_device.h"
 #include "../device/calc_intersection_device.h"
-#include "../device/calc_intersection_device_cl.h"
-#include "../../../Calc/src/calc_vkw.h"
-#include "../device/calc_intersection_device_vk.h"
-#include <calc_vk.h>
+
+#if USE_VULKAN
+#	include "../device/calc_intersection_device_vk.h"
+#	include <calc_vk.h>
+#endif
 
 #ifdef USE_EMBREE
     #include "../device/embree_intersection_device.h"

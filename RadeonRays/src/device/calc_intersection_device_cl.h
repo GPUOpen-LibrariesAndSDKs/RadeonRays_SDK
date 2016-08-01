@@ -21,6 +21,7 @@ THE SOFTWARE.
 ********************************************************************/
 #pragma once
 
+#if USE_OPENCL
 #include "calc_intersection_device.h"
 
 #include "calc_cl.h"
@@ -45,3 +46,4 @@ namespace RadeonRays
     };
 }
 
+#endif // USE_OPENCL

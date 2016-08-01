@@ -1,0 +1,16 @@
+*.vcxproj
+App/App.vcxproj.user
+*.filters
+*.obj
+*.tlog
+*.pdb
+*.lib
+*.exp
+*.ilk
+*.log
+*.suo
+*.cache
+*.idb
+*.user
+Bin/Debug/x64/App64D.exe
+Bin/Release/x64/App64.exe
