@@ -110,8 +110,11 @@ inline void ApiConformanceCL::SetUp()
 		}
 	}
 
+	// CPU OpenCL on Apple only support 1 thread so disable the tests
+#ifndef __APPLE__
 	apicpu_ = IntersectionApi::Create(cpuidx);
 	ASSERT_NE(apicpu_, nullptr);
+#endif
 	apigpu_ = IntersectionApi::Create(gpuidx);
 	ASSERT_NE(apigpu_, nullptr);
 
@@ -123,12 +126,15 @@ inline void ApiConformanceCL::SetUp()
 	{
 		Shape* shape = nullptr;
 
-		EXPECT_NO_THROW(shape = apicpu_->CreateMesh(&shapes_[i].mesh.positions[0], (int)shapes_[i].mesh.positions.size() / 3, 3 * sizeof(float),
-			&shapes_[i].mesh.indices[0], 0, nullptr, (int)shapes_[i].mesh.indices.size() / 3));
+		if( apicpu_ != nullptr )
+		{
+			EXPECT_NO_THROW(shape = apicpu_->CreateMesh(&shapes_[i].mesh.positions[0], (int)shapes_[i].mesh.positions.size() / 3, 3 * sizeof(float),
+				&shapes_[i].mesh.indices[0], 0, nullptr, (int)shapes_[i].mesh.indices.size() / 3));
 
-		EXPECT_NO_THROW(apicpu_->AttachShape(shape));
+			EXPECT_NO_THROW(apicpu_->AttachShape(shape));
 
-		apishapes_cpu_.push_back(shape);
+			apishapes_cpu_.push_back(shape);
+		}
 
 		EXPECT_NO_THROW(shape = apigpu_->CreateMesh(&shapes_[i].mesh.positions[0], (int)shapes_[i].mesh.positions.size() / 3, 3 * sizeof(float),
 			&shapes_[i].mesh.indices[0], 0, nullptr, (int)shapes_[i].mesh.indices.size() / 3));
@@ -178,6 +184,9 @@ inline void ApiConformanceCL::TearDown()
 	if (apicpu_) { IntersectionApi::Delete(apicpu_); }
 	if (apigpu_) { IntersectionApi::Delete(apigpu_); }
 }
+
+// CPU OpenCL on Apple only support 1 thread so disable the tests
+#ifndef __APPLE__
 
 /*
 BEGIN CPU TESTS
@@ -285,6 +294,7 @@ TEST_F(ApiConformanceCL, CPU_CornellBox_10000RandomRays_AnyHit_Bruteforce)
 	ExpectAnyRaysOk<10000>(api);
 }
 
+#endif //__APPLE__
 
 /*
 	BEGIN GPU TESTS

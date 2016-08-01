@@ -27,9 +27,13 @@ THE SOFTWARE.
 
 #include "../device/calc_intersection_device.h"
 
+#if USE_OPENCL
+#include <../device/calc_intersection_device_cl.h>
+#endif
+
 #if USE_VULKAN
 #	include "../device/calc_intersection_device_vk.h"
-#	include <calc_vk.h>
+#	include "calc_vk.h"
 #endif
 
 #ifdef USE_EMBREE
