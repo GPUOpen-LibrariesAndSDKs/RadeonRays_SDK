@@ -1,4 +1,4 @@
-#version 430
+﻿#version 430
 
 // Note Anvil define system assumes first line is alway a #version so don't rearrange
 
@@ -158,7 +158,7 @@ int Ray_GetMask( in ray r )
 shared int LDSStack[ SHORT_STACK_SIZE * 64 ];
 
 bool IntersectSceneAny( in ray r, in int stack, in int ldsstack );
-bool IntersectSceneClosest( in ray r, in int stack, in int ldsstack );
+void IntersectSceneClosest( in ray r, inout Intersection isect, int stack, in int ldsstack );
 
 void IntersectAny()
 {
@@ -169,12 +169,13 @@ void IntersectAny()
 	if (globalID < Numrays)
 	{
 		// Fetch ray
+		int idx = Offset + int(globalID);
 		ray r = Rays[globalID];
 
 		if (Ray_IsActive(r))
 		{
 			// Calculate any intersection
-			Hitsresults[globalID] = IntersectSceneAny( r, int( groupID * 64 * 32 + localID * 32 ), int( localID ) ) ? 1 : -1;
+			Hitresults[idx] = IntersectSceneAny( r, int( groupID * 64 * 32 + localID * 32 ), int( localID ) ) ? 1 : -1;
 		}
 	}
 }
@@ -193,7 +194,8 @@ void IntersectClosest()
 	if (globalID < Numrays)
 	{
 		// Fetch ray
-		ray r = Rays[globalID];
+		int idx = Offset + int(globalID);
+		ray r = Rays[idx];
 
 		if (Ray_IsActive(r))
 		{
@@ -202,7 +204,7 @@ void IntersectClosest()
 			IntersectSceneClosest(r, isect, int( groupID * 64 * 32 + localID * 32 ), int( localID ) );
 
 			// Write data back in case of a hit
-			Hits[globalID] = isect;
+			Hits[idx] = isect;
 		}
 	}
 }
@@ -210,6 +212,29 @@ void IntersectClosest()
 void IntersectClosestRC()
 {
     IntersectClosest();
+}
+
+bool IntersectTriangle( in ray r, in vec3 v1, in vec3 v2, in vec3 v3, inout Intersection isect)
+{
+	const vec3 e1 = v2 - v1;
+	const vec3 e2 = v3 - v1;
+	const vec3 s1 = cross(r.d.xyz, e2);
+	const float  invd = 1.0f/(dot(s1, e1));
+	const vec3 d = r.o.xyz - v1;
+	const float  b1 = dot(d, s1) * invd;
+	const vec3 s2 = cross(d, e1);
+	const float  b2 = dot(r.d.xyz, s2) * invd;
+	const float temp = dot(e2, s2) * invd;
+	
+	if (b1 < 0.f || b1 > 1.f || b2 < 0.f || b1 + b2 > 1.f || temp < 0.f || temp > isect.uvwt.w)
+	{
+		return false;
+	}
+	else
+	{
+		isect.uvwt = vec4(b1, b2, 0.f, temp);
+		return true;
+	}
 }
 
 bool IntersectTriangleP( in ray r, in vec3 v1, in vec3 v2, in vec3 v3 )
@@ -228,7 +253,6 @@ bool IntersectTriangleP( in ray r, in vec3 v1, in vec3 v2, in vec3 v3 )
 	{
 		return false;
 	}
-
 	else
 	{
 		return true;
@@ -275,7 +299,7 @@ bool IntersectLeafAny( in int Faceidx, in ray r )
 
 
 //  intersect a ray with leaf BVH node
-bool IntersectLeafClosest( in int faceidx, in ray r, inout Intersection isect )
+void IntersectLeafClosest( in int faceidx, in ray r, inout Intersection isect )
 {
 	vec3 v1, v2, v3;
 	Face face;
@@ -293,11 +317,8 @@ bool IntersectLeafClosest( in int faceidx, in ray r, inout Intersection isect )
 		{
 			isect.primid = face.id;
 			isect.shapeid = Shapes[face.shapeidx].id;
-			return true;
 		}
 	}
-
-	return false;
 }
 
 // intersect Ray against the whole BVH structure
@@ -420,7 +441,7 @@ bool IntersectSceneAny( in ray r, in int stack, in int ldsstack )
 }
 
 // intersect Ray against the whole BVH structure
-bool IntersectSceneClosest(in ray r, inout Intersection isect, in int stack, in int ldsstack)
+void IntersectSceneClosest(in ray r, inout Intersection isect, in int stack, in int ldsstack)
 {
 	const vec3 invdir = 1.0f/(r.d.xyz);
 
@@ -428,8 +449,7 @@ bool IntersectSceneClosest(in ray r, inout Intersection isect, in int stack, in 
 	isect.shapeid = -1;
 	isect.primid = -1;
 
-	if (r.o.w < 0.f)
-		return false;
+	if (r.o.w < 0.f) return;
 
 	//__global int* gsptr = stack;
 	//__local  int* lsptr = ldsstack;
@@ -534,6 +554,4 @@ bool IntersectSceneClosest(in ray r, inout Intersection isect, in int stack, in 
 			idx = LDSStack[ ldsstack + 64 * (SHORT_STACK_SIZE - 1) ];
 		}
 	}
-
-	return isect.shapeid >= 0;
 }

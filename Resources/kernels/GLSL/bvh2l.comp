@@ -141,7 +141,7 @@ int Ray_GetMask( in ray r )
 }
 
 bool IntersectSceneAny2L( in ray r );
-bool IntersectSceneClosest2L( in ray r, inout Intersection isect);
+void IntersectSceneClosest2L( in ray r, inout Intersection isect);
 
 void IntersectAny2L()
 {
@@ -151,12 +151,13 @@ void IntersectAny2L()
 	if (globalID < Numrays)
 	{
 		// Fetch ray
-		ray r = Rays[Offset + globalID];
+		int idx = Offset + int(globalID);
+		ray r = Rays[idx];
 
 		if (Ray_IsActive(r))
 		{
 			// Calculate any intersection
-			Hitresults[Offset + globalID] = IntersectSceneAny2L( r ) ? 1 : -1;
+			Hitresults[idx] = IntersectSceneAny2L( r ) ? 1 : -1;
 		}
 	}
 }
@@ -433,7 +434,7 @@ bool IntersectSceneAny2L(in ray r)
 }
 
 // intersect Ray against the whole BVH2L structure
-bool IntersectSceneClosest2L(in ray r, inout Intersection isect)
+void IntersectSceneClosest2L(in ray r, inout Intersection isect)
 {
 	// Init intersection
 	isect.uvwt = vec4(0.f, 0.f, 0.f, r.o.w);
@@ -542,6 +543,4 @@ bool IntersectSceneClosest2L(in ray r, inout Intersection isect)
 			invdir = invdirtop;
 		}
 	}
-
-	return isect.shapeid >= 0;
 }

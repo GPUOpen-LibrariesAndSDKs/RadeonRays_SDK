@@ -66,12 +66,12 @@ uint CalculateMortonCode( in vec3 p)
 
 void main()
 {
-	uint globalID = gl_GlobalInvocationID.x;
+    uint globalID = gl_GlobalInvocationID.x;
 
     if (globalID < Numpositions)
     {
-		bbox bound = Bounds[globalID];
-		vec3 center = 0.5f * (bound.pmax + bound.pmin);
-        Mortoncodes[globalID] = CalculateMortonCode(center);
+	bbox bound = Bounds[globalID];
+	vec3 center = 0.5f * (bound.pmax + bound.pmin);
+            Mortoncodes[globalID] = CalculateMortonCode(center);
     }
 }

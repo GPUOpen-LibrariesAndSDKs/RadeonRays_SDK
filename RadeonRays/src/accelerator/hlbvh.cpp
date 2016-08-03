@@ -89,13 +89,13 @@ namespace RadeonRays
 #ifndef FR_EMBED_KERNELS
 		if ( m_device->GetPlatform() == Calc::Platform::kOpenCL )
 		{
-			m_gpudata->executable = m_device->CompileExecutable( "../RadeonRays/kernel/CL/hlbvh_build.cl", nullptr, 0 );
+			m_gpudata->executable = m_device->CompileExecutable( "kernels/CL/hlbvh_build.cl", nullptr, 0 );
 		}
 
 		else
 		{
 			assert( m_device->GetPlatform() == Calc::Platform::kVulkan );
-			m_gpudata->executable = m_device->CompileExecutable( "../RadeonRays/kernel/GLSL/hlbvh_build", nullptr, 0 );
+			m_gpudata->executable = m_device->CompileExecutable( "kernels/GLSL/hlbvh_build.comp", nullptr, 0 );
 		}
 #else
 		m_gpudata->executable = m_device->CompileExecutable(cl_hlbvh_build, std::strlen(cl_hlbvh_build), "");
@@ -188,9 +188,9 @@ namespace RadeonRays
         
         // Calculate Morton codes array
         int arg = 0;
-        m_gpudata->morton_code_func->SetArg(arg++, m_gpudata->bounds);
-		m_gpudata->morton_code_func->SetArg(arg++, sizeof(size), &size);
 		m_gpudata->morton_code_func->SetArg(arg++, m_gpudata->morton_codes);
+		m_gpudata->morton_code_func->SetArg(arg++, m_gpudata->bounds);
+		m_gpudata->morton_code_func->SetArg(arg++, sizeof(size), &size);
         
         // Calculate global size
         int globalsize = ((size + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
@@ -205,8 +205,8 @@ namespace RadeonRays
         arg = 0;
         m_gpudata->build_func->SetArg(arg++, m_gpudata->sorted_morton_codes);
 		m_gpudata->build_func->SetArg(arg++, m_gpudata->bounds);
-		m_gpudata->build_func->SetArg(arg++, m_gpudata->sorted_prim_indices);
 		m_gpudata->build_func->SetArg(arg++, sizeof(size), &size);
+		m_gpudata->build_func->SetArg(arg++, m_gpudata->sorted_prim_indices);
 		m_gpudata->build_func->SetArg(arg++, m_gpudata->nodes);
 		m_gpudata->build_func->SetArg(arg++, m_gpudata->sorted_bounds);
         
