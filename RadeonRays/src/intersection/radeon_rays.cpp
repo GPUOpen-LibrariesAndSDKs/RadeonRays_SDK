@@ -28,7 +28,7 @@ THE SOFTWARE.
 #include "../device/calc_intersection_device.h"
 
 #if USE_OPENCL
-#include <../device/calc_intersection_device_cl.h>
+#include "../device/calc_intersection_device_cl.h"
 #endif
 
 #if USE_VULKAN

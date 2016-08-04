@@ -47,7 +47,9 @@ THE SOFTWARE.
 
 namespace RadeonRays
 {
-    /// Represents a device, which can be used by API for intersection purposes.
+	struct Intersection;
+
+	/// Represents a device, which can be used by API for intersection purposes.
     /// API is distributing the work across multiple devices itsels, so
     /// this structure is only used to query devices configuration and
     /// limit the number of devices available for the API.
@@ -109,6 +111,11 @@ namespace RadeonRays
 		// Geometry mask to mask out intersections
 		virtual void SetMask(int mask) = 0;
 		virtual int  GetMask() const = 0;
+
+		// Test functions, fires a single ray into this shape via unoptimised CPU code
+		virtual bool TestOcclusion(const ray& r) const = 0;
+		// isect is in/out. for first call set isect.uvwt to further insection (1 usually)
+		virtual void TestIntersection(const ray& r, Intersection& isect) const = 0;
     };
 
     // Buffer represents a chunk of memory hosted inside the API
@@ -273,6 +280,10 @@ namespace RadeonRays
         // Find any intersection.
         // The call is asynchronous. Event pointer mights be nullptrs.
         virtual void QueryOcclusion(Buffer const* rays, Buffer const* numrays, int maxrays, Buffer* hitresults, Event const* waitevent, Event** event) const = 0;
+
+		// test functions, perform tests using unoptimised CPU for validating the fast paths
+		virtual void TestOcclusions(ray const * rays, int numrays, bool* hits) const = 0;
+		virtual void TestIntersections(ray const * rays, int numrays, Intersection* results) const = 0;
 
         /******************************************
         Utility

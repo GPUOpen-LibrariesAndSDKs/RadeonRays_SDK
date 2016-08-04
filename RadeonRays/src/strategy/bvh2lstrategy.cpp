@@ -144,7 +144,7 @@ namespace RadeonRays
 
 			int numheaders = sizeof(headers) / sizeof(char const*);
 
-			m_gpudata->executable = m_device->CompileExecutable("]kernels/CL/bvh2l.cl", headers, numheaders);
+			m_gpudata->executable = m_device->CompileExecutable("kernels/CL/bvh2l.cl", headers, numheaders);
 		}
 		else
 		{
@@ -692,8 +692,8 @@ namespace RadeonRays
 		func->SetArg(arg++, m_gpudata->shapes);
 		func->SetArg(arg++, sizeof(int), &m_gpudata->bvhrootidx);
 		func->SetArg(arg++, rays);
-		func->SetArg(arg++, sizeof(numrays), &numrays);
 		func->SetArg(arg++, sizeof(offset), &offset);
+		func->SetArg(arg++, sizeof(numrays), &numrays);
 		func->SetArg(arg++, hits);
 
 		size_t localsize = kWorkGroupSize;
@@ -716,8 +716,8 @@ namespace RadeonRays
 		func->SetArg(arg++, m_gpudata->shapes);
 		func->SetArg(arg++, sizeof(int), &m_gpudata->bvhrootidx);
 		func->SetArg(arg++, rays);
-		func->SetArg(arg++, sizeof(numrays), &numrays);
 		func->SetArg(arg++, sizeof(offset), &offset);
+		func->SetArg(arg++, sizeof(numrays), &numrays);
 		func->SetArg(arg++, hits);
 
 		size_t localsize = kWorkGroupSize;

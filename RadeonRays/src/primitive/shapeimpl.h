@@ -54,38 +54,38 @@ namespace RadeonRays
         virtual bool is_instance() const;
 
         // World space transform
-        void SetTransform(matrix const& m, matrix const& minv);
+        void SetTransform(matrix const& m, matrix const& minv) override;
         
         // Get world space matrix along with its inverse
-        void GetTransform(matrix& m, matrix& minv) const;
+        void GetTransform(matrix& m, matrix& minv) const override;
         
         // Motion blur
-        void SetLinearVelocity(float3 const& v);
+        void SetLinearVelocity(float3 const& v) override;
         
         // Get linear motion
-        float3 GetLinearVelocity() const;
+        float3 GetLinearVelocity() const override;
         
         // Set angular motion for motion blur
-        void SetAngularVelocity(quaternion const& q);
+        void SetAngularVelocity(quaternion const& q) override;
         
         // Get angular motion
-        quaternion GetAngularVelocity() const;
+        quaternion GetAngularVelocity() const override;
         
         // ID of a shape
-        void SetId(Id id);
+        void SetId(Id id) override;
         
         // Get ID
-        Id GetId() const;
+        Id GetId() const override;
 
 		// Set intersection mask 
-		void SetMask(int mask);
+		void SetMask(int mask) override;
 
 		// Get intersection mask
-		int  GetMask() const;
+		int  GetMask() const override;
         
         // Get state changes since last OnCommit
         int GetStateChange() const;
-        
+
         // Clear state change
         void OnCommit() const;
         

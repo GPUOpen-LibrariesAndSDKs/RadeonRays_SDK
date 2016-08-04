@@ -143,6 +143,35 @@ namespace RadeonRays
     {
         m_device->QueryOcclusion(rays, numrays, maxrays, hitresults, waitevent, event);
     }
+	void IntersectionApiImpl::TestOcclusions(ray const * rays, int numrays, bool* hits) const
+	{
+		// not this is not optimised for speed!
+		#pragma omp parallel for
+		for (int i = 0; i < numrays; ++i)
+		{
+			hits[i] = false;
+			for (const auto& shape : world_.shapes_)
+			{
+				hits[i] = shape->TestOcclusion(rays[i]);
+				// any hit is enough to stop this rays cast
+				if (hits[i] == true)
+					break;
+			}
+		}
+	}
+	void IntersectionApiImpl::TestIntersections(ray const * rays, int numrays, Intersection* results) const
+    {
+		// not this is not optimised for speed!
+		#pragma omp parallel for
+		for (int i = 0; i < numrays; ++i)
+		{
+			results[i].uvwt.w = FLT_MAX;
+			for (const auto& shape : world_.shapes_)
+			{
+				shape->TestIntersection(rays[i],results[i]);
+			}
+		}
+    }
 
     void IntersectionApiImpl::DeleteEvent(Event* event) const
     {

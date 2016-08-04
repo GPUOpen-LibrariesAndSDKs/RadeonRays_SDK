@@ -51,9 +51,6 @@ public:
 		api->DeleteEvent(e_);
 	}
 
-	void BruteforceTraceClosest(const ray& r, Intersection& isect) const;
-	bool BruteforceTraceAny(const ray& r) const;
-
 	void ExpectClosestIntersectionOk(const Intersection& expected, const Intersection& test) const;
 
 	template< int kNumRays> void ExpectClosestRaysOk(RadeonRays::IntersectionApi* api) const;
@@ -71,9 +68,6 @@ public:
 	std::vector<shape_t> shapes_;
 	std::vector<material_t> materials_;
 
-	ray r_brute[kMaxRaysTests];
-	Intersection isect_brute[kMaxRaysTests];
-	int any_brute[kMaxRaysTests];
 };
 
 inline void ApiConformanceVK::SetUp()
@@ -96,10 +90,10 @@ inline void ApiConformanceVK::SetUp()
 		}
 	}
 
-	//ASSERT_NE(nativeidx, -1);
+	EXPECT_NE(gpuidx, -1);
 
 	apigpu_ = IntersectionApi::Create(gpuidx);
-	ASSERT_NE(apigpu_, nullptr);
+	EXPECT_NE(apigpu_, nullptr);
 
 	// Load obj file 
 	std::string res = LoadObj(shapes_, materials_, "../Resources/CornellBox/orig.objm");
@@ -121,20 +115,6 @@ inline void ApiConformanceVK::SetUp()
 	apigpu_->SetOption("bvh.builder", "sah");
 
 	srand((unsigned)time(0));
-
-	// generate some random vectors
-	for (int i = 0; i < kMaxRaysTests; ++i)
-	{
-		r_brute[i].o = float3(rand_float() * 3.f - 1.5f, rand_float() * 3.f - 1.5f, rand_float() * 3.f - 1.5f, 1000.f);
-		r_brute[i].d = normalize(float3(rand_float(), rand_float(), rand_float()));
-	}
-
-	// pre generate brute closest intersections and any results
-	for (int i = 0; i < kMaxRaysTests; ++i)
-	{
-		BruteforceTraceClosest(r_brute[i], isect_brute[i]);
-		any_brute[i] = BruteforceTraceAny(r_brute[i]) ? 1 : -1;
-	}
 
 }
 
@@ -188,7 +168,7 @@ TEST_F(ApiConformanceVK, GPU_CornellBox_1000RaysRandom_ClosestHit_Bruteforce)
 	ExpectClosestRaysOk<1000>(api);
 }
 
-TEST_F(ApiConformanceVK, GPU_CornellBox_10000RaysRandom_ClosestHit_Bruteforce)
+TEST_F(ApiConformanceVK, DISABLED_GPU_CornellBox_10000RaysRandom_ClosestHit_Bruteforce)
 {
 	auto api = apigpu_;
 	api->SetOption("acc.type", "bvh");
@@ -199,7 +179,7 @@ TEST_F(ApiConformanceVK, GPU_CornellBox_10000RaysRandom_ClosestHit_Bruteforce)
 }
 
 
-TEST_F(ApiConformanceVK, GPU_CornellBox_10000RaysRandom_ClosestHit_Force2level_Bruteforce)
+TEST_F(ApiConformanceVK, DISABLED_GPU_CornellBox_10000RaysRandom_ClosestHit_Force2level_Bruteforce)
 {
 	auto api = apigpu_;
 	api->SetOption("acc.type", "bvh");
@@ -210,7 +190,7 @@ TEST_F(ApiConformanceVK, GPU_CornellBox_10000RaysRandom_ClosestHit_Force2level_B
 
 }
 
-TEST_F(ApiConformanceVK, GPU_CornellBox_1000RandomRays_ClosestHit_Bruteforce_FatBvh)
+TEST_F(ApiConformanceVK, DISABLED_GPU_CornellBox_1000RandomRays_ClosestHit_Bruteforce_FatBvh)
 {
 	auto api = apigpu_;
 	api->SetOption("acc.type", "fatbvh");
@@ -221,7 +201,7 @@ TEST_F(ApiConformanceVK, GPU_CornellBox_1000RandomRays_ClosestHit_Bruteforce_Fat
 
 }
 
-TEST_F(ApiConformanceVK, GPU_CornellBox_1000Rays_Brutforce_HlBvh)
+TEST_F(ApiConformanceVK, DISABLED_GPU_CornellBox_1000Rays_Brutforce_HlBvh)
 {
 	auto api = apigpu_;
 	api->SetOption("acc.type", "hlbvh");
@@ -280,13 +260,23 @@ TEST_F(ApiConformanceVK, CornellBox_10000RaysRandom_ClosestHit_Events_Bruteforce
 	// in this case results may differ due to 
 	// different NaNs propagation in BB test
 	// TODO: fix this
+	Intersection isect_brute[kNumRays];
+	ray r_brute[kNumRays];
+
+	// generate some random vectors
+	for (int i = 0; i < kNumRays; ++i)
+	{
+		r_brute[i].o = float3(rand_float() * 3.f - 1.5f, rand_float() * 3.f - 1.5f, rand_float() * 3.f - 1.5f, 1000.f);
+		r_brute[i].d = normalize(float3(rand_float(), rand_float(), rand_float()));
+	}
 
 	EXPECT_NO_THROW(apigpu_->Commit());
+
+	apigpu_->TestIntersections(r_brute, kNumRays, isect_brute);
 
 	auto ray_buffer_gpu = apigpu_->CreateBuffer(kNumRays * sizeof(ray), nullptr);
 	auto isect_buffer_gpu = apigpu_->CreateBuffer(kNumRays * sizeof(Intersection), nullptr);
 
-	ray* r_cpu = nullptr;
 	ray* r_gpu = nullptr;
 
 	Event* egpu;
@@ -295,8 +285,8 @@ TEST_F(ApiConformanceVK, CornellBox_10000RaysRandom_ClosestHit_Events_Bruteforce
 
 	for (int i = 0; i<kNumRays; ++i)
 	{
-		r_gpu[i].o = r_cpu[i].o = r_brute[i].o;
-		r_gpu[i].d = r_cpu[i].d = r_brute[i].d;
+		r_gpu[i].o = r_brute[i].o;
+		r_gpu[i].d = r_brute[i].d;
 		r_gpu[i].SetActive(true);
 		r_gpu[i].SetMask(0xFFFFFFFF);
 	}
@@ -320,10 +310,7 @@ TEST_F(ApiConformanceVK, CornellBox_10000RaysRandom_ClosestHit_Events_Bruteforce
 
 	for (int i = 0; i<kNumRays; ++i)
 	{
-		Intersection isect_brute;
-		BruteforceTraceClosest(r_brute[i], isect_brute);
-
-		ExpectClosestIntersectionOk(isect_brute, isect_gpu[i]);
+		ExpectClosestIntersectionOk(isect_brute[i] , isect_gpu[i]);
 	}
 
 
@@ -335,116 +322,6 @@ TEST_F(ApiConformanceVK, CornellBox_10000RaysRandom_ClosestHit_Events_Bruteforce
 	EXPECT_NO_THROW(apigpu_->DeleteBuffer(isect_buffer_gpu));
 }
 
-
-inline void ApiConformanceVK::BruteforceTraceClosest(const ray& r, Intersection& isect) const
-{
-	isect.uvwt = float4(0, 0, 0, r.o.w);
-
-	Intersection tmpisect;
-
-	for (int s = 0; s<(int)shapes_.size(); ++s)
-	{
-		float const* vertices = &shapes_[s].mesh.positions[0];
-		int const* indices = &shapes_[s].mesh.indices[0];
-
-		for (int t = 0; t < (int)shapes_[s].mesh.indices.size() / 3; ++t)
-		{
-			int i0 = indices[t * 3];
-			int i1 = indices[t * 3 + 1];
-			int i2 = indices[t * 3 + 2];
-
-			float3 vv0 = float3(vertices[i0 * 3], vertices[i0 * 3 + 1], vertices[i0 * 3 + 2]);
-			float3 vv1 = float3(vertices[i1 * 3], vertices[i1 * 3 + 1], vertices[i1 * 3 + 2]);
-			float3 vv2 = float3(vertices[i2 * 3], vertices[i2 * 3 + 1], vertices[i2 * 3 + 2]);
-
-			float3 e1 = vv1 - vv0;
-			float3 e2 = vv2 - vv0;
-
-			float3 s1 = cross(r.d, e2);
-			float det = dot(s1, e1);
-
-			float  invdet = 1.f / det;
-			float3 d = r.o - vv0;
-			float  b1 = dot(d, s1) * invdet;
-
-			if (b1 < 0.f || b1 > 1.f)
-			{
-				continue;
-			}
-
-			float3 s2 = cross(d, e1);
-			float  b2 = dot(r.d, s2) * invdet;
-
-			if (b2 < 0.f || b1 + b2 > 1.f)
-			{
-				continue;
-			}
-
-			float temp = dot(e2, s2) * invdet;
-
-			if (temp > 0.f && temp < isect.uvwt.w)
-			{
-				isect.uvwt = float4(b1, b2, 0, temp);
-				isect.shapeid = s + 1;
-				isect.primid = t;
-			}
-		}
-	}
-}
-
-inline bool ApiConformanceVK::BruteforceTraceAny(const ray& r) const
-{
-	Intersection tmpisect;
-
-	for (int s = 0; s<(int)shapes_.size(); ++s)
-	{
-		float const* vertices = &shapes_[s].mesh.positions[0];
-		int const* indices = &shapes_[s].mesh.indices[0];
-
-		for (int t = 0; t < (int)shapes_[s].mesh.indices.size() / 3; ++t)
-		{
-			int i0 = indices[t * 3];
-			int i1 = indices[t * 3 + 1];
-			int i2 = indices[t * 3 + 2];
-
-			float3 vv0 = float3(vertices[i0 * 3], vertices[i0 * 3 + 1], vertices[i0 * 3 + 2]);
-			float3 vv1 = float3(vertices[i1 * 3], vertices[i1 * 3 + 1], vertices[i1 * 3 + 2]);
-			float3 vv2 = float3(vertices[i2 * 3], vertices[i2 * 3 + 1], vertices[i2 * 3 + 2]);
-
-			float3 e1 = vv1 - vv0;
-			float3 e2 = vv2 - vv0;
-
-			float3 s1 = cross(r.d, e2);
-			float det = dot(s1, e1);
-
-			float  invdet = 1.f / det;
-
-			float3 d = r.o - vv0;
-			float  b1 = dot(d, s1) * invdet;
-
-			if (b1 < 0.f || b1 > 1.f)
-			{
-				continue;
-			}
-
-			float3 s2 = cross(d, e1);
-			float  b2 = dot(r.d, s2) * invdet;
-
-			if (b2 < 0.f || b1 + b2 > 1.f)
-			{
-				continue;
-			}
-
-			float temp = dot(e2, s2) * invdet;
-
-			if (temp > 0.f)
-			{
-				return true;
-			}
-		}
-	}
-	return false;
-}
 
 inline void ApiConformanceVK::ExpectClosestIntersectionOk(const Intersection& expected, const Intersection& test) const
 {
@@ -465,8 +342,20 @@ inline void ApiConformanceVK::ExpectClosestRaysOk(RadeonRays::IntersectionApi* a
 	// in this case results may differ due to 
 	// different NaNs propagation in BB test
 	// TODO: fix this
+	Intersection isect_brute[kNumRays];
+	ray r_brute[kNumRays];
+
+	// generate some random vectors
+	for (int i = 0; i < kNumRays; ++i)
+	{
+		r_brute[i].o = float3(rand_float() * 3.f - 1.5f, rand_float() * 3.f - 1.5f, rand_float() * 3.f - 1.5f, 1000.f);
+		r_brute[i].d = normalize(float3(rand_float(), rand_float(), rand_float()));
+	}
 
 	EXPECT_NO_THROW(api->Commit());
+
+	// generate the golden test results
+	api->TestIntersections(r_brute, kNumRays, isect_brute);
 
 	auto ray_buffer = api->CreateBuffer(kNumRays * sizeof(ray), nullptr);
 	auto isect_buffer = api->CreateBuffer(kNumRays * sizeof(Intersection), nullptr);
@@ -517,7 +406,20 @@ inline void ApiConformanceVK::ExpectAnyRaysOk(RadeonRays::IntersectionApi* api) 
 	// different NaNs propagation in BB test
 	// TODO: fix this
 
+	bool any_brute[kNumRays];
+	ray r_brute[kNumRays];
+
+	// generate some random vectors
+	for (int i = 0; i < kNumRays; ++i)
+	{
+		r_brute[i].o = float3(rand_float() * 3.f - 1.5f, rand_float() * 3.f - 1.5f, rand_float() * 3.f - 1.5f, 1000.f);
+		r_brute[i].d = normalize(float3(rand_float(), rand_float(), rand_float()));
+	}
+
 	EXPECT_NO_THROW(api->Commit());
+
+	// generate the golden test results
+	api->TestOcclusions(r_brute, kNumRays, any_brute);
 
 	auto ray_buffer = api->CreateBuffer(kNumRays * sizeof(ray), nullptr);
 	auto result_buffer = api->CreateBuffer(kNumRays * sizeof(int), nullptr);
@@ -550,7 +452,7 @@ inline void ApiConformanceVK::ExpectAnyRaysOk(RadeonRays::IntersectionApi* api) 
 
 	for (auto i = 0; i<kNumRays; ++i)
 	{
-		ASSERT_EQ(any_brute[i], results[i]);
+		ASSERT_EQ(any_brute[i], (results[i] > 0) ? true : false);
 	}
 
 	EXPECT_NO_THROW(api->UnmapBuffer(result_buffer, results, &ev));

@@ -426,8 +426,8 @@ __global Face* faces,    // Scene indices
 __global ShapeData* shapes, // Transforms
 int rootidx,               // BVH root idx
 __global ray* rays,        // Ray workload
-__global int* numrays,     // Number of rays in the workload
 int offset,                // Offset in rays array
+__global int* numrays,     // Number of rays in the workload
 __global Intersection* hits // Hit datas
 )
 {
@@ -471,8 +471,8 @@ __global Face* faces,    // Scene indices
 __global ShapeData* shapes, // Transforms
 int rootidx,               // BVH root idx
 __global ray* rays,        // Ray workload
-__global int* numrays,     // Number of rays in the workload
 int offset,                // Offset in rays array
+__global int* numrays,     // Number of rays in the workload
 __global int* hitresults   // Hit results
 )
 {
@@ -494,10 +494,10 @@ __global int* hitresults   // Hit results
         // Fetch ray
         ray r = rays[offset + global_id];
 
-		if (Ray_IsActive(&r))
-		{
-			// Calculate any intersection
-			hitresults[offset + global_id] = IntersectSceneAny2L(&scenedata, &r) ? 1 : -1;
-		}
+        if (Ray_IsActive(&r))
+        {
+            // Calculate any intersection
+            hitresults[offset + global_id] = IntersectSceneAny2L(&scenedata, &r) ? 1 : -1;
+        }
     }
 }

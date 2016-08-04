@@ -84,11 +84,22 @@ namespace RadeonRays
         // True if the mesh consists of triangles only
 		bool puretriangle() const { return puretriangle_;  }
 
+		// Test functions, fires a single ray into this shape via unoptimised CPU code
+		bool TestOcclusion(const ray& r) const override { return TestOcclusion(r, worldmat_); }
 
-    private:
+		void TestIntersection(const ray& r, Intersection& isect) const override { return TestIntersection(r, worldmat_, isect); }
+
+		bool TestOcclusion(const ray& r, matrix const & transform) const;
+
+		void TestIntersection(const ray& r, matrix const & transform, Intersection& isect) const;
+
+	private:
         /// Disallow to copy meshes, too heavy
         Mesh(Mesh const& o);
         Mesh& operator = (Mesh const& o);
+
+		// transforms face vertices, outverts but be at least 4 float3 in size, no of vertices in face returned
+		int GetTransformedFace(int const faceidx, matrix const & transform, float3* outverts) const;
 
         /// Vertices
         std::vector<float3> vertices_;

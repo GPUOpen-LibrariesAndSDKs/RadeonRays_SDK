@@ -116,6 +116,9 @@ namespace RadeonRays
         // The call is asynchronous. Event pointer mights be nullptrs.
         void QueryOcclusion(Buffer const* rays, Buffer const* numrays, int maxrays, Buffer* hitresults, Event const* waitevent, Event** event) const override;
 
+		void TestOcclusions(ray const * rays, int numrays, bool* hits) const override;
+		void TestIntersections(ray const * rays, int numrays, Intersection* results) const override;
+
         /******************************************
         Utility
         ******************************************/

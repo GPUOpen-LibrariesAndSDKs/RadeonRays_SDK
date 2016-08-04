@@ -48,6 +48,11 @@ namespace RadeonRays
         // Instance flag
         bool is_instance() const;
 
+		// Test functions, fires a single ray into this shape via unoptimised CPU code
+		bool TestOcclusion(const ray& r) const override;
+
+		void TestIntersection(const ray& r, Intersection& isect) const override;
+
     private:
         /// Disallow to copy meshes, too heavy
         Instance(Instance const& o);
@@ -71,6 +76,38 @@ namespace RadeonRays
     {
         return true;
     }
+
+	inline bool Instance::TestOcclusion(const ray& r) const
+	{
+		// note this won't pass the instance transform to known mesh base shape
+		// this shouldn't be a problem at the moment, but possible in future...
+		const auto mesh = dynamic_cast<const Mesh*>(GetBaseShape());
+		if(mesh != nullptr )
+		{
+			return mesh->TestOcclusion(r, worldmat_);
+		} else
+		{
+			//			GetBaseShape()->TestOcclusion(r, isect);
+			return GetBaseShape()->TestOcclusion(r);
+			
+		}
+	}
+	inline void Instance::TestIntersection(const ray& r, Intersection& isect) const
+    {
+		// note this won't pass the instance transform to known mesh base shape
+		// this shouldn't be a problem at the moment, but possible in future...
+		const auto mesh = dynamic_cast<const Mesh*>(GetBaseShape());
+		if (mesh != nullptr)
+		{
+			return mesh->TestIntersection(r, worldmat_, isect);
+		}
+		else
+		{
+			//			GetBaseShape()->TestIntersection(r, worldmat_, isect);
+			GetBaseShape()->TestIntersection(r, isect);
+		}
+    }
+
 }
 
 #endif // MESH_H

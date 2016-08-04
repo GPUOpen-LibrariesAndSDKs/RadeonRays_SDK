@@ -39,7 +39,8 @@ namespace Calc
 			return new CalcClw();
 		}
 		else
-#elif USE_VULKAN
+#endif
+#if USE_VULKAN
 		if ( inPlatform & Platform::kVulkan )
 		{
 			return new CalcVulkanw();

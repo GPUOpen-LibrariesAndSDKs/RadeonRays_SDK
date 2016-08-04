@@ -14,3 +14,8 @@ App/App.vcxproj.user
 *.user
 Bin/Debug/x64/App64D.exe
 Bin/Release/x64/App64.exe
+*.dll
+*.exe
+*.opendb
+*.db
+*.sln

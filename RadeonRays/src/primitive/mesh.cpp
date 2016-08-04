@@ -112,39 +112,134 @@ namespace RadeonRays
         }
     }
 
+	int Mesh::GetTransformedFace(int const faceidx, matrix const & transform, float3* outverts) const
+    {
+		// origin code special cased identity matrix. TODO check speed regressions
+		outverts[0] = transform_point(vertices_[faces_[faceidx].i0], transform);
+		outverts[1] = transform_point(vertices_[faces_[faceidx].i1], transform);
+		outverts[2] = transform_point(vertices_[faces_[faceidx].i2], transform);
+
+		if (faces_[faceidx].type_ == FaceType::QUAD)
+		{
+			outverts[3] = transform_point(vertices_[faces_[faceidx].i3], transform);
+			return 4;
+		} else
+		{
+			return 3;
+		}
+    }
+
     void Mesh::GetFaceBounds(int faceidx, bool objectspace, bbox& bounds) const
     {
-        if (objectspace)
-        {
-            float3 p1 = vertices_[faces_[faceidx].i0];
-            float3 p2 = vertices_[faces_[faceidx].i1];
-            float3 p3 = vertices_[faces_[faceidx].i2];
+		float3 verts[4];
+		const int numVert = GetTransformedFace(faceidx, objectspace ? matrix() : worldmat_, verts);
+		bounds = bbox(verts[0], verts[1]);
+		bounds.grow(verts[2]);
 
-            bounds = bbox(p1, p2);
-            bounds.grow(p3);
-
-            if (faces_[faceidx].type_ == FaceType::QUAD)
-            {
-                float3 p4 = vertices_[faces_[faceidx].i3];
-                bounds.grow(p4);
-            }
-        }
-        else
-        {
-            float3 p1 = transform_point(vertices_[faces_[faceidx].i0], worldmat_);
-            float3 p2 = transform_point(vertices_[faces_[faceidx].i1], worldmat_);
-            float3 p3 = transform_point(vertices_[faces_[faceidx].i2], worldmat_);
-
-            bounds = bbox(p1, p2);
-            bounds.grow(p3);
-
-            if (faces_[faceidx].type_ == FaceType::QUAD)
-            {
-                float3 p4 = transform_point(vertices_[faces_[faceidx].i3], worldmat_);
-                bounds.grow(p4);
-            }
-        }
+		if(numVert == 4 )
+		{
+			bounds.grow(verts[3]);
+		}
     }
+
+	bool Mesh::TestOcclusion(const ray& r, matrix const & transform) const
+	{
+		for (int i = 0; i < faces_.size(); ++i)
+		{
+			float3 tverts[4];
+			const int numVerts = GetTransformedFace(i, transform, tverts);
+
+			for (int t = 0; t < numVerts - 2; ++t)
+			{
+				// only tris and quad supported
+				assert(t == 0 || t == 1);
+				float3 v0 = tverts[0+t];
+				float3 e1 = tverts[1+t] - v0;
+				float3 e2 = tverts[2+t] - v0;
+
+				float3 s1 = cross(r.d, e2);
+				float det = dot(s1, e1);
+
+				float  invdet = 1.f / det;
+
+				float3 d = r.o - v0;
+				float  b1 = dot(d, s1) * invdet;
+
+				if (b1 < 0.f || b1 > 1.f)
+				{
+					continue;
+				}
+
+				float3 s2 = cross(d, e1);
+				float  b2 = dot(r.d, s2) * invdet;
+
+				if (b2 < 0.f || b1 + b2 > 1.f)
+				{
+					continue;
+				}
+
+				float temp = dot(e2, s2) * invdet;
+
+				if (temp > 0.f)
+				{
+					return true;
+				}
+			}
+
+		}
+		return false;		
+	}
+
+	void Mesh::TestIntersection(const ray& r, matrix const & transform, Intersection& isect) const
+	{
+		for (int i = 0; i < faces_.size(); ++i)
+		{
+			float3 tverts[4];
+			const int numVerts = GetTransformedFace(i, transform, tverts);
+
+			for (int t = 0; t < numVerts - 2; ++t)
+			{
+				// only tris and quad supported
+				assert(t == 0 || t == 1);
+				float3 v0 = tverts[0 + t];
+				float3 e1 = tverts[1 + t] - v0;
+				float3 e2 = tverts[2 + t] - v0;
+
+				float3 s1 = cross(r.d, e2);
+				float det = dot(s1, e1);
+
+				float  invdet = 1.f / det;
+
+				float3 d = r.o - v0;
+				float  b1 = dot(d, s1) * invdet;
+
+				if (b1 < 0.f || b1 > 1.f)
+				{
+					continue;
+				}
+
+				float3 s2 = cross(d, e1);
+				float  b2 = dot(r.d, s2) * invdet;
+
+				if (b2 < 0.f || b1 + b2 > 1.f)
+				{
+					continue;
+				}
+
+				float temp = dot(e2, s2) * invdet;
+
+				if (temp > 0.f && temp < isect.uvwt.w)
+				{
+					isect.uvwt = float4(b1, b2, 0, temp);
+					isect.shapeid = GetId();
+					isect.primid = i + t;
+				}
+			}
+
+		}
+	}
+
+
 
     Mesh::~Mesh()
     {
