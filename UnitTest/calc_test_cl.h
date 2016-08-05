@@ -21,6 +21,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
 #pragma once
+#include <radeon_rays.h>
 
 #if USE_OPENCL
 
@@ -303,7 +304,7 @@ TEST_F(CalcTestkOpenCL, MapBuffer)
 	int* mapdata = nullptr;
 	Calc::Event* e = nullptr;
 
-	ASSERT_NO_THROW(device->MapBuffer(buffer, 0, 0, kBufferSize * sizeof(int), MapType::kMapWrite, reinterpret_cast<void**>(&mapdata), &e));
+	ASSERT_NO_THROW(device->MapBuffer(buffer, 0, 0, kBufferSize * sizeof(int), RadeonRays::MapType::kMapWrite, reinterpret_cast<void**>(&mapdata), &e));
 
 	e->Wait();
 	device->DeleteEvent(e);
@@ -356,7 +357,7 @@ TEST_F(CalcTestkOpenCL, MapTypedBuffer)
 
 	int* mapdata = nullptr;
 	Calc::Event* e = nullptr;
-	ASSERT_NO_THROW(device->MapTypedBuffer(buffer, 0, 0, kBufferSize, MapType::kMapWrite, &mapdata, &e));
+	ASSERT_NO_THROW(device->MapTypedBuffer(buffer, 0, 0, kBufferSize, Calc::MapType::kMapWrite, &mapdata, &e));
 
 	e->Wait();
 	device->DeleteEvent(e);

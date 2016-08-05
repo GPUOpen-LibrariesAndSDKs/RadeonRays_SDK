@@ -21,9 +21,6 @@ THE SOFTWARE.
 ********************************************************************/
 #pragma once
 
-#ifndef RADEONRAYS_APITEST_VK_H
-#define RADEONRAYS_APITEST_VK_H
-
 #if USE_VULKAN
 /// This test suite is testing RadeonRays library functionality
 ///
@@ -259,7 +256,6 @@ TEST_F(ApiBackendVulkan, Intersection_1Ray)
 
 	// Bail out
 	ASSERT_NO_THROW(api_->DetachShape(mesh));
-	ASSERT_NO_THROW(api_->DeleteShape(mesh));
 	ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
 	ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
 }
@@ -388,7 +384,6 @@ TEST_F(ApiBackendVulkan, Intersection_1Ray_Masked)
 
 	// Bail out
 	ASSERT_NO_THROW(api_->DetachShape(mesh));
-	ASSERT_NO_THROW(api_->DeleteShape(mesh));
 	ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
 	ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
 	ASSERT_NO_THROW(api_->DeleteBuffer(isect_flag_buffer));
@@ -480,7 +475,6 @@ TEST_F(ApiBackendVulkan, Intersection_1Ray_Active)
 
 
 	// Bail out
-	ASSERT_NO_THROW(api_->DetachShape(mesh));
 	ASSERT_NO_THROW(api_->DeleteShape(mesh));
 	ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
 	ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
@@ -556,7 +550,6 @@ TEST_F(ApiBackendVulkan, Intersection_3Rays)
 	}
 
 	// Bail out
-	ASSERT_NO_THROW(api_->DetachShape(mesh));
 	ASSERT_NO_THROW(api_->DeleteShape(mesh));
 	ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
 	ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
@@ -659,7 +652,6 @@ TEST_F(ApiBackendVulkan, Intersection_1Ray_Transformed)
 	ASSERT_EQ(isect.shapeid, mesh->GetId());
 
 	// Bail out
-	ASSERT_NO_THROW(api_->DetachShape(mesh));
 	ASSERT_NO_THROW(api_->DeleteShape(mesh));
 	ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
 	ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
@@ -768,7 +760,6 @@ TEST_F(ApiBackendVulkan, Intersection_1Ray_DynamicGeo)
 	ASSERT_EQ(isect.shapeid, farmesh->GetId());
 
 	// Bail out
-	ASSERT_NO_THROW(api_->DetachShape(farmesh));
 	ASSERT_NO_THROW(api_->DeleteShape(farmesh));
 	ASSERT_NO_THROW(api_->DeleteShape(closemesh));
 	ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
@@ -933,40 +924,45 @@ TEST_F(ApiBackendVulkan, Intersection_1Ray_TransformedInstance)
 	Wait();
 
 	// Check results
-	ASSERT_EQ(isect.shapeid, instance->GetId());
-	ASSERT_LE(std::fabs(isect.uvwt.w - 8.f), 0.01f);
+	Intersection isect_brute;
+	api_->TestIntersections(&r, 1, &isect_brute);
+	// check the test gets the mesh we expect
+	EXPECT_EQ(isect_brute.shapeid, instance->GetId());
+	// does the accelerated radeon rays match the test
+	EXPECT_EQ(isect.shapeid, isect_brute.shapeid);
+	EXPECT_LE(std::fabs(isect.uvwt.w - 8.f), 0.01f);
 
 	//
 	m = translation(float3(0, 0, 2));
 	minv = inverse(m);
-	ASSERT_NO_THROW(instance->SetTransform(m, minv));
+	EXPECT_NO_THROW(instance->SetTransform(m, minv));
 
 	// Prepare the ray
 	r.o = float3(0.f, 0.f, -10.f, 1000.f);
 	r.d = float3(0.f, 0.f, 1.f);
 
 	// Commit geometry update
-	ASSERT_NO_THROW(api_->Commit());
+	EXPECT_NO_THROW(api_->Commit());
 
 	// Intersect
-	ASSERT_NO_THROW(api_->QueryIntersection(ray_buffer, 1, isect_buffer, nullptr, nullptr));
+	EXPECT_NO_THROW(api_->QueryIntersection(ray_buffer, 1, isect_buffer, nullptr, nullptr));
 
 	tmp = nullptr;
-	ASSERT_NO_THROW(api_->MapBuffer(isect_buffer, kMapRead, 0, sizeof(Intersection), (void**)&tmp, &e_));
+	EXPECT_NO_THROW(api_->MapBuffer(isect_buffer, kMapRead, 0, sizeof(Intersection), (void**)&tmp, &e_));
 	Wait();
 	isect = *tmp;
-	ASSERT_NO_THROW(api_->UnmapBuffer(isect_buffer, tmp, &e_));
+	EXPECT_NO_THROW(api_->UnmapBuffer(isect_buffer, tmp, &e_));
 	Wait();
 
 	// Check results
-	ASSERT_EQ(isect.shapeid, mesh->GetId());
-	ASSERT_LE(std::fabs(isect.uvwt.w - 10.f), 0.01f);
+	api_->TestIntersections(&r, 1, &isect_brute);
+	EXPECT_EQ(isect_brute.shapeid, instance->GetId());
+	EXPECT_EQ(isect.shapeid, isect_brute.shapeid);
+	EXPECT_LE(std::fabs(isect.uvwt.w - 10.f), 0.01f);
 
 	// Bail out
 	ASSERT_NO_THROW(api_->DetachShape(instance));
-	ASSERT_NO_THROW(api_->DeleteShape(instance));
 	ASSERT_NO_THROW(api_->DetachShape(mesh));
-	ASSERT_NO_THROW(api_->DeleteShape(mesh));
 	ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
 	ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
 }
@@ -1070,9 +1066,7 @@ TEST_F(ApiBackendVulkan, Intersection_1Ray_TransformedInstanceFlat)
 
 	// Bail out
 	ASSERT_NO_THROW(api_->DetachShape(instance));
-	ASSERT_NO_THROW(api_->DeleteShape(instance));
 	ASSERT_NO_THROW(api_->DetachShape(mesh));
-	ASSERT_NO_THROW(api_->DeleteShape(mesh));
 	ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
 	ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
 }
@@ -1147,13 +1141,9 @@ TEST_F(ApiBackendVulkan, Intersection_1Ray_InstanceNoShape)
 
 	// Bail out
 	ASSERT_NO_THROW(api_->DetachShape(instance));
-	ASSERT_NO_THROW(api_->DeleteShape(instance));
 	ASSERT_NO_THROW(api_->DetachShape(mesh));
-	ASSERT_NO_THROW(api_->DeleteShape(mesh));
 	ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
 	ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
 }
 
 #endif // USE_VULKAN
-
-#endif // RadeonRays_TEST_H

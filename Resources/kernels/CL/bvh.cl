@@ -251,14 +251,14 @@ __global int*          raycnt
         // Fetch ray
         ray r = rays[ridx];
 
-		if (Ray_IsActive(&r))
-		{
-			// Calculate closest hit
-			IntersectSceneClosest(&scenedata, &r, &isect);
+        if (Ray_IsActive(&r))
+        {
+        	// Calculate closest hit
+        	IntersectSceneClosest(&scenedata, &r, &isect);
 
-			// Write data back in case of a hit
-			hits[ridx] = isect;
-		}
+        	// Write data back in case of a hit
+        	hits[ridx] = isect;
+        }
     }
 }
 

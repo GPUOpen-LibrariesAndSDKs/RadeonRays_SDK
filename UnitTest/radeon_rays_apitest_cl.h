@@ -21,9 +21,6 @@ THE SOFTWARE.
 ********************************************************************/
 #pragma once
 
-#ifndef RADEONRAYS_APITEST_CL_H
-#define RADEONRAYS_APITEST_CL_H
-
 #if USE_OPENCL
 /// This test suite is testing RadeonRays library functionality
 ///
@@ -1154,5 +1151,3 @@ TEST_F(ApiBackendOpenCL, Intersection_1Ray_InstanceNoShape)
 }
 
 #endif // USE_OPENCL
-
-#endif // RadeonRays_TEST_H

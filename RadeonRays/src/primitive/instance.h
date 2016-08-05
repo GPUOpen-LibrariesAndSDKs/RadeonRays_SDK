@@ -99,7 +99,14 @@ namespace RadeonRays
 		const auto mesh = dynamic_cast<const Mesh*>(GetBaseShape());
 		if (mesh != nullptr)
 		{
-			return mesh->TestIntersection(r, worldmat_, isect);
+			mesh->TestIntersection(r, worldmat_, isect);
+			// if we hit the mesh shape, pretend it hit the instance
+			// This may cause a false positive if the inner mesh is used
+			// both as a real mesh and an inner mesh. Don't do that
+			if(isect.shapeid == mesh->GetId())
+			{
+				isect.shapeid = GetId();
+			}
 		}
 		else
 		{

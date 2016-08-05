@@ -320,7 +320,7 @@ TEST_F(ApiConformanceCL, GPU_CornellBox_10000RaysRandom_ClosestHit_Bruteforce)
 	ExpectClosestRaysOk<10000>(api);
 }
 
-TEST_F(ApiConformanceCL, DISABLED_GPU_CornellBox_10RaysRandom_ClosestHit_Force2level_Bruteforce)
+TEST_F(ApiConformanceCL, GPU_CornellBox_10RaysRandom_ClosestHit_Force2level_Bruteforce)
 {
 	auto api = apigpu_;
 	api->SetOption("acc.type", "bvh");
@@ -494,7 +494,7 @@ TEST_F(ApiConformanceCL, DISABLED_CornellBox_10000RaysRandom_ClosestHit_Events_B
 
 inline void ApiConformanceCL::ExpectClosestIntersectionOk(const Intersection& expected, const Intersection& test) const
 {
-	ASSERT_EQ(test.shapeid, expected.shapeid);
+	ASSERT_EQ(expected.shapeid, test.shapeid);
 
 	if (test.shapeid != kNullId)
 	{

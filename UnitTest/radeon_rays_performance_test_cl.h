@@ -28,7 +28,7 @@ THE SOFTWARE.
 /// This test suite is testing RadeonRays performance
 ///
 #include "gtest/gtest.h"
-#include "RadeonRays_cl.h"
+#include "radeon_rays_cl.h"
 
 using namespace RadeonRays;
 

@@ -224,8 +224,10 @@ else
             dofile("./UnitTest/UnitTest.lua")
         end
         
-        if fileExists("./App/App.lua") then
-            dofile("./App/App.lua")
+        if _OPTIONS["use_opencl"] then
+            if fileExists("./App/App.lua") then
+                dofile("./App/App.lua")
+            end
         end
     end
         

@@ -159,38 +159,38 @@ bool IntersectSceneClosest2L(SceneData* scenedata, ray* r, Intersection* isect)
                     topidx = idx;
                     // Get shape descrition struct index
                     int shapeidx = SHAPEIDX(node);
-					// Get shape mask
-					int shapemask = scenedata->shapes[shapeidx].mask;
-					// Drill into 2nd level BVH only if the geometry is not masked vs current ray
-					// otherwise skip the subtree
-					if (Ray_GetMask(r) && shapemask)
-					{
-						// Fetch bottom level BVH index
-						idx = scenedata->shapes[shapeidx].bvhidx;
-						shapeid = scenedata->shapes[shapeidx].id;
+                    // Get shape mask
+                    int shapemask = scenedata->shapes[shapeidx].mask;
+                    // Drill into 2nd level BVH only if the geometry is not masked vs current ray
+                    // otherwise skip the subtree
+                    if (Ray_GetMask(r) && shapemask)
+                    {
+                        // Fetch bottom level BVH index
+                        idx = scenedata->shapes[shapeidx].bvhidx;
+                        shapeid = scenedata->shapes[shapeidx].id;
 
-						// Fetch BVH transform
-						float4 wmi0 = scenedata->shapes[shapeidx].m0;
-						float4 wmi1 = scenedata->shapes[shapeidx].m1;
-						float4 wmi2 = scenedata->shapes[shapeidx].m2;
-						float4 wmi3 = scenedata->shapes[shapeidx].m3;
+                        // Fetch BVH transform
+                        float4 wmi0 = scenedata->shapes[shapeidx].m0;
+                        float4 wmi1 = scenedata->shapes[shapeidx].m1;
+                        float4 wmi2 = scenedata->shapes[shapeidx].m2;
+                        float4 wmi3 = scenedata->shapes[shapeidx].m3;
 
-						// Apply linear motion blur (world coordinates)
-						//float4 lmv = scenedata->shapes[shapeidx].linearvelocity;
-						//float4 amv = scenedata->shapes[SHAPEDATAIDX(node)].angularvelocity;
-						//r->o.xyz -= (lmv.xyz*r->d.w);
-						// Transfrom the ray
-						*r = transform_ray(*r, wmi0, wmi1, wmi2, wmi3);
-						// rotate_ray(r, amv);
-						// Recalc invdir
-						invdir = make_float3(1.f, 1.f, 1.f) / r->d.xyz;
-						// And continue traversal of the bottom level BVH
-						continue;
-					}
-					else
-					{
-						idx = -1;
-					}
+                        // Apply linear motion blur (world coordinates)
+                        //float4 lmv = scenedata->shapes[shapeidx].linearvelocity;
+                        //float4 amv = scenedata->shapes[SHAPEDATAIDX(node)].angularvelocity;
+                        //r->o.xyz -= (lmv.xyz*r->d.w);
+                        // Transfrom the ray
+                        *r = transform_ray(*r, wmi0, wmi1, wmi2, wmi3);
+                        // rotate_ray(r, amv);
+                        // Recalc invdir
+                        invdir = make_float3(1.f, 1.f, 1.f) / r->d.xyz;
+                        // And continue traversal of the bottom level BVH
+                        continue;
+                    }
+                    else
+                    {
+                        idx = -1;
+                    }
                 }
             }
             // Traverse child nodes otherwise.
@@ -263,38 +263,38 @@ bool IntersectSceneAny2L(SceneData* scenedata, ray* r)
                     topidx = idx;
                     // Get shape descrition struct index
                     int shapeidx = SHAPEIDX(node);
-					// Get shape mask
-					int shapemask = scenedata->shapes[shapeidx].mask;
-					// Drill into 2nd level BVH only if the geometry is not masked vs current ray
-					// otherwise skip the subtree
-					if (Ray_GetMask(r) && shapemask)
-					{
-						// Fetch bottom level BVH index
-						idx = scenedata->shapes[shapeidx].bvhidx;
+                    // Get shape mask
+                    int shapemask = scenedata->shapes[shapeidx].mask;
+                    // Drill into 2nd level BVH only if the geometry is not masked vs current ray
+                    // otherwise skip the subtree
+                    if (Ray_GetMask(r) && shapemask)
+                    {
+                        // Fetch bottom level BVH index
+                        idx = scenedata->shapes[shapeidx].bvhidx;
 
-						// Fetch BVH transform
-						float4 wmi0 = scenedata->shapes[shapeidx].m0;
-						float4 wmi1 = scenedata->shapes[shapeidx].m1;
-						float4 wmi2 = scenedata->shapes[shapeidx].m2;
-						float4 wmi3 = scenedata->shapes[shapeidx].m3;
+                        // Fetch BVH transform
+                        float4 wmi0 = scenedata->shapes[shapeidx].m0;
+                        float4 wmi1 = scenedata->shapes[shapeidx].m1;
+                        float4 wmi2 = scenedata->shapes[shapeidx].m2;
+                        float4 wmi3 = scenedata->shapes[shapeidx].m3;
 
-						// Apply linear motion blur (world coordinates)
-						//float4 lmv = scenedata->shapes[shapeidx].linearvelocity;
-						//float4 amv = scenedata->shapes[SHAPEDATAIDX(node)].angularvelocity;
-						//r->o.xyz -= (lmv.xyz*r->d.w);
-						// Transfrom the ray
-						*r = transform_ray(*r, wmi0, wmi1, wmi2, wmi3);
-						//rotate_ray(r, amv);
-						// Recalc invdir
-						invdir = make_float3(1.f, 1.f, 1.f) / r->d.xyz;
-						// And continue traversal of the bottom level BVH
-						continue;
-					}
-					else
-					{
-						// Skip the subtree
-						idx = -1;
-					}
+                        // Apply linear motion blur (world coordinates)
+                        //float4 lmv = scenedata->shapes[shapeidx].linearvelocity;
+                        //float4 amv = scenedata->shapes[SHAPEDATAIDX(node)].angularvelocity;
+                        //r->o.xyz -= (lmv.xyz*r->d.w);
+                        // Transfrom the ray
+                        *r = transform_ray(*r, wmi0, wmi1, wmi2, wmi3);
+                        //rotate_ray(r, amv);
+                        // Recalc invdir
+                        invdir = make_float3(1.f, 1.f, 1.f) / r->d.xyz;
+                        // And continue traversal of the bottom level BVH
+                        continue;
+                    }
+                    else
+                    {
+                        // Skip the subtree
+                        idx = -1;
+                    }
                 }
             }
             // Traverse child nodes otherwise.
@@ -364,15 +364,15 @@ __global Intersection* hits // Hit datas
         int idx = offset + global_id;
         ray r = rays[idx];
 
-		if (Ray_IsActive(&r))
-		{
-			// Calculate closest hit
-			Intersection isect;
-			IntersectSceneClosest2L(&scenedata, &r, &isect);
+        if (Ray_IsActive(&r))
+        {
+        	// Calculate closest hit
+        	Intersection isect;
+        	IntersectSceneClosest2L(&scenedata, &r, &isect);
 
-			// Write data back in case of a hit
-			hits[idx] = isect;
-		}
+        	// Write data back in case of a hit
+        	hits[idx] = isect;
+        }
     }
 }
 
@@ -408,11 +408,11 @@ __global int* hitresults   // Hit results
         // Fetch ray
         ray r = rays[offset + global_id];
 
-		if (Ray_IsActive(&r))
-		{
-			// Calculate any intersection
-			hitresults[offset + global_id] = IntersectSceneAny2L(&scenedata, &r) ? 1 : -1;
-		}
+        if (Ray_IsActive(&r))
+        {
+        	// Calculate any intersection
+        	hitresults[offset + global_id] = IntersectSceneAny2L(&scenedata, &r) ? 1 : -1;
+        }
     }
 }
 
