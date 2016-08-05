@@ -31,8 +31,8 @@ namespace Anvil { class Device; class CommandPool; }
 
 namespace RadeonRays {
 
-	FRAPI IntersectionApi* CreateFromVulkan(Anvil::Device* device, Anvil::CommandPool* cmd_pool);
-	FRAPI Buffer* CreateFromVulkanBuffer(IntersectionApi* api, Anvil::Buffer* buffer);
+	RRAPI IntersectionApi* CreateFromVulkan(Anvil::Device* device, Anvil::CommandPool* cmd_pool);
+	RRAPI Buffer* CreateFromVulkanBuffer(IntersectionApi* api, Anvil::Buffer* buffer);
 }
 #endif
 

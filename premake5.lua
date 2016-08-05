@@ -40,6 +40,11 @@ newoption {
     description = "Submit RadeonRays SDK."
 }
 
+newoption {
+    trigger = "library_only", 
+    description = "Don't define a solution just add library to calling parent premake solution"
+}
+
 if not _OPTIONS["use_opencl"] and not _OPTIONS["use_vulkan"] and not _OPTIONS["use_embree"] then
     _OPTIONS["use_opencl"] = 1
 end
@@ -121,11 +126,13 @@ elseif _OPTIONS["submit"] then
     result = os.execute("git push origin master")
 
 else
-    solution "RadeonRays"
+    if not _OPTIONS["library_only"] then
+        solution "RadeonRays"
 
-    configurations { "Debug", "Release" }           
-    language "C++"
-    flags { "NoMinimalRebuild", "EnableSSE", "EnableSSE2" }
+        configurations { "Debug", "Release" }           
+        language "C++"
+        flags { "NoMinimalRebuild", "EnableSSE", "EnableSSE2" }
+    end
 
     if _OPTIONS["use_opencl"] then
         -- find and add path to Opencl headers
@@ -197,27 +204,29 @@ else
     if fileExists("./RadeonRays/RadeonRays.lua") then
         dofile("./RadeonRays/RadeonRays.lua")
     end
-    
-    if fileExists("./Gtest/gtest.lua") then
-        dofile("./Gtest/gtest.lua")
+
+    if fileExists("./Calc/Calc.lua") then
+        dofile("./Calc/Calc.lua")
     end
-    
-    if fileExists("./UnitTest/UnitTest.lua") then
-        dofile("./UnitTest/UnitTest.lua")
-    end
-    
+
     if _OPTIONS["use_opencl"] then
         if fileExists("./CLW/CLW.lua") then
             dofile("./CLW/CLW.lua")
+        end
+    end
+    
+    if not _OPTIONS["library_only"] then 
+        if fileExists("./Gtest/gtest.lua") then
+            dofile("./Gtest/gtest.lua")
+        end
+        
+        if fileExists("./UnitTest/UnitTest.lua") then
+            dofile("./UnitTest/UnitTest.lua")
         end
         
         if fileExists("./App/App.lua") then
             dofile("./App/App.lua")
         end
     end
-
-    if fileExists("./Calc/Calc.lua") then
-        dofile("./Calc/Calc.lua")
-    end
-
+        
 end
