@@ -963,8 +963,9 @@ Scene* Scene::LoadFromObj(std::string const& filename, std::string const& basepa
 		// Save last index to add to this shape indices
 		// int baseidx = (int)scene->vertices_.size();
 
+		int pos_count = (int)objshapes[s].mesh.positions.size() / 3;
 		// Enumerate and copy vertex data
-		for (int i = 0; i < (int)objshapes[s].mesh.positions.size() / 3; ++i)
+		for (int i = 0; i < pos_count; ++i)
 		{
 			scene->vertices_.push_back(float3(objshapes[s].mesh.positions[3 * i], objshapes[s].mesh.positions[3 * i + 1], objshapes[s].mesh.positions[3 * i + 2]));
 		}
@@ -974,10 +975,22 @@ Scene* Scene::LoadFromObj(std::string const& filename, std::string const& basepa
 			scene->normals_.push_back(float3(objshapes[s].mesh.normals[3 * i], objshapes[s].mesh.normals[3 * i + 1], objshapes[s].mesh.normals[3 * i + 2]));
 		}
 
-		for (int i = 0; i < (int)objshapes[s].mesh.texcoords.size() / 2; ++i)
+		//check UV
+		int texcoords_count = objshapes[s].mesh.texcoords.size() / 2;
+		if (texcoords_count == pos_count)
 		{
-            float2 uv = float2(objshapes[s].mesh.texcoords[2 * i], objshapes[s].mesh.texcoords[2 * i + 1]);
-			scene->uvs_.push_back(uv);
+			for (int i = 0; i < texcoords_count; ++i)
+			{
+				float2 uv = float2(objshapes[s].mesh.texcoords[2 * i], objshapes[s].mesh.texcoords[2 * i + 1]);
+				scene->uvs_.push_back(uv);
+			}
+		}
+		else
+		{
+			for (int i = 0; i < pos_count; ++i)
+			{
+				scene->uvs_.push_back(float2(0, 0));
+			}
 		}
 
 		// Enumerate and copy indices (accounting for base index) and material indices
