@@ -1,4 +1,4 @@
-﻿#version 430
+#version 430
 
 // Note Anvil define system assumes first line is alway a #version so don't rearrange
 
@@ -471,73 +471,70 @@ void IntersectSceneClosest(in ray r, inout Intersection isect, in int stack, in 
 
 	while (idx > -1)
 	{
-		while (idx > -1)
+		node = Nodes[idx];
+
+		leftleaf = LEAFNODE(node.lbound);
+		rightleaf = LEAFNODE(node.rbound);
+
+		lefthit = leftleaf ? -1.f : IntersectBoxF(r, invdir, node.lbound, isect.uvwt.w);
+		righthit = rightleaf ? -1.f : IntersectBoxF(r, invdir, node.rbound, isect.uvwt.w);
+
+		if (leftleaf)
 		{
-			node = Nodes[idx];
+			IntersectLeafClosest(STARTIDX(node.lbound), r, isect);
+		}
 
-			leftleaf = LEAFNODE(node.lbound);
-			rightleaf = LEAFNODE(node.rbound);
+		if (rightleaf)
+		{
+			IntersectLeafClosest(STARTIDX(node.rbound), r, isect);
+		}
 
-			lefthit = leftleaf ? -1.f : IntersectBoxF(r, invdir, node.lbound, isect.uvwt.w);
-			righthit = rightleaf ? -1.f : IntersectBoxF(r, invdir, node.rbound, isect.uvwt.w);
-
-			if (leftleaf)
-			{
-				IntersectLeafClosest(STARTIDX(node.lbound), r, isect);
-			}
-
-			if (rightleaf)
-			{
-				IntersectLeafClosest(STARTIDX(node.rbound), r, isect);
-			}
-
-			if (lefthit > 0.f && righthit > 0.f)
-			{
-				int deferred = -1;
-				if (lefthit > righthit)
-				{
-					idx = int(node.rbound.pmax.w);
-					deferred = int(node.lbound.pmax.w);
-				}
-				else
-				{
-					idx = int(node.lbound.pmax.w);
-					deferred = int(node.rbound.pmax.w);
-				}
-
-				if (lsptr - ldsstack >= SHORT_STACK_SIZE * 64)
-				{
-					for (int i = 1; i < SHORT_STACK_SIZE; ++i)
-					{
-						//gsptr[i] = ldsstack[i * 64];
-						GlobalStack[ gsptr + i ] = LDSStack[ ldsstack + i * 64 ];
-					}
-
-					gsptr += SHORT_STACK_SIZE;
-					lsptr = ldsstack + 64;
-				}
-
-				//*lsptr = deferred;
-				LDSStack[ lsptr ] = deferred;
-				lsptr += 64;
-
-				continue;
-			}
-			else if (lefthit > 0)
-			{
-				idx = int(node.lbound.pmax.w);
-				continue;
-			}
-			else if (righthit > 0)
+		if (lefthit > 0.f && righthit > 0.f)
+		{
+			int deferred = -1;
+			if (lefthit > righthit)
 			{
 				idx = int(node.rbound.pmax.w);
-				continue;
+				deferred = int(node.lbound.pmax.w);
+			}
+			else
+			{
+				idx = int(node.lbound.pmax.w);
+				deferred = int(node.rbound.pmax.w);
 			}
 
-			lsptr -= 64;
-			//idx = *(lsptr);
-			idx = LDSStack[ lsptr ];
+			if (lsptr - ldsstack >= SHORT_STACK_SIZE * 64)
+			{
+				for (int i = 1; i < SHORT_STACK_SIZE; ++i)
+				{
+					//gsptr[i] = ldsstack[i * 64];
+					GlobalStack[ gsptr + i ] = LDSStack[ ldsstack + i * 64 ];
+				}
+
+				gsptr += SHORT_STACK_SIZE;
+				lsptr = ldsstack + 64;
+			}
+
+			//*lsptr = deferred;
+			LDSStack[ lsptr ] = deferred;
+			lsptr += 64;
+
+			continue;
 		}
+		else if (lefthit > 0)
+		{
+			idx = int(node.lbound.pmax.w);
+			continue;
+		}
+		else if (righthit > 0)
+		{
+			idx = int(node.rbound.pmax.w);
+			continue;
+		}
+
+		lsptr -= 64;
+		//idx = *(lsptr);
+		idx = LDSStack[ lsptr ];
 
 		if (gsptr > stack)
 		{

@@ -59,12 +59,13 @@ namespace RadeonRays
 
 	struct Bvh2lStrategy::Face
 	{
-		// Up to 4 indices
-		int idx[4];
+		int idx[3];
+		int shadeidx;
 		// Primitive ID within the mesh
 		int id;
 		// Idx count
 		int cnt;
+		int2 padding;
 	};
 
 	struct Bvh2lStrategy::GpuData

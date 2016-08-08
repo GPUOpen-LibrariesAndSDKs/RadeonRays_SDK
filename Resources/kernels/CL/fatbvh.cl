@@ -47,15 +47,15 @@ typedef struct
 typedef struct
 {
 	// BVH structure
-	__global FatBvhNode const* nodes;
+	__global FatBvhNode const* 	nodes;
 	// Scene positional data
-	__global float3 const* vertices;
+	__global float3 const* 		vertices;
 	// Scene indices
-	__global Face const* faces;
+	__global Face const* 		faces;
 	// Shape IDs
-	__global ShapeData const* shapes;
+	__global ShapeData const* 	shapes;
 	// Extra data
-	__global int const* extra;
+	__global int const* 			extra;
 } SceneData;
 
 /*************************************************************************
@@ -68,7 +68,7 @@ HELPER FUNCTIONS
 BVH FUNCTIONS
 **************************************************************************/
 //  intersect a ray with leaf BVH node
-bool IntersectLeafClosest(
+void IntersectLeafClosest(
 	SceneData const* scenedata,
 	int faceidx,
 	ray const* r,                // ray to instersect
@@ -91,11 +91,8 @@ bool IntersectLeafClosest(
 		{
 			isect->primid = face.id;
 			isect->shapeid = scenedata->shapes[face.shapeidx].id;
-			return true;
 		}
 	}
-
-	return false;
 }
 
 //  intersect a ray with leaf BVH node
@@ -250,10 +247,10 @@ bool IntersectSceneClosest(SceneData const* scenedata, ray const* r, Intersectio
 	if (r->o.w < 0.f)
 		return false;
     
-    int stack[32];
+	int stack[32];
 
-    int* sptr = stack;
-    *sptr++ = -1;
+	int* sptr = stack;
+	*sptr++ = -1;
 
 	int idx = 0;
 	FatBvhNode node;
@@ -278,8 +275,8 @@ bool IntersectSceneClosest(SceneData const* scenedata, ray const* r, Intersectio
 		{
 			IntersectLeafClosest(scenedata, STARTIDX(node.lbound), r, isect);
 		}
-		
-        if (rightleaf)
+
+		if (rightleaf)
 		{
 			IntersectLeafClosest(scenedata, STARTIDX(node.rbound), r, isect);
 		}
@@ -298,7 +295,7 @@ bool IntersectSceneClosest(SceneData const* scenedata, ray const* r, Intersectio
 				deferred = (int)node.rbound.pmax.w;
 			}
 
-            *sptr++ = deferred;
+		            *sptr++ = deferred;
 			continue;
 		}
 		else if (lefthit > 0)
@@ -312,7 +309,7 @@ bool IntersectSceneClosest(SceneData const* scenedata, ray const* r, Intersectio
 			continue;
 		}
 
-        idx = *--sptr;
+        		idx = *--sptr;
 	}
 
 	return isect->shapeid >= 0;
@@ -357,13 +354,13 @@ bool IntersectSceneAny(SceneData const* scenedata, ray const* r, __global int* s
 			if (leftleaf)
 			{
 				if (IntersectLeafAny(scenedata, STARTIDX(node.lbound), r))
-                    return true;
+                    				return true;
 			}
 
 			if (rightleaf)
 			{
 				if (IntersectLeafAny(scenedata, STARTIDX(node.rbound), r))
-                    return true;
+			                    return true;
 			}
 
 			if (lefthit > 0.f && righthit > 0.f)
@@ -394,17 +391,17 @@ bool IntersectSceneAny(SceneData const* scenedata, ray const* r, __global int* s
 
 				*lsptr = deferred;
 				lsptr += 64;
-                continue;
+				continue;
 			}
 			else if (lefthit > 0)
 			{
 				idx = (int)node.lbound.pmax.w;
-                continue;
+				continue;
 			}
 			else if (righthit > 0)
 			{
 				idx = (int)node.rbound.pmax.w;
-                continue;
+				continue;
 			}
 
 			lsptr -= 64;
@@ -436,10 +433,10 @@ bool IntersectSceneAny(SceneData const* scenedata, ray const* r)
 	if (r->o.w < 0.f)
 		return false;
     
-    int stack[32];
+	int stack[32];
 
-    int* sptr = stack;
-    *sptr++ = -1;
+	int* sptr = stack;
+	*sptr++ = -1;
 
 	int idx = 0;
 	FatBvhNode node;
@@ -450,7 +447,7 @@ bool IntersectSceneAny(SceneData const* scenedata, ray const* r)
 	float righthit = 0.f;
 	int step = 0;
 
-    bool found = false;
+	bool found = false;
 
 	while (idx > -1)
 	{
@@ -465,19 +462,19 @@ bool IntersectSceneAny(SceneData const* scenedata, ray const* r)
 		if (leftleaf)
 		{
 			if (IntersectLeafAny(scenedata, STARTIDX(node.lbound), r))
-            {
-                found = true;
-                break;
-            }
+			{
+			    found = true;
+			    break;
+			}
 		}
 		
-        if (rightleaf)
+		if (rightleaf)
 		{
 			if (IntersectLeafAny(scenedata, STARTIDX(node.rbound), r))
-            {
-                found = true;
-                break;
-            }
+		            {
+		                found = true;
+		                break;
+		            }
 		}
 
 		if (lefthit > 0.f && righthit > 0.f)
@@ -494,7 +491,7 @@ bool IntersectSceneAny(SceneData const* scenedata, ray const* r)
 				deferred = (int)node.rbound.pmax.w;
 			}
 
-            *sptr++ = deferred;
+		            *sptr++ = deferred;
 		}
 		else if (lefthit > 0)
 		{
@@ -505,8 +502,8 @@ bool IntersectSceneAny(SceneData const* scenedata, ray const* r)
 			idx = (int)node.rbound.pmax.w;
 		}
 
-        if (lefthit <= 0.f && righthit <= 0.f)
-        idx = *--sptr;
+		if (lefthit <= 0.f && righthit <= 0.f)
+			idx = *--sptr;
 	}
 
 	return found;

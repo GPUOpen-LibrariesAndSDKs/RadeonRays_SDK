@@ -49,13 +49,14 @@ TYPE DEFINITIONS
 typedef struct
 {
     // BVH structure
-    __global BvhNode*       nodes;
+    __global BvhNode*  const        nodes;
     // Scene positional data
-    __global float3*        vertices;
+    __global float3*  const              vertices;
     // Scene indices
-    __global Face*          faces;
+    __global Face* const                faces;
     // Transforms
-    __global ShapeData*     shapes;
+    __global ShapeData* const      shapes;
+
     // Root BVH idx
     int rootidx;
 } SceneData;

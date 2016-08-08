@@ -141,8 +141,7 @@ inline void ApiConformanceCL::SetUp()
 	apigpu_->SetOption("acc.type", "bvh");
 	apigpu_->SetOption("bvh.builder", "sah");
 
-	srand((unsigned)time(0));
-
+	srand( 0xABCDEF12);
 
 }
 
@@ -193,7 +192,7 @@ TEST_F(ApiConformanceCL, CPU_CornellBox_100RayRandom_ClosestHit_Bruteforce)
 	ExpectClosestRaysOk<100>(api);
 }
 
-TEST_F(ApiConformanceCL, DISABLED_CPU_CornellBox_1000RaysRandom_ClosestHit_Bruteforce)
+TEST_F(ApiConformanceCL, CPU_CornellBox_1000RaysRandom_ClosestHit_Bruteforce)
 {
 	auto api = apicpu_;
 	api->SetOption("acc.type", "bvh");
@@ -214,7 +213,7 @@ TEST_F(ApiConformanceCL, CPU_CornellBox_10000RaysRandom_ClosestHit_Bruteforce)
 }
 
 
-TEST_F(ApiConformanceCL, DISABLED_CPU_CornellBox_10000RaysRandom_ClosestHit_Force2level_Bruteforce)
+TEST_F(ApiConformanceCL, CPU_CornellBox_10000RaysRandom_ClosestHit_Force2level_Bruteforce)
 {
 	auto api = apicpu_;
 	api->SetOption("acc.type", "bvh");
@@ -224,7 +223,7 @@ TEST_F(ApiConformanceCL, DISABLED_CPU_CornellBox_10000RaysRandom_ClosestHit_Forc
 	ExpectClosestRaysOk<10000>(api);
 }
 
-TEST_F(ApiConformanceCL, DISABLED_CPU_CornellBox_1000RandomRays_ClosestHit_Bruteforce_FatBvh)
+TEST_F(ApiConformanceCL, CPU_CornellBox_1000RandomRays_ClosestHit_Bruteforce_FatBvh)
 {
 	auto api = apicpu_;
 	api->SetOption("acc.type", "fatbvh");
@@ -331,7 +330,7 @@ TEST_F(ApiConformanceCL, GPU_CornellBox_10RaysRandom_ClosestHit_Force2level_Brut
 
 }
 
-TEST_F(ApiConformanceCL, DISABLED_GPU_CornellBox_10000RaysRandom_ClosestHit_Force2level_Bruteforce)
+TEST_F(ApiConformanceCL, GPU_CornellBox_10000RaysRandom_ClosestHit_Force2level_Bruteforce)
 {
 	auto api = apigpu_;
 	api->SetOption("acc.type", "bvh");
@@ -342,7 +341,7 @@ TEST_F(ApiConformanceCL, DISABLED_GPU_CornellBox_10000RaysRandom_ClosestHit_Forc
 
 }
 
-TEST_F(ApiConformanceCL, DISABLED_GPU_CornellBox_1000RandomRays_ClosestHit_Bruteforce_FatBvh)
+TEST_F(ApiConformanceCL, GPU_CornellBox_1000RandomRays_ClosestHit_Bruteforce_FatBvh)
 {
 	auto api = apigpu_;
 	api->SetOption("acc.type", "fatbvh");
@@ -395,7 +394,7 @@ TEST_F(ApiConformanceCL, GPU_CornellBox_10000RandomRays_AnyHit_Bruteforce)
 	ExpectAnyRaysOk<10000>(api);
 }
 
-TEST_F(ApiConformanceCL, DISABLED_CornellBox_10000RaysRandom_ClosestHit_Events_Bruteforce)
+TEST_F(ApiConformanceCL, CornellBox_10000RaysRandom_ClosestHit_Events_Bruteforce)
 {
 	int const kNumRays = 10000;
 

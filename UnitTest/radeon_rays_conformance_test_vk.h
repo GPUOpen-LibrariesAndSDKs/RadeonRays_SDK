@@ -114,7 +114,7 @@ inline void ApiConformanceVK::SetUp()
 	apigpu_->SetOption("acc.type", "bvh");
 	apigpu_->SetOption("bvh.builder", "sah");
 
-	srand((unsigned)time(0));
+	srand(0xABCDEF12);
 
 }
 
@@ -168,7 +168,7 @@ TEST_F(ApiConformanceVK, GPU_CornellBox_1000RaysRandom_ClosestHit_Bruteforce)
 	ExpectClosestRaysOk<1000>(api);
 }
 
-TEST_F(ApiConformanceVK, DISABLED_GPU_CornellBox_10000RaysRandom_ClosestHit_Bruteforce)
+TEST_F(ApiConformanceVK, GPU_CornellBox_10000RaysRandom_ClosestHit_Bruteforce)
 {
 	auto api = apigpu_;
 	api->SetOption("acc.type", "bvh");
@@ -178,8 +178,17 @@ TEST_F(ApiConformanceVK, DISABLED_GPU_CornellBox_10000RaysRandom_ClosestHit_Brut
 	ExpectClosestRaysOk<10000>(api);
 }
 
+TEST_F(ApiConformanceVK, GPU_CornellBox_10RaysRandom_ClosestHit_Bruteforce)
+{
+	auto api = apigpu_;
+	api->SetOption("acc.type", "bvh");
+	api->SetOption("bvh.builder", "sah");
+	api->SetOption("bvh.force2level", 0.f);
 
-TEST_F(ApiConformanceVK, DISABLED_GPU_CornellBox_10000RaysRandom_ClosestHit_Force2level_Bruteforce)
+	ExpectClosestRaysOk<10>(api);
+}
+
+TEST_F(ApiConformanceVK, GPU_CornellBox_10000RaysRandom_ClosestHit_Force2level_Bruteforce)
 {
 	auto api = apigpu_;
 	api->SetOption("acc.type", "bvh");
@@ -190,7 +199,7 @@ TEST_F(ApiConformanceVK, DISABLED_GPU_CornellBox_10000RaysRandom_ClosestHit_Forc
 
 }
 
-TEST_F(ApiConformanceVK, DISABLED_GPU_CornellBox_1000RandomRays_ClosestHit_Bruteforce_FatBvh)
+TEST_F(ApiConformanceVK, GPU_CornellBox_1000RandomRays_ClosestHit_Bruteforce_FatBvh)
 {
 	auto api = apigpu_;
 	api->SetOption("acc.type", "fatbvh");

@@ -350,6 +350,8 @@ namespace RadeonRays
                     int id;
                     // Idx count
                     int cnt;
+
+					int2 padding;
                 };
                 
                 // Create face buffer
