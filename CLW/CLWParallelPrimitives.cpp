@@ -28,9 +28,15 @@ THE SOFTWARE.
 #include <algorithm>
 #include <cstring>
 
-#ifdef FR_EMBED_KERNELS
-#include "./CL/cache/kernels.h"
+#ifdef RR_EMBED_KERNELS
+#if USE_OPENCL
+#	include <RadeonRays/src/kernelcache/kernels_cl.h>
 #endif
+
+#if USE_VULKAN
+#	include <RadeonRays/src/kernelcache/kernels_vk.h>
+#endif
+#endif // RR_EMBED_KERNELS
 
 #define WG_SIZE 64
 #define NUM_SCAN_ELEMS_PER_WI 8
@@ -41,10 +47,10 @@ THE SOFTWARE.
 CLWParallelPrimitives::CLWParallelPrimitives(CLWContext context)
     : context_(context)
 {
-#ifndef FR_EMBED_KERNELS
+#ifndef RR_EMBED_KERNELS
     program_ = CLWProgram::CreateFromFile("../CLW/CL/CLW.cl", context_);
 #else
-    program_ = CLWProgram::CreateFromSource(cl_CLW, std::strlen(cl_CLW), context_);
+    program_ = CLWProgram::CreateFromSource(g_CLW_opencl, std::strlen(g_CLW_opencl), context_);
 #endif
 }
 

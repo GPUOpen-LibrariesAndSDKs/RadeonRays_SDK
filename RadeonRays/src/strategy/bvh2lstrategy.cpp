@@ -27,11 +27,6 @@ THE SOFTWARE.
 #include "../primitive/instance.h"
 #include "../except/except.h"
 
-
-#ifdef FR_EMBED_KERNELS
-#include "../kernel/CL/cache/kernels.h"
-#endif
-
 #include "device.h"
 #include "executable.h"
 
@@ -138,7 +133,7 @@ namespace RadeonRays
 		, m_gpudata(new GpuData(device))
 		, m_cpudata(new CpuData)
 	{
-#ifndef FR_EMBED_KERNELS
+#ifndef RR_EMBED_KERNELS
 		if ( device->GetPlatform() == Calc::Platform::kOpenCL )
 		{
 			char const* headers[] = { "kernels/CL/common.cl" };
@@ -154,7 +149,7 @@ namespace RadeonRays
 		}
 
 #else
-		m_gpudata->executable = m_device->CompileExecutable(cl_bvh2l, std::strlen(cl_bvh2l), nullptr);
+		RR_GetEmbeddedKernel(bvh2l)
 #endif
 
 		m_gpudata->isect_func = m_gpudata->executable->CreateFunction("IntersectClosest2L");

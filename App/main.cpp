@@ -54,7 +54,7 @@ THE SOFTWARE.
 #define _USE_MATH_DEFINES
 #include <math.h>
 
-#ifdef FR_EMBED_KERNELS
+#ifdef RR_EMBED_KERNELS
 #include "./CL/cache/kernels.h"
 #endif
 
@@ -605,92 +605,92 @@ void Update()
         for (int i = 0; i < g_cfgs.size(); ++i)
         {
         g_cfgs[i].renderer->SetNumBounces(numbnc);
-    }*/
-}
+		}*/
+	}
 
-if (g_num_samples == -1 || g_samplecount++ < g_num_samples)
-{
-    g_cfgs[g_primary].renderer->Render(*g_scene.get());
-}
+	if (g_num_samples == -1 || g_samplecount++ < g_num_samples)
+	{
+		g_cfgs[g_primary].renderer->Render(*g_scene.get());
+	}
 
-//if (std::chrono::duration_cast<std::chrono::seconds>(time - updatetime).count() > 1)
-//{
-for (int i = 0; i < g_cfgs.size(); ++i)
-{
-    if (g_cfgs[i].type == ConfigManager::kPrimary)
-    continue;
+	//if (std::chrono::duration_cast<std::chrono::seconds>(time - updatetime).count() > 1)
+	//{
+	for (int i = 0; i < g_cfgs.size(); ++i)
+	{
+		if (g_cfgs[i].type == ConfigManager::kPrimary)
+		continue;
 
-    int desired = 1;
-    if (std::atomic_compare_exchange_strong(&g_ctrl[i].newdata, &desired, 0))
-    {
-        {
-            //std::unique_lock<std::mutex> lock(g_ctrl[i].datamutex);
-            //std::cout << "Start updating acc buffer\n"; std::cout.flush();
-            g_cfgs[g_primary].context.WriteBuffer(0, g_outputs[g_primary].copybuffer, &g_outputs[i].fdata[0], g_window_width * g_window_height);
-            //std::cout << "Finished updating acc buffer\n"; std::cout.flush();
-        }
+		int desired = 1;
+		if (std::atomic_compare_exchange_strong(&g_ctrl[i].newdata, &desired, 0))
+		{
+			{
+				//std::unique_lock<std::mutex> lock(g_ctrl[i].datamutex);
+				//std::cout << "Start updating acc buffer\n"; std::cout.flush();
+				g_cfgs[g_primary].context.WriteBuffer(0, g_outputs[g_primary].copybuffer, &g_outputs[i].fdata[0], g_window_width * g_window_height);
+				//std::cout << "Finished updating acc buffer\n"; std::cout.flush();
+			}
 
-        CLWKernel acckernel = g_cfgs[g_primary].renderer->GetAccumulateKernel();
+			CLWKernel acckernel = g_cfgs[g_primary].renderer->GetAccumulateKernel();
 
-        int argc = 0;
-        acckernel.SetArg(argc++, g_outputs[g_primary].copybuffer);
-        acckernel.SetArg(argc++, g_window_width * g_window_width);
-        acckernel.SetArg(argc++, g_outputs[g_primary].output->data());
+			int argc = 0;
+			acckernel.SetArg(argc++, g_outputs[g_primary].copybuffer);
+			acckernel.SetArg(argc++, g_window_width * g_window_width);
+			acckernel.SetArg(argc++, g_outputs[g_primary].output->data());
 
-        int globalsize = g_window_width * g_window_height;
-        g_cfgs[g_primary].context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, acckernel);
-    }
-}
+			int globalsize = g_window_width * g_window_height;
+			g_cfgs[g_primary].context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, acckernel);
+		}
+	}
 
-//updatetime = time;
-//}
+	//updatetime = time;
+	//}
 
-if (!g_interop)
-{
-    g_outputs[g_primary].output->GetData(&g_outputs[g_primary].fdata[0]);
+	if (!g_interop)
+	{
+		g_outputs[g_primary].output->GetData(&g_outputs[g_primary].fdata[0]);
 
-    float gamma = 2.2f;
-    for (int i = 0; i < (int)g_outputs[g_primary].fdata.size(); ++i)
-    {
-        g_outputs[g_primary].udata[4 * i] = (unsigned char)clamp(clamp(pow(g_outputs[g_primary].fdata[i].x / g_outputs[g_primary].fdata[i].w, 1.f / gamma), 0.f, 1.f) * 255, 0, 255);
-        g_outputs[g_primary].udata[4 * i + 1] = (unsigned char)clamp(clamp(pow(g_outputs[g_primary].fdata[i].y / g_outputs[g_primary].fdata[i].w, 1.f / gamma), 0.f, 1.f) * 255, 0, 255);
-        g_outputs[g_primary].udata[4 * i + 2] = (unsigned char)clamp(clamp(pow(g_outputs[g_primary].fdata[i].z / g_outputs[g_primary].fdata[i].w, 1.f / gamma), 0.f, 1.f) * 255, 0, 255);
-        g_outputs[g_primary].udata[4 * i + 3] = 1;
-    }
+		float gamma = 2.2f;
+		for (int i = 0; i < (int)g_outputs[g_primary].fdata.size(); ++i)
+		{
+			g_outputs[g_primary].udata[4 * i] = (unsigned char)clamp(clamp(pow(g_outputs[g_primary].fdata[i].x / g_outputs[g_primary].fdata[i].w, 1.f / gamma), 0.f, 1.f) * 255, 0, 255);
+			g_outputs[g_primary].udata[4 * i + 1] = (unsigned char)clamp(clamp(pow(g_outputs[g_primary].fdata[i].y / g_outputs[g_primary].fdata[i].w, 1.f / gamma), 0.f, 1.f) * 255, 0, 255);
+			g_outputs[g_primary].udata[4 * i + 2] = (unsigned char)clamp(clamp(pow(g_outputs[g_primary].fdata[i].z / g_outputs[g_primary].fdata[i].w, 1.f / gamma), 0.f, 1.f) * 255, 0, 255);
+			g_outputs[g_primary].udata[4 * i + 3] = 1;
+		}
 
 
-    glActiveTexture(GL_TEXTURE0);
+		glActiveTexture(GL_TEXTURE0);
 
-    glBindTexture(GL_TEXTURE_2D, g_texture);
+		glBindTexture(GL_TEXTURE_2D, g_texture);
 
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, g_outputs[g_primary].output->width(), g_outputs[g_primary].output->height(), GL_RGBA, GL_UNSIGNED_BYTE, &g_outputs[g_primary].udata[0]);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, g_outputs[g_primary].output->width(), g_outputs[g_primary].output->height(), GL_RGBA, GL_UNSIGNED_BYTE, &g_outputs[g_primary].udata[0]);
 
-    glBindTexture(GL_TEXTURE_2D, 0);
-}
-else
-{
-    std::vector<cl_mem> objects;
-    objects.push_back(g_cl_interop_image);
-    g_cfgs[g_primary].context.AcquireGLObjects(0, objects);
+		glBindTexture(GL_TEXTURE_2D, 0);
+	}
+	else
+	{
+		std::vector<cl_mem> objects;
+		objects.push_back(g_cl_interop_image);
+		g_cfgs[g_primary].context.AcquireGLObjects(0, objects);
 
-    CLWKernel copykernel = g_cfgs[g_primary].renderer->GetCopyKernel();
+		CLWKernel copykernel = g_cfgs[g_primary].renderer->GetCopyKernel();
 
-    int argc = 0;
-    copykernel.SetArg(argc++, g_outputs[g_primary].output->data());
-    copykernel.SetArg(argc++, g_outputs[g_primary].output->width());
-    copykernel.SetArg(argc++, g_outputs[g_primary].output->height());
-    copykernel.SetArg(argc++, 2.2f);
-    copykernel.SetArg(argc++, g_cl_interop_image);
+		int argc = 0;
+		copykernel.SetArg(argc++, g_outputs[g_primary].output->data());
+		copykernel.SetArg(argc++, g_outputs[g_primary].output->width());
+		copykernel.SetArg(argc++, g_outputs[g_primary].output->height());
+		copykernel.SetArg(argc++, 2.2f);
+		copykernel.SetArg(argc++, g_cl_interop_image);
 
-    int globalsize = g_outputs[g_primary].output->width() * g_outputs[g_primary].output->height();
-    g_cfgs[g_primary].context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, copykernel);
+		int globalsize = g_outputs[g_primary].output->width() * g_outputs[g_primary].output->height();
+		g_cfgs[g_primary].context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, copykernel);
 
-    g_cfgs[g_primary].context.ReleaseGLObjects(0, objects);
-    g_cfgs[g_primary].context.Finish(0);
-}
-//}
+		g_cfgs[g_primary].context.ReleaseGLObjects(0, objects);
+		g_cfgs[g_primary].context.Finish(0);
+	}
+	//}
 
-glutPostRedisplay();
+	glutPostRedisplay();
 }
 
 void RenderThread(ControlData& cd)

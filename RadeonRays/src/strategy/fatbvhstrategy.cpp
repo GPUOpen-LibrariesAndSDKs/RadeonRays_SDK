@@ -31,10 +31,6 @@
 #include "../translator/fatnode_bvh_translator.h"
 #include "../except/except.h"
 
-#ifdef FR_EMBED_KERNELS
-#include "../kernel/CL/cache/kernels.h"
-#endif
-
 #include <algorithm>
 
 // Preferred work group size for Radeon devices
@@ -114,7 +110,7 @@ namespace RadeonRays
     , m_gpudata(new GpuData(device))
     , m_bvh(nullptr)
     {
-#ifndef FR_EMBED_KERNELS
+#ifndef RR_EMBED_KERNELS
 			if (device->GetPlatform() == Calc::Platform::kOpenCL)
 			{
 				char const* headers[] = { "kernels/CL/common.cl" };
@@ -129,7 +125,7 @@ namespace RadeonRays
 				m_gpudata->executable = m_device->CompileExecutable("kernels/GLSL/fatbvh.comp", nullptr, 0);
 			}
 #else
-        m_gpudata->executable = m_device->CompileExecutable(cl_fatbvh, std::strlen(cl_fatbvh), nullptr);
+		RR_GetEmbeddedKernel(fatbvh)
 #endif
         
         m_gpudata->isect_func = m_gpudata->executable->CreateFunction("IntersectClosest");

@@ -43,11 +43,28 @@ project "RadeonRays"
     configuration {}
 
     if _OPTIONS["embed_kernels"] then
-        defines {"FR_EMBED_KERNELS"}
-        os.execute("python ../Tools/scripts/stringify.py ./src/kernel/CL/ > ./src/kernel/CL/cache/kernels.h")
-        print ">> RadeonRays: CL kernels embedded"
-    end
+        defines {"RR_EMBED_KERNELS=1"}
 
+        if _OPTIONS["use_vulkan"] then
+            os.execute( "python ../Tools/scripts/stringify.py " .. 
+                                os.getcwd() .. "../Resources/kernels/GLSL/ "  .. 
+                                ".comp " ..
+                                "vulkan " ..
+                                 "> ./src/kernelcache/kernels_vk.h"                           
+                                ) 
+            print ">> RadeonRays: VK kernels embedded"
+        end
+        
+        if _OPTIONS["use_opencl"] then
+            os.execute( "python ../Tools/scripts/stringify.py " .. 
+                                os.getcwd() .. "../Resources/kernels/CL/ "  .. 
+                                ".cl " ..
+                                "opencl " ..
+                                 "> ./src/kernelcache/kernels_cl.h"                           
+                                ) 
+            print ">> RadeonRays: CL kernels embedded"
+        end
+    end
 
     if _OPTIONS["use_tbb"] then
         defines {"USE_TBB"}
@@ -112,3 +129,4 @@ project "RadeonRays"
         targetdir "../Bin/Release/x64"
     configuration {}
     
+

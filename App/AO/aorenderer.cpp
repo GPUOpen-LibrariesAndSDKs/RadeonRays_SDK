@@ -32,7 +32,7 @@ THE SOFTWARE.
 //#include "sobol.h"
 extern unsigned g_SobolMatrices[];
 
-#ifdef FR_EMBED_KERNELS
+#ifdef RR_EMBED_KERNELS
 #include "./CL/cache/kernels.h"
 #endif
 
@@ -104,7 +104,7 @@ namespace Baikal
         m_render_data->pp = CLWParallelPrimitives(m_context);
 
         // Load kernels
-#ifndef FR_EMBED_KERNELS
+#ifndef RR_EMBED_KERNELS
         m_render_data->program = CLWProgram::CreateFromFile("../App/CL/integrator_ao.cl", m_context);
 #else
         m_render_data->program = CLWProgram::CreateFromSource(cl_app, std::strlen(cl_integrator_ao), context);

@@ -27,9 +27,6 @@ THE SOFTWARE.
 
 #include "../translator/plain_bvh_translator.h"
 
-#ifdef FR_EMBED_KERNELS
-#include "../kernel/CL/cache/kernels.h"
-#endif
 
 #include "device.h"
 #include "executable.h"
@@ -110,7 +107,7 @@ namespace RadeonRays
 		, m_gpudata(new GpuData(device))
 		, m_bvh(nullptr)
 	{
-#ifndef FR_EMBED_KERNELS
+#ifndef RR_EMBED_KERNELS
 		if ( device->GetPlatform() == Calc::Platform::kOpenCL )
 		{
 			char const* headers[] = { "kernels/CL/common.cl" };
@@ -125,7 +122,7 @@ namespace RadeonRays
 			m_gpudata->executable = m_device->CompileExecutable( "kernels/GLSL/hlbvh.comp", nullptr, 0 );
 		}
 #else
-		m_gpudata->executable = m_device->CompileExecutable(cl_hlbvh, std::strlen(cl_hlbvh), nullptr);
+		RR_GetEmbeddedKernel(hlbvh)
 #endif
 
 		m_gpudata->isect_func = m_gpudata->executable->CreateFunction("IntersectClosest");

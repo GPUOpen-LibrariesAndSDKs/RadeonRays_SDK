@@ -15,14 +15,14 @@ project "App"
 
     if os.is("windows") then
         includedirs { "../3rdParty/glew/include", "../3rdParty/freeglut/include", "../3rdParty/oiio/include"  }
-		links {"RadeonRays", "freeglut", "glew"}
+        links {"RadeonRays", "freeglut", "glew"}
 
-		configuration {"x32"}
-			libdirs { "../3rdParty/glew/lib/x86", "../3rdParty/freeglut/lib/x86", "../3rdParty/embree/lib/x86", "../3rdParty/oiio/lib/x86" }
-		configuration {"x64"}
-			libdirs { "../3rdParty/glew/lib/x64", "../3rdParty/freeglut/lib/x64", "../3rdParty/embree/lib/x64", "../3rdParty/oiio/lib/x64"}
+        configuration {"x32"}
+        	libdirs { "../3rdParty/glew/lib/x86", "../3rdParty/freeglut/lib/x86", "../3rdParty/embree/lib/x86", "../3rdParty/oiio/lib/x86" }
+        configuration {"x64"}
+        	libdirs { "../3rdParty/glew/lib/x64", "../3rdParty/freeglut/lib/x64", "../3rdParty/embree/lib/x64", "../3rdParty/oiio/lib/x64"}
 
-    	configuration {}
+        configuration {}
 
         configuration {"Debug"}
 		  links {"OpenImageIOD"}

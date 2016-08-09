@@ -24,6 +24,7 @@ THE SOFTWARE.
 #include "primitives.h"
 #include "executable.h"
 #include "../except/except.h"
+#include "../strategy/strategy.h"
 #include "calc.h"
 #include "event.h"
 
@@ -33,13 +34,6 @@ THE SOFTWARE.
 #include <cstring>
 #include <iostream>
 #include <assert.h>
-
-
-
-
-#ifdef FR_EMBED_KERNELS
-#include "../kernel/CL/cache/kernels.h"
-#endif
 
 #define INITIAL_TRIANGLE_CAPACITY 100000
 
@@ -86,7 +80,7 @@ namespace RadeonRays
     
     void Hlbvh::InitGpuData()
     {
-#ifndef FR_EMBED_KERNELS
+#ifndef RR_EMBED_KERNELS
 		if ( m_device->GetPlatform() == Calc::Platform::kOpenCL )
 		{
 			m_gpudata->executable = m_device->CompileExecutable( "kernels/CL/hlbvh_build.cl", nullptr, 0 );
@@ -98,7 +92,8 @@ namespace RadeonRays
 			m_gpudata->executable = m_device->CompileExecutable( "kernels/GLSL/hlbvh_build.comp", nullptr, 0 );
 		}
 #else
-		m_gpudata->executable = m_device->CompileExecutable(cl_hlbvh_build, std::strlen(cl_hlbvh_build), "");
+		auto& device = m_device;
+		RR_GetEmbeddedKernel(hlbvh)
 #endif
 		m_gpudata->morton_code_func = m_gpudata->executable->CreateFunction("CalcMortonCode");
 		m_gpudata->build_func = m_gpudata->executable->CreateFunction("BuildHierarchy");

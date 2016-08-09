@@ -28,10 +28,6 @@ THE SOFTWARE.
 
 #include "../translator/plain_bvh_translator.h"
 
-#ifdef FR_EMBED_KERNELS
-#include "../kernel/CL/cache/kernels.h"
-#endif
-
 #include "device.h"
 #include "executable.h"
 #include <algorithm>
@@ -114,7 +110,7 @@ namespace RadeonRays
 		, m_gpudata(new GpuData(device))
 		, m_bvh(nullptr)
 	{
-#ifndef FR_EMBED_KERNELS
+#ifndef RR_EMBED_KERNELS
 		if ( device->GetPlatform() == Calc::Platform::kOpenCL )
 		{
 			char const* headers[] = { "kernels/CL/common.cl" };
@@ -129,7 +125,7 @@ namespace RadeonRays
 			m_gpudata->executable = m_device->CompileExecutable( "kernels/GLSL/bvh.comp", nullptr, 0 );
 		}
 #else
-		m_gpudata->executable = m_device->CompileExecutable(cl_bvh, std::strlen(cl_bvh), nullptr);
+		RR_GetEmbeddedKernel(bvh)
 #endif
 
 		assert(m_gpudata->executable);

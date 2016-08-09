@@ -85,6 +85,22 @@ namespace RadeonRays
 	};
 }
 
+#ifdef RR_EMBED_KERNELS
+#if USE_OPENCL
+#	include <RadeonRays/src/kernelcache/kernels_cl.h>
+#endif
+
+#if USE_VULKAN
+#	include <RadeonRays/src/kernelcache/kernels_vk.h>
+#endif
+#endif // RR_EMBED_KERNELS
+
+#define RR_GetEmbeddedKernel( NAME ) \
+	if (device->GetPlatform() == Calc::Platform::kOpenCL) \
+	{	m_gpudata->executable = m_device->CompileExecutable(g_ ##NAME## _opencl, std::strlen(g_ ##NAME## _opencl), nullptr); } \
+	else { assert(device->GetPlatform() == Calc::Platform::kVulkan); \
+		m_gpudata->executable = m_device->CompileExecutable(g_ ##NAME## _vulkan, std::strlen(g_ ##NAME## _vulkan), nullptr); }
+
 
 
 #endif // STRATEGY_H
