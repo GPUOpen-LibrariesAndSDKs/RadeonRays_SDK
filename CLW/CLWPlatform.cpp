@@ -76,14 +76,6 @@ void CLWPlatform::CreateAllPlatforms(std::vector<CLWPlatform>& platforms)
             continue;
         }
 
-		status = clGetPlatformInfo(platformIds[i], CL_PLATFORM_NAME, 0, nullptr, &size);
-
-		std::vector<char> name(size);
-
-		status = clGetPlatformInfo(platformIds[i], CL_PLATFORM_NAME, size, &name[0], 0);
-
-		std::cout << name << std::endl;
-
         validIds.push_back(platformIds[i]);
     }
 
