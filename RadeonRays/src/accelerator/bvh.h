@@ -94,6 +94,7 @@ namespace RadeonRays
         {
             int dim;
             float split;
+            float sah;
         };
 
         void BuildNode(SplitRequest const& req, bbox const* bounds, float3 const* centroids, int* primindices);
