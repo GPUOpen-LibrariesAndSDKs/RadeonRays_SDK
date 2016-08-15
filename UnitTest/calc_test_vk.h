@@ -21,6 +21,8 @@ THE SOFTWARE.
 ********************************************************************/
 #pragma once
 
+#ifdef USE_VULKAN
+
 #include <vector>
 #include <algorithm>
 #include <numeric>
@@ -561,3 +563,4 @@ TEST_F(CalcTestkVulkan, ExecuteRawParams)
 }
 
 
+#endif // USE_VULKAN

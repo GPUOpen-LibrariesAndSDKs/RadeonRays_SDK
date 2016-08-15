@@ -21,9 +21,6 @@ THE SOFTWARE.
 ********************************************************************/
 #pragma once
 
-#ifndef RADEONRAYS_CONFORMANCE_TEST_CL_H
-#define RADEONRAYS_CONFORMANCE_TEST_CL_H
-
 #if USE_OPENCL
 /// This test suite is testing RadeonRays GPU results to conform to CPU
 ///
@@ -635,6 +632,3 @@ inline void ApiConformanceCL::ExpectAnyRaysOk(RadeonRays::IntersectionApi* api) 
 }
 
 #endif // USE_OPENCL
-
-#endif // RadeonRays_CONFORMANCE_TEST_CL_H
-

@@ -80,7 +80,7 @@ project "RadeonRays"
 
     if _OPTIONS["use_embree"] then
         files {"../RadeonRays/src/device/embree*"}
-        defines {"USE_EMBREE"}
+        defines {"USE_EMBREE=1"}
         includedirs {"../3rdParty/embree/include"}
 
         configuration {"x32"}

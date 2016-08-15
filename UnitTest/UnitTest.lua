@@ -22,6 +22,26 @@ project "UnitTest"
         links {"CLW"}
     end
 
+    if _OPTIONS["use_embree"] then
+        files {"../RadeonRays/src/device/embree*"}
+        defines {"USE_EMBREE=1"}
+        includedirs {"../3rdParty/embree/include"}
+
+        configuration {"x32"}
+            libdirs { "../3rdParty/embree/lib/x86"}
+        configuration {"x64"}
+            libdirs { "../3rdParty/embree/lib/x64"}
+        configuration {}
+
+        if os.is("macosx") then
+            links {"embree.2"}
+        elseif os.is("linux") then
+            links {"embree"}
+        elseif os.is("windows") then
+            links {"embree"}
+        end
+    end
+
     if _OPTIONS["use_vulkan"] then
         local vulkanSDKPath = os.getenv( "VK_SDK_PATH" );
         if vulkanSDKPath ~= nil then

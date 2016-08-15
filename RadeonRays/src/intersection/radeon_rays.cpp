@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include "device.h"
 
 #include "../device/calc_intersection_device.h"
+#include <cassert>
 
 #if USE_OPENCL
 #include "../device/calc_intersection_device_cl.h"
@@ -123,7 +124,7 @@ namespace RadeonRays
 				devinfo.name = "embree";
 				devinfo.vendor = "intel";
 				devinfo.type = DeviceInfo::kCpu;
-				devinfo.platform = kEmbree;
+				devinfo.platform = DeviceInfo::kEmbree;
 			}
 			else
 			{

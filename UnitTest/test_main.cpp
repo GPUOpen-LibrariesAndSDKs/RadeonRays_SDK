@@ -36,6 +36,11 @@ THE SOFTWARE.
 //#include "radeon_rays_performance_test_vk.h"
 #endif
 
+#if USE_EMBREE
+#include "radeon_rays_apitest_embree.h"
+
+#endif
+
 #include "gtest/gtest.h"
 
 

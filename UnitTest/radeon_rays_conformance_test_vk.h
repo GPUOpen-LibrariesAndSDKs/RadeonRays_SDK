@@ -19,14 +19,14 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
-#ifndef RadeonRays_CONFORMANCE_TEST_VK_H
-#define RadeonRays_CONFORMANCE_TEST_VK_H
 
 /// This test suite is testing RadeonRays GPU results to conform to CPU
 ///
 
 #include "gtest/gtest.h"
 #include "radeon_rays.h"
+
+#if USE_VULKAN
 
 using namespace RadeonRays;
 using namespace tinyobj;
@@ -472,5 +472,5 @@ inline void ApiConformanceVK::ExpectAnyRaysOk(RadeonRays::IntersectionApi* api) 
 	EXPECT_NO_THROW(api->DeleteBuffer(result_buffer));
 }
 
-#endif // RadeonRays_CONFORMANCE_TEST_VK_H
+#endif // USE_VULKAN
 

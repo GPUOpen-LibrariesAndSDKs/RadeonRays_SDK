@@ -41,9 +41,9 @@ THE SOFTWARE.
 //switch between rtcIntersect4 and rtcIntercetN
 //#define INTERSECTN
 
-namespace FireRays
+namespace RadeonRays
 {
-    //simple FireRays::Buffer implementation
+    //simple RadeonRays::Buffer implementation
     class EmbreeBuffer : public Buffer
     {
     public:
@@ -74,7 +74,7 @@ namespace FireRays
         void* m_data;
     };
 
-    //simple FireRays::Event implementation
+    //simple RadeonRays::Event implementation
     class EmbreeEvent : public Event
     {
     public:
@@ -277,9 +277,9 @@ namespace FireRays
         {
             m_pool.setSleepTime(0);
             //processing buffers workflow:
-            //1. convert FireRays::ray to RTCRay
+            //1. convert RadeonRays::ray to RTCRay
             //2. rtcIntersect
-            //3. convert RTCRay hit result to FireRays::Intersection
+            //3. convert RTCRay hit result to RadeonRays::Intersection
             std::vector<std::future<void> > jobs;
             jobs.reserve(numrays / TASK_SIZE);
 #ifndef INTERSECTN
@@ -368,7 +368,7 @@ namespace FireRays
         {
             m_pool.setSleepTime(0);
             //processing buffers workflow:
-            //1. convert FireRays::ray to RTCRay
+            //1. convert RadeonRays::ray to RTCRay
             //2. rtcOccluded
             //3. convert RTCRay hit result
             std::vector<std::future<void> > jobs;
@@ -470,7 +470,7 @@ namespace FireRays
         Throw("Not implemented for embree device.");
     }
 
-    RTCScene EmbreeIntersectionDevice::GetEmbreeMesh(const FireRays::Mesh* mesh)
+    RTCScene EmbreeIntersectionDevice::GetEmbreeMesh(const RadeonRays::Mesh* mesh)
     {
         if (m_meshes.count(mesh))
             return m_meshes[mesh].scene;
@@ -514,7 +514,7 @@ namespace FireRays
         return result;
     }
 
-    void EmbreeIntersectionDevice::UpdateShape(const FireRays::ShapeImpl* shape)
+    void EmbreeIntersectionDevice::UpdateShape(const RadeonRays::ShapeImpl* shape)
     {
         const EmbreeSceneData& data = m_instances[shape];
         int state = shape->GetStateChange();
@@ -621,4 +621,4 @@ namespace FireRays
             Throw("Embree error");
         }
     }
-} //FireRays
+} //RadeonRays
