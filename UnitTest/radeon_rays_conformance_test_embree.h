@@ -78,21 +78,21 @@ inline void ApiConformanceEmbree::SetUp()
 	IntersectionApi::SetPlatform(DeviceInfo::kEmbree);
 
 	//Search for native CPU
-	int gpuidx = -1;
+	int cpuidx = -1;
 	for (auto idx = 0U; idx < IntersectionApi::GetDeviceCount(); ++idx)
 	{
 		DeviceInfo devinfo;
 		IntersectionApi::GetDeviceInfo(idx, devinfo);
 
-		if (devinfo.type == DeviceInfo::kCpu && gpuidx == -1)
+		if (devinfo.type == DeviceInfo::kCpu && cpuidx == -1)
 		{
-			gpuidx = idx;
+			cpuidx = idx;
 		}
 	}
 
-	EXPECT_NE(gpuidx, -1);
+	EXPECT_NE(cpuidx, -1);
 
-	apigpu_ = IntersectionApi::Create(gpuidx);
+	apigpu_ = IntersectionApi::Create(cpuidx);
 	EXPECT_NE(apigpu_, nullptr);
 
 	// Load obj file 
