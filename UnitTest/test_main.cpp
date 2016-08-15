@@ -38,6 +38,7 @@ THE SOFTWARE.
 
 #if USE_EMBREE
 #include "radeon_rays_apitest_embree.h"
+#include "radeon_rays_conformance_test_embree.h"
 
 #endif
 
