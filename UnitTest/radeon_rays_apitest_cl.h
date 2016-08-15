@@ -928,10 +928,16 @@ TEST_F(ApiBackendOpenCL, Intersection_1Ray_TransformedInstance)
     ASSERT_NO_THROW(api_->UnmapBuffer(isect_buffer, tmp, &e_));
 	Wait();
     
-    // Check results
-    ASSERT_EQ(isect.shapeid, instance->GetId());
-    ASSERT_LE(std::fabs(isect.uvwt.w - 8.f), 0.01f);
-    
+	// Check results
+	Intersection isect_brute;
+	api_->TestIntersections(&r, 1, &isect_brute);
+	// check the test gets the mesh we expect
+	EXPECT_EQ(isect_brute.shapeid, instance->GetId());
+	// does the accelerated radeon rays match the test
+	EXPECT_EQ(isect.shapeid, isect_brute.shapeid);
+	EXPECT_LE(std::fabs(isect.uvwt.w - 8.f), 0.01f);
+
+
     //
     m = translation(float3(0,0,2));
     minv = inverse(m);
@@ -955,13 +961,13 @@ TEST_F(ApiBackendOpenCL, Intersection_1Ray_TransformedInstance)
 	Wait();
 
     // Check results
-    ASSERT_EQ(isect.shapeid, mesh->GetId());
-    ASSERT_LE(std::fabs(isect.uvwt.w - 10.f), 0.01f);
+	api_->TestIntersections(&r, 1, &isect_brute);
+	EXPECT_EQ(isect_brute.shapeid, instance->GetId());
+	EXPECT_EQ(isect.shapeid, isect_brute.shapeid);
+	EXPECT_LE(std::fabs(isect.uvwt.w - 10.f), 0.01f);
 
     // Bail out
-    ASSERT_NO_THROW(api_->DetachShape(instance));
     ASSERT_NO_THROW(api_->DeleteShape(instance));
-    ASSERT_NO_THROW(api_->DetachShape(mesh));
     ASSERT_NO_THROW(api_->DeleteShape(mesh));
 	ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
 	ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
@@ -1066,8 +1072,6 @@ TEST_F(ApiBackendOpenCL, Intersection_1Ray_TransformedInstanceFlat)
 
     // Bail out
     ASSERT_NO_THROW(api_->DetachShape(instance));
-    ASSERT_NO_THROW(api_->DeleteShape(instance));
-    ASSERT_NO_THROW(api_->DetachShape(mesh));
     ASSERT_NO_THROW(api_->DeleteShape(mesh));
 	ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
 	ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
@@ -1143,8 +1147,6 @@ TEST_F(ApiBackendOpenCL, Intersection_1Ray_InstanceNoShape)
 
 	// Bail out
 	ASSERT_NO_THROW(api_->DetachShape(instance));
-	ASSERT_NO_THROW(api_->DeleteShape(instance));
-	ASSERT_NO_THROW(api_->DetachShape(mesh));
 	ASSERT_NO_THROW(api_->DeleteShape(mesh));
 	ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
 	ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));

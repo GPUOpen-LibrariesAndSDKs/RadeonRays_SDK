@@ -41,7 +41,7 @@ public:
 		api_ = nullptr;
 		int nativeidx = -1;
 
-		// Always use Vulkan
+		// Always use Embree
 		IntersectionApi::SetPlatform(DeviceInfo::kEmbree);
 
 		for (auto idx = 0U; idx < IntersectionApi::GetDeviceCount(); ++idx)
@@ -78,6 +78,29 @@ public:
 	Event* e_;
 };
 
+TEST_F(ApiBackendEmbree, EmbreeDeviceIndexTest)
+{
+	IntersectionApi::SetPlatform(DeviceInfo::kEmbree);
+
+	assert(IntersectionApi::GetDeviceCount() == 1);
+
+#if	USE_VULKAN 
+	IntersectionApi::SetPlatform(DeviceInfo::kVulkan);
+	const auto vulkanCount = IntersectionApi::GetDeviceCount();
+
+	IntersectionApi::SetPlatform( (DeviceInfo::Platform)(DeviceInfo::kEmbree | DeviceInfo::kVulkan));
+	assert(IntersectionApi::GetDeviceCount()  == vulkanCount + 1);
+#endif
+
+#if	USE_OPENCL
+	IntersectionApi::SetPlatform(DeviceInfo::kOpenCL);
+	const auto openclCount = IntersectionApi::GetDeviceCount();
+
+	IntersectionApi::SetPlatform(DeviceInfo::kEmbree | DeviceInfo::kOpenCL);
+	assert(IntersectionApi::GetDeviceCount() == openclCount + 1);
+#endif
+	IntersectionApi::SetPlatform(DeviceInfo::kEmbree);
+}
 
 // The test checks whether the api has been successfully created
 TEST_F(ApiBackendEmbree, DeviceEnum)

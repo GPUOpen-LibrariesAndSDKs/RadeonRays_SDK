@@ -93,62 +93,81 @@ namespace RadeonRays
 		if (calc != nullptr)
 		{
 			result += GetCalc()->GetDeviceCount();
-		} else 
-		{
-#ifdef USE_EMBREE
-	        ++result;
-#endif //USE_EMBREE
 		}
+		// embree is always the last device
+#ifdef USE_EMBREE
+		if (s_calc_platform & DeviceInfo::Platform::kEmbree)
+		{
+			++result;
+		}
+#endif //USE_EMBREE
+
         return result;
     }
+	static bool IsDeviceIndexEmbree(uint32_t devidx)
+	{
+
+#ifdef USE_EMBREE
+		auto* calc = GetCalc();
+		if (calc != nullptr)
+		{
+			if (devidx == GetCalc()->GetDeviceCount())
+			{
+				return true;
+			}
+		}
+		else if(devidx == 0)
+		{
+			return true;
+		}
+#endif //USE_EMBREE
+		return false;
+	}
 
     void IntersectionApi::GetDeviceInfo(std::uint32_t devidx, DeviceInfo& devinfo)
     {
+
 		auto* calc = GetCalc();
 		std::uint32_t result = 0;
-		if (calc != nullptr)
-		{
-			Calc::DeviceSpec spec;
-			calc->GetDeviceSpec(devidx, spec);
 
-			// TODO: careful with memory management of strings
-			devinfo.name = spec.name;
-			devinfo.vendor = spec.vendor;
-			devinfo.type = spec.type == Calc::DeviceType::kGpu ? DeviceInfo::kGpu : DeviceInfo::kCpu;
-		}
-		else
+		if (IsDeviceIndexEmbree(devidx))
 		{
 #ifdef USE_EMBREE
-			if (devidx == 0) 
-			{
-				devinfo.name = "embree";
-				devinfo.vendor = "intel";
-				devinfo.type = DeviceInfo::kCpu;
-				devinfo.platform = DeviceInfo::kEmbree;
-			}
-			else
-			{
-				assert(false);
-			}
+			devinfo.name = "embree";
+			devinfo.vendor = "intel";
+			devinfo.type = DeviceInfo::kCpu;
+			devinfo.platform = DeviceInfo::kEmbree;
+#else
+			assert(false);
 #endif //USE_EMBREE
+			return;
 		}
+		assert(calc);
+
+		Calc::DeviceSpec spec;
+		calc->GetDeviceSpec(devidx, spec);
+
+		// TODO: careful with memory management of strings
+		devinfo.name = spec.name;
+		devinfo.vendor = spec.vendor;
+		devinfo.type = spec.type == Calc::DeviceType::kGpu ? DeviceInfo::kGpu : DeviceInfo::kCpu;
     }
 
     IntersectionApi* IntersectionApi::Create(std::uint32_t devidx)
     {
-		auto* calc = GetCalc();
-		if (calc != nullptr)
+		if (IsDeviceIndexEmbree(devidx))
 		{
-			return new IntersectionApiImpl(new CalcIntersectionDevice(calc, calc->CreateDevice(devidx)));
+#ifdef USE_EMBREE
+			return new IntersectionApiImpl(new EmbreeIntersectionDevice());
+#endif //USE_EMBREE
 		}
 		else
 		{
-#ifdef USE_EMBREE
-			if (devidx == 0)
+			auto* calc = GetCalc();
+			if (calc != nullptr)
 			{
-				return new IntersectionApiImpl(new EmbreeIntersectionDevice());
+				return new IntersectionApiImpl(new CalcIntersectionDevice(calc, calc->CreateDevice(devidx)));
 			}
-#endif
 		}
 
         return nullptr;
