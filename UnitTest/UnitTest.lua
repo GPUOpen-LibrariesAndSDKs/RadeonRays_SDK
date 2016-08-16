@@ -23,7 +23,7 @@ project "UnitTest"
     end
 
     if _OPTIONS["use_embree"] then
-        files {"../RadeonRays/src/device/embree*"}
+--        files {"../RadeonRays/src/device/embree*"}
         defines {"USE_EMBREE=1"}
         includedirs {"../3rdParty/embree/include"}
 

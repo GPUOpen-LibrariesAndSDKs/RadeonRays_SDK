@@ -99,10 +99,12 @@ namespace RadeonRays
 		const auto mesh = dynamic_cast<const Mesh*>(GetBaseShape());
 		if (mesh != nullptr)
 		{
+			// This may cause a false positive if the inner mesh is used
+			// both as a real mesh and an inner mesh. Don't do that for the Test call
+			assert(isect.shapeid != mesh->GetId());
+
 			mesh->TestIntersection(r, worldmat_, isect);
 			// if we hit the mesh shape, pretend it hit the instance
-			// This may cause a false positive if the inner mesh is used
-			// both as a real mesh and an inner mesh. Don't do that
 			if(isect.shapeid == mesh->GetId())
 			{
 				isect.shapeid = GetId();
@@ -110,8 +112,10 @@ namespace RadeonRays
 		}
 		else
 		{
-			//			GetBaseShape()->TestIntersection(r, worldmat_, isect);
-			GetBaseShape()->TestIntersection(r, isect);
+			if (GetBaseShape() != nullptr)
+			{
+				GetBaseShape()->TestIntersection(r, isect);
+			}
 		}
     }
 

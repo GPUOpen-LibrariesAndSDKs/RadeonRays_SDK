@@ -2,7 +2,7 @@ project "CLW"
     kind "StaticLib"
     location "../CLW"  
     includedirs { "." }
-    files { "../CLW/**.h", "../CLW/**.cpp", "../CLW/**.cl" }
+    files { "../CLW/**.h", "../CLW/**.cpp", "../Resources/kernels/CL/CLW.cl" }
 
     if os.is("macosx") then
         buildoptions "-std=c++11 -stdlib=libc++"

@@ -53,11 +53,11 @@ namespace RadeonRays
         // The call is blocking, so the returned value is ready upon return.
         Shape* CreateMesh(
             // Position data
-            float* vertices, int vnum, int vstride,
+            float const * vertices, int vnum, int vstride,
             // Index data for vertices
-            int* indices, int istride,
+            int const * indices, int istride,
             // Numbers of vertices per face
-            int* numfacevertices,
+            int const * numfacevertices,
             // Number of faces
             int  numfaces
             ) const override;

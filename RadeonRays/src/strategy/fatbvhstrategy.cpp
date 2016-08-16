@@ -113,16 +113,16 @@ namespace RadeonRays
 #ifndef RR_EMBED_KERNELS
 			if (device->GetPlatform() == Calc::Platform::kOpenCL)
 			{
-				char const* headers[] = { "kernels/CL/common.cl" };
+				char const* headers[] = { "../Resources/kernels/CL/common.cl" };
 
 				int numheaders = sizeof(headers) / sizeof(char const*);
 
-				m_gpudata->executable = m_device->CompileExecutable("kernels/CL/fatbvh.cl", headers, numheaders);
+				m_gpudata->executable = m_device->CompileExecutable("../Resources/kernels/CL/fatbvh.cl", headers, numheaders);
 			} 
 			else
 			{
 				assert(device->GetPlatform() == Calc::Platform::kVulkan);
-				m_gpudata->executable = m_device->CompileExecutable("kernels/GLSL/fatbvh.comp", nullptr, 0);
+				m_gpudata->executable = m_device->CompileExecutable("../Resources/kernels/GLSL/fatbvh.comp", nullptr, 0);
 			}
 #else
 		RR_GetEmbeddedKernel(fatbvh)

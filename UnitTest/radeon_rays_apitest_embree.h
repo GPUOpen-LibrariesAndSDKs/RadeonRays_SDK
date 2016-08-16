@@ -76,6 +76,25 @@ public:
 
 	IntersectionApi* api_;
 	Event* e_;
+
+	static float const * vertices() {
+		static float const vertices[] = {
+			-1.f,-1.f,0.f,
+			1.f,-1.f,0.f,
+			0.f,1.f,0.f,
+
+		};
+		return vertices;
+	}
+	static int const * indices() {
+		static int const indices[] = { 0, 1, 2 };
+		return indices;
+	}
+
+	static int const * numfaceverts() {
+		static const int numfaceverts[] = { 3 };
+		return numfaceverts;
+	}
 };
 
 TEST_F(ApiBackendEmbree, EmbreeDeviceIndexTest)
@@ -96,7 +115,7 @@ TEST_F(ApiBackendEmbree, EmbreeDeviceIndexTest)
 	IntersectionApi::SetPlatform(DeviceInfo::kOpenCL);
 	const auto openclCount = IntersectionApi::GetDeviceCount();
 
-	IntersectionApi::SetPlatform(DeviceInfo::kEmbree | DeviceInfo::kOpenCL);
+	IntersectionApi::SetPlatform((DeviceInfo::Platform)(DeviceInfo::kEmbree | DeviceInfo::kOpenCL));
 	assert(IntersectionApi::GetDeviceCount() == openclCount + 1);
 #endif
 	IntersectionApi::SetPlatform(DeviceInfo::kEmbree);
@@ -128,21 +147,9 @@ TEST_F(ApiBackendEmbree, SingleDevice)
 // The test creates a single triangle mesh and tests attach/detach functionality
 TEST_F(ApiBackendEmbree, Mesh)
 {
-	// Mesh vertices
-	float vertices[] = {
-		0.f,0.f,0.f,
-		0.f,1.f,0.f,
-		1.f,0.f,0.f
-	};
-
-	// Indices
-	int indices[] = { 0, 1, 2 };
-	// Number of vertices for the face
-	int numfaceverts[] = { 3 };
-
 	Shape* shape = nullptr;
 
-	ASSERT_NO_THROW(shape = api_->CreateMesh(vertices, 3, 3 * sizeof(float), indices, 0, numfaceverts, 1));
+	ASSERT_NO_THROW(shape = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
 
 	ASSERT_TRUE(shape != nullptr);
 
@@ -168,7 +175,7 @@ TEST_F(ApiBackendEmbree, MeshStrided)
 	};
 
 	// Mesh vertices
-	Vertex vertices[] = {
+	Vertex meshvertices[] = {
 		{ 0.f, 0.f, 0.f, 0.f, 0.f, 1.f, 0.f, 0.f },
 		{ 0.f, 1.f, 0.f, 0.f, 0.f, 1.f, 0.f, 0.f },
 		{ 1.f, 0.f, 0.f, 0.f, 0.f, 1.f, 0.f, 0.f },
@@ -178,11 +185,11 @@ TEST_F(ApiBackendEmbree, MeshStrided)
 	};
 
 	// Indices
-	int indices[] = { 0, 1, 2, 0, 0, 1, 2, 0 };
+	int mindices[] = { 0, 1, 2, 0, 0, 1, 2, 0 };
 
 	Shape* shape = nullptr;
 
-	ASSERT_NO_THROW(shape = api_->CreateMesh((float*)vertices, 6, sizeof(Vertex), indices, 4 * sizeof(int), nullptr, 2));
+	ASSERT_NO_THROW(shape = api_->CreateMesh((float const*)meshvertices, 6, sizeof(Vertex), mindices, 4 * sizeof(int), nullptr, 2));
 
 	ASSERT_TRUE(shape != nullptr);
 
@@ -196,21 +203,10 @@ TEST_F(ApiBackendEmbree, MeshStrided)
 //The test creates a single triangle mesh and then tries to create an instance of the mesh
 TEST_F(ApiBackendEmbree, Instance)
 {
-	// Mesh vertices
-	float vertices[] = {
-		0.f,0.f,0.f,
-		0.f,1.f,0.f,
-		1.f,0.f,0.f
-	};
-
-	// Indices
-	int indices[] = { 0, 1, 2 };
-	// Number of vertices for the face
-	int numfaceverts[] = { 3 };
 
 	Shape* shape = nullptr;
 
-	ASSERT_NO_THROW(shape = api_->CreateMesh(vertices, 3, 3 * sizeof(float), indices, 0, numfaceverts, 1));
+	ASSERT_NO_THROW(shape = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
 
 	ASSERT_TRUE(shape != nullptr);
 
@@ -229,23 +225,10 @@ TEST_F(ApiBackendEmbree, Instance)
 // The test creates a single triangle mesh and tests attach/detach functionality
 TEST_F(ApiBackendEmbree, Intersection_1Ray)
 {
-	// Mesh vertices
-	float vertices[] = {
-		-1.f,-1.f,0.f,
-		1.f,-1.f,0.f,
-		0.f,1.f,0.f,
-
-	};
-
-	// Indices
-	int indices[] = { 0, 1, 2 };
-	// Number of vertices for the face
-	int numfaceverts[] = { 3 };
-
 	Shape* mesh = nullptr;
 
 	// Create mesh
-	ASSERT_NO_THROW(mesh = api_->CreateMesh(vertices, 3, 3 * sizeof(float), indices, 0, numfaceverts, 1));
+	ASSERT_NO_THROW(mesh = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
 
 	ASSERT_TRUE(mesh != nullptr);
 
@@ -287,26 +270,13 @@ TEST_F(ApiBackendEmbree, Intersection_1Ray)
 // The test creates a single triangle mesh and tests attach/detach functionality
 TEST_F(ApiBackendEmbree, Intersection_1Ray_Masked)
 {
-	// Mesh vertices
-	float vertices[] = {
-		-1.f,-1.f,0.f,
-		1.f,-1.f,0.f,
-		0.f,1.f,0.f,
-
-	};
-
-	// Indices
-	int indices[] = { 0, 1, 2 };
-	// Number of vertices for the face
-	int numfaceverts[] = { 3 };
-
 	Shape* mesh = nullptr;
 
 	api_->SetOption("acc.type", "bvh");
 	//api_->SetOption("bvh.force2level", 1.f);
 
 	// Create mesh
-	ASSERT_NO_THROW(mesh = api_->CreateMesh(vertices, 3, 3 * sizeof(float), indices, 0, numfaceverts, 1));
+	ASSERT_NO_THROW(mesh = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
 
 	// Set mask 
 	ASSERT_NO_THROW(mesh->SetMask(0xFFFFFFFF));
@@ -416,23 +386,11 @@ TEST_F(ApiBackendEmbree, Intersection_1Ray_Masked)
 // The test creates a single triangle mesh and tests attach/detach functionality
 TEST_F(ApiBackendEmbree, Intersection_1Ray_Active)
 {
-	// Mesh vertices
-	float vertices[] = {
-		-1.f,-1.f,0.f,
-		1.f,-1.f,0.f,
-		0.f,1.f,0.f,
-
-	};
-
-	// Indices
-	int indices[] = { 0, 1, 2 };
-	// Number of vertices for the face
-	int numfaceverts[] = { 3 };
 
 	Shape* mesh = nullptr;
 
 	// Create mesh
-	ASSERT_NO_THROW(mesh = api_->CreateMesh(vertices, 3, 3 * sizeof(float), indices, 0, numfaceverts, 1));
+	ASSERT_NO_THROW(mesh = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
 
 	ASSERT_TRUE(mesh != nullptr);
 
@@ -506,26 +464,13 @@ TEST_F(ApiBackendEmbree, Intersection_1Ray_Active)
 // The test creates a single triangle mesh and tests attach/detach functionality
 TEST_F(ApiBackendEmbree, Intersection_3Rays)
 {
-	// Mesh vertices
-	float vertices[] = {
-		-1.f,-1.f,0.f,
-		1.f,-1.f,0.f,
-		0.f,1.f,0.f,
-
-	};
-
-	// Indices
-	int indices[] = { 0, 1, 2 };
-	// Number of vertices for the face
-	int numfaceverts[] = { 3 };
-
 	Shape* mesh = nullptr;
 
 	// 
 	ASSERT_NO_THROW(api_->SetOption("acc.type", "grid"));
 
 	// Create mesh
-	ASSERT_NO_THROW(mesh = api_->CreateMesh(vertices, 3, 3 * sizeof(float), indices, 0, numfaceverts, 1));
+	ASSERT_NO_THROW(mesh = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
 
 	ASSERT_TRUE(mesh != nullptr);
 
@@ -582,23 +527,11 @@ TEST_F(ApiBackendEmbree, Intersection_3Rays)
 // Test is checking if mesh transform is working as expected
 TEST_F(ApiBackendEmbree, Intersection_1Ray_Transformed)
 {
-	// Mesh vertices
-	float vertices[] = {
-		-1.f,-1.f,0.f,
-		1.f,-1.f,0.f,
-		0.f,1.f,0.f,
-
-	};
-
-	// Indices
-	int indices[] = { 0, 1, 2 };
-	// Number of vertices for the face
-	int numfaceverts[] = { 3 };
 
 	Shape* mesh = nullptr;
 
 	// Create mesh
-	ASSERT_NO_THROW(mesh = api_->CreateMesh(vertices, 3, 3 * sizeof(float), indices, 0, numfaceverts, 1));
+	ASSERT_NO_THROW(mesh = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
 
 	ASSERT_TRUE(mesh != nullptr);
 
@@ -684,31 +617,26 @@ TEST_F(ApiBackendEmbree, Intersection_1Ray_Transformed)
 TEST_F(ApiBackendEmbree, Intersection_1Ray_DynamicGeo)
 {
 	// Mesh vertices
-	float vertices[] = {
+	float const vertices0[] = {
 		-1.f,-1.f,0.f,
 		1.f,-1.f,0.f,
 		0.f,1.f,0.f,
 
 	};
 
-	float vertices1[] = {
+	float const vertices1[] = {
 		-1.f,-1.f,-1.f,
 		1.f,-1.f,-1.f,
 		0.f,1.f,-1.f,
 
 	};
 
-	// Indices
-	int indices[] = { 0, 1, 2 };
-	// Number of vertices for the face
-	int numfaceverts[] = { 3 };
-
 	Shape* closemesh = nullptr;
 	Shape* farmesh = nullptr;
 
 	// Create two meshes
-	ASSERT_NO_THROW(farmesh = api_->CreateMesh(vertices, 3, 3 * sizeof(float), indices, 0, numfaceverts, 1));
-	ASSERT_NO_THROW(closemesh = api_->CreateMesh(vertices1, 3, 3 * sizeof(float), indices, 0, numfaceverts, 1));
+	ASSERT_NO_THROW(farmesh = api_->CreateMesh(vertices0, 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
+	ASSERT_NO_THROW(closemesh = api_->CreateMesh(vertices1, 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
 
 	ASSERT_TRUE(farmesh != nullptr);
 	ASSERT_TRUE(closemesh != nullptr);
@@ -883,35 +811,35 @@ TEST_F(ApiBackendEmbree, CornellBox_1Ray)
 
 
 // Test is checking if mesh transform is working as expected
-TEST_F(ApiBackendEmbree, Intersection_1Ray_TransformedInstance)
+TEST_F(ApiBackendEmbree, Intersection_1Ray_TransformedInstance1)
 {
-	// Mesh vertices
-	float vertices[] = {
-		-1.f,-1.f,0.f,
-		1.f,-1.f,0.f,
-		0.f,1.f,0.f,
+	// this test uses a single mesh, it added into the world as itself
+	// at <0,-1,1000> AND as an instance at <0,0,2>
+	// ray from <0,0,-10> along the pos z should hit the uninstanced mesh
 
-	};
+	Shape* mesh0 = nullptr;
+	Shape* mesh1 = nullptr;
+	Shape* instance = nullptr;
 
-	// Indices
-	int indices[] = { 0, 1, 2 };
-	// Number of vertices for the face
-	int numfaceverts[] = { 3 };
-
-	Shape* mesh = nullptr;
-
-	// Create mesh
-	ASSERT_NO_THROW(mesh = api_->CreateMesh(vertices, 3, 3 * sizeof(float), indices, 0, numfaceverts, 1));
-
-	ASSERT_TRUE(mesh != nullptr);
+	// Create meshes
+	// NOTE mesh in world and as a instance upsets the simple TestIntersection API call 
+	ASSERT_NO_THROW(mesh0 = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
+	ASSERT_TRUE(mesh0 != nullptr);
+	ASSERT_NO_THROW(mesh1 = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
+	ASSERT_TRUE(mesh1 != nullptr);
 
 	// Attach the mesh to the scene
-	ASSERT_NO_THROW(api_->AttachShape(mesh));
+	ASSERT_NO_THROW(api_->AttachShape(mesh0));
+	// Create instance of a triangle
+	ASSERT_NO_THROW(instance = api_->CreateInstance(mesh1));
 
-	// Prepare the ray
-	ray r;
-	r.o = float3(0.f, 0.f, -10.f, 1000.f);
-	r.d = float3(0.f, 0.f, 1.f);
+	matrix m = translation(float3(0, 0, 2));
+	matrix minv = inverse(m);
+	ASSERT_NO_THROW(instance->SetTransform(m, minv));
+
+	ASSERT_NO_THROW(api_->AttachShape(instance));
+
+	ray r(float3(0.f, 0.f, -10.f), float3(0.f, 0.f, 1.f), 10000.f);
 
 	// Intersection and hit data
 	Intersection isect;
@@ -919,19 +847,6 @@ TEST_F(ApiBackendEmbree, Intersection_1Ray_TransformedInstance)
 	auto ray_buffer = api_->CreateBuffer(sizeof(ray), &r);
 	auto isect_buffer = api_->CreateBuffer(sizeof(Intersection), nullptr);
 
-	// Create instance of a triangle
-	Shape* instance = nullptr;
-	ASSERT_NO_THROW(instance = api_->CreateInstance(mesh));
-
-	matrix m = translation(float3(0, 0, -2));
-	matrix minv = inverse(m);
-	ASSERT_NO_THROW(instance->SetTransform(m, minv));
-
-	ASSERT_NO_THROW(api_->AttachShape(instance));
-
-	// Prepare the ray
-	r.o = float3(0.f, 0.f, -10.f, 1000.f);
-	r.d = float3(0.f, 0.f, 1.f);
 
 	// Commit geometry update
 	ASSERT_NO_THROW(api_->Commit());
@@ -946,7 +861,78 @@ TEST_F(ApiBackendEmbree, Intersection_1Ray_TransformedInstance)
 	ASSERT_NO_THROW(api_->UnmapBuffer(isect_buffer, tmp, &e_));
 	Wait();
 
-	// Check results
+	// Check results for 1st ray
+	Intersection isect_brute;
+	api_->TestIntersections(&r, 1, &isect_brute);
+	// check the test gets the mesh we expect
+	EXPECT_EQ(isect_brute.shapeid, mesh0->GetId());
+	// does the accelerated radeon rays match the test
+	EXPECT_EQ(isect.shapeid, isect_brute.shapeid);
+	EXPECT_LE(std::fabs(isect.uvwt.w - 10.f), 0.01f);
+
+	// Bail out
+	ASSERT_NO_THROW(api_->DetachShape(instance));
+	ASSERT_NO_THROW(api_->DetachShape(mesh0));
+	ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
+	ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
+
+}
+TEST_F(ApiBackendEmbree, Intersection_1Ray_TransformedInstance2)
+{
+	// this test uses a single mesh, it added into the world as itself
+	// at <0,-1,1000> AND as an instance at <0,0,-2>
+	// ray from <0,0,-10> along the pos z should hit the instanced mesh
+
+	Shape* mesh0 = nullptr;
+	Shape* mesh1 = nullptr;
+	Shape* instance = nullptr;
+
+	// Create meshes
+	// NOTE mesh in world and as a instance upsets the simple TestIntersection API call 
+	ASSERT_NO_THROW(mesh0 = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
+	ASSERT_TRUE(mesh0 != nullptr);
+	ASSERT_NO_THROW(mesh1 = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
+	ASSERT_TRUE(mesh1 != nullptr);
+
+	// Attach the mesh to the scene
+	ASSERT_NO_THROW(api_->AttachShape(mesh0));
+	// Create instance of a triangle
+	ASSERT_NO_THROW(instance = api_->CreateInstance(mesh1));
+
+	//
+	const matrix m = translation(float3(0, 0, -2));
+	const matrix minv = inverse(m);
+	EXPECT_NO_THROW(instance->SetTransform(m, minv));
+
+	// Prepare the ray
+	ray r(float3(0.f, 0.f, -10.f), float3(0.f, 0.f, 1.f), 10000.f);
+
+
+	// Commit geometry update
+	EXPECT_NO_THROW(api_->Commit());
+
+	ASSERT_NO_THROW(api_->AttachShape(instance));
+
+	// Intersection and hit data
+	Intersection isect;
+
+	auto ray_buffer = api_->CreateBuffer(sizeof(ray), &r);
+	auto isect_buffer = api_->CreateBuffer(sizeof(Intersection), nullptr);
+
+	// Commit geometry update
+	ASSERT_NO_THROW(api_->Commit());
+
+	// Intersect
+	ASSERT_NO_THROW(api_->QueryIntersection(ray_buffer, 1, isect_buffer, nullptr, nullptr));
+
+	Intersection* tmp = nullptr;
+	ASSERT_NO_THROW(api_->MapBuffer(isect_buffer, kMapRead, 0, sizeof(Intersection), (void**)&tmp, &e_));
+	Wait();
+	isect = *tmp;
+	ASSERT_NO_THROW(api_->UnmapBuffer(isect_buffer, tmp, &e_));
+	Wait();
+
+	// Check results for 1st ray
 	Intersection isect_brute;
 	api_->TestIntersections(&r, 1, &isect_brute);
 	// check the test gets the mesh we expect
@@ -955,37 +941,9 @@ TEST_F(ApiBackendEmbree, Intersection_1Ray_TransformedInstance)
 	EXPECT_EQ(isect.shapeid, isect_brute.shapeid);
 	EXPECT_LE(std::fabs(isect.uvwt.w - 8.f), 0.01f);
 
-	//
-	m = translation(float3(0, 0, 2));
-	minv = inverse(m);
-	EXPECT_NO_THROW(instance->SetTransform(m, minv));
-
-	// Prepare the ray
-	r.o = float3(0.f, 0.f, -10.f, 1000.f);
-	r.d = float3(0.f, 0.f, 1.f);
-
-	// Commit geometry update
-	EXPECT_NO_THROW(api_->Commit());
-
-	// Intersect
-	EXPECT_NO_THROW(api_->QueryIntersection(ray_buffer, 1, isect_buffer, nullptr, nullptr));
-
-	tmp = nullptr;
-	EXPECT_NO_THROW(api_->MapBuffer(isect_buffer, kMapRead, 0, sizeof(Intersection), (void**)&tmp, &e_));
-	Wait();
-	isect = *tmp;
-	EXPECT_NO_THROW(api_->UnmapBuffer(isect_buffer, tmp, &e_));
-	Wait();
-
-	// Check results
-	api_->TestIntersections(&r, 1, &isect_brute);
-	EXPECT_EQ(isect_brute.shapeid, instance->GetId());
-	EXPECT_EQ(isect.shapeid, isect_brute.shapeid);
-	EXPECT_LE(std::fabs(isect.uvwt.w - 10.f), 0.01f);
-
 	// Bail out
 	ASSERT_NO_THROW(api_->DetachShape(instance));
-	ASSERT_NO_THROW(api_->DetachShape(mesh));
+	ASSERT_NO_THROW(api_->DetachShape(mesh0));
 	ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
 	ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
 }
@@ -996,23 +954,10 @@ TEST_F(ApiBackendEmbree, Intersection_1Ray_TransformedInstanceFlat)
 	// Set flattening
 	api_->SetOption("bvh.forceflat", 1.f);
 
-	// Mesh vertices
-	float vertices[] = {
-		-1.f,-1.f,0.f,
-		1.f,-1.f,0.f,
-		0.f,1.f,0.f,
-
-	};
-
-	// Indices
-	int indices[] = { 0, 1, 2 };
-	// Number of vertices for the face
-	int numfaceverts[] = { 3 };
-
 	Shape* mesh = nullptr;
 
 	// Create mesh
-	ASSERT_NO_THROW(mesh = api_->CreateMesh(vertices, 3, 3 * sizeof(float), indices, 0, numfaceverts, 1));
+	ASSERT_NO_THROW(mesh = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
 
 	ASSERT_TRUE(mesh != nullptr);
 
@@ -1097,23 +1042,10 @@ TEST_F(ApiBackendEmbree, Intersection_1Ray_TransformedInstanceFlat)
 // DK: #22 repro case : Commit throws if base shape has not been attached
 TEST_F(ApiBackendEmbree, Intersection_1Ray_InstanceNoShape)
 {
-	// Mesh vertices
-	float vertices[] = {
-		-1.f,-1.f,0.f,
-		1.f,-1.f,0.f,
-		0.f,1.f,0.f,
-
-	};
-
-	// Indices
-	int indices[] = { 0, 1, 2 };
-	// Number of vertices for the face
-	int numfaceverts[] = { 3 };
-
 	Shape* mesh = nullptr;
 
 	// Create mesh
-	ASSERT_NO_THROW(mesh = api_->CreateMesh(vertices, 3, 3 * sizeof(float), indices, 0, numfaceverts, 1));
+	ASSERT_NO_THROW(mesh = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
 
 	ASSERT_TRUE(mesh != nullptr);
 

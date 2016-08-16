@@ -66,7 +66,7 @@ namespace RadeonRays
         //
         Mesh(float const* vertices, int vnum, int vstride,
             int const* vidx, int vistride,
-            int* nfaceverts,
+            int const* nfaceverts,
             int nfaces);
         
         //

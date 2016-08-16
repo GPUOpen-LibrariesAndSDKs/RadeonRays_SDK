@@ -4,7 +4,7 @@ project "RadeonRays"
     includedirs { "./include", "../Calc/inc" }
     links {"Calc"}
     defines {"EXPORT_API"}
-    files { "../RadeonRays/**.h", "../RadeonRays/**.cpp"}
+    files { "../RadeonRays/**.h", "../RadeonRays/**.cpp","../Resources/kernels/CL/**.cl", "../Resources/kernels/GLSL/**.comp"}
     
     if not os.is("macosx") then
         linkoptions {"-Wl,--no-undefined"}
