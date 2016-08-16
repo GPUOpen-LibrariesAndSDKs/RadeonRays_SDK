@@ -41,6 +41,7 @@ THE SOFTWARE.
 //switch between rtcIntersect4 and rtcIntercetN
 //#define INTERSECTN
 
+
 namespace RadeonRays
 {
     //simple RadeonRays::Buffer implementation
@@ -291,7 +292,7 @@ namespace RadeonRays
 
                 jobs.push_back(std::move(m_pool.submit(([this, src_ray, hit, count]()
                 {
-                    std::vector<RTCRay4> data(count/4 + 1);
+                    RTCRay4 data;
                     for (int i = 0; i < count; i+=4)
                     {
                         int rays_count = (i + 4) < count ? 4 : count - i; // count of valid rays
@@ -299,11 +300,11 @@ namespace RadeonRays
                         for (int j = 0; j < rays_count; ++j)
                         {
                             valid[j] = src_ray[i + j].IsActive() ? -1 : 0;
-                            FillRTCRay(data[i/4], j, src_ray[i+j]);
+                            FillRTCRay(data, j, src_ray[i+j]);
                         }
-                        rtcIntersect4(valid, m_scene, data[i/4]); CheckEmbreeError();
+                        rtcIntersect4(valid, m_scene, data); CheckEmbreeError();
                         for (int j = 0; j < rays_count; ++j)
-                            FillIntersection(hit[i+j], data[i/4], j);
+                            FillIntersection(hit[i+j], data, j);
                     }
                 }))));
             }
@@ -383,7 +384,7 @@ namespace RadeonRays
 
                 jobs.push_back(std::move(m_pool.submit(([this, src_ray, hit, count]()
                 {
-                    std::vector<RTCRay4> data(count / 4 + 1);
+                    RTCRay4 data;
                     for (int i = 0; i < count; i += 4)
                     {
                         int rays_count = (i + 4) < count ? 4 : count - i; // count of valid rays
@@ -391,16 +392,17 @@ namespace RadeonRays
                         for (int j = 0; j < rays_count; ++j)
                         {
                             valid[j] = src_ray[i + j].IsActive() ? -1 : 0;
-                            FillRTCRay(data[i / 4], j, src_ray[i + j]);
+                            FillRTCRay(data, j, src_ray[i + j]);
                         }
-                        rtcOccluded4(valid, m_scene, data[i / 4]); CheckEmbreeError();
+
+                        rtcOccluded4(valid, m_scene, data); CheckEmbreeError();
                         for (int j = 0; j < rays_count; ++j)
                         {
-                            hit[i] = data[i/4].instID[j];
-                            if (hit[i] != RTC_INVALID_GEOMETRY_ID)
+                            hit[i + j] = data.instID[j];
+                            if (hit[i + j] != RTC_INVALID_GEOMETRY_ID)
                             {
-                                EmbreeSceneData* data = static_cast<EmbreeSceneData*>(rtcGetUserData(m_scene, hit[i]));
-                                hit[i] = data->mesh_id;
+                                EmbreeSceneData* data = static_cast<EmbreeSceneData*>(rtcGetUserData(m_scene, hit[i + j]));
+                                hit[i + j] = data->mesh_id;
                             }
                         }
                     }

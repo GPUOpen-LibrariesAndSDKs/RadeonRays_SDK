@@ -107,7 +107,7 @@ namespace RadeonRays
 			// if we hit the mesh shape, pretend it hit the instance
 			if(isect.shapeid == mesh->GetId())
 			{
-				isect.shapeid = GetId();
+                isect.shapeid = GetId();
 			}
 		}
 		else
