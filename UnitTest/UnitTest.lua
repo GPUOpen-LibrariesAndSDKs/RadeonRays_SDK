@@ -4,6 +4,7 @@ project "UnitTest"
     includedirs { "../RadeonRays/include", "../Gtest/include", "../Calc/inc", "." }
     links {"Gtest", "RadeonRays", "Calc"}
     files { "**.cpp", "**.h" }
+    defines{"PRORAY_UNITTEST=1"}
     
     if os.is("macosx") then
         buildoptions "-std=c++11 -stdlib=libc++"

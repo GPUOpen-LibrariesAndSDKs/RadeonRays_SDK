@@ -86,7 +86,13 @@ namespace RadeonRays
 						  , faces(nullptr)
 						  , shapes(nullptr)
 						  , raycnt(nullptr)
-        {
+						  , stack(nullptr)
+						  , executable(nullptr)
+						  , isect_func(nullptr)
+						  , occlude_func(nullptr)
+						  , isect_indirect_func(nullptr)
+						  , occlude_indirect_func(nullptr)
+		{
         }
         
         ~GpuData()
