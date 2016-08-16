@@ -45,10 +45,18 @@ newoption {
     description = "Don't define a solution just add library to calling parent premake solution"
 }
 
+newoption {
+    trigger = "no_tests", 
+    description = "Don't add any unit tests and remove any test functionality from the library"
+}
+
 if not _OPTIONS["use_opencl"] and not _OPTIONS["use_vulkan"] and not _OPTIONS["use_embree"] then
     _OPTIONS["use_opencl"] = 1
 end
 
+if _OPTIONS["library_only"] then
+    _OPTIONS["no_tests"] = 1
+end
 
 function build(config)
 	if os.is("windows") then
@@ -141,6 +149,10 @@ else
     -- define common includes
     includedirs { ".","./3rdParty/include" }
 
+    if not _OPTIONS["no_tests"]  then
+        defines{"PRORAY_UNITTEST=1"}
+    end
+
     -- perform OS specific initializations
     local targetName;
     if os.is("macosx") then
@@ -213,22 +225,21 @@ else
         if fileExists("./CLW/CLW.lua") then
             dofile("./CLW/CLW.lua")
         end
-    end
-    
-    if not _OPTIONS["library_only"] then 
-        if fileExists("./Gtest/gtest.lua") then
-            dofile("./Gtest/gtest.lua")
-        end
         
-        if fileExists("./UnitTest/UnitTest.lua") then
-            dofile("./UnitTest/UnitTest.lua")
-        end
-        
-        if _OPTIONS["use_opencl"] then
+        if not _OPTIONS["library_only"] then 
             if fileExists("./App/App.lua") then
                 dofile("./App/App.lua")
             end
-        end
+        end 
     end
-        
+    
+    if not _OPTIONS["no_tests"] then 
+        if fileExists("./Gtest/gtest.lua") then
+            dofile("./Gtest/gtest.lua")
+        end     
+        if fileExists("./UnitTest/UnitTest.lua") then
+            dofile("./UnitTest/UnitTest.lua")
+        end        
+    end
+
 end

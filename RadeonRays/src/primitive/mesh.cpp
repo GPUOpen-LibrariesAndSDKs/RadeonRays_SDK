@@ -141,6 +141,7 @@ namespace RadeonRays
 			bounds.grow(verts[3]);
 		}
     }
+#if	PRORAY_UNITTEST
 
 	bool Mesh::TestOcclusion(const ray& r, matrix const & transform) const
 	{
@@ -238,8 +239,7 @@ namespace RadeonRays
 
 		}
 	}
-
-
+#endif
 
     Mesh::~Mesh()
     {

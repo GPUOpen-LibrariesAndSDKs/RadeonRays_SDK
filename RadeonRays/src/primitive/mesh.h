@@ -84,6 +84,7 @@ namespace RadeonRays
         // True if the mesh consists of triangles only
 		bool puretriangle() const { return puretriangle_;  }
 
+#if	PRORAY_UNITTEST
 		// Test functions, fires a single ray into this shape via unoptimised CPU code
 		bool TestOcclusion(const ray& r) const override { return TestOcclusion(r, worldmat_); }
 
@@ -92,7 +93,7 @@ namespace RadeonRays
 		bool TestOcclusion(const ray& r, matrix const & transform) const;
 
 		void TestIntersection(const ray& r, matrix const & transform, Intersection& isect) const;
-
+#endif
 	private:
         /// Disallow to copy meshes, too heavy
         Mesh(Mesh const& o);

@@ -47,12 +47,13 @@ namespace RadeonRays
 
         // Instance flag
         bool is_instance() const;
+#if	PRORAY_UNITTEST
 
 		// Test functions, fires a single ray into this shape via unoptimised CPU code
 		bool TestOcclusion(const ray& r) const override;
 
 		void TestIntersection(const ray& r, Intersection& isect) const override;
-
+#endif
     private:
         /// Disallow to copy meshes, too heavy
         Instance(Instance const& o);
@@ -76,6 +77,8 @@ namespace RadeonRays
     {
         return true;
     }
+
+#if	PRORAY_UNITTEST
 
 	inline bool Instance::TestOcclusion(const ray& r) const
 	{
@@ -118,6 +121,7 @@ namespace RadeonRays
 			}
 		}
     }
+#endif
 
 }
 

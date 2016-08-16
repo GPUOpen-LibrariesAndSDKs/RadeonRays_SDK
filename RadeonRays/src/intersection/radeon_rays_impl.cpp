@@ -143,6 +143,8 @@ namespace RadeonRays
     {
         m_device->QueryOcclusion(rays, numrays, maxrays, hitresults, waitevent, event);
     }
+#if	PRORAY_UNITTEST
+
 	void IntersectionApiImpl::TestOcclusions(ray const * rays, int numrays, bool* hits) const
 	{
 		// not this is not optimised for speed!
@@ -172,7 +174,7 @@ namespace RadeonRays
 			}
 		}
     }
-
+#endif
     void IntersectionApiImpl::DeleteEvent(Event* event) const
     {
         m_device->DeleteEvent(event);
