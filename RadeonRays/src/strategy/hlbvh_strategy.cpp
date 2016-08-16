@@ -122,7 +122,20 @@ namespace RadeonRays
 			m_gpudata->executable = m_device->CompileExecutable( "../Resources/kernels/GLSL/hlbvh.comp", nullptr, 0 );
 		}
 #else
-		RR_GetEmbeddedKernel(hlbvh)
+#if USE_OPENCL
+		if (device->GetPlatform() == Calc::Platform::kOpenCL)
+		{
+			m_gpudata->executable = m_device->CompileExecutable(g_hlbvh_build_opencl, std::strlen(g_hlbvh_opencl), nullptr);
+		}
+#endif
+
+#if USE_VULKAN
+		if (m_gpudata->executable == nullptr && device->GetPlatform() == Calc::Platform::kVulkan)
+		{
+			m_gpudata->executable = m_device->CompileExecutable(g_hlbvh_build_vulkan, std::strlen(g_hlbvh_vulkan), nullptr);
+		}
+#endif
+
 #endif
 
 		m_gpudata->isect_func = m_gpudata->executable->CreateFunction("IntersectClosest");

@@ -125,7 +125,19 @@ namespace RadeonRays
 			m_gpudata->executable = m_device->CompileExecutable( "../Resources/kernels/GLSL/bvh.comp", nullptr, 0 );
 		}
 #else
-		RR_GetEmbeddedKernel(bvh)
+#if USE_OPENCL
+		if (device->GetPlatform() == Calc::Platform::kOpenCL)
+		{
+			m_gpudata->executable = m_device->CompileExecutable(g_bvh_opencl, std::strlen(g_bvh_opencl), nullptr);
+		}
+#endif
+
+#if USE_VULKAN
+		if (m_gpudata->executable == nullptr && device->GetPlatform() == Calc::Platform::kVulkan)
+		{
+			m_gpudata->executable = m_device->CompileExecutable(g_bvh_vulkan, std::strlen(g_bvh_vulkan), nullptr);
+		}
+#endif
 #endif
 
 		assert(m_gpudata->executable);

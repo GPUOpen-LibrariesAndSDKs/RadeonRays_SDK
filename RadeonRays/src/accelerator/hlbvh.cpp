@@ -93,7 +93,20 @@ namespace RadeonRays
 		}
 #else
 		auto& device = m_device;
-		RR_GetEmbeddedKernel(hlbvh)
+#if USE_OPENCL
+		if (device->GetPlatform() == Calc::Platform::kOpenCL)
+		{
+			m_gpudata->executable = m_device->CompileExecutable(g_hlbvh_build_opencl, std::strlen(g_hlbvh_build_opencl), nullptr);
+		}
+#endif
+
+#if USE_VULKAN
+		if (m_gpudata->executable == nullptr && device->GetPlatform() == Calc::Platform::kVulkan)
+		{
+			m_gpudata->executable = m_device->CompileExecutable(g_hlbvh_build_vulkan, std::strlen(g_hlbvh_build_vulkan), nullptr);
+		}
+#endif
+
 #endif
 		m_gpudata->morton_code_func = m_gpudata->executable->CreateFunction("CalcMortonCode");
 		m_gpudata->build_func = m_gpudata->executable->CreateFunction("BuildHierarchy");

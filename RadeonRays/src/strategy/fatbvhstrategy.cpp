@@ -111,21 +111,34 @@ namespace RadeonRays
     , m_bvh(nullptr)
     {
 #ifndef RR_EMBED_KERNELS
-			if (device->GetPlatform() == Calc::Platform::kOpenCL)
-			{
-				char const* headers[] = { "../Resources/kernels/CL/common.cl" };
+		if (device->GetPlatform() == Calc::Platform::kOpenCL)
+		{
+			char const* headers[] = { "../Resources/kernels/CL/common.cl" };
 
-				int numheaders = sizeof(headers) / sizeof(char const*);
+			int numheaders = sizeof(headers) / sizeof(char const*);
 
-				m_gpudata->executable = m_device->CompileExecutable("../Resources/kernels/CL/fatbvh.cl", headers, numheaders);
-			} 
-			else
-			{
-				assert(device->GetPlatform() == Calc::Platform::kVulkan);
-				m_gpudata->executable = m_device->CompileExecutable("../Resources/kernels/GLSL/fatbvh.comp", nullptr, 0);
-			}
+			m_gpudata->executable = m_device->CompileExecutable("../Resources/kernels/CL/fatbvh.cl", headers, numheaders);
+		} 
+		else
+		{
+			assert(device->GetPlatform() == Calc::Platform::kVulkan);
+			m_gpudata->executable = m_device->CompileExecutable("../Resources/kernels/GLSL/fatbvh.comp", nullptr, 0);
+		}
 #else
-		RR_GetEmbeddedKernel(fatbvh)
+#if USE_OPENCL
+		if (device->GetPlatform() == Calc::Platform::kOpenCL)
+		{
+			m_gpudata->executable = m_device->CompileExecutable(g_fatbvh_opencl, std::strlen(g_fatbvh_opencl), nullptr);
+		}
+#endif
+
+#if USE_VULKAN
+		if (m_gpudata->executable == nullptr && device->GetPlatform() == Calc::Platform::kVulkan)
+		{
+			m_gpudata->executable = m_device->CompileExecutable(g_fatbvh_vulkan, std::strlen(g_fatbvh_vulkan), nullptr);
+		}
+#endif
+
 #endif
         
         m_gpudata->isect_func = m_gpudata->executable->CreateFunction("IntersectClosest");
