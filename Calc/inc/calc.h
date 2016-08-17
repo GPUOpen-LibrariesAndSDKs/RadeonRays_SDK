@@ -54,6 +54,9 @@ namespace Calc
 		// Delete the device
 		virtual void DeleteDevice(Device* device) = 0;
 
+		// return the platform used
+		virtual Platform GetPlatform() = 0;
+
 		// Forbidden stuff
 		Calc(Calc const&) = delete;
 		Calc& operator = (Calc const&) = delete;

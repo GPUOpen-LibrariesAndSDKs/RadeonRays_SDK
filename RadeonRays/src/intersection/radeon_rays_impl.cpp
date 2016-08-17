@@ -197,7 +197,10 @@ namespace RadeonRays
 #ifdef USE_OPENCL
 	RRAPI Buffer* CreateFromOpenClBuffer(RadeonRays::IntersectionApi* api, cl_mem buffer)
 	{
-		auto apii = dynamic_cast<IntersectionApiImpl*>(api);
+		auto apii = static_cast<IntersectionApiImpl*>(api);
+		// we use dynamic cast (internal only) because otherwise have to
+		// expose platform to intersection api which feel wrong esp. in future
+		// if we support multi backend unified intersection api
 		auto cldev = dynamic_cast<CalcIntersectionDeviceCl*>(apii->GetDevice());
 
 		if (cldev)
@@ -214,7 +217,7 @@ namespace RadeonRays
 #ifdef USE_VULKAN
 	RRAPI Buffer* CreateFromVulkanBuffer(RadeonRays::IntersectionApi* api, Anvil::Buffer* buffer)
 	{
-		auto apii = dynamic_cast<IntersectionApiImpl*>(api);
+		auto apii = static_cast<IntersectionApiImpl*>(api);
 		auto cldev = dynamic_cast<CalcIntersectionDeviceVK*>(apii->GetDevice());
 
 		if (cldev)

@@ -67,6 +67,7 @@ namespace Calc
 
 		// Return specification of the device
 		virtual void GetSpec(DeviceSpec& spec) = 0;
+		virtual Platform GetPlatform() = 0;
 
 		// Buffer creation and deletion
 		virtual Buffer* CreateBuffer(std::size_t size, std::uint32_t flags) = 0;
@@ -115,7 +116,6 @@ namespace Calc
 		virtual Primitives* CreatePrimitives() const = 0;
 		virtual void DeletePrimitives(Primitives* prims) = 0;
 
-		virtual Platform GetPlatform() = 0;
 
 		// Helper methods
 		template <typename T> void ReadTypedBuffer(Buffer const* buffer, std::uint32_t queue, std::size_t offset, std::size_t size, T* dst, Event** e) const;

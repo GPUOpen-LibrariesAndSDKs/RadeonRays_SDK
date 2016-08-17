@@ -54,6 +54,8 @@ namespace Calc
 		// Delete the device
 		void DeleteDevice( Device* device ) override;
 
+		Platform GetPlatform() final override { return Platform::kVulkan; };
+
 	private:
 		// Initialize a Vulkan resources
 		void InitializeInstance();

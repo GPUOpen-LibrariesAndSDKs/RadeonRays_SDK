@@ -82,23 +82,26 @@ namespace RadeonRays
 
 	inline bool Instance::TestOcclusion(const ray& r) const
 	{
-		// note this won't pass the instance transform to known mesh base shape
-		// this shouldn't be a problem at the moment, but possible in future...
+		// note this passes the instance transform only to mesh base shapes
+		// we need to add matrix overloads to all shape interfaces
+		// that might mean more matrix parameter copying... need to investigate
+		// instead for now as we only support 2 levels and the only 
+		// possible answer that matters is mesh we use a dynamic cast
 		const auto mesh = dynamic_cast<const Mesh*>(GetBaseShape());
 		if(mesh != nullptr )
 		{
 			return mesh->TestOcclusion(r, worldmat_);
 		} else
 		{
-			//			GetBaseShape()->TestOcclusion(r, isect);
-			return GetBaseShape()->TestOcclusion(r);
-			
+			if (GetBaseShape() != nullptr)
+			{
+				return GetBaseShape()->TestOcclusion(r);
+			}
 		}
 	}
 	inline void Instance::TestIntersection(const ray& r, Intersection& isect) const
     {
-		// note this won't pass the instance transform to known mesh base shape
-		// this shouldn't be a problem at the moment, but possible in future...
+		// see TestOcclusion for comments, both routines are 99% the same
 		const auto mesh = dynamic_cast<const Mesh*>(GetBaseShape());
 		if (mesh != nullptr)
 		{

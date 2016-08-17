@@ -50,6 +50,9 @@ namespace Calc
 		// Delete the device
 		void DeleteDevice(Device* device) override;
 
+		Platform GetPlatform() final override { return Platform::kOpenCL; };
+
+
 	private:
 		std::vector<CLWPlatform> m_platforms;
 		std::vector<CLWDevice> m_devices;
