@@ -23,11 +23,8 @@ THE SOFTWARE.
 /*************************************************************************
 INCLUDES
 **************************************************************************/
-<<<<<<< HEAD:RadeonRays/src/kernels/CL/grid.cl
 #include <../RadeonRays/src/kernels/CL/common.cl>
-=======
-#include <../Resources/kernels/CL/common.cl>
->>>>>>> origin/vulkan:Resources/kernels/CL/grid.cl
+
 /*************************************************************************
 EXTENSIONS
 **************************************************************************/
