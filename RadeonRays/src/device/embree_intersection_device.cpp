@@ -108,6 +108,8 @@ namespace RadeonRays
     EmbreeIntersectionDevice::EmbreeIntersectionDevice()
         : m_pool(1)
     {
+        _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
+        _MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);
         m_device = rtcNewDevice(nullptr);
         RTCError result = rtcDeviceGetError(m_device);
         if (result != RTC_NO_ERROR)
@@ -134,41 +136,41 @@ namespace RadeonRays
         for (auto& it : m_instances)
             it.second.updated = false;
 
-		//checking removed shapes
-		for (auto it = world.shapes_.begin(); it != world.shapes_.end(); ++it)
-		{
-			auto& i = *it;
-			const ShapeImpl* shape = dynamic_cast<const ShapeImpl*>(i);
-			if (m_instances.count(shape))
-				m_instances[shape].updated = true;
-		}
+        //checking removed shapes
+        for (auto it = world.shapes_.begin(); it != world.shapes_.end(); ++it)
+        {
+            auto& i = *it;
+            const ShapeImpl* shape = dynamic_cast<const ShapeImpl*>(i);
+            if (m_instances.count(shape))
+                m_instances[shape].updated = true;
+        }
 
-		//cleanup not updated instances
-		auto itr = m_instances.begin();
-		while (itr != m_instances.end())
-		{
-			if (!itr->second.updated)
-			{
-				//if no instances left => clear stored mesh
-				auto& mesh = m_meshes[itr->first];
-				ThrowIf(mesh.instance_count <= 0, "Invalid embree mesh");
-				--mesh.instance_count;
-				if (mesh.instance_count == 0)
-				{
-					rtcDeleteScene(itr->second.scene);
-					CheckEmbreeError();
-					m_meshes.erase(itr->first);
-				}
-				itr = m_instances.erase(itr);
-			}
-			else
-			{
-				++itr;
-			}
-		}
-		m_instances.clear();
-		rtcDeleteScene(m_scene); CheckEmbreeError();
-		m_scene = rtcDeviceNewScene(m_device, RTC_SCENE_STATIC, RTC_INTERSECT1 | RTC_INTERSECT4 | RTC_INTERSECT8 | RTC_INTERSECT16 | RTC_INTERSECTN); CheckEmbreeError();
+        //cleanup not updated instances
+        auto itr = m_instances.begin();
+        while (itr != m_instances.end())
+        {
+            if (!itr->second.updated)
+            {
+                //if no instances left => clear stored mesh
+                auto& mesh = m_meshes[itr->first];
+                ThrowIf(mesh.instance_count <= 0, "Invalid embree mesh");
+                --mesh.instance_count;
+                if (mesh.instance_count == 0)
+                {
+                    rtcDeleteScene(itr->second.scene);
+                    CheckEmbreeError();
+                    m_meshes.erase(itr->first);
+                }
+                itr = m_instances.erase(itr);
+            }
+            else
+            {
+                ++itr;
+            }
+        }
+        m_instances.clear();
+        rtcDeleteScene(m_scene); CheckEmbreeError();
+        m_scene = rtcDeviceNewScene(m_device, RTC_SCENE_STATIC, RTC_INTERSECT1 | RTC_INTERSECT4 | RTC_INTERSECT8 | RTC_INTERSECT16 | RTC_INTERSECTN); CheckEmbreeError();
 
         for (auto i : world.shapes_)
         {
@@ -296,7 +298,7 @@ namespace RadeonRays
                     for (int i = 0; i < count; i+=4)
                     {
                         int rays_count = (i + 4) < count ? 4 : count - i; // count of valid rays
-                        int valid[4] = { 0, 0, 0, 0,}; //disable all rays
+                        RTCORE_ALIGN(16) int valid[4] = { 0, 0, 0, 0,}; //disable all rays
                         for (int j = 0; j < rays_count; ++j)
                         {
                             valid[j] = src_ray[i + j].IsActive() ? -1 : 0;
@@ -388,22 +390,41 @@ namespace RadeonRays
                     for (int i = 0; i < count; i += 4)
                     {
                         int rays_count = (i + 4) < count ? 4 : count - i; // count of valid rays
-                        int valid[4] = { 0, 0, 0, 0, }; //disable all rays
+                        RTCORE_ALIGN(16) int valid[4] = { 0, 0, 0, 0, }; //disable all rays
+                        for (int j = 0; j < 4; ++j)
+                        {
+                            data.orgx[j] = 0;
+                            data.orgy[j] = 0;
+                            data.orgz[j] = 0;
+
+                            data.dirx[j] = 0;
+                            data.diry[j] = 0;
+                            data.dirz[j] = 0;
+
+                            data.tnear[j] = 0;
+                            data.tfar[j] = 0;
+                            data.geomID[j] = RTC_INVALID_GEOMETRY_ID;
+                            data.primID[j] = RTC_INVALID_GEOMETRY_ID;
+                            data.instID[j] = RTC_INVALID_GEOMETRY_ID;
+                            data.time[j] = 0;
+                            data.mask[j] = 0xFFFFFF;
+                        }
                         for (int j = 0; j < rays_count; ++j)
                         {
                             valid[j] = src_ray[i + j].IsActive() ? -1 : 0;
                             FillRTCRay(data, j, src_ray[i + j]);
                         }
-
                         rtcOccluded4(valid, m_scene, data); CheckEmbreeError();
                         for (int j = 0; j < rays_count; ++j)
                         {
-                            hit[i + j] = data.instID[j];
-                            if (hit[i + j] != RTC_INVALID_GEOMETRY_ID)
+                            if (data.instID[j] == RTC_INVALID_GEOMETRY_ID || data.geomID[j] == RTC_INVALID_GEOMETRY_ID)
                             {
-                                EmbreeSceneData* data = static_cast<EmbreeSceneData*>(rtcGetUserData(m_scene, hit[i + j]));
-                                hit[i + j] = data->mesh_id;
+                                hit[i + j] = RTC_INVALID_GEOMETRY_ID;
+                                continue;
                             }
+                            hit[i + j] = data.instID[j];
+                            EmbreeSceneData* data = static_cast<EmbreeSceneData*>(rtcGetUserData(m_scene, hit[i + j]));
+                            hit[i + j] = data->mesh_id;
                         }
                     }
                 }))));
@@ -436,12 +457,14 @@ namespace RadeonRays
                 {
                     for (int i = 0; i < count; ++i)
                     {
-                        hit[i] = hit_src[i].instID;
-                        if (hit[i] != RTC_INVALID_GEOMETRY_ID)
+                        if (hit_src[i].instID == RTC_INVALID_GEOMETRY_ID || hit_src[i].geomID == RTC_INVALID_GEOMETRY_ID)
                         {
-                            EmbreeSceneData* data = static_cast<EmbreeSceneData*>(rtcGetUserData(m_scene, hit[i]));
-                            hit[i] = data->mesh_id;
+                            hit[i] = RTC_INVALID_GEOMETRY_ID;
+                            continue;
                         }
+                        hit[i] = hit_src[i].instID;
+                        EmbreeSceneData* data = static_cast<EmbreeSceneData*>(rtcGetUserData(m_scene, hit[i]));
+                        hit[i] = data->mesh_id;
                     }
                 })));
             }
