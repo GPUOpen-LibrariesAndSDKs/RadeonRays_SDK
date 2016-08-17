@@ -65,13 +65,13 @@ namespace Calc
 
 	inline SourceType operator | (const SourceType lhs, const SourceType rhs)
 	{
-		using T = std::underlying_type_t <SourceType>;
+		using T = typename std::underlying_type<SourceType>::type;
 		return static_cast<SourceType>(static_cast<T>(lhs) | static_cast<T>(rhs));
 	}
 
 	inline SourceType operator & (const SourceType lhs, const SourceType rhs)
 	{
-		using T = std::underlying_type_t <SourceType>;
+		using T = typename std::underlying_type<SourceType>::type;
 		return static_cast<SourceType>(static_cast<T>(lhs) & static_cast<T>(rhs));
 	}
 

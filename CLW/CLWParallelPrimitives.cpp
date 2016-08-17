@@ -44,7 +44,7 @@ CLWParallelPrimitives::CLWParallelPrimitives(CLWContext context)
     : context_(context)
 {
 #ifndef RR_EMBED_KERNELS
-    program_ = CLWProgram::CreateFromFile("../CLW/CL/CLW.cl", context_);
+    program_ = CLWProgram::CreateFromFile("../Resources/kernels/CL/CLW.cl", context_);
 #else
     program_ = CLWProgram::CreateFromSource(g_CLW_opencl, std::strlen(g_CLW_opencl), context_);
 #endif
