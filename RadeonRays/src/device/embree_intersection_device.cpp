@@ -108,8 +108,6 @@ namespace RadeonRays
     EmbreeIntersectionDevice::EmbreeIntersectionDevice()
         : m_pool(1)
     {
-        _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
-        _MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);
         m_device = rtcNewDevice(nullptr);
         RTCError result = rtcDeviceGetError(m_device);
         if (result != RTC_NO_ERROR)
