@@ -34,7 +34,7 @@ THE SOFTWARE.
 #include <ctime>
 
 #include "gtest/gtest.h"
-#include "radeon_Rays_cl.h"
+#include "radeon_rays_cl.h"
 
 using namespace RadeonRays;
 
