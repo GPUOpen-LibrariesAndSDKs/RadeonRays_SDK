@@ -2,7 +2,7 @@ project "CLW"
     kind "StaticLib"
     location "../CLW"  
     includedirs { "." }
-    files { "../CLW/**.h", "../CLW/**.cpp", "../Resources/kernels/CL/CLW.cl" }
+    files { "../CLW/**.h", "../CLW/**.cpp", "../CLW/CL/CLW.cl" }
 
     if os.is("macosx") then
         buildoptions "-std=c++11 -stdlib=libc++"
@@ -17,6 +17,14 @@ project "CLW"
     -- we rely on RadeonRays to do the actual embedding for us
     if _OPTIONS["embed_kernels"] then
         defines {"RR_EMBED_KERNELS=1"}
+
+            os.execute( "python ../Tools/scripts/stringify.py " .. 
+                                os.getcwd() .. "./CL/ "  .. 
+                                ".cl " ..
+                                "opencl " .. 
+                                 "> ./kernelcache/clwkernels_cl.h"                           
+                                ) 
+            print ">> CLW: CL kernels embedded"
 
         -- there is no CLW version for vulkan (yet at least)
     end

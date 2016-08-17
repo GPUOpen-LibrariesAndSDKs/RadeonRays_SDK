@@ -4,7 +4,7 @@ project "RadeonRays"
     includedirs { "./include", "../Calc/inc" }
     links {"Calc"}
     defines {"EXPORT_API"}
-    files { "../RadeonRays/**.h", "../RadeonRays/**.cpp","../Resources/kernels/CL/**.cl", "../Resources/kernels/GLSL/**.comp"}
+    files { "../RadeonRays/**.h", "../RadeonRays/**.cpp","../RadeonRays/src/kernels/CL/**.cl", "../RadeonRays/src/kernels/GLSL/**.comp"}
     
     if not os.is("macosx") then
         linkoptions {"-Wl,--no-undefined"}
@@ -47,7 +47,7 @@ project "RadeonRays"
 
         if _OPTIONS["use_vulkan"] then
             os.execute( "python ../Tools/scripts/stringify.py " .. 
-                                os.getcwd() .. "../Resources/kernels/GLSL/ "  .. 
+                                os.getcwd() .. "../RadeonRays/src/kernels/GLSL/ "  .. 
                                 ".comp " ..
                                 "vulkan " ..
                                  "> ./src/kernelcache/kernels_vk.h"                           
@@ -57,7 +57,7 @@ project "RadeonRays"
         
         if _OPTIONS["use_opencl"] then
             os.execute( "python ../Tools/scripts/stringify.py " .. 
-                                os.getcwd() .. "../Resources/kernels/CL/ "  .. 
+                                os.getcwd() .. "../RadeonRays/src/kernels/CL/ "  .. 
                                 ".cl " ..
                                 "opencl " ..
                                  "> ./src/kernelcache/kernels_cl.h"                           

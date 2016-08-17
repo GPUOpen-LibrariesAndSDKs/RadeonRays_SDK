@@ -113,16 +113,16 @@ namespace RadeonRays
 #ifndef RR_EMBED_KERNELS
 		if ( device->GetPlatform() == Calc::Platform::kOpenCL )
 		{
-			char const* headers[] = { "../Resources/kernels/CL/common.cl" };
+			char const* headers[] = { "../RadeonRays/src/kernels/CL/common.cl" };
 
 			int numheaders = sizeof( headers ) / sizeof( char const* );
 
-			m_gpudata->executable = m_device->CompileExecutable( "../Resources/kernels/CL/bvh.cl", headers, numheaders );
+			m_gpudata->executable = m_device->CompileExecutable( "../RadeonRays/src/kernels/CL/bvh.cl", headers, numheaders );
 		}
 		else
 		{
 			assert( device->GetPlatform() == Calc::Platform::kVulkan );
-			m_gpudata->executable = m_device->CompileExecutable( "../Resources/kernels/GLSL/bvh.comp", nullptr, 0 );
+			m_gpudata->executable = m_device->CompileExecutable( "../RadeonRays/src/kernels/GLSL/bvh.comp", nullptr, 0 );
 		}
 #else
 #if USE_OPENCL
