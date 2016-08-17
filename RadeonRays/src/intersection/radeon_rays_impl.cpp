@@ -36,6 +36,7 @@ THE SOFTWARE.
 #endif
 
 #include <vector>
+#include <cfloat>
 
 namespace RadeonRays
 {

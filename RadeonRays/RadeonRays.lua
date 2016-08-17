@@ -97,6 +97,7 @@ project "RadeonRays"
         if os.is("macosx") then
             links {"embree.2"}
         elseif os.is("linux") then
+            buildoptions {"-msse3"}
             links {"embree"}
         elseif os.is("windows") then
             links {"embree"}
