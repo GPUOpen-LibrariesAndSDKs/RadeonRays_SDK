@@ -523,6 +523,7 @@ namespace RadeonRays
         os << "Number of nodes: " << m_nodecnt << "\n";
         os << "Number of nodes in corresponding non-split BVH: " << m_num_nodes_for_regular << "\n";
         os << "Node overhead: " << ((float)(m_nodecnt - m_num_nodes_for_regular) / m_num_nodes_for_regular) * 100.f << "%\n";
+        os << "Tree height: " << GetHeight() << "\n";
     }
 }
 

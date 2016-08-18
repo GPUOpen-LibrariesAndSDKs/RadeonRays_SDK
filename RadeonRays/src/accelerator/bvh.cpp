@@ -467,9 +467,10 @@ namespace RadeonRays
     void Bvh::PrintStatistics(std::ostream& os) const
     {
         os << "Class name: " << "Bvh\n";
-        os << "SAH: " << m_usesah ? "enabled\n" : "disabled\n";
+        os << "SAH: " << (m_usesah ? "enabled\n" : "disabled\n");
         os << "Number of triangles: " << m_indices.size() << "\n";
         os << "Number of nodes: " << m_nodecnt << "\n";
+        os << "Tree height: " << GetHeight() << "\n";
     }
 
 }
