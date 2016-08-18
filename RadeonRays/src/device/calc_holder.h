@@ -51,7 +51,7 @@ namespace RadeonRays
 	struct CalcEventHolder : public RadeonRays::Event
 	{
 		CalcEventHolder()
-			: m_event(nullptr)
+			: m_event()
 		{
 		}
 

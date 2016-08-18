@@ -27,7 +27,9 @@ files { "./config.h",
         glslang_os_files,
 }
 if os.is("linux") then
-    excludes {"../Anvil/include/misc/window_win3264.h" }
+    excludes {"../Anvil/include/misc/window_win3264.h",
+            "../Anvil/src/misc/window_win3264.cpp", }
+    files { "../Anvil/deps/glslang/OGLCompilersDLL/*.*" }
 elseif os.is("windows") then
     files { "../Anvil/deps/glslang/OGLCompilersDLL/*.*" }
 

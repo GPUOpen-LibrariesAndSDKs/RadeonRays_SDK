@@ -107,6 +107,9 @@ project "RadeonRays"
 
     if _OPTIONS["use_vulkan"] then
         local vulkanSDKPath = os.getenv( "VK_SDK_PATH" );
+        if vulkanSDKPath == nil then
+            vulkanSDKPath = os.getenv( "VULKAN_SDK" );
+        end
         if vulkanSDKPath ~= nil then
             configuration {"x32"}
             libdirs { vulkanSDKPath .. "/Bin32" }
@@ -117,8 +120,10 @@ project "RadeonRays"
         if os.is("macosx") then
             --no Vulkan on macOs need to error out TODO
         elseif os.is("linux") then
-            links {"Anvil"}
-            links {"vulkan"}
+            libdirs { vulkanSDKPath .. "/lib" }
+            links { "Anvil",
+                    "vulkan",
+                    "pthread"}
         elseif os.is("windows") then
             links {"Anvil"}
             links {"vulkan-1"}

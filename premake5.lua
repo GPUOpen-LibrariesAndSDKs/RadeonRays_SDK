@@ -184,9 +184,16 @@ else
         defines{"USE_VULKAN=1"} 
         vulkanPath = ""
         vulkanSDKPath = os.getenv( "VK_SDK_PATH" );
-        
+        if vulkanSDKPath == nil then
+            vulkanSDKPath = os.getenv( "VULKAN_SDK" );
+        end
+
         if vulkanSDKPath ~= nil then
-            vulkanPath = os.getenv( "VK_SDK_PATH" ) .. "/Include"
+            if os.is("linux") then    
+                vulkanPath = vulkanSDKPath .. "/include"
+            else
+                vulkanPath = vulkanSDKPath .. "/Include"
+            end
         end
 
         includedirs {   "./Anvil",
