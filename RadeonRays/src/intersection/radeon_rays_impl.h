@@ -25,7 +25,6 @@ THE SOFTWARE.
 #include <atomic>
 
 #include "radeon_rays.h"
-#include "radeon_rays_cl.h"
 #include "../world/world.h"
 
 namespace RadeonRays
@@ -40,7 +39,7 @@ namespace RadeonRays
     ///    - Complete path: the data can be put into remote memory allocated with API and can be accessed.
     ///      by the app directly in remote memory space.
     ///
-    class IntersectionApiImpl : public IntersectionApiCL
+    class IntersectionApiImpl : public IntersectionApi
     {
     public:
         /******************************************
@@ -54,11 +53,11 @@ namespace RadeonRays
         // The call is blocking, so the returned value is ready upon return.
         Shape* CreateMesh(
             // Position data
-            float* vertices, int vnum, int vstride,
+            float const * vertices, int vnum, int vstride,
             // Index data for vertices
-            int* indices, int istride,
+            int const * indices, int istride,
             // Numbers of vertices per face
-            int* numfacevertices,
+            int const * numfacevertices,
             // Number of faces
             int  numfaces
             ) const override;
@@ -81,7 +80,6 @@ namespace RadeonRays
         Memory management
         ******************************************/
         Buffer* CreateBuffer(size_t size, void* initdata) const override;
-        Buffer* CreateFromOpenClBuffer(cl_mem buffer) const override;
 
         // Delete the buffer
         void DeleteBuffer(Buffer* buffer) const override;
@@ -125,15 +123,14 @@ namespace RadeonRays
         void SetOption(char const* name, char const* value) override;
         // Set API global option: float
         void SetOption(char const* name, float value) override;
-
-        // Give base statics access to constructors
-        // TODO: remove that later
-        friend IntersectionApi* IntersectionApi::Create(std::uint32_t devidx);
-        friend IntersectionApiCL* IntersectionApiCL::CreateFromOpenClContext(cl_context context, cl_device_id device, cl_command_queue queue);
-
         
-    protected:
-        IntersectionApiImpl(IntersectionDevice* device);
+
+		IntersectionDevice* GetDevice() const { return m_device.get(); }
+
+		IntersectionApiImpl(IntersectionDevice* device);
+	protected:
+		friend class IntersectionApi;
+
         ~IntersectionApiImpl();
 
     private:

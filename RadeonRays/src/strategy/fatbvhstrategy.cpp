@@ -32,10 +32,6 @@
 #include "../translator/fatnode_bvh_translator.h"
 #include "../except/except.h"
 
-#ifdef FR_EMBED_KERNELS
-#include "../kernel/CL/cache/kernels.h"
-#endif
-
 #include <algorithm>
 
  // Preferred work group size for Radeon devices
@@ -47,18 +43,18 @@ namespace RadeonRays
 {
     struct FatBvhStrategy::ShapeData
     {
-        // Transform
+		// Shape ID
+		Id id;
+		// Index of root bvh node
+		int bvhidx;
+		int mask;
+		int padding1;
+		// Transform
         matrix minv;
         // Motion blur data
         float3 linearvelocity;
         // Angular veocity (quaternion)
         quaternion angularvelocity;
-        // Shape ID
-        Id id;
-        // Index of root bvh node
-        int bvhidx;
-        int mask;
-        int padding1;
     };
 
     struct FatBvhStrategy::GpuData
@@ -85,13 +81,19 @@ namespace RadeonRays
         Calc::Function* occlude_indirect_func;
 
         GpuData(Calc::Device* d)
-            : device(d)
-            , bvh(nullptr)
-            , vertices(nullptr)
-            , faces(nullptr)
-            , shapes(nullptr)
-            , raycnt(nullptr)
-        {
+        : device(d)
+						  , bvh(nullptr)
+						  , vertices(nullptr)
+						  , faces(nullptr)
+						  , shapes(nullptr)
+						  , raycnt(nullptr)
+						  , stack(nullptr)
+						  , executable(nullptr)
+						  , isect_func(nullptr)
+						  , occlude_func(nullptr)
+						  , isect_indirect_func(nullptr)
+						  , occlude_indirect_func(nullptr)
+		{
         }
 
         ~GpuData()
@@ -115,15 +117,35 @@ namespace RadeonRays
         , m_gpudata(new GpuData(device))
         , m_bvh(nullptr)
     {
-#ifndef FR_EMBED_KERNELS
-        char const* headers[] = { "../RadeonRays/src/kernel/CL/common.cl" };
+#ifndef RR_EMBED_KERNELS
+		if (device->GetPlatform() == Calc::Platform::kOpenCL)
+		{
+			char const* headers[] = { "../RadeonRays/src/kernels/CL/common.cl" };
 
-        int numheaders = sizeof(headers) / sizeof(char const*);
+			int numheaders = sizeof(headers) / sizeof(char const*);
 
-        m_gpudata->executable = m_device->CompileExecutable("../RadeonRays/src/kernel/CL/fatbvh.cl", headers, numheaders);
-
+			m_gpudata->executable = m_device->CompileExecutable("../RadeonRays/src/kernels/CL/fatbvh.cl", headers, numheaders);
+		} 
+		else
+		{
+			assert(device->GetPlatform() == Calc::Platform::kVulkan);
+			m_gpudata->executable = m_device->CompileExecutable("../RadeonRays/src/kernels/GLSL/fatbvh.comp", nullptr, 0);
+		}
 #else
-        m_gpudata->executable = m_device->CompileExecutable(cl_fatbvh, std::strlen(cl_fatbvh), nullptr);
+#if USE_OPENCL
+		if (device->GetPlatform() == Calc::Platform::kOpenCL)
+		{
+			m_gpudata->executable = m_device->CompileExecutable(g_fatbvh_opencl, std::strlen(g_fatbvh_opencl), nullptr);
+		}
+#endif
+
+#if USE_VULKAN
+		if (m_gpudata->executable == nullptr && device->GetPlatform() == Calc::Platform::kVulkan)
+		{
+			m_gpudata->executable = m_device->CompileExecutable(g_fatbvh_vulkan, std::strlen(g_fatbvh_vulkan), nullptr);
+		}
+#endif
+
 #endif
 
         m_gpudata->isect_func = m_gpudata->executable->CreateFunction("IntersectClosest");
@@ -365,6 +387,8 @@ namespace RadeonRays
                     int id;
                     // Idx count
                     int cnt;
+
+                    int padding[2];
                 };
 
                 // This number is different from the number of faces for some BVHs 

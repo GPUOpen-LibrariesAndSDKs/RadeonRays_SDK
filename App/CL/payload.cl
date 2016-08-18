@@ -39,12 +39,16 @@ typedef struct _ray
 /// Intersection data returned by RadeonRays
 typedef struct _Intersection
 {
-    // uv - hit barycentrics, w - ray distance
-    float4 uvwt;
     // id of a shape
     int shapeid;
     // Primitive index
     int primid;
+    // Padding elements
+    int padding0;
+    int padding1;
+
+    // uv - hit barycentrics, w - ray distance
+    float4 uvwt;
 } Intersection;
 
 // Shape description

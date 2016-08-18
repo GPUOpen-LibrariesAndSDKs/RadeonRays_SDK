@@ -25,10 +25,12 @@ THE SOFTWARE.
 #include "buffer.h"
 #include "device.h"
 #include "event.h"
+#include <memory>
+#include <functional>
 
 namespace RadeonRays
 {
-	struct CalcBufferHolder : public Buffer
+	struct CalcBufferHolder : public RadeonRays::Buffer
 	{
 
 		CalcBufferHolder(Calc::Device* device, Calc::Buffer* buffer)
@@ -38,7 +40,7 @@ namespace RadeonRays
 
 		~CalcBufferHolder() = default;
 
-		Calc::Buffer* GetData()
+		Calc::Buffer* GetData() const
 		{
 			return m_buffer.get();
 		}
@@ -46,10 +48,10 @@ namespace RadeonRays
 		std::unique_ptr<Calc::Buffer, std::function<void(Calc::Buffer*)>> m_buffer;
 	};
 
-	struct CalcEventHolder : public Event
+	struct CalcEventHolder : public RadeonRays::Event
 	{
 		CalcEventHolder()
-			: m_event(nullptr)
+			: m_event()
 		{
 		}
 
@@ -65,7 +67,7 @@ namespace RadeonRays
 			m_event = decltype(m_event)(event, [device](Calc::Event* event) { device->DeleteEvent(event); });
 		}
 
-		bool Complete() const override
+		bool Complete() const
 		{
 			return m_event->IsComplete();
 		}

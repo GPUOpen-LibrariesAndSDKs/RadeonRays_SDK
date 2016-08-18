@@ -22,14 +22,14 @@ THE SOFTWARE.
 #pragma once
 
 #include "calc_cl.h"
-
+#include "calc.h"
 #include "CLW.h"
 #include <vector>
 
 namespace Calc
 {
 	// Implementation of Calc interface using CLW library
-	class CalcClw : public CalcCl
+	class CalcClw : public Calc
 	{
 	public:
 		CalcClw();
@@ -45,10 +45,13 @@ namespace Calc
 		Device* CreateDevice(std::uint32_t idx) const override;
         
         // Create the device from specified OpenCL device
-        DeviceCl* CreateDevice(cl_context context, cl_device_id device, cl_command_queue queue) const override;
+        DeviceCl* CreateDevice(cl_context context, cl_device_id device, cl_command_queue queue) const;
 
 		// Delete the device
 		void DeleteDevice(Device* device) override;
+
+		Platform GetPlatform() final override { return Platform::kOpenCL; };
+
 
 	private:
 		std::vector<CLWPlatform> m_platforms;

@@ -19,7 +19,7 @@ namespace Baikal
         cl_command_queue queue = m_context.GetCommandQueue(devidx);
         
         // Create intersection API
-        m_api = IntersectionApiCL::CreateFromOpenClContext(m_context, id, queue);
+        m_api = CreateFromOpenClContext(m_context, id, queue);
         
         // Do app specific settings
 #ifdef __APPLE__

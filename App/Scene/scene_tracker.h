@@ -19,7 +19,7 @@ namespace Baikal
 
         virtual ClwScene& CompileScene(Scene const& scene) const;
         
-        RadeonRays::IntersectionApiCL* GetIntersectionApi() { return  m_api; }
+        RadeonRays::IntersectionApi* GetIntersectionApi() { return  m_api; }
 
     protected:
         virtual void RecompileFull(Scene const& scene, ClwScene& out) const;
@@ -38,7 +38,7 @@ namespace Baikal
         // Context
         CLWContext m_context;
         // Intersection API
-        RadeonRays::IntersectionApiCL* m_api;
+        RadeonRays::IntersectionApi* m_api;
         // Current scene
         mutable Scene const* m_current_scene;
 

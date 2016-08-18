@@ -21,6 +21,7 @@ THE SOFTWARE.
 ********************************************************************/
 #pragma once
 
+#if USE_OPENCL
 #include "calc_intersection_device.h"
 
 #include "calc_cl.h"
@@ -39,9 +40,10 @@ namespace RadeonRays
     class CalcIntersectionDeviceCl : public CalcIntersectionDevice
     {
     public:
-        CalcIntersectionDeviceCl(Calc::CalcCl* calc, Calc::DeviceCl* device);
+        CalcIntersectionDeviceCl(Calc::Calc* calc, Calc::DeviceCl* device);
         
         virtual Buffer* CreateBuffer(cl_mem mem) const;
     };
 }
 
+#endif // USE_OPENCL

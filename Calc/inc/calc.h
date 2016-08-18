@@ -54,12 +54,15 @@ namespace Calc
 		// Delete the device
 		virtual void DeleteDevice(Device* device) = 0;
 
+		// return the platform used
+		virtual Platform GetPlatform() = 0;
+
 		// Forbidden stuff
 		Calc(Calc const&) = delete;
 		Calc& operator = (Calc const&) = delete;
 	};
 
 	// Create corresponding calc
-	Calc* CreateCalc(int reserved);
+	Calc* CreateCalc( Platform inPlatform, int reserved);
 	void DeleteCalc(Calc* calc);
 }

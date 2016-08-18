@@ -19,12 +19,28 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
-#include "clw_test.h"
-#include "clw_cl_test.h"
-#include "radeon_rays_test.h"
-#include "radeon_rays_conformance_test.h"
-#include "radeon_rays_cl_test.h"
+#if USE_OPENCL
 #include "calc_test_cl.h"
+#include "clw_test.h"
+#include "clw_test_cl.h"
+#include "radeon_rays_apitest_cl.h"
+#include "radeon_rays_conformance_test_cl.h"
+//#include "radeon_rays_performance_test_cl.h"
+#include "radeon_rays_test_cl.h"
+
+#endif
+#if USE_VULKAN
+#include "calc_test_vk.h"
+#include "radeon_rays_apitest_vk.h"
+#include "radeon_rays_conformance_test_vk.h"
+//#include "radeon_rays_performance_test_vk.h"
+#endif
+
+#if USE_EMBREE
+#include "radeon_rays_apitest_embree.h"
+#include "radeon_rays_conformance_test_embree.h"
+
+#endif
 
 #include "gtest/gtest.h"
 

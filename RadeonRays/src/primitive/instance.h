@@ -47,7 +47,6 @@ namespace RadeonRays
 
         // Instance flag
         bool is_instance() const;
-
     private:
         /// Disallow to copy meshes, too heavy
         Instance(Instance const& o);
@@ -71,6 +70,7 @@ namespace RadeonRays
     {
         return true;
     }
+
 }
 
 #endif // MESH_H

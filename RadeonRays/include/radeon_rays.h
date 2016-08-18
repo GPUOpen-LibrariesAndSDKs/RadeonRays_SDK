@@ -20,15 +20,18 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
 #pragma once
+#ifndef RADEON_RAYS_H
+#define RADEON_RAYS_H
 
 #include "math/float3.h"
 #include "math/float2.h"
 #include "math/matrix.h"
 #include "math/ray.h"
 #include "math/mathutils.h"
-
+		
 #define RADEONRAYS_API_VERSION 2.0
 
+#if !RR_STATIC_LIBRARY
 #ifdef WIN32
     #ifdef EXPORT_API
         #define RRAPI __declspec(dllexport)
@@ -42,10 +45,14 @@ THE SOFTWARE.
         #define RRAPI
     #endif
 #endif
-
+#else
+#define RRAPI
+#endif
 namespace RadeonRays
 {
-    /// Represents a device, which can be used by API for intersection purposes.
+	struct Intersection;
+
+	/// Represents a device, which can be used by API for intersection purposes.
     /// API is distributing the work across multiple devices itsels, so
     /// this structure is only used to query devices configuration and
     /// limit the number of devices available for the API.
@@ -59,12 +66,22 @@ namespace RadeonRays
             kAccelerator
         };
 
+		enum Platform
+		{
+			kOpenCL = 0x1,
+			kVulkan = 0x2,
+			kEmbree = 0x4,
+
+			kAny = 0xFF
+		};
+
         // Device name
         char const* name;
         // Device vendor
         char const* vendor;
         // Device type
         Type type;
+		Platform platform;
     };
 
     // Forward declaration of entities
@@ -126,17 +143,19 @@ namespace RadeonRays
         virtual char const* what() const = 0;
     };
 
+	// must match Intersection struct on the GPU side exactly!
     struct Intersection
     {
-        // UV parametrization
-        float4 uvwt;
-        // Shape ID
-        Id shapeid;
-        // Primitve ID
-        Id primid;
+		// Shape ID
+		Id shapeid;
+		// Primitve ID
+		Id primid;
 
-        int padding0;
-        int padding1;
+		int padding0;
+		int padding1;
+		
+		// UV parametrization
+        float4 uvwt;
 
         Intersection();
     };
@@ -158,6 +177,19 @@ namespace RadeonRays
     class RRAPI IntersectionApi
     {
     public:
+
+		/******************************************
+		Backend management
+		*******************************************/
+		// By default RadeonRays will any platform with potential GPU accelerations,
+		// if you prefer to specify which platform call SetPlatform before 
+		// GetDeviceInfo/GetDeviceCount for each specific platform
+		// By default will choose OpenCL if available, and if not Vulkan
+		// Note: this may be sub optimal in some case. to avoid enum all devices
+		// across all platforms explicitly before deciding on platform and 
+		// device(s) to use
+		static void SetPlatform(const DeviceInfo::Platform platform);
+
 
         /******************************************
         Device management
@@ -188,11 +220,11 @@ namespace RadeonRays
         // The call is blocking, so the returned value is ready upon return.
         virtual Shape* CreateMesh(
             // Position data
-            float* vertices, int vnum, int vstride,
+            float const * vertices, int vnum, int vstride,
             // Index data for vertices
-            int* indices, int istride,
+            int const * indices, int istride,
             // Numbers of vertices per face
-            int* numfacevertices,
+            int const * numfacevertices,
             // Number of faces
             int  numfaces
             ) const = 0;
@@ -290,3 +322,5 @@ namespace RadeonRays
     inline Exception::~Exception(){}
 }
 
+
+#endif // RADEON_RAYS_H

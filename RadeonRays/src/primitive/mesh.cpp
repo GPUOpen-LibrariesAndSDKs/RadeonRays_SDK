@@ -30,7 +30,7 @@ namespace RadeonRays
 {
     Mesh::Mesh(float const* vertices, int vnum, int vstride,
         int const* vidx, int vistride,
-        int* nfaceverts,
+        int const* nfaceverts,
         int nfaces)
 		: puretriangle_(true)
     {
@@ -112,38 +112,34 @@ namespace RadeonRays
         }
     }
 
+	int Mesh::GetTransformedFace(int const faceidx, matrix const & transform, float3* outverts) const
+    {
+		// origin code special cased identity matrix. TODO check speed regressions
+		outverts[0] = transform_point(vertices_[faces_[faceidx].i0], transform);
+		outverts[1] = transform_point(vertices_[faces_[faceidx].i1], transform);
+		outverts[2] = transform_point(vertices_[faces_[faceidx].i2], transform);
+
+		if (faces_[faceidx].type_ == FaceType::QUAD)
+		{
+			outverts[3] = transform_point(vertices_[faces_[faceidx].i3], transform);
+			return 4;
+		} else
+		{
+			return 3;
+		}
+    }
+
     void Mesh::GetFaceBounds(int faceidx, bool objectspace, bbox& bounds) const
     {
-        if (objectspace)
-        {
-            float3 p1 = vertices_[faces_[faceidx].i0];
-            float3 p2 = vertices_[faces_[faceidx].i1];
-            float3 p3 = vertices_[faces_[faceidx].i2];
+		float3 verts[4];
+		const int numVert = GetTransformedFace(faceidx, objectspace ? matrix() : worldmat_, verts);
+		bounds = bbox(verts[0], verts[1]);
+		bounds.grow(verts[2]);
 
-            bounds = bbox(p1, p2);
-            bounds.grow(p3);
-
-            if (faces_[faceidx].type_ == FaceType::QUAD)
-            {
-                float3 p4 = vertices_[faces_[faceidx].i3];
-                bounds.grow(p4);
-            }
-        }
-        else
-        {
-            float3 p1 = transform_point(vertices_[faces_[faceidx].i0], worldmat_);
-            float3 p2 = transform_point(vertices_[faces_[faceidx].i1], worldmat_);
-            float3 p3 = transform_point(vertices_[faces_[faceidx].i2], worldmat_);
-
-            bounds = bbox(p1, p2);
-            bounds.grow(p3);
-
-            if (faces_[faceidx].type_ == FaceType::QUAD)
-            {
-                float3 p4 = transform_point(vertices_[faces_[faceidx].i3], worldmat_);
-                bounds.grow(p4);
-            }
-        }
+		if(numVert == 4 )
+		{
+			bounds.grow(verts[3]);
+		}
     }
 
     Mesh::~Mesh()

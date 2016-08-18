@@ -1,12 +1,21 @@
 # Summary
-Radeon Rays is ray intersection acceleration library provided by AMD which makes the most of AMD hardware and allows for efficient ray queries independently of the generation of underlying AMD hardware.
+Radeon Rays is ray intersection acceleration library provided by AMD which makes the most of the hardware and allows for efficient ray queries. Three backends support a range of use cases.
 
 # Description
+Radeon Rays has three backends, 
+- OpenCL
+- Vulkan
+- Embree
+
+OpenCL uses GPUs and CPUs that support at least OpenCL 1.2
+Vulkan supports GPUs with Vulkan 1.0 or greater
+Embree uses Intels Optimized CPU ray casting software for x86 and x64 devices
+
 The source tree consist of the following subdirectories:
 
- - Radeon Rays: library binaries
+- Radeon Rays: library binaries
 
-- App: Standalone application featuring Radeon Rays library
+- App: Standalone sample/application featuring Radeon Rays OpenCL to implement a path tracer.
 
 # Preliminaries
 ## System requirements
@@ -20,10 +29,24 @@ The library is cross-platform and the following compilers are supported:
 
 - Python (for --embed_kernels option only)
 
-AMD OpenCL APP SDK 2.0+ is also required for the standalone app build.  
+- [Anvil](https://github.com/GPUOpen-LibrariesAndSDKs/Anvil) for Vulkan backend only
+
+- [Embree](https://github.com/embree/embree) for Embree backend only
+
+- AMD OpenCL APP SDK 2.0+ is also required for the standalone app build.  
 
 ## Set up OpenCL
-- Set environmental variable.  GPU_MAX_ALLOC_PERCENT = 100. This is necessary to allocate a large buffers.
+Set environmental variable.  GPU_MAX_ALLOC_PERCENT = 100. This is necessary to allocate a large buffers.
+
+## Set up Vulkan
+Anvil is set as a submodule and will be downloaded by using `git submodule update --init --recursive` from the command line.
+Some gui clients (github app for example) may do this automatically for you
+
+## Multiple Backends
+You can either choose a particular backend (OpenCL, Vulkan or Embree) or compile any combination of them and pick at run-time. By default OpenCL only will be compiled in (see Options below to enable other backends).
+At runtime OpenCL devices will appear first, then Vulkan devices (if enabled) with the Embree device last (if enabled).
+
+If the default behaviour is not what you want, an API call `IntersectionApi::SetPlatform( backend )` takes a backend argument bitfield allows you to specify exactly which backends device will be enumurated.
 
 ## Build                                                                                       
 
@@ -79,9 +102,13 @@ SDK repo location expected to be `../Radeon Rays_SDK`. checkout & clean -dfx mad
 example of usage :
 `./Tools/premake/win/premake5.exe --submit`
 
-- `--use_embree` will enable using of embree. Embree device will be the last one in IntersectionApi device list.
+- `--use_embree` will enable the embree backend. Embree device will be the last one in IntersectionApi device list.
  example of usage :
  `./Tools/premake/win/premake5.exe --use_embree vs2015`
+
+- `--use_vulkan` will enable the vulkan backend.
+
+- `--use_opencl` will enable the OpenCL backend. If no other --use_ option is provided, this is the default
 
 ## Run
 

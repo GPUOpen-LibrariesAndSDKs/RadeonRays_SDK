@@ -34,6 +34,7 @@ namespace Calc
 	class DeviceClw : public DeviceCl
 	{
 	public:
+		DeviceClw(cl_context context, cl_device_id device, cl_command_queue queue);
 		DeviceClw(CLWDevice device);
 		DeviceClw(CLWDevice device, CLWContext context);
 		~DeviceClw();
@@ -84,9 +85,11 @@ namespace Calc
 		bool HasBuiltinPrimitives() const override;
 		Primitives* CreatePrimitives() const override;
 		void DeletePrimitives(Primitives* prims) override;
+        
+        // DeviceCl overrides
+        Buffer* CreateBuffer(cl_mem buffer) override;
 
-		// DeviceCl overrides
-		Buffer* CreateBuffer(cl_mem buffer) override;
+		Platform GetPlatform() { return Platform::kOpenCL; }
 
 	protected:
 		EventClw* CreateEventClw() const;

@@ -23,8 +23,8 @@ THE SOFTWARE.
 
 #include "intersection_device.h"
 
-#include "CLW.h"
 #include "calc.h"
+#include "device.h"
 
 #include <memory>
 #include <functional>
@@ -66,6 +66,7 @@ namespace RadeonRays
 
 		void QueryOcclusion(Buffer const* rays, Buffer const* numrays, int maxrays, Buffer* hitresults, Event const* waitevent, Event** event) const override;
 
+		Calc::Platform GetPlatform() const { return m_device->GetPlatform(); }
 	protected:
 		CalcEventHolder* CreateEventHolder() const;
 		void	  ReleaseEventHolder(CalcEventHolder* e) const;

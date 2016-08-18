@@ -24,6 +24,7 @@ THE SOFTWARE.
 #include "primitives.h"
 #include "executable.h"
 #include "../except/except.h"
+#include "../strategy/strategy.h"
 #include "calc.h"
 #include "event.h"
 
@@ -32,11 +33,7 @@ THE SOFTWARE.
 #include <chrono>
 #include <cstring>
 #include <iostream>
-
-
-#ifdef FR_EMBED_KERNELS
-#include "../kernel/CL/cache/kernels.h"
-#endif
+#include <assert.h>
 
 #define INITIAL_TRIANGLE_CAPACITY 100000
 
@@ -83,10 +80,33 @@ namespace RadeonRays
     
     void Hlbvh::InitGpuData()
     {
-#ifndef FR_EMBED_KERNELS
-        m_gpudata->executable = m_device->CompileExecutable("../RadeonRays/src/kernel/CL/hlbvh_build.cl", nullptr, 0);
+#ifndef RR_EMBED_KERNELS
+		if ( m_device->GetPlatform() == Calc::Platform::kOpenCL )
+		{
+			m_gpudata->executable = m_device->CompileExecutable( "../RadeonRays/src/kernels/CL/hlbvh_build.cl", nullptr, 0 );
+		}
+
+		else
+		{
+			assert( m_device->GetPlatform() == Calc::Platform::kVulkan );
+			m_gpudata->executable = m_device->CompileExecutable( "../RadeonRays/src/kernels/GLSL/hlbvh_build.comp", nullptr, 0 );
+		}
 #else
-		m_gpudata->executable = m_device->CompileExecutable(cl_hlbvh_build, std::strlen(cl_hlbvh_build), "");
+		auto& device = m_device;
+#if USE_OPENCL
+		if (device->GetPlatform() == Calc::Platform::kOpenCL)
+		{
+			m_gpudata->executable = m_device->CompileExecutable(g_hlbvh_build_opencl, std::strlen(g_hlbvh_build_opencl), nullptr);
+		}
+#endif
+
+#if USE_VULKAN
+		if (m_gpudata->executable == nullptr && device->GetPlatform() == Calc::Platform::kVulkan)
+		{
+			m_gpudata->executable = m_device->CompileExecutable(g_hlbvh_build_vulkan, std::strlen(g_hlbvh_build_vulkan), nullptr);
+		}
+#endif
+
 #endif
 		m_gpudata->morton_code_func = m_gpudata->executable->CreateFunction("CalcMortonCode");
 		m_gpudata->build_func = m_gpudata->executable->CreateFunction("BuildHierarchy");
@@ -125,7 +145,8 @@ namespace RadeonRays
     bbox const& Hlbvh::Bounds() const
     {
         // TODO: implement me
-        return bbox();
+		static bbox s_tmp;
+        return s_tmp;
     }
     
     // Build function
@@ -175,9 +196,9 @@ namespace RadeonRays
         
         // Calculate Morton codes array
         int arg = 0;
-        m_gpudata->morton_code_func->SetArg(arg++, m_gpudata->bounds);
-		m_gpudata->morton_code_func->SetArg(arg++, sizeof(size), &size);
 		m_gpudata->morton_code_func->SetArg(arg++, m_gpudata->morton_codes);
+		m_gpudata->morton_code_func->SetArg(arg++, m_gpudata->bounds);
+		m_gpudata->morton_code_func->SetArg(arg++, sizeof(size), &size);
         
         // Calculate global size
         int globalsize = ((size + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
@@ -192,8 +213,8 @@ namespace RadeonRays
         arg = 0;
         m_gpudata->build_func->SetArg(arg++, m_gpudata->sorted_morton_codes);
 		m_gpudata->build_func->SetArg(arg++, m_gpudata->bounds);
-		m_gpudata->build_func->SetArg(arg++, m_gpudata->sorted_prim_indices);
 		m_gpudata->build_func->SetArg(arg++, sizeof(size), &size);
+		m_gpudata->build_func->SetArg(arg++, m_gpudata->sorted_prim_indices);
 		m_gpudata->build_func->SetArg(arg++, m_gpudata->nodes);
 		m_gpudata->build_func->SetArg(arg++, m_gpudata->sorted_bounds);
         

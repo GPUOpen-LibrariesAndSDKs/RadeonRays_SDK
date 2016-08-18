@@ -19,16 +19,24 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
+#include "radeon_rays.h"
 #include "radeon_rays_impl.h"
 #include "../primitive/mesh.h"
 #include "../primitive/instance.h"
 #include "../except/except.h"
-
 #include "../device/intersection_device.h"
+
+#if USE_OPENCL
 #include "../device/calc_intersection_device_cl.h"
+#endif
+
+#if USE_VULKAN
+#include "../device/calc_intersection_device_vk.h"
+#include <wrappers/buffer.h>
+#endif
 
 #include <vector>
-#include <algorithm>
+#include <cfloat>
 
 namespace RadeonRays
 {
@@ -49,32 +57,17 @@ namespace RadeonRays
         world_.options_.SetValue(name, value);
     }
 
-    Buffer* IntersectionApiImpl::CreateFromOpenClBuffer(cl_mem buffer) const
-    {
-        auto cldev = dynamic_cast<CalcIntersectionDeviceCl*>(m_device.get());
-        
-        if (cldev)
-        {
-            return cldev->CreateBuffer(buffer);
-        }
-        
-        Throw("CL interop not supported");
-        
-        return nullptr;
-    }
-
     IntersectionApiImpl::~IntersectionApiImpl()
     {
-
     }
 
     Shape* IntersectionApiImpl::CreateMesh(
         // Position data
-        float* vertices, int vnum, int vstride,
+        float const * vertices, int vnum, int vstride,
         // Index data for vertices
-        int* indices, int istride,
+        int const * indices, int istride,
         // Numbers of vertices per face
-        int* numfacevertices,
+        int const * numfacevertices,
         // Number of faces
         int  numface
         ) const
@@ -171,6 +164,41 @@ namespace RadeonRays
     {
         return m_device->UnmapBuffer(buffer, ptr, event);
     }
+#ifdef USE_OPENCL
+	RRAPI Buffer* CreateFromOpenClBuffer(RadeonRays::IntersectionApi* api, cl_mem buffer)
+	{
+		auto apii = static_cast<IntersectionApiImpl*>(api);
+		// we use dynamic cast (internal only) because otherwise have to
+		// expose platform to intersection api which feel wrong esp. in future
+		// if we support multi backend unified intersection api
+		auto cldev = dynamic_cast<CalcIntersectionDeviceCl*>(apii->GetDevice());
 
+		if (cldev)
+		{
+			return cldev->CreateBuffer(buffer);
+		}
+
+		Throw("CL interop not supported");
+
+		return nullptr;
+	}
+#endif
+
+#ifdef USE_VULKAN
+	RRAPI Buffer* CreateFromVulkanBuffer(RadeonRays::IntersectionApi* api, Anvil::Buffer* buffer)
+	{
+		auto apii = static_cast<IntersectionApiImpl*>(api);
+		auto cldev = dynamic_cast<CalcIntersectionDeviceVK*>(apii->GetDevice());
+
+		if (cldev)
+		{
+			return cldev->AdoptBuffer(buffer);
+		}
+
+		Throw("Vulkan interop not supported");
+
+		return nullptr;
+	}
+#endif
 }
 

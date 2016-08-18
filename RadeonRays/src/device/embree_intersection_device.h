@@ -27,14 +27,12 @@ THE SOFTWARE.
 #include <embree2/rtcore.h>
 #include "../async/thread_pool.h"
 
-namespace FireRays {
-    class Mesh;
-    class Shape;
-    class ShapeImpl;
-}; //FireRays
-namespace FireRays
+namespace RadeonRays
 {
-    ///< The class represents Embree based intersection device.
+	class Mesh;
+	class Shape;
+	class ShapeImpl;
+	///< The class represents Embree based intersection device.
     ///< It uses embree RTCDevice abstraction to implement intersection algorithm.
     ///<
     class EmbreeIntersectionDevice : public IntersectionDevice
@@ -57,8 +55,8 @@ namespace FireRays
         void QueryOcclusion(Buffer const* rays, Buffer const* numrays, int maxrays, Buffer* hitresults, Event const* waitevent, Event** event) const override;
     
     protected:
-        RTCScene GetEmbreeMesh(const FireRays::Mesh*);
-        void UpdateShape(const FireRays::ShapeImpl*);
+        RTCScene GetEmbreeMesh(const Mesh*);
+        void UpdateShape(const ShapeImpl*);
         void FillRTCRay(RTCRay& dst, const ray& src) const;
         void FillRTCRay(RTCRay4& dst, int i, const ray& src) const;
         void FillIntersection(Intersection& dst, const RTCRay& src) const;
@@ -96,8 +94,8 @@ namespace FireRays
         };
 
         //used for synchronization embree and FireRays::Shape ids
-        std::map<const FireRays::Shape*, EmbreeSceneData> m_instances; //scenes to instantiate
-        std::map<const FireRays::Shape*, EmbreeMesh> m_meshes; // contains all original embree meshes. Any geometry used in m_scene is an instance.
+        std::map<const Shape*, EmbreeSceneData> m_instances; //scenes to instantiate
+        std::map<const Shape*, EmbreeMesh> m_meshes; // contains all original embree meshes. Any geometry used in m_scene is an instance.
     };
 }
 

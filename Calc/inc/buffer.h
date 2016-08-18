@@ -28,7 +28,7 @@ namespace Calc
 	{
 	public:
 		Buffer() {}
-		virtual ~Buffer() = 0;
+		virtual ~Buffer(){};
 
 		virtual std::size_t GetSize() const = 0;
 
@@ -36,5 +36,4 @@ namespace Calc
 		Buffer& operator = (Buffer const&) = delete;
 	};
 
-	inline Buffer::~Buffer() {}
 }

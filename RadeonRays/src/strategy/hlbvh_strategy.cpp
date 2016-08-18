@@ -27,9 +27,6 @@ THE SOFTWARE.
 
 #include "../translator/plain_bvh_translator.h"
 
-#ifdef FR_EMBED_KERNELS
-#include "../kernel/CL/cache/kernels.h"
-#endif
 
 #include "device.h"
 #include "executable.h"
@@ -45,12 +42,6 @@ namespace RadeonRays
 {
 	struct HlbvhStrategy::ShapeData
 	{
-		// Transform
-		matrix minv;
-		// Motion blur data
-		float3 linearvelocity;
-		// Angular veocity (quaternion)
-		quaternion angularvelocity;
 		// Shape ID
 		Id id;
 		// Index of root bvh node
@@ -58,6 +49,12 @@ namespace RadeonRays
 		// Shape mask
 		int mask;
 		int padding1;
+		// Transform
+		matrix minv;
+		// Motion blur data
+		float3 linearvelocity;
+		// Angular veocity (quaternion)
+		quaternion angularvelocity;
 	};
 
 	struct HlbvhStrategy::GpuData
@@ -110,15 +107,35 @@ namespace RadeonRays
 		, m_gpudata(new GpuData(device))
 		, m_bvh(nullptr)
 	{
-#ifndef FR_EMBED_KERNELS
-		char const* headers[] = { "../RadeonRays/src/kernel/CL/common.cl" };
+#ifndef RR_EMBED_KERNELS
+		if ( device->GetPlatform() == Calc::Platform::kOpenCL )
+		{
+			char const* headers[] = { "../RadeonRays/src/kernels/CL/common.cl" };
 
-		int numheaders = sizeof(headers) / sizeof(char const*);
+			int numheaders = sizeof( headers ) / sizeof( char const* );
 
-		m_gpudata->executable = m_device->CompileExecutable("../RadeonRays/src/kernel/CL/hlbvh.cl", headers, numheaders);
-
+			m_gpudata->executable = m_device->CompileExecutable( "../RadeonRays/src/kernels/CL/hlbvh.cl", headers, numheaders );
+		}
+		else
+		{
+			assert( device->GetPlatform() == Calc::Platform::kVulkan );
+			m_gpudata->executable = m_device->CompileExecutable( "../RadeonRays/src/kernels/GLSL/hlbvh.comp", nullptr, 0 );
+		}
 #else
-		m_gpudata->executable = m_device->CompileExecutable(cl_hlbvh, std::strlen(cl_hlbvh), nullptr);
+#if USE_OPENCL
+		if (device->GetPlatform() == Calc::Platform::kOpenCL)
+		{
+			m_gpudata->executable = m_device->CompileExecutable(g_hlbvh_build_opencl, std::strlen(g_hlbvh_opencl), nullptr);
+		}
+#endif
+
+#if USE_VULKAN
+		if (m_gpudata->executable == nullptr && device->GetPlatform() == Calc::Platform::kVulkan)
+		{
+			m_gpudata->executable = m_device->CompileExecutable(g_hlbvh_build_vulkan, std::strlen(g_hlbvh_vulkan), nullptr);
+		}
+#endif
+
 #endif
 
 		m_gpudata->isect_func = m_gpudata->executable->CreateFunction("IntersectClosest");
@@ -138,6 +155,7 @@ namespace RadeonRays
                 m_device->DeleteBuffer(m_gpudata->faces);
                 m_device->DeleteBuffer(m_gpudata->shapes);
                 m_device->DeleteBuffer(m_gpudata->raycnt);
+				m_device->DeleteBuffer(m_gpudata->stack);
             }
             
 			int numshapes = (int)world.shapes_.size();

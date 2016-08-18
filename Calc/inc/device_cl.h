@@ -21,6 +21,8 @@ THE SOFTWARE.
 ********************************************************************/
 #pragma once
 
+#if USE_OPENCL
+
 #include <cstdint>
 #include <cstddef>
 #include <string>
@@ -45,3 +47,5 @@ namespace Calc
         virtual Buffer* CreateBuffer(cl_mem buffer) = 0;
     };
 }
+
+#endif // USE_OPENCL

@@ -1,10 +1,14 @@
 project "RadeonRays"
-    kind "SharedLib"
+    if( _OPTIONS["static_library"]) then
+        kind "StaticLib"
+    else
+        kind "SharedLib"
+    end
     location "../RadeonRays"
-    includedirs { "./include", "../CLW", "../Calc/inc" }
-    links {"Calc", "CLW"}
+    includedirs { "./include", "../Calc/inc" }
+    links {"Calc"}
     defines {"EXPORT_API"}
-    files { "../RadeonRays/**.h", "../RadeonRays/**.cpp", "../RadeonRays/**.cl" }
+    files { "../RadeonRays/**.h", "../RadeonRays/**.cpp","../RadeonRays/src/kernels/CL/**.cl", "../RadeonRays/src/kernels/GLSL/**.comp"}
     
     if not os.is("macosx") then
         linkoptions {"-Wl,--no-undefined"}
@@ -35,6 +39,7 @@ project "RadeonRays"
             linkoptions {"-Wl,-soname,libRadeonRays.so." .. lib_version}
         configuration{}
 
+
         --replacing lib by soft link
         postbuildcommands {"mv $(TARGET) $(TARGET)." .. lib_version}
         postbuildcommands {"ln -s `basename $(TARGET)." .. lib_version .. "` $(TARGET)"}
@@ -43,11 +48,28 @@ project "RadeonRays"
     configuration {}
 
     if _OPTIONS["embed_kernels"] then
-        defines {"FR_EMBED_KERNELS"}
-        os.execute("python ../Tools/scripts/stringify.py ./src/kernel/CL/ > ./src/kernel/CL/cache/kernels.h")
-        print ">> RadeonRays: CL kernels embedded"
-    end
+        defines {"RR_EMBED_KERNELS=1"}
 
+        if _OPTIONS["use_vulkan"] then
+            os.execute( "python ../Tools/scripts/stringify.py " .. 
+                                os.getcwd() .. "../RadeonRays/src/kernels/GLSL/ "  .. 
+                                ".comp " ..
+                                "vulkan " ..
+                                 "> ./src/kernelcache/kernels_vk.h"                           
+                                ) 
+            print ">> RadeonRays: VK kernels embedded"
+        end
+        
+        if _OPTIONS["use_opencl"] then
+            os.execute( "python ../Tools/scripts/stringify.py " .. 
+                                os.getcwd() .. "../RadeonRays/src/kernels/CL/ "  .. 
+                                ".cl " ..
+                                "opencl " ..
+                                 "> ./src/kernelcache/kernels_cl.h"                           
+                                ) 
+            print ">> RadeonRays: CL kernels embedded"
+        end
+    end
 
     if _OPTIONS["use_tbb"] then
         defines {"USE_TBB"}
@@ -55,9 +77,15 @@ project "RadeonRays"
         includedirs { "../3rdParty/tbb/include" }
     end
 
+    if _OPTIONS["use_opencl"] then
+        includedirs { "../CLW" }
+        links {"CLW"}
+        files {"../RadeonRays/**.cl" }
+    end
+
     if _OPTIONS["use_embree"] then
         files {"../RadeonRays/src/device/embree*"}
-        defines {"USE_EMBREE"}
+        defines {"USE_EMBREE=1"}
         includedirs {"../3rdParty/embree/include"}
 
         configuration {"x32"}
@@ -69,6 +97,7 @@ project "RadeonRays"
         if os.is("macosx") then
             links {"embree.2"}
         elseif os.is("linux") then
+            buildoptions {"-msse3"}
             links {"embree"}
         elseif os.is("windows") then
             links {"embree"}
@@ -76,7 +105,31 @@ project "RadeonRays"
     end
 
 
-    
+    if _OPTIONS["use_vulkan"] then
+        local vulkanSDKPath = os.getenv( "VK_SDK_PATH" );
+        if vulkanSDKPath == nil then
+            vulkanSDKPath = os.getenv( "VULKAN_SDK" );
+        end
+        if vulkanSDKPath ~= nil then
+            configuration {"x32"}
+            libdirs { vulkanSDKPath .. "/Bin32" }
+            configuration {"x64"}
+            libdirs { vulkanSDKPath .. "/Bin" }
+            configuration {}
+        end
+        if os.is("macosx") then
+            --no Vulkan on macOs need to error out TODO
+        elseif os.is("linux") then
+            libdirs { vulkanSDKPath .. "/lib" }
+            links { "Anvil",
+                    "vulkan",
+                    "pthread"}
+        elseif os.is("windows") then
+            links {"Anvil"}
+            links {"vulkan-1"}
+        end
+    end
+
     configuration {"x32", "Debug"}
         targetdir "../Bin/Debug/x86"
     configuration {"x64", "Debug"}
@@ -87,3 +140,4 @@ project "RadeonRays"
         targetdir "../Bin/Release/x64"
     configuration {}
     
+

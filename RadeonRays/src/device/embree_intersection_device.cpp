@@ -35,15 +35,19 @@ THE SOFTWARE.
 #include "embree2/rtcore_ray.h"
 #include "../async/thread_pool.h"
 
+#include <xmmintrin.h>
+#include <pmmintrin.h>
+
 //count of elements for one thread pool task
 #define TASK_SIZE 256
 
 //switch between rtcIntersect4 and rtcIntercetN
 //#define INTERSECTN
 
-namespace FireRays
+
+namespace RadeonRays
 {
-    //simple FireRays::Buffer implementation
+    //simple RadeonRays::Buffer implementation
     class EmbreeBuffer : public Buffer
     {
     public:
@@ -74,7 +78,7 @@ namespace FireRays
         void* m_data;
     };
 
-    //simple FireRays::Event implementation
+    //simple RadeonRays::Event implementation
     class EmbreeEvent : public Event
     {
     public:
@@ -133,41 +137,41 @@ namespace FireRays
         for (auto& it : m_instances)
             it.second.updated = false;
 
-		//checking removed shapes
-		for (auto it = world.shapes_.begin(); it != world.shapes_.end(); ++it)
-		{
-			auto& i = *it;
-			const ShapeImpl* shape = dynamic_cast<const ShapeImpl*>(i);
-			if (m_instances.count(shape))
-				m_instances[shape].updated = true;
-		}
+        //checking removed shapes
+        for (auto it = world.shapes_.begin(); it != world.shapes_.end(); ++it)
+        {
+            auto& i = *it;
+            const ShapeImpl* shape = dynamic_cast<const ShapeImpl*>(i);
+            if (m_instances.count(shape))
+                m_instances[shape].updated = true;
+        }
 
-		//cleanup not updated instances
-		auto itr = m_instances.begin();
-		while (itr != m_instances.end())
-		{
-			if (!itr->second.updated)
-			{
-				//if no instances left => clear stored mesh
-				auto& mesh = m_meshes[itr->first];
-				ThrowIf(mesh.instance_count <= 0, "Invalid embree mesh");
-				--mesh.instance_count;
-				if (mesh.instance_count == 0)
-				{
-					rtcDeleteScene(itr->second.scene);
-					CheckEmbreeError();
-					m_meshes.erase(itr->first);
-				}
-				itr = m_instances.erase(itr);
-			}
-			else
-			{
-				++itr;
-			}
-		}
-		m_instances.clear();
-		rtcDeleteScene(m_scene); CheckEmbreeError();
-		m_scene = rtcDeviceNewScene(m_device, RTC_SCENE_STATIC, RTC_INTERSECT1 | RTC_INTERSECT4 | RTC_INTERSECT8 | RTC_INTERSECT16 | RTC_INTERSECTN); CheckEmbreeError();
+        //cleanup not updated instances
+        auto itr = m_instances.begin();
+        while (itr != m_instances.end())
+        {
+            if (!itr->second.updated)
+            {
+                //if no instances left => clear stored mesh
+                auto& mesh = m_meshes[itr->first];
+                ThrowIf(mesh.instance_count <= 0, "Invalid embree mesh");
+                --mesh.instance_count;
+                if (mesh.instance_count == 0)
+                {
+                    rtcDeleteScene(itr->second.scene);
+                    CheckEmbreeError();
+                    m_meshes.erase(itr->first);
+                }
+                itr = m_instances.erase(itr);
+            }
+            else
+            {
+                ++itr;
+            }
+        }
+        m_instances.clear();
+        rtcDeleteScene(m_scene); CheckEmbreeError();
+        m_scene = rtcDeviceNewScene(m_device, RTC_SCENE_STATIC, RTC_INTERSECT1 | RTC_INTERSECT4 | RTC_INTERSECT8 | RTC_INTERSECT16 | RTC_INTERSECTN); CheckEmbreeError();
 
         for (auto i : world.shapes_)
         {
@@ -277,9 +281,9 @@ namespace FireRays
         {
             m_pool.setSleepTime(0);
             //processing buffers workflow:
-            //1. convert FireRays::ray to RTCRay
+            //1. convert RadeonRays::ray to RTCRay
             //2. rtcIntersect
-            //3. convert RTCRay hit result to FireRays::Intersection
+            //3. convert RTCRay hit result to RadeonRays::Intersection
             std::vector<std::future<void> > jobs;
             jobs.reserve(numrays / TASK_SIZE);
 #ifndef INTERSECTN
@@ -291,19 +295,19 @@ namespace FireRays
 
                 jobs.push_back(std::move(m_pool.submit(([this, src_ray, hit, count]()
                 {
-                    std::vector<RTCRay4> data(count/4 + 1);
+                    RTCRay4 data;
                     for (int i = 0; i < count; i+=4)
                     {
                         int rays_count = (i + 4) < count ? 4 : count - i; // count of valid rays
-                        int valid[4] = { 0, 0, 0, 0,}; //disable all rays
+                        RTCORE_ALIGN(16) int valid[4] = { 0, 0, 0, 0,}; //disable all rays
                         for (int j = 0; j < rays_count; ++j)
                         {
                             valid[j] = src_ray[i + j].IsActive() ? -1 : 0;
-                            FillRTCRay(data[i/4], j, src_ray[i+j]);
+                            FillRTCRay(data, j, src_ray[i+j]);
                         }
-                        rtcIntersect4(valid, m_scene, data[i/4]); CheckEmbreeError();
+                        rtcIntersect4(valid, m_scene, data); CheckEmbreeError();
                         for (int j = 0; j < rays_count; ++j)
-                            FillIntersection(hit[i+j], data[i/4], j);
+                            FillIntersection(hit[i+j], data, j);
                     }
                 }))));
             }
@@ -368,7 +372,7 @@ namespace FireRays
         {
             m_pool.setSleepTime(0);
             //processing buffers workflow:
-            //1. convert FireRays::ray to RTCRay
+            //1. convert RadeonRays::ray to RTCRay
             //2. rtcOccluded
             //3. convert RTCRay hit result
             std::vector<std::future<void> > jobs;
@@ -383,25 +387,45 @@ namespace FireRays
 
                 jobs.push_back(std::move(m_pool.submit(([this, src_ray, hit, count]()
                 {
-                    std::vector<RTCRay4> data(count / 4 + 1);
+                    RTCRay4 data;
                     for (int i = 0; i < count; i += 4)
                     {
                         int rays_count = (i + 4) < count ? 4 : count - i; // count of valid rays
-                        int valid[4] = { 0, 0, 0, 0, }; //disable all rays
+                        RTCORE_ALIGN(16) int valid[4] = { 0, 0, 0, 0, }; //disable all rays
+                        for (int j = 0; j < 4; ++j)
+                        {
+                            data.orgx[j] = 0;
+                            data.orgy[j] = 0;
+                            data.orgz[j] = 0;
+
+                            data.dirx[j] = 0;
+                            data.diry[j] = 0;
+                            data.dirz[j] = 0;
+
+                            data.tnear[j] = 0;
+                            data.tfar[j] = 0;
+                            data.geomID[j] = RTC_INVALID_GEOMETRY_ID;
+                            data.primID[j] = RTC_INVALID_GEOMETRY_ID;
+                            data.instID[j] = RTC_INVALID_GEOMETRY_ID;
+                            data.time[j] = 0;
+                            data.mask[j] = 0xFFFFFF;
+                        }
                         for (int j = 0; j < rays_count; ++j)
                         {
                             valid[j] = src_ray[i + j].IsActive() ? -1 : 0;
-                            FillRTCRay(data[i / 4], j, src_ray[i + j]);
+                            FillRTCRay(data, j, src_ray[i + j]);
                         }
-                        rtcOccluded4(valid, m_scene, data[i / 4]); CheckEmbreeError();
+                        rtcOccluded4(valid, m_scene, data); CheckEmbreeError();
                         for (int j = 0; j < rays_count; ++j)
                         {
-                            hit[i] = data[i/4].instID[j];
-                            if (hit[i] != RTC_INVALID_GEOMETRY_ID)
+                            if (data.instID[j] == RTC_INVALID_GEOMETRY_ID || data.geomID[j] == RTC_INVALID_GEOMETRY_ID)
                             {
-                                EmbreeSceneData* data = static_cast<EmbreeSceneData*>(rtcGetUserData(m_scene, hit[i]));
-                                hit[i] = data->mesh_id;
+                                hit[i + j] = RTC_INVALID_GEOMETRY_ID;
+                                continue;
                             }
+                            hit[i + j] = data.instID[j];
+                            EmbreeSceneData* data = static_cast<EmbreeSceneData*>(rtcGetUserData(m_scene, hit[i + j]));
+                            hit[i + j] = data->mesh_id;
                         }
                     }
                 }))));
@@ -434,12 +458,14 @@ namespace FireRays
                 {
                     for (int i = 0; i < count; ++i)
                     {
-                        hit[i] = hit_src[i].instID;
-                        if (hit[i] != RTC_INVALID_GEOMETRY_ID)
+                        if (hit_src[i].instID == RTC_INVALID_GEOMETRY_ID || hit_src[i].geomID == RTC_INVALID_GEOMETRY_ID)
                         {
-                            EmbreeSceneData* data = static_cast<EmbreeSceneData*>(rtcGetUserData(m_scene, hit[i]));
-                            hit[i] = data->mesh_id;
+                            hit[i] = RTC_INVALID_GEOMETRY_ID;
+                            continue;
                         }
+                        hit[i] = hit_src[i].instID;
+                        EmbreeSceneData* data = static_cast<EmbreeSceneData*>(rtcGetUserData(m_scene, hit[i]));
+                        hit[i] = data->mesh_id;
                     }
                 })));
             }
@@ -470,7 +496,7 @@ namespace FireRays
         Throw("Not implemented for embree device.");
     }
 
-    RTCScene EmbreeIntersectionDevice::GetEmbreeMesh(const FireRays::Mesh* mesh)
+    RTCScene EmbreeIntersectionDevice::GetEmbreeMesh(const RadeonRays::Mesh* mesh)
     {
         if (m_meshes.count(mesh))
             return m_meshes[mesh].scene;
@@ -514,7 +540,7 @@ namespace FireRays
         return result;
     }
 
-    void EmbreeIntersectionDevice::UpdateShape(const FireRays::ShapeImpl* shape)
+    void EmbreeIntersectionDevice::UpdateShape(const RadeonRays::ShapeImpl* shape)
     {
         const EmbreeSceneData& data = m_instances[shape];
         int state = shape->GetStateChange();
@@ -621,4 +647,4 @@ namespace FireRays
             Throw("Embree error");
         }
     }
-} //FireRays
+} //RadeonRays

@@ -19,6 +19,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
+
+#if USE_OPENCL
 #include "calc_clw.h"
 #include "device_clw.h"
 #include "except_clw.h"
@@ -27,6 +29,13 @@ THE SOFTWARE.
 
 namespace Calc
 {
+	DeviceCl* CreateDeviceFromOpenCL(cl_context context, cl_device_id device, cl_command_queue queue)
+	{
+		CLWContext clwContext = CLWContext::Create(context, &device, &queue, 1);
+		auto clwDevice = clwContext.GetDevice(0);
+		return new DeviceClw( clwDevice, clwContext );
+	}
+
 	CalcClw::CalcClw()
 	{
 		try
@@ -119,4 +128,7 @@ namespace Calc
 	{
 		delete device;
 	}
+
 }
+
+#endif //use_opencl

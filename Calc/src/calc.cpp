@@ -20,20 +20,36 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
 #include "calc.h"
+#if USE_OPENCL
 #include "calc_clw.h"
-
-#define USE_OPENCL
+#endif
+#if USE_VULKAN
+#include "calc_vk.h"
+#include "calc_vkw.h"
+#endif
 
 namespace Calc
 {
 	// Create corresponding calc
-	Calc* CreateCalc(int reserved)
+	Calc* CreateCalc( Platform inPlatform, int reserved )
 	{
-#ifdef USE_OPENCL
-		return new CalcClw();
-#else
-		return nullptr;
+#if USE_OPENCL
+		if ( inPlatform & Platform::kOpenCL )
+		{
+			return new CalcClw();
+		}
+		else
 #endif
+#if USE_VULKAN
+		if ( inPlatform & Platform::kVulkan )
+		{
+			return new CalcVulkanw();
+		}
+		else
+#endif // USE_VULKAN
+		{
+			return nullptr;
+		}
 	}
 
 	void DeleteCalc(Calc* calc)

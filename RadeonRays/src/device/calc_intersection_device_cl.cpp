@@ -19,6 +19,9 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
+
+#if USE_OPENCL
+
 #include "calc_intersection_device_cl.h"
 #include "device_cl.h"
 #include "calc_holder.h"
@@ -26,7 +29,7 @@ THE SOFTWARE.
 namespace RadeonRays
 {
     
-    CalcIntersectionDeviceCl::CalcIntersectionDeviceCl(Calc::CalcCl* calc, Calc::DeviceCl* device)
+    CalcIntersectionDeviceCl::CalcIntersectionDeviceCl(Calc::Calc* calc, Calc::DeviceCl* device)
     : CalcIntersectionDevice(calc, device)
     {
         
@@ -37,3 +40,5 @@ namespace RadeonRays
         return new CalcBufferHolder(m_device.get(), static_cast<Calc::DeviceCl*>(m_device.get())->CreateBuffer(mem));
     }
 }
+
+#endif // USE_OPENCL

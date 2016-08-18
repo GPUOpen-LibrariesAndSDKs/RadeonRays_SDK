@@ -27,11 +27,6 @@ THE SOFTWARE.
 #include "../primitive/instance.h"
 #include "../except/except.h"
 
-
-#ifdef FR_EMBED_KERNELS
-#include "../kernel/CL/cache/kernels.h"
-#endif
-
 #include "device.h"
 #include "executable.h"
 
@@ -41,103 +36,132 @@ static int const kWorkGroupSize = 64;
 
 namespace RadeonRays
 {
-    struct Bvh2lStrategy::ShapeData
-    {
-        // Transform
-        matrix minv;
-        // Motion blur data
-        float3 linearvelocity;
-        // Angular veocity (quaternion)
-        quaternion angularvelocity;
-        // Shape ID
-        Id id;
-        // Index of root bvh node
-        int bvhidx;
-        int mask;
-        int padding1;
-    };
+	struct Bvh2lStrategy::ShapeData
+	{
+		// Shape ID
+		Id id;
+		// Index of root bvh node
+		int bvhidx;
+		int mask;
+		int padding1;
+		// Transform
+		matrix minv;
+		// Motion blur data
+		float3 linearvelocity;
+		// Angular veocity (quaternion)
+		quaternion angularvelocity;
+	};
 
-    struct Bvh2lStrategy::Face
-    {
-        // Up to 4 indices
-        int idx[4];
-        // Primitive ID within the mesh
-        int id;
-        // Idx count
-        int cnt;
-    };
+	struct Bvh2lStrategy::Face
+	{
+		int idx[3];
+		int shadeidx;
+		// Primitive ID within the mesh
+		int id;
+		// Idx count
+		int cnt;
+		int padding[2];
+	};
 
-    struct Bvh2lStrategy::GpuData
-    {
-        // Device
-        Calc::Device* device;
-        // BVH nodes
-        Calc::Buffer* bvh;
-        // Vertex positions
-        Calc::Buffer* vertices;
-        // Indices
-        Calc::Buffer* faces;
-        // Shape IDs
-        Calc::Buffer* shapes;
+	struct Bvh2lStrategy::GpuData
+	{
+		// Device
+		Calc::Device* device;
+		// BVH nodes
+		Calc::Buffer* bvh;
+		// Vertex positions
+		Calc::Buffer* vertices;
+		// Indices
+		Calc::Buffer* faces;
+		// Shape IDs
+		Calc::Buffer* shapes;
 
-        int bvhrootidx;
+		int bvhrootidx;
 
-        Calc::Executable* executable;
-        Calc::Function* isect_func;
-        Calc::Function* occlude_func;
-        Calc::Function* isect_indirect_func;
-        Calc::Function* occlude_indirect_func;
+		Calc::Executable* executable;
+		Calc::Function* isect_func;
+		Calc::Function* occlude_func;
+		Calc::Function* isect_indirect_func;
+		Calc::Function* occlude_indirect_func;
 
-        GpuData(Calc::Device* d)
-            : device(d)
-            , bvh(nullptr)
-            , vertices(nullptr)
-            , faces(nullptr)
-            , shapes(nullptr)
-            , bvhrootidx(-1)
-        {
-        }
+		GpuData(Calc::Device* d)
+			: device(d)
+			, bvh(nullptr)
+			, vertices(nullptr)
+			, faces(nullptr)
+			, shapes(nullptr)
+			, bvhrootidx(-1)
+			, executable(nullptr)
+			, isect_func(nullptr)
+			, occlude_func(nullptr)
+			, isect_indirect_func(nullptr)
+			, occlude_indirect_func(nullptr)
+		{
+		}
 
-        ~GpuData()
-        {
-            device->DeleteBuffer(bvh);
-            device->DeleteBuffer(vertices);
-            device->DeleteBuffer(faces);
-            device->DeleteBuffer(shapes);
-            executable->DeleteFunction(isect_func);
-            executable->DeleteFunction(occlude_func);
-            executable->DeleteFunction(isect_indirect_func);
-            executable->DeleteFunction(occlude_indirect_func);
-            device->DeleteExecutable(executable);
-        }
-    };
+		~GpuData()
+		{
+			device->DeleteBuffer(bvh);
+			device->DeleteBuffer(vertices);
+			device->DeleteBuffer(faces);
+			device->DeleteBuffer(shapes);
+			if(executable != nullptr)
+			{
+				executable->DeleteFunction(isect_func);
+				executable->DeleteFunction(occlude_func);
+				executable->DeleteFunction(isect_indirect_func);
+				executable->DeleteFunction(occlude_indirect_func);
+				device->DeleteExecutable(executable);
+			}
+		}
+	};
 
 
-    struct Bvh2lStrategy::CpuData
-    {
-        std::vector<int> mesh_vertices_start_idx;
-        std::vector<int> mesh_faces_start_idx;
-        std::vector<Bvh const*> bvhptrs;
-        std::vector<ShapeData> shapedata;
-        std::vector<bbox> bounds;
+	struct Bvh2lStrategy::CpuData
+	{
+		std::vector<int> mesh_vertices_start_idx;
+		std::vector<int> mesh_faces_start_idx;
+		std::vector<Bvh const*> bvhptrs;
+		std::vector<ShapeData> shapedata;
+		std::vector<bbox> bounds;
 
-        PlainBvhTranslator translator;
-    };
+		PlainBvhTranslator translator;
+	};
 
-    Bvh2lStrategy::Bvh2lStrategy(Calc::Device* device)
-        : Strategy(device)
-        , m_gpudata(new GpuData(device))
-        , m_cpudata(new CpuData)
-    {
-#ifndef FR_EMBED_KERNELS
-        char const* headers[] = { "../RadeonRays/src/kernel/CL/common.cl" };
+	Bvh2lStrategy::Bvh2lStrategy(Calc::Device* device)
+		: Strategy(device)
+		, m_gpudata(new GpuData(device))
+		, m_cpudata(new CpuData)
+	{
+#ifndef RR_EMBED_KERNELS
+		if ( device->GetPlatform() == Calc::Platform::kOpenCL )
+		{
+			char const* headers[] = { "../RadeonRays/src/kernels/CL/common.cl" };
 
-        int numheaders = sizeof(headers) / sizeof(char const*);
+			int numheaders = sizeof(headers) / sizeof(char const*);
 
-        m_gpudata->executable = m_device->CompileExecutable("../RadeonRays/src/kernel/CL/bvh2l.cl", headers, numheaders);
+			m_gpudata->executable = m_device->CompileExecutable("../RadeonRays/src/kernels/CL/bvh2l.cl", headers, numheaders);
+		}
+		else
+		{
+			assert( device->GetPlatform() == Calc::Platform::kVulkan );
+			m_gpudata->executable = m_device->CompileExecutable( "../RadeonRays/src/kernels/GLSL/bvh2l.comp", nullptr, 0 );
+		}
 
 #else
-        m_gpudata->executable = m_device->CompileExecutable(cl_bvh2l, std::strlen(cl_bvh2l), nullptr);
+#if USE_OPENCL
+		if (device->GetPlatform() == Calc::Platform::kOpenCL)
+		{
+			m_gpudata->executable = m_device->CompileExecutable(g_bvh2l_opencl, std::strlen(g_bvh2l_opencl), nullptr);
+		}
+#endif
+
+#if USE_VULKAN
+		if (m_gpudata->executable == nullptr && device->GetPlatform() == Calc::Platform::kVulkan)
+		{
+			m_gpudata->executable = m_device->CompileExecutable(g_bvh2l_vulkan, std::strlen(g_bvh2l_vulkan), nullptr);
+		}
+#endif
 #endif
 
         m_gpudata->isect_func = m_gpudata->executable->CreateFunction("IntersectClosest2L");

@@ -24,6 +24,13 @@ THE SOFTWARE.
 #include <cmath>
 #include <algorithm>
 
+#if defined(_WIN32) && !defined(NO_MIN_MAX)
+#undef MIN
+#undef MAX
+#undef min
+#undef max
+#endif
+
 namespace RadeonRays
 {
     class float3
