@@ -282,19 +282,19 @@ namespace RadeonRays
         /******************************************
         Utility
         ******************************************/
-        // Set API global option: string
         // Supported options:
         // option "bvh.type" values {"bvh" (regular bvh, default), "qbvh" (4 branching factor), "hlbvh" (fast builds)}
         // option "bvh.force2level" values {0(default), 1}
         //         by default 2-level BVH is used only if there is instancing in the scene or
         //         motion blur is enabled. 1 forces 2-level BVH for all cases.
         // option "bvh.builder" values {"sah" (use surface area heuristic), "median" (use spatial median, faster to build, default)}
-        // option "bvh.sah.usesplits" values {0(default),1} (allow spatial splits for BVH)
-        // option "bvh.sah.trisah" values {float, default = 0.01f for GPU } (cost of triangle intersection vs node traversal)
-        // option "bvh.sah.overlaparea" values { float < 1.f, default = 0.0001f } 
+        // option "bvh.sah.use_splits" values {0(default),1} (allow spatial splits for BVH)
+        // option "bvh.sah.traversal_cost" values {float, default = 10.f for GPU } (cost of node traversal vs triangle intersection)
+        // option "bvh.sah.min_overlap" values { float < 1.f, default = 0.005f } 
         //         (overlap area which is considered for a spatial splits, fraction of parent bbox)
-        // option "bvh.sah.maxprimsperleaf" values {int, default = 4} (the limit on number of primitives per BVH leaf)
-        // option "bvh.sah.maxdepth" values {int, default = 10} (max depth in the tree where spatial split can happen)
+        // option "bvh.sah.max_split_depth" values {int, default = 10} (max depth in the tree where spatial split can happen)
+        // option "bvh.sah.extra_node_budget" values {float, default = 1.f} (maximum node memory budget compared to normal bvh (2*num_tris - 1), for ex. 0.3 = 30% more nodes allowed
+        // Set API global option: string
         virtual void SetOption(char const* name, char const* value) = 0;
         // Set API global option: float
         virtual void SetOption(char const* name, float value) = 0;

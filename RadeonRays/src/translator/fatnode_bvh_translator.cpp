@@ -35,15 +35,15 @@ namespace RadeonRays
     {
         // WARNING: this is crucial in order for the nodes not to migrate in memory as push_back adds nodes
         nodecnt_ = 0;
-        int newsize = bvh.nodecnt_;
+        int newsize = bvh.m_nodecnt;
         nodes_.resize(newsize);
         extra_.resize(newsize);
 
         // Check if we have been initialized
-        assert(bvh.root_);
+        assert(bvh.m_root);
 
         // Process root
-        ProcessRootNode(bvh.root_);
+        ProcessRootNode(bvh.m_root);
     }
 
 

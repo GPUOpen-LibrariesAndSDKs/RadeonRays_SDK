@@ -111,7 +111,7 @@ inline void ApiConformanceCL::SetUp()
 	ASSERT_NE(apigpu_, nullptr);
 
 	// Load obj file 
-	std::string res = LoadObj(shapes_, materials_, "CornellBox/orig.objm");
+	std::string res = LoadObj(shapes_, materials_, "../Resources/CornellBox/orig.objm");
 
 	// Create meshes within IntersectionApi
 	for (int i = 0; i<(int)shapes_.size(); ++i)

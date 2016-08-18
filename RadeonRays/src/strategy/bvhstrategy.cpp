@@ -22,6 +22,7 @@ THE SOFTWARE.
 #include "bvhstrategy.h"
 
 #include "../accelerator/bvh.h"
+#include "../accelerator/split_bvh.h"
 #include "../primitive/mesh.h"
 #include "../primitive/instance.h"
 #include "../world/world.h"
@@ -161,33 +162,50 @@ namespace RadeonRays
                 m_device->DeleteBuffer(m_gpudata->shapes);
                 m_device->DeleteBuffer(m_gpudata->raycnt);
             }
-            
-			int numshapes = (int)world.shapes_.size();
-			int numvertices = 0;
-			int numfaces = 0;
 
-			// This buffer tracks mesh start index for next stage as mesh face indices are relative to 0
-			std::vector<int> mesh_vertices_start_idx(numshapes);
-			std::vector<int> mesh_faces_start_idx(numshapes);
+            int numshapes = (int)world.shapes_.size();
+            int numvertices = 0;
+            int numfaces = 0;
 
-			// Recreate it
+            // This buffer tracks mesh start index for next stage as mesh face indices are relative to 0
+            std::vector<int> mesh_vertices_start_idx(numshapes);
+            std::vector<int> mesh_faces_start_idx(numshapes);
 
-			// First check if we need to use SAH
-			auto builder = world.options_.GetOption("bvh.builder");
-			bool enablesah = false;
+            // Check options
+            auto builder = world.options_.GetOption("bvh.builder");
+            auto splits = world.options_.GetOption("bvh.sah.use_splits");
+            auto maxdepth = world.options_.GetOption("bvh.sah.max_split_depth");
+            auto overlap = world.options_.GetOption("bvh.sah.min_overlap");
+            auto tcost = world.options_.GetOption("bvh.sah.traversal_cost");
+            auto node_budget = world.options_.GetOption("bvh.sah.extra_node_budget");
 
-			if (builder && builder->AsString() == "sah")
-			{
-				enablesah = true;
-			}
+            bool use_sah = false;
+            bool use_splits = false;
+            int max_split_depth = maxdepth ? (int)maxdepth->AsFloat() : 10;
+            float min_overlap = overlap ? overlap->AsFloat() : 0.05f;
+            float traversal_cost = tcost ? tcost->AsFloat() : 10.f;
+            float extra_node_budget = node_budget ? node_budget->AsFloat() : 0.5f;
 
-			m_bvh.reset(new Bvh(enablesah));
+            if (builder && builder->AsString() == "sah")
+            {
+                use_sah = true;
+            }
 
-			// Partition the array into meshes and instances
-			std::vector<Shape const*> shapes(world.shapes_);
-			
+            if (splits && splits->AsFloat() > 0.f)
+            {
+                use_splits = true;
+            }
+
+            m_bvh.reset( use_splits ? 
+                new SplitBvh(traversal_cost, max_split_depth, min_overlap, extra_node_budget) :
+                new Bvh(traversal_cost, use_sah)
+            );
+
+            // Partition the array into meshes and instances
+            std::vector<Shape const*> shapes(world.shapes_);
+
             auto firstinst = std::partition(shapes.begin(), shapes.end(),
-			[&](Shape const* shape)
+                [&](Shape const* shape)
             {
                 return !static_cast<ShapeImpl const*>(shape)->is_instance();
             });
@@ -197,259 +215,242 @@ namespace RadeonRays
             // Count the number of instances
             int numinstances = (int)std::distance(firstinst, shapes.end());
 
-			for (int i = 0; i < nummeshes; ++i)
-			{
-				Mesh const* mesh = static_cast<Mesh const*>(shapes[i]);
+            for (int i = 0; i < nummeshes; ++i)
+            {
+                Mesh const* mesh = static_cast<Mesh const*>(shapes[i]);
 
-				mesh_faces_start_idx[i] = numfaces;
-				mesh_vertices_start_idx[i] = numvertices;
+                mesh_faces_start_idx[i] = numfaces;
+                mesh_vertices_start_idx[i] = numvertices;
 
-				numfaces += mesh->num_faces();
-				numvertices += mesh->num_vertices();
-			}
+                numfaces += mesh->num_faces();
+                numvertices += mesh->num_vertices();
+            }
 
-			for (int i = nummeshes; i < nummeshes + numinstances; ++i)
-			{
-				Instance const* instance = static_cast<Instance const*>(shapes[i]);
-				Mesh const* mesh = static_cast<Mesh const*>(instance->GetBaseShape());
+            for (int i = nummeshes; i < nummeshes + numinstances; ++i)
+            {
+                Instance const* instance = static_cast<Instance const*>(shapes[i]);
+                Mesh const* mesh = static_cast<Mesh const*>(instance->GetBaseShape());
 
-				mesh_faces_start_idx[i] = numfaces;
-				mesh_vertices_start_idx[i] = numvertices;
+                mesh_faces_start_idx[i] = numfaces;
+                mesh_vertices_start_idx[i] = numvertices;
 
-				numfaces += mesh->num_faces();
-				numvertices += mesh->num_vertices();
-			}
+                numfaces += mesh->num_faces();
+                numvertices += mesh->num_vertices();
+            }
 
-			// We can't avoild allocating it here, since bounds aren't stored anywhere
-			std::vector<bbox> bounds(numfaces);
-			std::vector<ShapeData> shapedata(numshapes);
+            // We can't avoild allocating it here, since bounds aren't stored anywhere
+            std::vector<bbox> bounds(numfaces);
+            std::vector<ShapeData> shapedata(numshapes);
 
-			// We handle meshes first collecting their world space bounds
+            // We handle meshes first collecting their world space bounds
 #pragma omp parallel for
-			for (int i = 0; i < nummeshes; ++i)
-			{
-				Mesh const* mesh = static_cast<Mesh const*>(shapes[i]);
+            for (int i = 0; i < nummeshes; ++i)
+            {
+                Mesh const* mesh = static_cast<Mesh const*>(shapes[i]);
 
-				for (int j = 0; j < mesh->num_faces(); ++j)
-				{
-					// Here we directly get world space bounds
-					mesh->GetFaceBounds(j, false, bounds[mesh_faces_start_idx[i] + j]);
-				}
+                for (int j = 0; j < mesh->num_faces(); ++j)
+                {
+                    // Here we directly get world space bounds
+                    mesh->GetFaceBounds(j, false, bounds[mesh_faces_start_idx[i] + j]);
+                }
 
-				shapedata[i].id = mesh->GetId();
-				shapedata[i].mask = mesh->GetMask();
-			}
+                shapedata[i].id = mesh->GetId();
+                shapedata[i].mask = mesh->GetMask();
+            }
 
-			// Then we handle instances. Need to flatten them into actual geometry.
+            // Then we handle instances. Need to flatten them into actual geometry.
 #pragma omp parallel for
-			for (int i = nummeshes; i < nummeshes + numinstances; ++i)
-			{
-				Instance const* instance = static_cast<Instance const*>(shapes[i]);
-				Mesh const* mesh = static_cast<Mesh const*>(instance->GetBaseShape());
-				
-				// Instance is using its own transform for base shape geometry
-				// so we need to get object space bounds and transform them manually
-				matrix m, minv;
-				instance->GetTransform(m, minv);
+            for (int i = nummeshes; i < nummeshes + numinstances; ++i)
+            {
+                Instance const* instance = static_cast<Instance const*>(shapes[i]);
+                Mesh const* mesh = static_cast<Mesh const*>(instance->GetBaseShape());
 
-				for (int j = 0; j < mesh->num_faces(); ++j)
-				{
-					bbox tmp;
-					mesh->GetFaceBounds(j, true, tmp);
-					bounds[mesh_faces_start_idx[i] + j] = transform_bbox(tmp, m);
-				}
+                // Instance is using its own transform for base shape geometry
+                // so we need to get object space bounds and transform them manually
+                matrix m, minv;
+                instance->GetTransform(m, minv);
 
-				shapedata[i].id = instance->GetId();
-				shapedata[i].mask = instance->GetMask();
-			}
-			
-			m_bvh->Build(&bounds[0], numfaces);
+                for (int j = 0; j < mesh->num_faces(); ++j)
+                {
+                    bbox tmp;
+                    mesh->GetFaceBounds(j, true, tmp);
+                    bounds[mesh_faces_start_idx[i] + j] = transform_bbox(tmp, m);
+                }
 
-			PlainBvhTranslator translator;
-			translator.Process(*m_bvh);
+                shapedata[i].id = instance->GetId();
+                shapedata[i].mask = instance->GetMask();
+            }
 
-			// Update GPU data
-			// Copy translated nodes first
-			m_gpudata->bvh = m_device->CreateBuffer(translator.nodes_.size() * sizeof(PlainBvhTranslator::Node), Calc::BufferType::kRead, &translator.nodes_[0]);
+            m_bvh->Build(&bounds[0], numfaces);
 
-			// Create vertex buffer
-			{
-				// Vertices
-				m_gpudata->vertices = m_device->CreateBuffer(numvertices * sizeof(float3), Calc::BufferType::kRead);
+#ifdef RR_PROFILE
+            m_bvh->PrintStatistics(std::cout);
+#endif
 
-				// Get the pointer to mapped data
-				float3* vertexdata = nullptr;
-				Calc::Event* e = nullptr;
-				m_device->MapBuffer(m_gpudata->vertices, 0, 0, numvertices * sizeof(float3), Calc::MapType::kMapWrite, (void**)&vertexdata, &e);
+            PlainBvhTranslator translator;
+            translator.Process(*m_bvh);
 
-				e->Wait();
-				m_device->DeleteEvent(e);
+            // Update GPU data
+            // Copy translated nodes first
+            m_gpudata->bvh = m_device->CreateBuffer(translator.nodes_.size() * sizeof(PlainBvhTranslator::Node), Calc::BufferType::kRead, &translator.nodes_[0]);
 
-				// Here we need to put data in world space rather than object space
-				// So we need to get the transform from the mesh and multiply each vertex
-				matrix m, minv;
+            // Create vertex buffer
+            {
+                // Vertices
+                m_gpudata->vertices = m_device->CreateBuffer(numvertices * sizeof(float3), Calc::BufferType::kRead);
 
-#pragma omp parallel for
-				for (int i = 0; i < nummeshes; ++i)
-				{
-					// Get the mesh
-					Mesh const* mesh = static_cast<Mesh const*>(shapes[i]);
-					// Get vertex buffer of the current mesh
-					float3 const* myvertexdata = mesh->GetVertexData();
-					// Get mesh transform
-					mesh->GetTransform(m, minv);
+                // Get the pointer to mapped data
+                float3* vertexdata = nullptr;
+                Calc::Event* e = nullptr;
+                m_device->MapBuffer(m_gpudata->vertices, 0, 0, numvertices * sizeof(float3), Calc::MapType::kMapWrite, (void**)&vertexdata, &e);
 
-					//#pragma omp parallel for
-					// Iterate thru vertices multiply and append them to GPU buffer
-					for (int j = 0; j < mesh->num_vertices(); ++j)
-					{
-						vertexdata[mesh_vertices_start_idx[i] + j] = transform_point(myvertexdata[j], m);
-					}
-				}
+                e->Wait();
+                m_device->DeleteEvent(e);
+
+                // Here we need to put data in world space rather than object space
+                // So we need to get the transform from the mesh and multiply each vertex
+                matrix m, minv;
 
 #pragma omp parallel for
-				for (int i = nummeshes; i < nummeshes + numinstances; ++i)
-				{
-					Instance const* instance = static_cast<Instance const*>(shapes[i]);
-					// Get the mesh
-					Mesh const* mesh = static_cast<Mesh const*>(instance->GetBaseShape());
-					// Get vertex buffer of the current mesh
-					float3 const* myvertexdata = mesh->GetVertexData();
-					// Get mesh transform
-					instance->GetTransform(m, minv);
+                for (int i = 0; i < nummeshes; ++i)
+                {
+                    // Get the mesh
+                    Mesh const* mesh = static_cast<Mesh const*>(shapes[i]);
+                    // Get vertex buffer of the current mesh
+                    float3 const* myvertexdata = mesh->GetVertexData();
+                    // Get mesh transform
+                    mesh->GetTransform(m, minv);
 
-					//#pragma omp parallel for
-					// Iterate thru vertices multiply and append them to GPU buffer
-					for (int j = 0; j < mesh->num_vertices(); ++j)
-					{
-						vertexdata[mesh_vertices_start_idx[i] + j] = transform_point(myvertexdata[j], m);
-					}
-				}
+                    //#pragma omp parallel for
+                    // Iterate thru vertices multiply and append them to GPU buffer
+                    for (int j = 0; j < mesh->num_vertices(); ++j)
+                    {
+                        vertexdata[mesh_vertices_start_idx[i] + j] = transform_point(myvertexdata[j], m);
+                    }
+                }
 
-				m_device->UnmapBuffer(m_gpudata->vertices, 0, vertexdata, &e);
+#pragma omp parallel for
+                for (int i = nummeshes; i < nummeshes + numinstances; ++i)
+                {
+                    Instance const* instance = static_cast<Instance const*>(shapes[i]);
+                    // Get the mesh
+                    Mesh const* mesh = static_cast<Mesh const*>(instance->GetBaseShape());
+                    // Get vertex buffer of the current mesh
+                    float3 const* myvertexdata = mesh->GetVertexData();
+                    // Get mesh transform
+                    instance->GetTransform(m, minv);
 
-				e->Wait();
-				m_device->DeleteEvent(e);
-			}
+                    //#pragma omp parallel for
+                    // Iterate thru vertices multiply and append them to GPU buffer
+                    for (int j = 0; j < mesh->num_vertices(); ++j)
+                    {
+                        vertexdata[mesh_vertices_start_idx[i] + j] = transform_point(myvertexdata[j], m);
+                    }
+                }
 
-			// Create face buffer
-			{
-				struct Face
-				{
-					// Up to 3 indices
-					int idx[3];
-					// Shape index
-					int shapeidx;
-					// Primitive ID within the mesh
-					int id;
-					// Idx count
-					int cnt;
+                m_device->UnmapBuffer(m_gpudata->vertices, 0, vertexdata, &e);
 
-					int padding[ 2 ];
-				};
+                e->Wait();
+                m_device->DeleteEvent(e);
+            }
 
-				// Create face buffer
-				m_gpudata->faces = m_device->CreateBuffer(numfaces * sizeof(Face), Calc::BufferType::kRead);
+            // Create face buffer
+            {
+                struct Face
+                {
+                    // Up to 3 indices
+                    int idx[3];
+                    // Shape index
+                    int shapeidx;
+                    // Primitive ID within the mesh
+                    int id;
+                    // Idx count
+                    int cnt;
 
-				// Get the pointer to mapped data
-				Face* facedata = nullptr;
-				Calc::Event* e = nullptr;
+                    int padding[2];
+                };
 
-				m_device->MapBuffer(m_gpudata->faces, 0, 0, numfaces * sizeof(Face), Calc::BufferType::kWrite, (void**)&facedata, &e);
+                // This number is different from the number of faces for some BVHs 
+                auto numindices = m_bvh->GetNumIndices();
+                // Create face buffer
+                m_gpudata->faces = m_device->CreateBuffer(numindices * sizeof(Face), Calc::BufferType::kRead);
 
-				e->Wait();
-				m_device->DeleteEvent(e);
+                // Get the pointer to mapped data
+                Face* facedata = nullptr;
+                Calc::Event* e = nullptr;
 
-				// Here the point is to add mesh starting index to actual index contained within the mesh,
-				// getting absolute index in the buffer.
-				// Besides that we need to permute the faces accorningly to BVH reordering, whihc
-				// is contained within bvh.primids_
-				int const* reordering = m_bvh->GetIndices();
-				for (int i = 0; i < numfaces; ++i)
-				{
-					int indextolook4 = reordering[i];
+                m_device->MapBuffer(m_gpudata->faces, 0, 0, numindices * sizeof(Face), Calc::BufferType::kWrite, (void**)&facedata, &e);
 
-					// We need to find a shape corresponding to current face
-					auto iter = std::upper_bound(mesh_faces_start_idx.cbegin(), mesh_faces_start_idx.cend(), indextolook4);
+                e->Wait();
+                m_device->DeleteEvent(e);
 
-					// Find the index of the shape
-					int shapeidx = static_cast<int>(std::distance(mesh_faces_start_idx.cbegin(), iter) - 1);
+                // Here the point is to add mesh starting index to actual index contained within the mesh,
+                // getting absolute index in the buffer.
+                // Besides that we need to permute the faces accorningly to BVH reordering, whihc
+                // is contained within bvh.primids_
+                int const* reordering = m_bvh->GetIndices();
+                for (int i = 0; i < numindices; ++i)
+                {
+                    int indextolook4 = reordering[i];
 
-					// Get the mesh directly or out of instance
-					Mesh const* mesh = nullptr;
-					if (shapeidx < nummeshes)
-					{
-						mesh = static_cast<Mesh const*>(shapes[shapeidx]);
-					}
-					else
-					{
-						mesh = static_cast<Mesh const*>(static_cast<Instance const*>(shapes[shapeidx])->GetBaseShape());
-					}
+                    // We need to find a shape corresponding to current face
+                    auto iter = std::upper_bound(mesh_faces_start_idx.cbegin(), mesh_faces_start_idx.cend(), indextolook4);
 
-					// Get vertex buffer of the current mesh
-					Mesh::Face const* myfacedata = mesh->GetFaceData();
-					// Find face idx
-					int faceidx = indextolook4 - mesh_faces_start_idx[shapeidx];
-					// Find mesh start idx
-					int mystartidx = mesh_vertices_start_idx[shapeidx];
+                    // Find the index of the shape
+                    int shapeidx = static_cast<int>(std::distance(mesh_faces_start_idx.cbegin(), iter) - 1);
 
-					// Copy face data to GPU buffer
-					facedata[i].idx[0] = myfacedata[faceidx].idx[0] + mystartidx;
-					facedata[i].idx[1] = myfacedata[faceidx].idx[1] + mystartidx;
-					facedata[i].idx[2] = myfacedata[faceidx].idx[2] + mystartidx;
+                    // Get the mesh directly or out of instance
+                    Mesh const* mesh = nullptr;
+                    if (shapeidx < nummeshes)
+                    {
+                        mesh = static_cast<Mesh const*>(shapes[shapeidx]);
+                    }
+                    else
+                    {
+                        mesh = static_cast<Mesh const*>(static_cast<Instance const*>(shapes[shapeidx])->GetBaseShape());
+                    }
 
-					facedata[i].shapeidx = shapeidx;
-					facedata[i].cnt = 0;
-					facedata[i].id = faceidx;
-				}
+                    // Get vertex buffer of the current mesh
+                    Mesh::Face const* myfacedata = mesh->GetFaceData();
+                    // Find face idx
+                    int faceidx = indextolook4 - mesh_faces_start_idx[shapeidx];
+                    // Find mesh start idx
+                    int mystartidx = mesh_vertices_start_idx[shapeidx];
 
-				m_device->UnmapBuffer(m_gpudata->faces, 0, facedata, &e);
+                    // Copy face data to GPU buffer
+                    facedata[i].idx[0] = myfacedata[faceidx].idx[0] + mystartidx;
+                    facedata[i].idx[1] = myfacedata[faceidx].idx[1] + mystartidx;
+                    facedata[i].idx[2] = myfacedata[faceidx].idx[2] + mystartidx;
 
-				e->Wait();
-				m_device->DeleteEvent(e);
-			}
+                    facedata[i].shapeidx = shapeidx;
+                    facedata[i].cnt = 0;
+                    facedata[i].id = faceidx;
+                }
 
-			// Create shapes buffer
-			m_gpudata->shapes = m_device->CreateBuffer(numshapes * sizeof(ShapeData), Calc::BufferType::kRead, &shapedata[0]);
-			// Create helper raycounter buffer
-			m_gpudata->raycnt = m_device->CreateBuffer(sizeof(int), Calc::BufferType::kWrite);
+                m_device->UnmapBuffer(m_gpudata->faces, 0, facedata, &e);
 
-			// Make sure everything is commited
-			m_device->Finish(0);
-		}
-	}
+                e->Wait();
+                m_device->DeleteEvent(e);
+            }
 
-	void BvhStrategy::QueryIntersection(std::uint32_t queueidx, Calc::Buffer const* rays, std::uint32_t numrays, Calc::Buffer *hits, Calc::Event const* waitevent, Calc::Event **event) const
+            // Create shapes buffer
+            m_gpudata->shapes = m_device->CreateBuffer(numshapes * sizeof(ShapeData), Calc::BufferType::kRead, &shapedata[0]);
+            // Create helper raycounter buffer
+            m_gpudata->raycnt = m_device->CreateBuffer(sizeof(int), Calc::BufferType::kWrite);
+
+            // Make sure everything is commited
+            m_device->Finish(0);
+        }
+    }
+
+    void BvhStrategy::QueryIntersection(std::uint32_t queueidx, Calc::Buffer const* rays, std::uint32_t numrays, Calc::Buffer *hits, Calc::Event const* waitevent, Calc::Event **event) const
     {
         auto& func = m_gpudata->isect_func;
-        
-		// Set args
-		int arg = 0;
-		int offset = 0;
 
-		func->SetArg(arg++, m_gpudata->bvh);
-        func->SetArg(arg++, m_gpudata->vertices);
-        func->SetArg(arg++, m_gpudata->faces);
-        func->SetArg(arg++, m_gpudata->shapes);
-        func->SetArg(arg++, rays);
-        func->SetArg(arg++, sizeof(offset), &offset);
-        func->SetArg(arg++, sizeof(numrays), &numrays);
-        func->SetArg(arg++, hits);
-
-        size_t localsize = kWorkGroupSize;
-		size_t globalsize = ((numrays + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
-
-        m_device->Execute(func, queueidx, globalsize, localsize, event);
-	}
-
-    void BvhStrategy::QueryOcclusion(std::uint32_t queueidx, Calc::Buffer const* rays, std::uint32_t numrays, Calc::Buffer *hits, Calc::Event const* waitevent, Calc::Event **event) const
-    {
-        auto& func = m_gpudata->occlude_func;
-        
         // Set args
         int arg = 0;
         int offset = 0;
-        
+
         func->SetArg(arg++, m_gpudata->bvh);
         func->SetArg(arg++, m_gpudata->vertices);
         func->SetArg(arg++, m_gpudata->faces);
@@ -458,21 +459,44 @@ namespace RadeonRays
         func->SetArg(arg++, sizeof(offset), &offset);
         func->SetArg(arg++, sizeof(numrays), &numrays);
         func->SetArg(arg++, hits);
-        
+
         size_t localsize = kWorkGroupSize;
         size_t globalsize = ((numrays + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
-        
+
+        m_device->Execute(func, queueidx, globalsize, localsize, event);
+    }
+
+    void BvhStrategy::QueryOcclusion(std::uint32_t queueidx, Calc::Buffer const* rays, std::uint32_t numrays, Calc::Buffer *hits, Calc::Event const* waitevent, Calc::Event **event) const
+    {
+        auto& func = m_gpudata->occlude_func;
+
+        // Set args
+        int arg = 0;
+        int offset = 0;
+
+        func->SetArg(arg++, m_gpudata->bvh);
+        func->SetArg(arg++, m_gpudata->vertices);
+        func->SetArg(arg++, m_gpudata->faces);
+        func->SetArg(arg++, m_gpudata->shapes);
+        func->SetArg(arg++, rays);
+        func->SetArg(arg++, sizeof(offset), &offset);
+        func->SetArg(arg++, sizeof(numrays), &numrays);
+        func->SetArg(arg++, hits);
+
+        size_t localsize = kWorkGroupSize;
+        size_t globalsize = ((numrays + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
+
         m_device->Execute(func, queueidx, globalsize, localsize, event);
     }
 
     void BvhStrategy::QueryIntersection(std::uint32_t queueidx, Calc::Buffer const* rays, Calc::Buffer const* numrays, std::uint32_t maxrays, Calc::Buffer* hits, Calc::Event const* waitevent, Calc::Event** event) const
-	{
+    {
         auto& func = m_gpudata->isect_indirect_func;
-        
+
         // Set args
         int arg = 0;
         int offset = 0;
-        
+
         func->SetArg(arg++, m_gpudata->bvh);
         func->SetArg(arg++, m_gpudata->vertices);
         func->SetArg(arg++, m_gpudata->faces);
@@ -481,21 +505,21 @@ namespace RadeonRays
         func->SetArg(arg++, sizeof(offset), &offset);
         func->SetArg(arg++, numrays);
         func->SetArg(arg++, hits);
-        
+
         size_t localsize = kWorkGroupSize;
         size_t globalsize = ((maxrays + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
-        
+
         m_device->Execute(func, queueidx, globalsize, localsize, event);
     }
 
     void BvhStrategy::QueryOcclusion(std::uint32_t queueidx, Calc::Buffer const* rays, Calc::Buffer const* numrays, std::uint32_t maxrays, Calc::Buffer* hits, Calc::Event const* waitevent, Calc::Event** event) const
     {
         auto& func = m_gpudata->occlude_indirect_func;
-        
+
         // Set args
         int arg = 0;
         int offset = 0;
-        
+
         func->SetArg(arg++, m_gpudata->bvh);
         func->SetArg(arg++, m_gpudata->vertices);
         func->SetArg(arg++, m_gpudata->faces);
@@ -504,10 +528,10 @@ namespace RadeonRays
         func->SetArg(arg++, sizeof(offset), &offset);
         func->SetArg(arg++, numrays);
         func->SetArg(arg++, hits);
-        
+
         size_t localsize = kWorkGroupSize;
         size_t globalsize = ((maxrays + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
-        
+
         m_device->Execute(func, queueidx, globalsize, localsize, event);
     }
 

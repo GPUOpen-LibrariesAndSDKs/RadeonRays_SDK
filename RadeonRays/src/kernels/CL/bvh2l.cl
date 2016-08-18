@@ -21,8 +21,8 @@ THE SOFTWARE.
 ********************************************************************/
 
 /*************************************************************************
- INCLUDES
- **************************************************************************/
+INCLUDES
+**************************************************************************/
 #include <../RadeonRays/src/kernels/CL/common.cl>
 
 /*************************************************************************
@@ -49,14 +49,13 @@ TYPE DEFINITIONS
 typedef struct
 {
     // BVH structure
-    __global BvhNode*  const        nodes;
+    __global BvhNode*       nodes;
     // Scene positional data
-    __global float3*  const              vertices;
+    __global float3*        vertices;
     // Scene indices
-    __global Face* const                faces;
+    __global Face*          faces;
     // Transforms
-    __global ShapeData* const      shapes;
-
+    __global ShapeData*     shapedata;
     // Root BVH idx
     int rootidx;
 } SceneData;
@@ -66,13 +65,12 @@ typedef struct
 BVH FUNCTIONS
 **************************************************************************/
 //  intersect a ray with leaf BVH node
-void IntersectLeafClosest(
+bool IntersectLeafClosest(
     SceneData const* scenedata,
     BvhNode const* node,
     ray const* r,                // ray to instersect
-    int const shapeid,
     Intersection* isect          // Intersection structure
-    )
+)
 {
     float3 v1, v2, v3;
     Face face;
@@ -86,8 +84,10 @@ void IntersectLeafClosest(
     if (IntersectTriangle(r, v1, v2, v3, isect))
     {
         isect->primid = face.id;
-        isect->shapeid = shapeid;
+        return true;
     }
+
+    return false;
 }
 
 //  intersect a ray with leaf BVH node
@@ -95,7 +95,7 @@ bool IntersectLeafAny(
     SceneData const* scenedata,
     BvhNode const* node,
     ray const* r                      // ray to instersect
-    )
+)
 {
     float3 v1, v2, v3;
     Face face;
@@ -106,10 +106,10 @@ bool IntersectLeafAny(
     v2 = scenedata->vertices[face.idx[1]];
     v3 = scenedata->vertices[face.idx[2]];
 
-	if (IntersectTriangleP(r, v1, v2, v3))
-	{
-		return true;
-	}
+    if (IntersectTriangleP(r, v1, v2, v3))
+    {
+        return true;
+    }
 
     return false;
 }
@@ -148,7 +148,11 @@ bool IntersectSceneClosest2L(SceneData* scenedata, ray* r, Intersection* isect)
                 if (topidx != -1)
                 {
                     // This is bottom level, so intersect with a primitives
-                    IntersectLeafClosest(scenedata, &node, r, shapeid, isect);
+                    if (IntersectLeafClosest(scenedata, &node, r, isect))
+                    {
+                        // Adjust shapeid as it might be instance
+                        isect->shapeid = shapeid;
+                    }
 
                     // And goto next node
                     idx = (int)(node.pmax.w);
@@ -161,24 +165,24 @@ bool IntersectSceneClosest2L(SceneData* scenedata, ray* r, Intersection* isect)
                     // Get shape descrition struct index
                     int shapeidx = SHAPEIDX(node);
                     // Get shape mask
-                    int shapemask = scenedata->shapes[shapeidx].mask;
+                    int shapemask = scenedata->shapedata[shapeidx].mask;
                     // Drill into 2nd level BVH only if the geometry is not masked vs current ray
                     // otherwise skip the subtree
                     if (Ray_GetMask(r) && shapemask)
                     {
                         // Fetch bottom level BVH index
-                        idx = scenedata->shapes[shapeidx].bvhidx;
-                        shapeid = scenedata->shapes[shapeidx].id;
+                        idx = scenedata->shapedata[shapeidx].bvhidx;
+                        shapeid = scenedata->shapedata[shapeidx].id;
 
                         // Fetch BVH transform
-                        float4 wmi0 = scenedata->shapes[shapeidx].m0;
-                        float4 wmi1 = scenedata->shapes[shapeidx].m1;
-                        float4 wmi2 = scenedata->shapes[shapeidx].m2;
-                        float4 wmi3 = scenedata->shapes[shapeidx].m3;
+                        float4 wmi0 = scenedata->shapedata[shapeidx].m0;
+                        float4 wmi1 = scenedata->shapedata[shapeidx].m1;
+                        float4 wmi2 = scenedata->shapedata[shapeidx].m2;
+                        float4 wmi3 = scenedata->shapedata[shapeidx].m3;
 
                         // Apply linear motion blur (world coordinates)
-                        //float4 lmv = scenedata->shapes[shapeidx].linearvelocity;
-                        //float4 amv = scenedata->shapes[SHAPEDATAIDX(node)].angularvelocity;
+                        //float4 lmv = scenedata->shapedata[shapeidx].linearvelocity;
+                        //float4 amv = scenedata->shapedata[SHAPEDATAIDX(node)].angularvelocity;
                         //r->o.xyz -= (lmv.xyz*r->d.w);
                         // Transfrom the ray
                         *r = transform_ray(*r, wmi0, wmi1, wmi2, wmi3);
@@ -265,23 +269,23 @@ bool IntersectSceneAny2L(SceneData* scenedata, ray* r)
                     // Get shape descrition struct index
                     int shapeidx = SHAPEIDX(node);
                     // Get shape mask
-                    int shapemask = scenedata->shapes[shapeidx].mask;
+                    int shapemask = scenedata->shapedata[shapeidx].mask;
                     // Drill into 2nd level BVH only if the geometry is not masked vs current ray
                     // otherwise skip the subtree
                     if (Ray_GetMask(r) && shapemask)
                     {
                         // Fetch bottom level BVH index
-                        idx = scenedata->shapes[shapeidx].bvhidx;
+                        idx = scenedata->shapedata[shapeidx].bvhidx;
 
                         // Fetch BVH transform
-                        float4 wmi0 = scenedata->shapes[shapeidx].m0;
-                        float4 wmi1 = scenedata->shapes[shapeidx].m1;
-                        float4 wmi2 = scenedata->shapes[shapeidx].m2;
-                        float4 wmi3 = scenedata->shapes[shapeidx].m3;
+                        float4 wmi0 = scenedata->shapedata[shapeidx].m0;
+                        float4 wmi1 = scenedata->shapedata[shapeidx].m1;
+                        float4 wmi2 = scenedata->shapedata[shapeidx].m2;
+                        float4 wmi3 = scenedata->shapedata[shapeidx].m3;
 
                         // Apply linear motion blur (world coordinates)
-                        //float4 lmv = scenedata->shapes[shapeidx].linearvelocity;
-                        //float4 amv = scenedata->shapes[SHAPEDATAIDX(node)].angularvelocity;
+                        //float4 lmv = scenedata->shapedata[shapeidx].linearvelocity;
+                        //float4 amv = scenedata->shapedata[SHAPEDATAIDX(node)].angularvelocity;
                         //r->o.xyz -= (lmv.xyz*r->d.w);
                         // Transfrom the ray
                         *r = transform_ray(*r, wmi0, wmi1, wmi2, wmi3);
@@ -333,16 +337,16 @@ bool IntersectSceneAny2L(SceneData* scenedata, ray* r)
 // 2 level variants
 __attribute__((reqd_work_group_size(64, 1, 1)))
 __kernel void IntersectClosest2L(
-// Input
-__global BvhNode* nodes,   // BVH nodes
-__global float3* vertices, // Scene positional data
-__global Face* faces,    // Scene indices
-__global ShapeData* shapes, // Transforms
-int rootidx,               // BVH root idx
-__global ray* rays,        // Ray workload
-int offset,                // Offset in rays array
-int numrays,               // Number of rays to process
-__global Intersection* hits // Hit datas
+    // Input
+    __global BvhNode* nodes,   // BVH nodes
+    __global float3* vertices, // Scene positional data
+    __global Face* faces,    // Scene indices
+    __global ShapeData* shapedata, // Transforms
+    int rootidx,               // BVH root idx
+    __global ray* rays,        // Ray workload
+    int offset,                // Offset in rays array
+    int numrays,               // Number of rays to process
+    __global Intersection* hits // Hit datas
 )
 {
 
@@ -354,7 +358,7 @@ __global Intersection* hits // Hit datas
         nodes,
         vertices,
         faces,
-        shapes,
+        shapedata,
         rootidx
     };
 
@@ -367,28 +371,28 @@ __global Intersection* hits // Hit datas
 
         if (Ray_IsActive(&r))
         {
-        	// Calculate closest hit
-        	Intersection isect;
-        	IntersectSceneClosest2L(&scenedata, &r, &isect);
+            // Calculate closest hit
+            Intersection isect;
+            IntersectSceneClosest2L(&scenedata, &r, &isect);
 
-        	// Write data back in case of a hit
-        	hits[idx] = isect;
+            // Write data back in case of a hit
+            hits[idx] = isect;
         }
     }
 }
 
 __attribute__((reqd_work_group_size(64, 1, 1)))
 __kernel void IntersectAny2L(
-// Input
-__global BvhNode* nodes,   // BVH nodes
-__global float3* vertices, // Scene positional data
-__global Face* faces,    // Scene indices
-__global ShapeData* shapes, // Transforms
-int rootidx,               // BVH root idx
-__global ray* rays,        // Ray workload
-int offset,                // Offset in rays array
-int numrays,               // Number of rays to process
-__global int* hitresults   // Hit results
+    // Input
+    __global BvhNode* nodes,   // BVH nodes
+    __global float3* vertices, // Scene positional data
+    __global Face* faces,    // Scene indices
+    __global ShapeData* shapedata, // Transforms
+    int rootidx,               // BVH root idx
+    __global ray* rays,        // Ray workload
+    int offset,                // Offset in rays array
+    int numrays,               // Number of rays to process
+    __global int* hitresults   // Hit results
 )
 {
     int global_id = get_global_id(0);
@@ -399,7 +403,7 @@ __global int* hitresults   // Hit results
         nodes,
         vertices,
         faces,
-        shapes,
+        shapedata,
         rootidx
     };
 
@@ -411,8 +415,8 @@ __global int* hitresults   // Hit results
 
         if (Ray_IsActive(&r))
         {
-        	// Calculate any intersection
-        	hitresults[offset + global_id] = IntersectSceneAny2L(&scenedata, &r) ? 1 : -1;
+            // Calculate any intersection
+            hitresults[offset + global_id] = IntersectSceneAny2L(&scenedata, &r) ? 1 : -1;
         }
     }
 }
@@ -420,16 +424,16 @@ __global int* hitresults   // Hit results
 __attribute__((reqd_work_group_size(64, 1, 1)))
 // Version with range check
 __kernel void IntersectClosestRC2L(
-// Input
-__global BvhNode* nodes,   // BVH nodes
-__global float3* vertices, // Scene positional data
-__global Face* faces,    // Scene indices
-__global ShapeData* shapes, // Transforms
-int rootidx,               // BVH root idx
-__global ray* rays,        // Ray workload
-int offset,                // Offset in rays array
-__global int* numrays,     // Number of rays in the workload
-__global Intersection* hits // Hit datas
+    // Input
+    __global BvhNode* nodes,   // BVH nodes
+    __global float3* vertices, // Scene positional data
+    __global Face* faces,    // Scene indices
+    __global ShapeData* shapedata, // Transforms
+    int rootidx,               // BVH root idx
+    __global ray* rays,        // Ray workload
+    __global int* numrays,     // Number of rays in the workload
+    int offset,                // Offset in rays array
+    __global Intersection* hits // Hit datas
 )
 {
     int global_id = get_global_id(0);
@@ -440,7 +444,7 @@ __global Intersection* hits // Hit datas
         nodes,
         vertices,
         faces,
-        shapes,
+        shapedata,
         rootidx
     };
 
@@ -451,30 +455,30 @@ __global Intersection* hits // Hit datas
         int idx = offset + global_id;
         ray r = rays[idx];
 
-		if (Ray_IsActive(&r))
-		{
-			// Calculate closest hit
-			Intersection isect;
-			IntersectSceneClosest2L(&scenedata, &r, &isect);
+        if (Ray_IsActive(&r))
+        {
+            // Calculate closest hit
+            Intersection isect;
+            IntersectSceneClosest2L(&scenedata, &r, &isect);
 
-			hits[idx] = isect;
-		}
+            hits[idx] = isect;
+        }
     }
 }
 
 __attribute__((reqd_work_group_size(64, 1, 1)))
 // Version with range check
 __kernel void IntersectAnyRC2L(
-// Input
-__global BvhNode* nodes,   // BVH nodes
-__global float3* vertices, // Scene positional data
-__global Face* faces,    // Scene indices
-__global ShapeData* shapes, // Transforms
-int rootidx,               // BVH root idx
-__global ray* rays,        // Ray workload
-int offset,                // Offset in rays array
-__global int* numrays,     // Number of rays in the workload
-__global int* hitresults   // Hit results
+    // Input
+    __global BvhNode* nodes,   // BVH nodes
+    __global float3* vertices, // Scene positional data
+    __global Face* faces,    // Scene indices
+    __global ShapeData* shapedata, // Transforms
+    int rootidx,               // BVH root idx
+    __global ray* rays,        // Ray workload
+    __global int* numrays,     // Number of rays in the workload
+    int offset,                // Offset in rays array
+    __global int* hitresults   // Hit results
 )
 {
     int global_id = get_global_id(0);
@@ -485,7 +489,7 @@ __global int* hitresults   // Hit results
         nodes,
         vertices,
         faces,
-        shapes,
+        shapedata,
         rootidx
     };
 

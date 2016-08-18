@@ -60,7 +60,7 @@ namespace RadeonRays
 		int id;
 		// Idx count
 		int cnt;
-		int2 padding;
+		int padding[2];
 	};
 
 	struct Bvh2lStrategy::GpuData
@@ -164,20 +164,20 @@ namespace RadeonRays
 #endif
 #endif
 
-		m_gpudata->isect_func = m_gpudata->executable->CreateFunction("IntersectClosest2L");
-		m_gpudata->occlude_func = m_gpudata->executable->CreateFunction("IntersectAny2L");
-		m_gpudata->isect_indirect_func = m_gpudata->executable->CreateFunction("IntersectClosestRC2L");
-		m_gpudata->occlude_indirect_func = m_gpudata->executable->CreateFunction("IntersectAnyRC2L");
-	}
+        m_gpudata->isect_func = m_gpudata->executable->CreateFunction("IntersectClosest2L");
+        m_gpudata->occlude_func = m_gpudata->executable->CreateFunction("IntersectAny2L");
+        m_gpudata->isect_indirect_func = m_gpudata->executable->CreateFunction("IntersectClosestRC2L");
+        m_gpudata->occlude_indirect_func = m_gpudata->executable->CreateFunction("IntersectAnyRC2L");
+    }
 
-	void Bvh2lStrategy::Preprocess(World const& world)
-	{
-		// If something has been changed we need to rebuild BVH
-		int statechange = world.GetStateChange();
+    void Bvh2lStrategy::Preprocess(World const& world)
+    {
+        // If something has been changed we need to rebuild BVH
+        int statechange = world.GetStateChange();
 
-		// Full rebuild in case number of objects changes
-		if (m_bvhs.size() == 0 || world.has_changed())
-		{
+        // Full rebuild in case number of objects changes
+        if (m_bvhs.size() == 0 || world.has_changed())
+        {
             if (m_bvhs.size() != 0)
             {
                 m_device->DeleteBuffer(m_gpudata->bvh);
@@ -185,552 +185,568 @@ namespace RadeonRays
                 m_device->DeleteBuffer(m_gpudata->faces);
                 m_device->DeleteBuffer(m_gpudata->shapes);
             }
-            
-			//std::cout << "Rebuild\n";
-			auto builder = world.options_.GetOption("bvh.builder");
-			bool enablesah = false;
 
-			if (builder && builder->AsString() == "sah")
-			{
-				enablesah = true;
-			}
 
-			// Copy the shapes here to be able to partition them and handle more efficiently
-			// #22: we need to be able to handle instances whos base shapes are not present 
-			// in the scene, so we have to add them manually here.
-			std::vector<Shape const*> shapes;
-			std::set<Shape const*> shapes_disabled;
+            auto builder = world.options_.GetOption("bvh.builder");
+            auto tcost = world.options_.GetOption("bvh.sah.traversal_cost");
 
-			for (auto s : world.shapes_)
-			{
-				auto shapeimpl = static_cast<ShapeImpl const*>(s);
+            bool use_sah = false;
+            float traversal_cost = tcost ? tcost->AsFloat() : 10.f;
 
-				if (shapeimpl->is_instance())
-				{
-					// Here we know this is an instance, need to check if its base shape has been added as well
-					auto instance = static_cast<Instance const*>(shapeimpl);
-					auto base_shape = instance->GetBaseShape();
 
-					if (std::find(world.shapes_.cbegin(), world.shapes_.cend(), base_shape) == world.shapes_.cend())
-					{
-						// Need to add the shape to the list
-						shapes.push_back(base_shape);
-						// And mark it disabled
-						shapes_disabled.insert(base_shape);
-					}
-				}
+            if (builder && builder->AsString() == "sah")
+            {
+                use_sah = true;
+            }
 
-				shapes.push_back(s);
-			}
+            // Copy the shapes here to be able to partition them and handle more efficiently
+            // #22: we need to be able to handle instances whos base shapes are not present 
+            // in the scene, so we have to add them manually here.
+            std::vector<Shape const*> shapes;
+            std::set<Shape const*> shapes_disabled;
 
-			// Now partition the range into meshes and instances
-			auto firstinst = std::partition(shapes.begin(), shapes.end(), [&](Shape const* shape)
-			{
-				return !static_cast<ShapeImpl const*>(shape)->is_instance();
-			});
+            for (auto s : world.shapes_)
+            {
+                auto shapeimpl = static_cast<ShapeImpl const*>(s);
 
-			// Count the number of meshes
-			int nummeshes = (int)std::distance(shapes.begin(), firstinst);
-			// Count the number of instances
-			int numinstances = (int)std::distance(firstinst, shapes.end());
+                if (shapeimpl->is_instance())
+                {
+                    // Here we know this is an instance, need to check if its base shape has been added as well
+                    auto instance = static_cast<Instance const*>(shapeimpl);
+                    auto base_shape = instance->GetBaseShape();
 
-			int numvertices = 0;
-			int numfaces = 0;
+                    if (std::find(world.shapes_.cbegin(), world.shapes_.cend(), base_shape) == world.shapes_.cend())
+                    {
+                        // Need to add the shape to the list
+                        shapes.push_back(base_shape);
+                        // And mark it disabled
+                        shapes_disabled.insert(base_shape);
+                    }
+                }
 
-			// This buffer tracks mesh start index for next stage as mesh face indices are relative to 0
-			m_cpudata->mesh_vertices_start_idx.resize(nummeshes);
-			m_cpudata->mesh_faces_start_idx.resize(nummeshes);
-			m_cpudata->bvhptrs.resize(nummeshes + 1);
-			m_cpudata->shapedata.resize(nummeshes + numinstances);
+                shapes.push_back(s);
+            }
 
-			// [0...numshapes-1] contain bottom level BVHs
-			// [numshapes] is the top level one
-			m_bvhs.resize(nummeshes + 1);
-			// Create actual BVH objects
-			for (int i = 0; i < nummeshes + 1; ++i)
-			{
-				m_bvhs[i].reset(new Bvh(enablesah));
-				m_cpudata->bvhptrs[i] = m_bvhs[i].get();
-			}
+            // Now partition the range into meshes and instances
+            auto firstinst = std::partition(shapes.begin(), shapes.end(), [&](Shape const* shape)
+            {
+                return !static_cast<ShapeImpl const*>(shape)->is_instance();
+            });
 
-			// Prepare necessary offsets in the arrays
-			// in order to be able to parallelize
-			for (int i = 0; i < nummeshes; ++i)
-			{
-				Mesh const* mesh = static_cast<Mesh const*>(shapes[i]);
+            // Count the number of meshes
+            int nummeshes = (int)std::distance(shapes.begin(), firstinst);
+            // Count the number of instances
+            int numinstances = (int)std::distance(firstinst, shapes.end());
 
-				m_cpudata->mesh_faces_start_idx[i] = numfaces;
-				m_cpudata->mesh_vertices_start_idx[i] = numvertices;
+            int numvertices = 0;
+            int numfaces = 0;
 
-				numfaces += mesh->num_faces();
-				numvertices += mesh->num_vertices();
-			}
+            // This buffer tracks mesh start index for next stage as mesh face indices are relative to 0
+            m_cpudata->mesh_vertices_start_idx.resize(nummeshes);
+            m_cpudata->mesh_faces_start_idx.resize(nummeshes);
+            m_cpudata->bvhptrs.resize(nummeshes + 1);
+            m_cpudata->shapedata.resize(nummeshes + numinstances);
 
-			// We can't avoild allocating it here, since bounds aren't stored anywhere
-			m_cpudata->bounds.resize(numfaces);
+            // [0...numshapes-1] contain bottom level BVHs
+            // [numshapes] is the top level one
+            m_bvhs.resize(nummeshes + 1);
+            // Create actual BVH objects
+            for (int i = 0; i < nummeshes + 1; ++i)
+            {
+                m_bvhs[i].reset(new Bvh(traversal_cost, use_sah));
+                m_cpudata->bvhptrs[i] = m_bvhs[i].get();
+            }
 
-			// We are storing individual object bounds here to build top level BVH
-			std::vector<bbox> object_bounds(nummeshes + numinstances);
+            // Prepare necessary offsets in the arrays
+            // in order to be able to parallelize
+            for (int i = 0; i < nummeshes; ++i)
+            {
+                Mesh const* mesh = static_cast<Mesh const*>(shapes[i]);
 
-			matrix m, minv;
+                m_cpudata->mesh_faces_start_idx[i] = numfaces;
+                m_cpudata->mesh_vertices_start_idx[i] = numvertices;
 
-			// Handle simple shapes
+                numfaces += mesh->num_faces();
+                numvertices += mesh->num_vertices();
+            }
+
+            // We can't avoild allocating it here, since bounds aren't stored anywhere
+            m_cpudata->bounds.resize(numfaces);
+
+            // We are storing individual object bounds here to build top level BVH
+            std::vector<bbox> object_bounds(nummeshes + numinstances);
+
+            matrix m, minv;
+
+            // Handle simple shapes
 #pragma omp parallel for
-			for (int i = 0; i < nummeshes; ++i)
-			{
+            for (int i = 0; i < nummeshes; ++i)
+            {
 
-				Mesh const* mesh = static_cast<Mesh const*>(shapes[i]);
-				// Get transform to apply to object bounds
-				mesh->GetTransform(m, minv);
+                Mesh const* mesh = static_cast<Mesh const*>(shapes[i]);
+                // Get transform to apply to object bounds
+                mesh->GetTransform(m, minv);
 
-				for (int j = 0; j < mesh->num_faces(); ++j)
-				{
-					// Request bounds in object space since we build BVHs for objects locally
-					mesh->GetFaceBounds(j, true, m_cpudata->bounds[m_cpudata->mesh_faces_start_idx[i] + j]);
-				}
+                for (int j = 0; j < mesh->num_faces(); ++j)
+                {
+                    // Request bounds in object space since we build BVHs for objects locally
+                    mesh->GetFaceBounds(j, true, m_cpudata->bounds[m_cpudata->mesh_faces_start_idx[i] + j]);
+                }
 
-				// Build BVH for current mesh
-				m_bvhs[i]->Build(&m_cpudata->bounds[m_cpudata->mesh_faces_start_idx[i]], mesh->num_faces());
+                // Build BVH for current mesh
+                m_bvhs[i]->Build(&m_cpudata->bounds[m_cpudata->mesh_faces_start_idx[i]], mesh->num_faces());
 
-				// Extract and store bounds. Note they are in object space and we need to translate them to world space
-				object_bounds[i] = transform_bbox(m_bvhs[i]->Bounds(), m);
+                // Extract and store bounds. Note they are in object space and we need to translate them to world space
+                object_bounds[i] = transform_bbox(m_bvhs[i]->Bounds(), m);
 
-				// Collect BVH pointers for toip level build
-				m_cpudata->bvhptrs[i] = m_bvhs[i].get();
-			}
+                // Collect BVH pointers for toip level build
+                m_cpudata->bvhptrs[i] = m_bvhs[i].get();
+            }
 
-			// Handle instances
+            // Handle instances
 #pragma omp parallel for
-			for (int i = nummeshes; i < nummeshes + numinstances; ++i)
-			{
+            for (int i = nummeshes; i < nummeshes + numinstances; ++i)
+            {
 
-				Instance const* instance = static_cast<Instance const*>(shapes[i]);
-				// Get transform to apply to object bounds
-				instance->GetTransform(m, minv);
+                Instance const* instance = static_cast<Instance const*>(shapes[i]);
+                // Get transform to apply to object bounds
+                instance->GetTransform(m, minv);
 
-				// Find BVH for the instance
-				Mesh const* basemesh = static_cast<Mesh const*>(instance->GetBaseShape());
+                // Find BVH for the instance
+                Mesh const* basemesh = static_cast<Mesh const*>(instance->GetBaseShape());
 
-				// It should be there
-				auto iter = std::find(shapes.cbegin(), shapes.cbegin() + nummeshes, basemesh);
+                // It should be there
+                auto iter = std::find(shapes.cbegin(), shapes.cbegin() + nummeshes, basemesh);
 
-				// TODO: should be assert
-				ThrowIf(iter == shapes.cbegin() + nummeshes, "Internal error");
+                // TODO: should be assert
+                ThrowIf(iter == shapes.cbegin() + nummeshes, "Internal error");
 
-				int bvhidx = (int)std::distance(shapes.cbegin(), iter);
+                int bvhidx = (int)std::distance(shapes.cbegin(), iter);
 
-				// Extract and store bounds. Note they are in object space and we need to translate them to world space
-				object_bounds[i] = transform_bbox(m_bvhs[bvhidx]->Bounds(), m);
-			}
+                // Extract and store bounds. Note they are in object space and we need to translate them to world space
+                object_bounds[i] = transform_bbox(m_bvhs[bvhidx]->Bounds(), m);
+            }
 
-			// Calculate top level BVH
-			m_bvhs[nummeshes]->Build(&object_bounds[0], nummeshes + numinstances);
-			m_cpudata->bvhptrs[nummeshes] = m_bvhs[nummeshes].get();
+            // Calculate top level BVH
+            m_bvhs[nummeshes]->Build(&object_bounds[0], nummeshes + numinstances);
+            m_cpudata->bvhptrs[nummeshes] = m_bvhs[nummeshes].get();
 
-			m_cpudata->translator.Flush();
-			// TODO: parallelize this
-			m_cpudata->translator.Process(&m_cpudata->bvhptrs[0], &m_cpudata->mesh_faces_start_idx[0], nummeshes);
+            m_cpudata->translator.Flush();
+            // TODO: parallelize this
+            m_cpudata->translator.Process(&m_cpudata->bvhptrs[0], &m_cpudata->mesh_faces_start_idx[0], nummeshes);
 
-			// Update GPU data
-			// Copy translated nodes first
-			m_gpudata->bvh = m_device->CreateBuffer(m_cpudata->translator.nodes_.size() * sizeof(PlainBvhTranslator::Node), Calc::kRead, &m_cpudata->translator.nodes_[0]);
-			m_gpudata->bvhrootidx = m_cpudata->translator.root_;
+            // Update GPU data
+            // Copy translated nodes first
+            m_gpudata->bvh = m_device->CreateBuffer(m_cpudata->translator.nodes_.size() * sizeof(PlainBvhTranslator::Node), Calc::kRead, &m_cpudata->translator.nodes_[0]);
+            m_gpudata->bvhrootidx = m_cpudata->translator.root_;
 
 
-			// Create vertex buffer
-			{
-				// Vertices
-				m_gpudata->vertices = m_device->CreateBuffer(numvertices * sizeof(float3), Calc::kRead);
+            // Create vertex buffer
+            {
+                // Vertices
+                m_gpudata->vertices = m_device->CreateBuffer(numvertices * sizeof(float3), Calc::kRead);
 
-				// Get the pointer to mapped data
-				float3* vertexdata = nullptr;
-				Calc::Event* e = nullptr;
+                // Get the pointer to mapped data
+                float3* vertexdata = nullptr;
+                Calc::Event* e = nullptr;
 
-				m_device->MapBuffer(m_gpudata->vertices, 0, 0, numvertices * sizeof(float3), Calc::MapType::kMapWrite, (void**)&vertexdata, &e);
+                m_device->MapBuffer(m_gpudata->vertices, 0, 0, numvertices * sizeof(float3), Calc::MapType::kMapWrite, (void**)&vertexdata, &e);
 
-				e->Wait();
-				m_device->DeleteEvent(e);
+                e->Wait();
+                m_device->DeleteEvent(e);
 
-				// Here we need to put data in world space rather than object space
-				// So we need to get the transform from the mesh and multiply each vertex
-				matrix m, minv;
-
-#pragma omp parallel for
-				for (int i = 0; i < nummeshes; ++i)
-				{
-					// Get the mesh
-					Mesh const* mesh = static_cast<Mesh const*>(shapes[i]);
-					// Get vertex buffer of the current mesh
-					float3 const* myvertexdata = mesh->GetVertexData();
-
-					// Iterate thru vertices multiply and append them to GPU buffer
-					for (int j = 0; j < mesh->num_vertices(); ++j)
-					{
-						vertexdata[m_cpudata->mesh_vertices_start_idx[i] + j] = myvertexdata[j];
-					}
-				}
-
-				m_device->UnmapBuffer(m_gpudata->vertices, 0, vertexdata, &e);
-
-				e->Wait();
-				m_device->DeleteEvent(e);
-			}
-
-			// Create face buffer
-			{
-				// Create face buffer
-				m_gpudata->faces = m_device->CreateBuffer(numfaces * sizeof(Face), Calc::kRead);
-
-				// Get the pointer to mapped data
-				Face* facedata = nullptr;
-				Calc::Event* e = nullptr;
-
-				m_device->MapBuffer(m_gpudata->faces, 0, 0, numfaces * sizeof(Face), Calc::MapType::kMapWrite, (void**)&facedata, &e);
-
-				e->Wait();
-				m_device->DeleteEvent(e);
-
-				// Here the point is to add mesh starting index to actual index contained within the mesh,
-				// getting absolute index in the buffer.
-				// Besides that we need to permute the faces accorningly to BVH reordering, whihc
-				// is contained within bvh.primids_
+                // Here we need to put data in world space rather than object space
+                // So we need to get the transform from the mesh and multiply each vertex
+                matrix m, minv;
 
 #pragma omp parallel for
-				for (int i = 0; i < nummeshes; ++i)
-				{
-					// Reordering indices for a given mesh
-					int const* reordering = m_bvhs[i]->GetIndices();
+                for (int i = 0; i < nummeshes; ++i)
+                {
+                    // Get the mesh
+                    Mesh const* mesh = static_cast<Mesh const*>(shapes[i]);
+                    // Get vertex buffer of the current mesh
+                    float3 const* myvertexdata = mesh->GetVertexData();
 
-					// Get the mesh
-					Mesh const* mesh = static_cast<Mesh const*>(shapes[i]);
+                    // Iterate thru vertices multiply and append them to GPU buffer
+                    for (int j = 0; j < mesh->num_vertices(); ++j)
+                    {
+                        vertexdata[m_cpudata->mesh_vertices_start_idx[i] + j] = myvertexdata[j];
+                    }
+                }
 
-					Mesh::Face const* myfaces = mesh->GetFaceData();
+                m_device->UnmapBuffer(m_gpudata->vertices, 0, vertexdata, &e);
 
-					int startidx = m_cpudata->mesh_vertices_start_idx[i];
+                e->Wait();
+                m_device->DeleteEvent(e);
+            }
 
-					for (int j = 0; j < mesh->num_faces(); ++j)
-					{
-						// Copy face data to GPU buffer
-						int myidx = m_cpudata->mesh_faces_start_idx[i] + j;
-						int faceidx = reordering[j];
+            // Create face buffer
+            {
+                // Create face buffer
+                m_gpudata->faces = m_device->CreateBuffer(numfaces * sizeof(Face), Calc::kRead);
 
-						facedata[myidx].idx[0] = myfaces[faceidx].idx[0] + startidx;
-						facedata[myidx].idx[1] = myfaces[faceidx].idx[1] + startidx;
-						facedata[myidx].idx[2] = myfaces[faceidx].idx[2] + startidx;
-						facedata[myidx].idx[3] = myfaces[faceidx].idx[3] + startidx;
+                // Get the pointer to mapped data
+                Face* facedata = nullptr;
+                Calc::Event* e = nullptr;
 
-						facedata[myidx].cnt = (myfaces[faceidx].type_ == Mesh::FaceType::QUAD ? 4 : 3);
-						facedata[myidx].id = faceidx;
-					}
-				}
+                m_device->MapBuffer(m_gpudata->faces, 0, 0, numfaces * sizeof(Face), Calc::MapType::kMapWrite, (void**)&facedata, &e);
 
-				m_device->UnmapBuffer(m_gpudata->faces, 0, facedata, &e);
+                e->Wait();
+                m_device->DeleteEvent(e);
 
-				e->Wait();
-				m_device->DeleteEvent(e);
-			}
-
-
-			// Now we need to collect shapdata
-			int const* topindices = m_bvhs[nummeshes]->GetIndices();
-
-#pragma omp parallel for
-			for (int i = 0; i < nummeshes + numinstances; ++i)
-			{
-				// Get the mesh
-				ShapeImpl const* shapeimpl = static_cast<ShapeImpl const*>(shapes[topindices[i]]);
-
-				m_cpudata->shapedata[i].id = shapeimpl->GetId();
-
-				// For disabled shapes force mask to zero since these shapes 
-				// present only virtually (they have not been added to the scene)
-				// and we need to skip them while doing traversal.
-				if (shapes_disabled.find(shapeimpl) == shapes_disabled.cend())
-				{
-					m_cpudata->shapedata[i].mask = shapeimpl->GetMask();
-				}
-				else
-				{
-					m_cpudata->shapedata[i].mask = 0x0;
-				}
-
-				shapeimpl->GetTransform(m, m_cpudata->shapedata[i].minv);
-
-				if (!shapeimpl->is_instance())
-				{
-					m_cpudata->shapedata[i].bvhidx = m_cpudata->translator.roots_[topindices[i]];
-				}
-				else
-				{
-					Instance const* instance = static_cast<Instance const*>(shapes[topindices[i]]);
-
-					// Find corresponding mesh
-					Mesh const* basemesh = static_cast<Mesh const*>(instance->GetBaseShape());
-
-					// It should be there
-					auto iter = std::find(shapes.cbegin(), shapes.cbegin() + nummeshes, basemesh);
-
-					// TODO: should be assert
-					ThrowIf(iter == shapes.cbegin() + nummeshes, "Internal error");
-
-					int bvhidx = (int)std::distance(shapes.cbegin(), iter);
-
-					m_cpudata->shapedata[i].bvhidx = m_cpudata->translator.roots_[bvhidx];
-				}
-			}
-
-			// Create face ID buffer
-			m_gpudata->shapes = m_device->CreateBuffer((nummeshes + numinstances) * sizeof(ShapeData), Calc::kRead, &m_cpudata->shapedata[0]);
-		}
-		// Refit
-		else if (statechange != ShapeImpl::kStateChangeNone)
-		{
-			//std::cout << "Refit\n";
-
-			// Copy the shapes here to be able to partition them and handle more efficiently
-			// #22: we need to be able to handle instances whos base shapes are not present 
-			// in the scene, so we have to add them manually here.
-			std::vector<Shape const*> shapes;
-			std::set<Shape const*> shapes_disabled;
-
-			for (auto s : world.shapes_)
-			{
-				auto shapeimpl = static_cast<ShapeImpl const*>(s);
-
-				if (shapeimpl->is_instance())
-				{
-					// Here we know this is an instance, need to check if its base shape has been added as well
-					auto instance = static_cast<Instance const*>(shapeimpl);
-					auto base_shape = instance->GetBaseShape();
-
-					if (std::find(world.shapes_.cbegin(), world.shapes_.cend(), base_shape) == world.shapes_.cend())
-					{
-						// Need to add the shape to the list
-						shapes.push_back(base_shape);
-						// And mark it disabled
-						shapes_disabled.insert(base_shape);
-					}
-				}
-
-				shapes.push_back(s);
-			}
-
-			// Now partition the range into meshes and instances
-			auto firstinst = std::partition(shapes.begin(), shapes.end(), [&](Shape const* shape)
-			{
-				return !static_cast<ShapeImpl const*>(shape)->is_instance();
-			});
-
-			// Count the number of meshes
-			int nummeshes = (int)std::distance(shapes.begin(), firstinst);
-			// Count the number of instances
-			int numinstances = (int)std::distance(firstinst, shapes.end());
-
-			std::vector<bbox> object_bounds(nummeshes + numinstances);
-
-			matrix m, minv;
-
-			// Go over meshes and rebuild BVH bounds
-#pragma omp parallel for
-			for (int i = 0; i < nummeshes; ++i)
-			{
-				Mesh const* mesh = static_cast<Mesh const*>(shapes[i]);
-				// Get transform to apply to object bounds
-				mesh->GetTransform(m, minv);
-				// Extract and store bounds. Note they are in object space and we need to translate them to world space
-				object_bounds[i] = transform_bbox(m_bvhs[i]->Bounds(), m);
-			}
+                // Here the point is to add mesh starting index to actual index contained within the mesh,
+                // getting absolute index in the buffer.
+                // Besides that we need to permute the faces accorningly to BVH reordering, whihc
+                // is contained within bvh.primids_
 
 #pragma omp parallel for
-			for (int i = nummeshes; i < nummeshes + numinstances; ++i)
-			{
+                for (int i = 0; i < nummeshes; ++i)
+                {
+                    // Reordering indices for a given mesh
+                    int const* reordering = m_bvhs[i]->GetIndices();
 
-				Instance const* instance = static_cast<Instance const*>(shapes[i]);
-				// Get transform to apply to object bounds
-				instance->GetTransform(m, minv);
+                    // Get the mesh
+                    Mesh const* mesh = static_cast<Mesh const*>(shapes[i]);
 
-				// Find BVH for the instance
-				Mesh const* basemesh = static_cast<Mesh const*>(instance->GetBaseShape());
+                    Mesh::Face const* myfaces = mesh->GetFaceData();
 
-				// It should be there
-				auto iter = std::find(shapes.cbegin(), shapes.cbegin() + nummeshes, basemesh);
+                    int startidx = m_cpudata->mesh_vertices_start_idx[i];
 
-				// TODO: should be assert
-				ThrowIf(iter == shapes.cbegin() + nummeshes, "Internal error");
+                    for (int j = 0; j < mesh->num_faces(); ++j)
+                    {
+                        // Copy face data to GPU buffer
+                        int myidx = m_cpudata->mesh_faces_start_idx[i] + j;
+                        int faceidx = reordering[j];
 
-				int bvhidx = (int)std::distance(shapes.cbegin(), iter);
+                        facedata[myidx].idx[0] = myfaces[faceidx].idx[0] + startidx;
+                        facedata[myidx].idx[1] = myfaces[faceidx].idx[1] + startidx;
+                        facedata[myidx].idx[2] = myfaces[faceidx].idx[2] + startidx;
+                        facedata[myidx].idx[3] = myfaces[faceidx].idx[3] + startidx;
 
-				// Extract and store bounds. Note they are in object space and we need to translate them to world space
-				object_bounds[i] = transform_bbox(m_bvhs[bvhidx]->Bounds(), m);
-			}
+                        facedata[myidx].cnt = (myfaces[faceidx].type_ == Mesh::FaceType::QUAD ? 4 : 3);
+                        facedata[myidx].id = faceidx;
+                    }
+                }
 
-			// Calculate top level BVH
-			m_bvhs[nummeshes].reset(new Bvh());
-			m_bvhs[nummeshes]->Build(&object_bounds[0], nummeshes + numinstances);
-			m_cpudata->bvhptrs[nummeshes] = m_bvhs[nummeshes].get();
+                m_device->UnmapBuffer(m_gpudata->faces, 0, facedata, &e);
+
+                e->Wait();
+                m_device->DeleteEvent(e);
+            }
 
 
-			// TODO: parallelize this
-			m_cpudata->translator.UpdateTopLevel(*m_bvhs[nummeshes]);
-
-			// Update GPU data
-			// Copy only top BVH data
-			Calc::Event* e = nullptr;
-			m_device->WriteBuffer(m_gpudata->bvh, 0, m_cpudata->translator.root_ * sizeof(PlainBvhTranslator::Node), (2 * (nummeshes + numinstances) - 1) * sizeof(PlainBvhTranslator::Node), (char*)&m_cpudata->translator.nodes_[m_cpudata->translator.root_], &e);
-
-			e->Wait();
-			m_device->DeleteEvent(e);
-
-			// Now we need to collect shapdata
-			int const* topindices = m_bvhs[nummeshes]->GetIndices();
+            // Now we need to collect shapdata
+            int const* topindices = m_bvhs[nummeshes]->GetIndices();
 
 #pragma omp parallel for
-			for (int i = 0; i < nummeshes + numinstances; ++i)
-			{
-				// Get the mesh
-				ShapeImpl const* shapeimpl = static_cast<ShapeImpl const*>(shapes[topindices[i]]);
+            for (int i = 0; i < nummeshes + numinstances; ++i)
+            {
+                // Get the mesh
+                ShapeImpl const* shapeimpl = static_cast<ShapeImpl const*>(shapes[topindices[i]]);
 
-				m_cpudata->shapedata[i].id = shapeimpl->GetId();
-				// For disabled shapes force mask to zero since these shapes 
-				// present only virtually (they have not been added to the scene)
-				// and we need to skip them while doing traversal.
-				if (shapes_disabled.find(shapeimpl) == shapes_disabled.cend())
-				{
-					m_cpudata->shapedata[i].mask = shapeimpl->GetMask();
-				}
-				else
-				{
-					m_cpudata->shapedata[i].mask = 0x0;
-				}
+                m_cpudata->shapedata[i].id = shapeimpl->GetId();
 
-				shapeimpl->GetTransform(m, m_cpudata->shapedata[i].minv);
+                // For disabled shapes force mask to zero since these shapes 
+                // present only virtually (they have not been added to the scene)
+                // and we need to skip them while doing traversal.
+                if (shapes_disabled.find(shapeimpl) == shapes_disabled.cend())
+                {
+                    m_cpudata->shapedata[i].mask = shapeimpl->GetMask();
+                }
+                else
+                {
+                    m_cpudata->shapedata[i].mask = 0x0;
+                }
 
-				if (!shapeimpl->is_instance())
-				{
-					m_cpudata->shapedata[i].bvhidx = m_cpudata->translator.roots_[topindices[i]];
-				}
-				else
-				{
-					Instance const* instance = static_cast<Instance const*>(shapes[topindices[i]]);
+                shapeimpl->GetTransform(m, m_cpudata->shapedata[i].minv);
 
-					// Find corresponding mesh
-					Mesh const* basemesh = static_cast<Mesh const*>(instance->GetBaseShape());
+                if (!shapeimpl->is_instance())
+                {
+                    m_cpudata->shapedata[i].bvhidx = m_cpudata->translator.roots_[topindices[i]];
+                }
+                else
+                {
+                    Instance const* instance = static_cast<Instance const*>(shapes[topindices[i]]);
 
-					// It should be there
-					auto iter = std::find(shapes.cbegin(), shapes.cbegin() + nummeshes, basemesh);
+                    // Find corresponding mesh
+                    Mesh const* basemesh = static_cast<Mesh const*>(instance->GetBaseShape());
 
-					// TODO: should be assert
-					ThrowIf(iter == shapes.cbegin() + nummeshes, "Internal error");
+                    // It should be there
+                    auto iter = std::find(shapes.cbegin(), shapes.cbegin() + nummeshes, basemesh);
 
-					int bvhidx = (int)std::distance(shapes.cbegin(), iter);
+                    // TODO: should be assert
+                    ThrowIf(iter == shapes.cbegin() + nummeshes, "Internal error");
 
-					m_cpudata->shapedata[i].bvhidx = m_cpudata->translator.roots_[bvhidx];
-				}
-			}
+                    int bvhidx = (int)std::distance(shapes.cbegin(), iter);
 
-			// Create face ID buffer
-			m_device->WriteBuffer(m_gpudata->shapes, 0, 0, (nummeshes + numinstances) * sizeof(ShapeData), (char*)&m_cpudata->shapedata[0], &e);
+                    m_cpudata->shapedata[i].bvhidx = m_cpudata->translator.roots_[bvhidx];
+                }
+            }
 
-			e->Wait();
-			m_device->DeleteEvent(e);
+            // Create face ID buffer
+            m_gpudata->shapes = m_device->CreateBuffer((nummeshes + numinstances) * sizeof(ShapeData), Calc::kRead, &m_cpudata->shapedata[0]);
+        }
+        // Refit
+        else if (statechange != ShapeImpl::kStateChangeNone)
+        {
+            //std::cout << "Refit\n";
 
-			m_device->Finish(0);
-		}
-	}
+            // Copy the shapes here to be able to partition them and handle more efficiently
+            // #22: we need to be able to handle instances whos base shapes are not present 
+            // in the scene, so we have to add them manually here.
+            std::vector<Shape const*> shapes;
+            std::set<Shape const*> shapes_disabled;
 
-	void Bvh2lStrategy::QueryIntersection(std::uint32_t queueidx, Calc::Buffer const* rays, std::uint32_t numrays, Calc::Buffer *hits, Calc::Event const* waitevent, Calc::Event **event) const
-	{
-		auto& func = m_gpudata->isect_func;
+            for (auto s : world.shapes_)
+            {
+                auto shapeimpl = static_cast<ShapeImpl const*>(s);
 
-		// Set args
-		int arg = 0;
-		int offset = 0;
+                if (shapeimpl->is_instance())
+                {
+                    // Here we know this is an instance, need to check if its base shape has been added as well
+                    auto instance = static_cast<Instance const*>(shapeimpl);
+                    auto base_shape = instance->GetBaseShape();
 
-		func->SetArg(arg++, m_gpudata->bvh);
-		func->SetArg(arg++, m_gpudata->vertices);
-		func->SetArg(arg++, m_gpudata->faces);
-		func->SetArg(arg++, m_gpudata->shapes);
-		func->SetArg(arg++, sizeof(int), &m_gpudata->bvhrootidx);
-		func->SetArg(arg++, rays);
-		func->SetArg(arg++, sizeof(offset), &offset);
-		func->SetArg(arg++, sizeof(numrays), &numrays);
-		func->SetArg(arg++, hits);
+                    if (std::find(world.shapes_.cbegin(), world.shapes_.cend(), base_shape) == world.shapes_.cend())
+                    {
+                        // Need to add the shape to the list
+                        shapes.push_back(base_shape);
+                        // And mark it disabled
+                        shapes_disabled.insert(base_shape);
+                    }
+                }
 
-		size_t localsize = kWorkGroupSize;
-		size_t globalsize = ((numrays + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
+                shapes.push_back(s);
+            }
 
-		m_device->Execute(func, queueidx, globalsize, localsize, event);
-	}
+            // Now partition the range into meshes and instances
+            auto firstinst = std::partition(shapes.begin(), shapes.end(), [&](Shape const* shape)
+            {
+                return !static_cast<ShapeImpl const*>(shape)->is_instance();
+            });
 
-	void Bvh2lStrategy::QueryOcclusion(std::uint32_t queueidx, Calc::Buffer const* rays, std::uint32_t numrays, Calc::Buffer *hits, Calc::Event const* waitevent, Calc::Event **event) const
-	{
-		auto& func = m_gpudata->occlude_func;
+            // Count the number of meshes
+            int nummeshes = (int)std::distance(shapes.begin(), firstinst);
+            // Count the number of instances
+            int numinstances = (int)std::distance(firstinst, shapes.end());
 
-		// Set args
-		int arg = 0;
-		int offset = 0;
+            std::vector<bbox> object_bounds(nummeshes + numinstances);
 
-		func->SetArg(arg++, m_gpudata->bvh);
-		func->SetArg(arg++, m_gpudata->vertices);
-		func->SetArg(arg++, m_gpudata->faces);
-		func->SetArg(arg++, m_gpudata->shapes);
-		func->SetArg(arg++, sizeof(int), &m_gpudata->bvhrootidx);
-		func->SetArg(arg++, rays);
-		func->SetArg(arg++, sizeof(offset), &offset);
-		func->SetArg(arg++, sizeof(numrays), &numrays);
-		func->SetArg(arg++, hits);
+            matrix m, minv;
 
-		size_t localsize = kWorkGroupSize;
-		size_t globalsize = ((numrays + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
+            // Go over meshes and rebuild BVH bounds
+#pragma omp parallel for
+            for (int i = 0; i < nummeshes; ++i)
+            {
+                Mesh const* mesh = static_cast<Mesh const*>(shapes[i]);
+                // Get transform to apply to object bounds
+                mesh->GetTransform(m, minv);
+                // Extract and store bounds. Note they are in object space and we need to translate them to world space
+                object_bounds[i] = transform_bbox(m_bvhs[i]->Bounds(), m);
+            }
 
-		m_device->Execute(func, queueidx, globalsize, localsize, event);
-	}
+#pragma omp parallel for
+            for (int i = nummeshes; i < nummeshes + numinstances; ++i)
+            {
 
-	void Bvh2lStrategy::QueryIntersection(std::uint32_t queueidx, Calc::Buffer const* rays, Calc::Buffer const* numrays, std::uint32_t maxrays, Calc::Buffer* hits, Calc::Event const* waitevent, Calc::Event** event) const
-	{
-		auto& func = m_gpudata->isect_indirect_func;
+                Instance const* instance = static_cast<Instance const*>(shapes[i]);
+                // Get transform to apply to object bounds
+                instance->GetTransform(m, minv);
 
-		// Set args
-		int arg = 0;
-		int offset = 0;
+                // Find BVH for the instance
+                Mesh const* basemesh = static_cast<Mesh const*>(instance->GetBaseShape());
 
-		func->SetArg(arg++, m_gpudata->bvh);
-		func->SetArg(arg++, m_gpudata->vertices);
-		func->SetArg(arg++, m_gpudata->faces);
-		func->SetArg(arg++, m_gpudata->shapes);
-		func->SetArg(arg++, sizeof(int), &m_gpudata->bvhrootidx);
-		func->SetArg(arg++, rays);
-		func->SetArg(arg++, sizeof(offset), &offset);
-		func->SetArg(arg++, sizeof(numrays), &numrays);
-		func->SetArg(arg++, hits);
+                // It should be there
+                auto iter = std::find(shapes.cbegin(), shapes.cbegin() + nummeshes, basemesh);
 
-		size_t localsize = kWorkGroupSize;
-		size_t globalsize = ((maxrays + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
+                // TODO: should be assert
+                ThrowIf(iter == shapes.cbegin() + nummeshes, "Internal error");
 
-		m_device->Execute(func, queueidx, globalsize, localsize, event);
-	}
+                int bvhidx = (int)std::distance(shapes.cbegin(), iter);
 
-	void Bvh2lStrategy::QueryOcclusion(std::uint32_t queueidx, Calc::Buffer const* rays, Calc::Buffer const* numrays, std::uint32_t maxrays, Calc::Buffer* hits, Calc::Event const* waitevent, Calc::Event** event) const
-	{
-		auto& func = m_gpudata->occlude_indirect_func;
+                // Extract and store bounds. Note they are in object space and we need to translate them to world space
+                object_bounds[i] = transform_bbox(m_bvhs[bvhidx]->Bounds(), m);
+            }
 
-		// Set args
-		int arg = 0;
-		int offset = 0;
+            // Calculate top level BVH
+            auto builder = world.options_.GetOption("bvh.builder");
+            auto tcost = world.options_.GetOption("bvh.sah.traversal_cost");
 
-		func->SetArg(arg++, m_gpudata->bvh);
-		func->SetArg(arg++, m_gpudata->vertices);
-		func->SetArg(arg++, m_gpudata->faces);
-		func->SetArg(arg++, m_gpudata->shapes);
-		func->SetArg(arg++, sizeof(int), &m_gpudata->bvhrootidx);
-		func->SetArg(arg++, rays);
-		func->SetArg(arg++, sizeof(offset), &offset);
-		func->SetArg(arg++, sizeof(numrays), &numrays);
-		func->SetArg(arg++, hits);
+            bool use_sah = false;
+            float traversal_cost = tcost ? tcost->AsFloat() : 10.f;
 
-		size_t localsize = kWorkGroupSize;
-		size_t globalsize = ((maxrays + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
 
-		m_device->Execute(func, queueidx, globalsize, localsize, event);
-	}
+            if (builder && builder->AsString() == "sah")
+            {
+                use_sah = true;
+            }
+
+            m_bvhs[nummeshes].reset(new Bvh(traversal_cost, use_sah));
+            m_bvhs[nummeshes]->Build(&object_bounds[0], nummeshes + numinstances);
+            m_cpudata->bvhptrs[nummeshes] = m_bvhs[nummeshes].get();
+
+
+            // TODO: parallelize this
+            m_cpudata->translator.UpdateTopLevel(*m_bvhs[nummeshes]);
+
+            // Update GPU data
+            // Copy only top BVH data
+            Calc::Event* e = nullptr;
+            m_device->WriteBuffer(m_gpudata->bvh, 0, m_cpudata->translator.root_ * sizeof(PlainBvhTranslator::Node), (2 * (nummeshes + numinstances) - 1) * sizeof(PlainBvhTranslator::Node), (char*)&m_cpudata->translator.nodes_[m_cpudata->translator.root_], &e);
+
+            e->Wait();
+            m_device->DeleteEvent(e);
+
+            // Now we need to collect shapdata
+            int const* topindices = m_bvhs[nummeshes]->GetIndices();
+
+#pragma omp parallel for
+            for (int i = 0; i < nummeshes + numinstances; ++i)
+            {
+                // Get the mesh
+                ShapeImpl const* shapeimpl = static_cast<ShapeImpl const*>(shapes[topindices[i]]);
+
+                m_cpudata->shapedata[i].id = shapeimpl->GetId();
+                // For disabled shapes force mask to zero since these shapes 
+                // present only virtually (they have not been added to the scene)
+                // and we need to skip them while doing traversal.
+                if (shapes_disabled.find(shapeimpl) == shapes_disabled.cend())
+                {
+                    m_cpudata->shapedata[i].mask = shapeimpl->GetMask();
+                }
+                else
+                {
+                    m_cpudata->shapedata[i].mask = 0x0;
+                }
+
+                shapeimpl->GetTransform(m, m_cpudata->shapedata[i].minv);
+
+                if (!shapeimpl->is_instance())
+                {
+                    m_cpudata->shapedata[i].bvhidx = m_cpudata->translator.roots_[topindices[i]];
+                }
+                else
+                {
+                    Instance const* instance = static_cast<Instance const*>(shapes[topindices[i]]);
+
+                    // Find corresponding mesh
+                    Mesh const* basemesh = static_cast<Mesh const*>(instance->GetBaseShape());
+
+                    // It should be there
+                    auto iter = std::find(shapes.cbegin(), shapes.cbegin() + nummeshes, basemesh);
+
+                    // TODO: should be assert
+                    ThrowIf(iter == shapes.cbegin() + nummeshes, "Internal error");
+
+                    int bvhidx = (int)std::distance(shapes.cbegin(), iter);
+
+                    m_cpudata->shapedata[i].bvhidx = m_cpudata->translator.roots_[bvhidx];
+                }
+            }
+
+            // Create face ID buffer
+            m_device->WriteBuffer(m_gpudata->shapes, 0, 0, (nummeshes + numinstances) * sizeof(ShapeData), (char*)&m_cpudata->shapedata[0], &e);
+
+            e->Wait();
+            m_device->DeleteEvent(e);
+
+            m_device->Finish(0);
+        }
+    }
+
+    void Bvh2lStrategy::QueryIntersection(std::uint32_t queueidx, Calc::Buffer const* rays, std::uint32_t numrays, Calc::Buffer *hits, Calc::Event const* waitevent, Calc::Event **event) const
+    {
+        auto& func = m_gpudata->isect_func;
+
+        // Set args
+        int arg = 0;
+        int offset = 0;
+
+        func->SetArg(arg++, m_gpudata->bvh);
+        func->SetArg(arg++, m_gpudata->vertices);
+        func->SetArg(arg++, m_gpudata->faces);
+        func->SetArg(arg++, m_gpudata->shapes);
+        func->SetArg(arg++, sizeof(int), &m_gpudata->bvhrootidx);
+        func->SetArg(arg++, rays);
+        func->SetArg(arg++, sizeof(offset), &offset);
+        func->SetArg(arg++, sizeof(numrays), &numrays);
+        func->SetArg(arg++, hits);
+
+        size_t localsize = kWorkGroupSize;
+        size_t globalsize = ((numrays + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
+
+        m_device->Execute(func, queueidx, globalsize, localsize, event);
+    }
+
+    void Bvh2lStrategy::QueryOcclusion(std::uint32_t queueidx, Calc::Buffer const* rays, std::uint32_t numrays, Calc::Buffer *hits, Calc::Event const* waitevent, Calc::Event **event) const
+    {
+        auto& func = m_gpudata->occlude_func;
+
+        // Set args
+        int arg = 0;
+        int offset = 0;
+
+        func->SetArg(arg++, m_gpudata->bvh);
+        func->SetArg(arg++, m_gpudata->vertices);
+        func->SetArg(arg++, m_gpudata->faces);
+        func->SetArg(arg++, m_gpudata->shapes);
+        func->SetArg(arg++, sizeof(int), &m_gpudata->bvhrootidx);
+        func->SetArg(arg++, rays);
+        func->SetArg(arg++, sizeof(offset), &offset);
+        func->SetArg(arg++, sizeof(numrays), &numrays);
+        func->SetArg(arg++, hits);
+
+        size_t localsize = kWorkGroupSize;
+        size_t globalsize = ((numrays + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
+
+        m_device->Execute(func, queueidx, globalsize, localsize, event);
+    }
+
+    void Bvh2lStrategy::QueryIntersection(std::uint32_t queueidx, Calc::Buffer const* rays, Calc::Buffer const* numrays, std::uint32_t maxrays, Calc::Buffer* hits, Calc::Event const* waitevent, Calc::Event** event) const
+    {
+        auto& func = m_gpudata->isect_indirect_func;
+
+        // Set args
+        int arg = 0;
+        int offset = 0;
+
+        func->SetArg(arg++, m_gpudata->bvh);
+        func->SetArg(arg++, m_gpudata->vertices);
+        func->SetArg(arg++, m_gpudata->faces);
+        func->SetArg(arg++, m_gpudata->shapes);
+        func->SetArg(arg++, sizeof(int), &m_gpudata->bvhrootidx);
+        func->SetArg(arg++, rays);
+        func->SetArg(arg++, numrays);
+        func->SetArg(arg++, sizeof(offset), &offset);
+        func->SetArg(arg++, hits);
+
+        size_t localsize = kWorkGroupSize;
+        size_t globalsize = ((maxrays + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
+
+        m_device->Execute(func, queueidx, globalsize, localsize, event);
+    }
+
+    void Bvh2lStrategy::QueryOcclusion(std::uint32_t queueidx, Calc::Buffer const* rays, Calc::Buffer const* numrays, std::uint32_t maxrays, Calc::Buffer* hits, Calc::Event const* waitevent, Calc::Event** event) const
+    {
+        auto& func = m_gpudata->occlude_indirect_func;
+
+        // Set args
+        int arg = 0;
+        int offset = 0;
+
+        func->SetArg(arg++, m_gpudata->bvh);
+        func->SetArg(arg++, m_gpudata->vertices);
+        func->SetArg(arg++, m_gpudata->faces);
+        func->SetArg(arg++, m_gpudata->shapes);
+        func->SetArg(arg++, sizeof(int), &m_gpudata->bvhrootidx);
+        func->SetArg(arg++, rays);
+        func->SetArg(arg++, numrays);
+        func->SetArg(arg++, sizeof(offset), &offset);
+        func->SetArg(arg++, hits);
+
+        size_t localsize = kWorkGroupSize;
+        size_t globalsize = ((maxrays + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
+
+        m_device->Execute(func, queueidx, globalsize, localsize, event);
+    }
 }
