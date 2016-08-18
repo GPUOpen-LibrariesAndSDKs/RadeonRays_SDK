@@ -31,6 +31,7 @@ THE SOFTWARE.
 		
 #define RADEONRAYS_API_VERSION 2.0
 
+#if !RR_STATIC_LIBRARY
 #ifdef WIN32
     #ifdef EXPORT_API
         #define RRAPI __declspec(dllexport)
@@ -44,7 +45,9 @@ THE SOFTWARE.
         #define RRAPI
     #endif
 #endif
-
+#else
+#define RRAPI
+#endif
 namespace RadeonRays
 {
 	struct Intersection;

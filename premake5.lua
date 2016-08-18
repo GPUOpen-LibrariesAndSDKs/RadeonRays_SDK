@@ -147,6 +147,9 @@ else
         language "C++"
         flags { "NoMinimalRebuild", "EnableSSE", "EnableSSE2" }
     end
+    if( _OPTIONS["static_library"]) then
+        defines{ "RR_STATIC_LIBRARY=1" }
+    end
 
     if _OPTIONS["use_opencl"] then
         -- find and add path to Opencl headers
