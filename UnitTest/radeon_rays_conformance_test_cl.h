@@ -33,6 +33,7 @@ using namespace RadeonRays;
 using namespace tinyobj;
 
 #include "tiny_obj_loader.h"
+#include "utils.h"
 
 #include <vector>
 #include <cstdio>
@@ -65,7 +66,7 @@ public:
 
     std::vector<Shape*> apishapes_cpu_;
     std::vector<Shape*> apishapes_gpu_;
-	
+	std::vector<TestShape> test_shapes_;
 	Event* e_;
 
     // Tinyobj data
@@ -131,6 +132,10 @@ inline void ApiConformanceCL::SetUp()
 			&shapes_[i].mesh.indices[0], 0, nullptr, (int)shapes_[i].mesh.indices.size() / 3));
 
 		EXPECT_NO_THROW(apigpu_->AttachShape(shape));
+		
+		test_shapes_.push_back({ &shapes_[i].mesh.positions[0], (int)shapes_[i].mesh.positions.size() / 3,
+			&shapes_[i].mesh.indices[0], (int)shapes_[i].mesh.indices.size(), nullptr, (int)shapes_[i].mesh.indices.size() / 3 });
+		test_shapes_.back().shape = shape;
 
 		apishapes_gpu_.push_back(shape);
 	}
@@ -413,7 +418,7 @@ TEST_F(ApiConformanceCL, CornellBox_10000RaysRandom_ClosestHit_Events_Bruteforce
 	EXPECT_NO_THROW(apicpu_->Commit());
 	EXPECT_NO_THROW(apigpu_->Commit());
 
-	apicpu_->TestIntersections(r_brute, kNumRays, isect_brute);
+	TestIntersections(test_shapes_.data(), test_shapes_.size(), r_brute, kNumRays, isect_brute);
 
 	auto ray_buffer_cpu = apicpu_->CreateBuffer(kNumRays * sizeof(ray), nullptr);
 	auto isect_buffer_cpu = apicpu_->CreateBuffer(kNumRays * sizeof(Intersection), nullptr);
@@ -521,7 +526,7 @@ inline void ApiConformanceCL::ExpectClosestRaysOk(RadeonRays::IntersectionApi* a
 	EXPECT_NO_THROW(api->Commit());
 
 	// generate the golden test results
-	api->TestIntersections(r_brute, kNumRays, isect_brute);
+	TestIntersections(test_shapes_.data(), test_shapes_.size(), r_brute, kNumRays, isect_brute);
 
 	auto ray_buffer = api->CreateBuffer(kNumRays * sizeof(ray), nullptr);
 	auto isect_buffer = api->CreateBuffer(kNumRays * sizeof(Intersection), nullptr);
@@ -588,7 +593,7 @@ inline void ApiConformanceCL::ExpectAnyRaysOk(RadeonRays::IntersectionApi* api) 
 	EXPECT_NO_THROW(api->Commit());
 
 	// generate the golden test results
-	api->TestOcclusions(r_brute, kNumRays, any_brute);
+	TestOcclusions(test_shapes_.data(), test_shapes_.size(), r_brute, kNumRays, any_brute);
 
 	auto ray_buffer = api->CreateBuffer(kNumRays * sizeof(ray), nullptr);
 	auto result_buffer = api->CreateBuffer(kNumRays * sizeof(int), nullptr);

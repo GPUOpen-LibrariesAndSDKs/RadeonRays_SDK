@@ -114,13 +114,6 @@ namespace RadeonRays
 		// Geometry mask to mask out intersections
 		virtual void SetMask(int mask) = 0;
 		virtual int  GetMask() const = 0;
-#if	PRORAY_UNITTEST
-
-		// Test functions, fires a single ray into this shape via unoptimised CPU code
-		virtual bool TestOcclusion(const ray& r) const = 0;
-		// isect is in/out. for first call set isect.uvwt to further insection (1 usually)
-		virtual void TestIntersection(const ray& r, Intersection& isect) const = 0;
-#endif
     };
 
     // Buffer represents a chunk of memory hosted inside the API
@@ -286,11 +279,6 @@ namespace RadeonRays
         // The call is asynchronous. Event pointer mights be nullptrs.
         virtual void QueryOcclusion(Buffer const* rays, Buffer const* numrays, int maxrays, Buffer* hitresults, Event const* waitevent, Event** event) const = 0;
 
-#if	PRORAY_UNITTEST
-		// test functions, perform tests using unoptimised CPU for validating the fast paths
-		virtual void TestOcclusions(ray const * rays, int numrays, bool* hits) const = 0;
-		virtual void TestIntersections(ray const * rays, int numrays, Intersection* results) const = 0;
-#endif
         /******************************************
         Utility
         ******************************************/
