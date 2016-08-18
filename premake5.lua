@@ -50,6 +50,12 @@ newoption {
     description = "Don't add any unit tests and remove any test functionality from the library"
 }
 
+newoption {
+    trigger = "static_library", 
+    description = "Create static libraries rather than dynamic"
+}
+
+
 if not _OPTIONS["use_opencl"] and not _OPTIONS["use_vulkan"] and not _OPTIONS["use_embree"] then
     _OPTIONS["use_opencl"] = 1
 end

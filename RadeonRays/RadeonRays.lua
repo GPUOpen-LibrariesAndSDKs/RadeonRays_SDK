@@ -1,5 +1,9 @@
 project "RadeonRays"
-    kind "SharedLib"
+    if( _OPTIONS["static_library"]) then
+        kind "StaticLib"
+    else
+        kind "SharedLib"
+    end
     location "../RadeonRays"
     includedirs { "./include", "../Calc/inc" }
     links {"Calc"}
@@ -34,6 +38,7 @@ project "RadeonRays"
         configuration {"x32", "Release"}
             linkoptions {"-Wl,-soname,libRadeonRays.so." .. lib_version}
         configuration{}
+
 
         --replacing lib by soft link
         postbuildcommands {"mv $(TARGET) $(TARGET)." .. lib_version}
