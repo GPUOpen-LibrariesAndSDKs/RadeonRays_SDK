@@ -31,6 +31,7 @@ THE SOFTWARE.
 using namespace RadeonRays;
 
 #include "tiny_obj_loader.h"
+#include "utils.h"
 
 // Api creation fixture, prepares api_ for further tests
 class ApiBackendVulkan : public ::testing::Test
@@ -795,27 +796,30 @@ TEST_F(ApiBackendVulkan, Intersection_1Ray_TransformedInstance1)
 	// at <0,-1,1000> AND as an instance at <0,0,2>
 	// ray from <0,0,-10> along the pos z should hit the uninstanced mesh
 
-	Shape* mesh0 = nullptr;
-	Shape* mesh1 = nullptr;
-	Shape* instance = nullptr;
+	std::vector<TestShape> shapes = { TestShape(vertices(), 3, indices(), 3, numfaceverts(), 1),
+		TestShape(vertices(), 3, indices(), 3, numfaceverts(), 1),
+		TestShape(vertices(), 3, indices(), 3, numfaceverts(), 1) };
+	TestShape& mesh0 = shapes[0];
+	TestShape& mesh1 = shapes[1];
+	TestShape& instance = shapes[2];
 
 	// Create meshes
 	// NOTE mesh in world and as a instance upsets the simple TestIntersection API call 
-	ASSERT_NO_THROW(mesh0 = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
-	ASSERT_TRUE(mesh0 != nullptr);
-	ASSERT_NO_THROW(mesh1 = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
-	ASSERT_TRUE(mesh1 != nullptr);
+	ASSERT_NO_THROW(mesh0.shape = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
+	ASSERT_TRUE(mesh0.shape != nullptr);
+	ASSERT_NO_THROW(mesh1.shape = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
+	ASSERT_TRUE(mesh1.shape != nullptr);
 
 	// Attach the mesh to the scene
-	ASSERT_NO_THROW(api_->AttachShape(mesh0));
+	ASSERT_NO_THROW(api_->AttachShape(mesh0.shape));
 	// Create instance of a triangle
-	ASSERT_NO_THROW(instance = api_->CreateInstance(mesh1));
+	ASSERT_NO_THROW(instance.shape = api_->CreateInstance(mesh1.shape));
 
 	matrix m = translation(float3(0, 0, 2));
-	matrix minv = inverse(m);
-	ASSERT_NO_THROW(instance->SetTransform(m, minv));
+	const matrix minv = inverse(m);
+	ASSERT_NO_THROW(instance.shape->SetTransform(m, minv));
 
-	ASSERT_NO_THROW(api_->AttachShape(instance));
+	ASSERT_NO_THROW(api_->AttachShape(instance.shape));
 
 	ray r(float3(0.f, 0.f, -10.f), float3(0.f, 0.f, 1.f), 10000.f);
 
@@ -841,16 +845,17 @@ TEST_F(ApiBackendVulkan, Intersection_1Ray_TransformedInstance1)
 
 	// Check results for 1st ray
 	Intersection isect_brute;
-	api_->TestIntersections(&r, 1, &isect_brute);
+	TestIntersections(shapes.data(), shapes.size(), &r, 1, &isect_brute);
 	// check the test gets the mesh we expect
-	EXPECT_EQ(isect_brute.shapeid, mesh0->GetId());
+	EXPECT_EQ(isect_brute.shapeid, mesh0.shape->GetId());
 	// does the accelerated radeon rays match the test
 	EXPECT_EQ(isect.shapeid, isect_brute.shapeid);
 	EXPECT_LE(std::fabs(isect.uvwt.w - 10.f), 0.01f);
 
 	// Bail out
-	ASSERT_NO_THROW(api_->DetachShape(instance));
-	ASSERT_NO_THROW(api_->DetachShape(mesh0));
+	ASSERT_NO_THROW(api_->DetachShape(instance.shape));
+	ASSERT_NO_THROW(api_->DetachShape(mesh0.shape));
+	ASSERT_NO_THROW(api_->DetachShape(mesh1.shape));
 	ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
 	ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
 
@@ -861,26 +866,29 @@ TEST_F(ApiBackendVulkan, Intersection_1Ray_TransformedInstance2)
 	// at <0,-1,1000> AND as an instance at <0,0,-2>
 	// ray from <0,0,-10> along the pos z should hit the instanced mesh
 
-	Shape* mesh0 = nullptr;
-	Shape* mesh1 = nullptr;
-	Shape* instance = nullptr;
+	std::vector<TestShape> shapes = { TestShape(vertices(), 3, indices(), 3, numfaceverts(), 1),
+		TestShape(vertices(), 3, indices(), 3, numfaceverts(), 1),
+		TestShape(vertices(), 3, indices(), 3, numfaceverts(), 1) };
+	TestShape& mesh0 = shapes[0];
+	TestShape& mesh1 = shapes[1];
+	TestShape& instance = shapes[2];
 
 	// Create meshes
 	// NOTE mesh in world and as a instance upsets the simple TestIntersection API call 
-	ASSERT_NO_THROW(mesh0 = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
-	ASSERT_TRUE(mesh0 != nullptr);
-	ASSERT_NO_THROW(mesh1 = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
-	ASSERT_TRUE(mesh1 != nullptr);
+	ASSERT_NO_THROW(mesh0.shape = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
+	ASSERT_TRUE(mesh0.shape != nullptr);
+	ASSERT_NO_THROW(mesh1.shape = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
+	ASSERT_TRUE(mesh1.shape != nullptr);
 
 	// Attach the mesh to the scene
-	ASSERT_NO_THROW(api_->AttachShape(mesh0));
+	ASSERT_NO_THROW(api_->AttachShape(mesh0.shape));
 	// Create instance of a triangle
-	ASSERT_NO_THROW(instance = api_->CreateInstance(mesh1));
+	ASSERT_NO_THROW(instance.shape = api_->CreateInstance(mesh1.shape));
 
 	//
 	const matrix m = translation(float3(0, 0, -2));
 	const matrix minv = inverse(m);
-	EXPECT_NO_THROW(instance->SetTransform(m, minv));
+	ASSERT_NO_THROW(instance.shape->SetTransform(m, minv));
 
 	// Prepare the ray
 	ray r(float3(0.f, 0.f, -10.f), float3(0.f, 0.f, 1.f), 10000.f);
@@ -889,7 +897,7 @@ TEST_F(ApiBackendVulkan, Intersection_1Ray_TransformedInstance2)
 	// Commit geometry update
 	EXPECT_NO_THROW(api_->Commit());
 
-	ASSERT_NO_THROW(api_->AttachShape(instance));
+	ASSERT_NO_THROW(api_->AttachShape(instance.shape));
 
 	// Intersection and hit data
 	Intersection isect;
@@ -912,16 +920,17 @@ TEST_F(ApiBackendVulkan, Intersection_1Ray_TransformedInstance2)
 
 	// Check results for 1st ray
 	Intersection isect_brute;
-	api_->TestIntersections(&r, 1, &isect_brute);
+	TestIntersections(shapes.data(), shapes.size(), &r, 1, &isect_brute);
 	// check the test gets the mesh we expect
-	EXPECT_EQ(isect_brute.shapeid, instance->GetId());
+	EXPECT_EQ(isect_brute.shapeid, instance.shape->GetId());
 	// does the accelerated radeon rays match the test
 	EXPECT_EQ(isect.shapeid, isect_brute.shapeid);
 	EXPECT_LE(std::fabs(isect.uvwt.w - 8.f), 0.01f);
 
 	// Bail out
-	ASSERT_NO_THROW(api_->DetachShape(instance));
-	ASSERT_NO_THROW(api_->DetachShape(mesh0));
+	ASSERT_NO_THROW(api_->DetachShape(instance.shape));
+	ASSERT_NO_THROW(api_->DetachShape(mesh0.shape));
+	ASSERT_NO_THROW(api_->DetachShape(mesh1.shape));
 	ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
 	ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
 }

@@ -47,13 +47,6 @@ namespace RadeonRays
 
         // Instance flag
         bool is_instance() const;
-#if	PRORAY_UNITTEST
-
-		// Test functions, fires a single ray into this shape via unoptimised CPU code
-		bool TestOcclusion(const ray& r) const override;
-
-		void TestIntersection(const ray& r, Intersection& isect) const override;
-#endif
     private:
         /// Disallow to copy meshes, too heavy
         Instance(Instance const& o);
@@ -77,54 +70,6 @@ namespace RadeonRays
     {
         return true;
     }
-
-#if	PRORAY_UNITTEST
-
-	inline bool Instance::TestOcclusion(const ray& r) const
-	{
-		// note this passes the instance transform only to mesh base shapes
-		// we need to add matrix overloads to all shape interfaces
-		// that might mean more matrix parameter copying... need to investigate
-		// instead for now as we only support 2 levels and the only 
-		// possible answer that matters is mesh we use a dynamic cast
-		const auto mesh = dynamic_cast<const Mesh*>(GetBaseShape());
-		if(mesh != nullptr )
-		{
-			return mesh->TestOcclusion(r, worldmat_);
-		} else
-		{
-			if (GetBaseShape() != nullptr)
-			{
-				return GetBaseShape()->TestOcclusion(r);
-			}
-		}
-	}
-	inline void Instance::TestIntersection(const ray& r, Intersection& isect) const
-    {
-		// see TestOcclusion for comments, both routines are 99% the same
-		const auto mesh = dynamic_cast<const Mesh*>(GetBaseShape());
-		if (mesh != nullptr)
-		{
-			// This may cause a false positive if the inner mesh is used
-			// both as a real mesh and an inner mesh. Don't do that for the Test call
-			assert(isect.shapeid != mesh->GetId());
-
-			mesh->TestIntersection(r, worldmat_, isect);
-			// if we hit the mesh shape, pretend it hit the instance
-			if(isect.shapeid == mesh->GetId())
-			{
-                isect.shapeid = GetId();
-			}
-		}
-		else
-		{
-			if (GetBaseShape() != nullptr)
-			{
-				GetBaseShape()->TestIntersection(r, isect);
-			}
-		}
-    }
-#endif
 
 }
 
