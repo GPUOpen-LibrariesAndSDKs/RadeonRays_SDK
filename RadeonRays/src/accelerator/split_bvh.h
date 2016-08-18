@@ -36,10 +36,6 @@ namespace RadeonRays
 
         ~SplitBvh();
 
-        // Get reordered prim indices
-        int const* GetIndices() const override { return &m_indices[0]; }
-        size_t GetNumIndices() const override { return m_indices.size(); }
-
     protected:
         struct PrimRef;
         using PrimRefArray = std::vector<PrimRef>;
@@ -63,10 +59,7 @@ namespace RadeonRays
     private:
         SplitBvh(SplitBvh const&);
         SplitBvh& operator = (SplitBvh const&);
-        
-        std::vector<int> m_indices;
-        std::vector<bbox> m_bounds;
-        
+
         friend class PlainBvhTranslator;
         friend class FatNodeBvhTranslator;
     };

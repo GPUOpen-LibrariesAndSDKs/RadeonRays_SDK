@@ -30,20 +30,20 @@ namespace RadeonRays
         // TODO: remove this
         InitNodeAllocator(100 * numbounds);
         
-        SplitRequest init = { 0, numbounds, nullptr, bounds_, centroid_bounds, 0 };
+        SplitRequest init = { 0, numbounds, nullptr, m_bounds, centroid_bounds, 0 };
         
         // Start from the top
         BuildNode(init, primrefs);
 
         // Set root_ pointer
-        root_ = &nodes_[0];
+        m_root = &m_nodes[0];
     }
-    
+
     void SplitBvh::BuildNode(SplitRequest& req, PrimRefArray& primrefs)
     {
         // Update current height
-        height_ = std::max(height_, req.level);
-        
+        m_height = std::max(m_height, req.level);
+
         // Allocate new node
         Node* node = AllocateNode();
         node->bounds = req.bounds;
@@ -58,7 +58,6 @@ namespace RadeonRays
             for (int i = req.startidx; i < req.startidx + req.numprims; ++i)
             {
                 m_indices.push_back(primrefs[i].idx);
-                m_bounds.push_back(primrefs[i].bounds);
             }
         }
         else
@@ -167,8 +166,8 @@ namespace RadeonRays
             SplitRequest leftrequest = { req.startidx, splitidx - req.startidx, &node->lc, leftbounds, leftcentroid_bounds, req.level + 1 };
             // Right request
             SplitRequest rightrequest = { splitidx, req.numprims - (splitidx - req.startidx), &node->rc, rightbounds, rightcentroid_bounds, req.level + 1 };
-            
-            
+
+
             // The order is very important here since right node uses the space at the end of the array to partition
             {
                 BuildNode(rightrequest, primrefs);
@@ -469,7 +468,7 @@ namespace RadeonRays
                 refs[req.startidx + appendprims++] = rightref;
             }
         }
-    
+
         // Return number of primitives after this operation
         extra_refs = appendprims - req.numprims;
     }

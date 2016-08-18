@@ -41,7 +41,7 @@ namespace RadeonRays
         for (int i = 0; i < numbounds; ++i)
         {
             // Calc bbox
-            bounds_.grow(bounds[i]);
+            m_bounds.grow(bounds[i]);
         }
 
         BuildImpl(bounds, numbounds);
@@ -49,24 +49,24 @@ namespace RadeonRays
 
     bbox const& Bvh::Bounds() const
     {
-        return bounds_;
+        return m_bounds;
     }
 
 
     void  Bvh::InitNodeAllocator(size_t maxnum)
     {
-        nodecnt_ = 0;
-        nodes_.resize(maxnum);
+        m_nodecnt = 0;
+        m_nodes.resize(maxnum);
     }
 
     Bvh::Node* Bvh::AllocateNode()
     {
-        return &nodes_[nodecnt_++];
+        return &m_nodes[m_nodecnt++];
     }
 
     void Bvh::BuildNode(SplitRequest const& req, bbox const* bounds, float3 const* centroids, int* primindices)
     {
-		height_ = std::max(height_, req.level);
+		m_height = std::max(m_height, req.level);
 
         Node* node = AllocateNode();
         node->bounds = req.bounds;
@@ -92,7 +92,7 @@ namespace RadeonRays
             int axis = req.centroid_bounds.maxdim();
             float border = req.centroid_bounds.center()[axis];
 
-            if (usesah_ && req.level < 10)
+            if (m_usesah && req.level < 10)
             {
                 SahSplit ss = FindSahSplit(req, bounds, centroids, primindices);
 
@@ -362,8 +362,8 @@ namespace RadeonRays
 
         // Cache some stuff to have faster partitioning
         std::vector<float3> centroids(numbounds);
-        primids_.resize(numbounds);
-        std::iota(primids_.begin(), primids_.end(), 0);
+        m_indices.resize(numbounds);
+        std::iota(m_indices.begin(), m_indices.end(), 0);
 
         // Calc bbox
         bbox centroid_bounds;
@@ -374,7 +374,7 @@ namespace RadeonRays
             centroids[i] = c;
         }
 
-        SplitRequest init = { 0, numbounds, nullptr, bounds_, centroid_bounds, 0 };
+        SplitRequest init = { 0, numbounds, nullptr, m_bounds, centroid_bounds, 0 };
 
 #ifdef USE_BUILD_STACK
         std::stack<SplitRequest> stack;
@@ -483,7 +483,7 @@ namespace RadeonRays
             if (req.ptr) *req.ptr = node;
         }
 #else
-        BuildNode(init, bounds, &centroids[0], &primids_[0]);
+        BuildNode(init, bounds, &centroids[0], &m_indices[0]);
 #endif
 
 #ifdef USE_TBB
@@ -491,7 +491,7 @@ namespace RadeonRays
 #endif
 
         // Set root_ pointer
-        root_ = &nodes_[0];
+        m_root = &m_nodes[0];
     }
 
 }
