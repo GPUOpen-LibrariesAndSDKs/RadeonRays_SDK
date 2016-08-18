@@ -170,6 +170,9 @@ The library has been tested on the following hardware and OSes:
 
 ---
 # Known Issues
+## Vulkan
+
+ - Currently the public Anvil has a [bug](https://github.com/GPUOpen-LibrariesAndSDKs/Anvil/issues/3) that causes a crash on exit. Its already been fixed in an internal branch which will which will move to public when its cooked and ready. For now just comment out the free of the layout manager in Anvil::BasePipelineManager::Pipeline::release_vulkan_objects()
 
 ## Windows
 
