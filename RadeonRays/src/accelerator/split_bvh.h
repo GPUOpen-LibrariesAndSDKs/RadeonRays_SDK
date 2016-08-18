@@ -29,8 +29,17 @@ namespace RadeonRays
     class SplitBvh : public Bvh
     {
     public:
-        SplitBvh()
-        : Bvh(true)
+        SplitBvh(float traversal_cost,
+                 int max_split_depth, 
+                 float min_overlap,
+                 float extra_refs_budget)
+        : Bvh(traversal_cost, true)
+        , m_max_split_depth(max_split_depth)
+        , m_min_overlap(min_overlap)
+        , m_extra_refs_budget(extra_refs_budget)
+        , m_num_nodes_required(0)
+        , m_num_nodes_for_regular(0)
+        , m_num_nodes_archived(0)
         {
         }
 
@@ -55,8 +64,31 @@ namespace RadeonRays
         
         void SplitPrimRefs(SahSplit const& split, SplitRequest const& req, PrimRefArray& refs, int& extra_refs);
         bool SplitPrimRef(PrimRef const& ref, int axis, float split, PrimRef& leftref, PrimRef& rightref) const;
-        
+
+        // Print BVH statistics
+        void PrintStatistics(std::ostream& os) const override;
+
+    protected:
+        Node* AllocateNode() override;
+        void  InitNodeAllocator(size_t maxnum) override;
+
     private:
+
+        int m_max_split_depth;
+        float m_min_overlap;
+        float m_extra_refs_budget;
+        int m_num_nodes_required;
+        int m_num_nodes_for_regular;
+
+        // Node archive for memory management
+        // As m_nodes fills up we archive it into m_node_archive
+        // allocate new chunk and work there.
+
+        // How many nodes have been archived so far
+        int m_num_nodes_archived;
+        // Container for archived chunks
+        std::list<std::vector<Node>> m_node_archive;
+
         SplitBvh(SplitBvh const&);
         SplitBvh& operator = (SplitBvh const&);
 
@@ -75,5 +107,4 @@ namespace RadeonRays
     inline SplitBvh::~SplitBvh()
     {
     }
-    
 }

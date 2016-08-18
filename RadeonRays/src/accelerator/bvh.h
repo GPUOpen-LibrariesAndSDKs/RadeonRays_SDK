@@ -24,7 +24,9 @@ THE SOFTWARE.
 
 #include <memory>
 #include <vector>
+#include <list>
 #include <atomic>
+#include <iostream>
 
 
 #include "math/bbox.h"
@@ -37,10 +39,11 @@ namespace RadeonRays
     class Bvh
     {
     public:
-        Bvh(bool usesah = false)
+        Bvh(float traversal_cost, bool usesah = false)
             : m_root(nullptr)
             , m_usesah(usesah)
             , m_height(0)
+            , m_traversal_cost(traversal_cost)
         {
         }
 
@@ -64,8 +67,8 @@ namespace RadeonRays
         // some BVH implementations (like SBVH)
         virtual size_t GetNumIndices() const;
 
-
-
+        // Print BVH statistics
+        virtual void PrintStatistics(std::ostream& os) const;
     protected:
         // Build function
         virtual void BuildImpl(bbox const* bounds, int numbounds);
@@ -96,6 +99,7 @@ namespace RadeonRays
             int dim;
             float split;
             float sah;
+            float overlap;
         };
 
         void BuildNode(SplitRequest const& req, bbox const* bounds, float3 const* centroids, int* primindices);
@@ -124,6 +128,8 @@ namespace RadeonRays
         bool m_usesah;
         // Tree height
         int m_height;
+        // Node traversal cost
+        float m_traversal_cost;
 
 
     private:

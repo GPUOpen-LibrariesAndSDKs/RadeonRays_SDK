@@ -52,7 +52,6 @@ namespace RadeonRays
         return m_bounds;
     }
 
-
     void  Bvh::InitNodeAllocator(size_t maxnum)
     {
         m_nodecnt = 0;
@@ -206,36 +205,11 @@ namespace RadeonRays
             // Right request
             SplitRequest rightrequest = { splitidx, req.numprims - (splitidx - req.startidx), &node->rc, rightbounds, rightcentroid_bounds, req.level + 1 };
 
-#ifdef USE_TBB
-            // Put those to stack
-            // std::vector<std::future<int> > futures;
-            if (leftrequest.numprims > 4096 * 4)
-            {
-                taskgroup_.run(
-                    [=](){
-                    //std::cout << "Handling left " << leftrequest.startidx << " " << leftrequest.numprims << std::endl;
-                    BuildNode(leftrequest, bounds, centroids, primindices);
-                    });
-            }
-            else
-#endif
             {
                 // Put those to stack
                 BuildNode(leftrequest, bounds, centroids, primindices);
             }
 
-#ifdef USE_TBB
-            if (rightrequest.numprims > 4096 * 4 )
-            {
-
-                taskgroup_.run(
-                    [=](){
-                    //std::cout << "Handling right " << rightrequest.startidx << " " << rightrequest.numprims << std::endl;
-                    BuildNode(rightrequest, bounds, centroids, primindices);
-                });
-            }
-            else
-#endif
             {
                 BuildNode(rightrequest, bounds, centroids, primindices);
             }
@@ -334,7 +308,7 @@ namespace RadeonRays
                 rightcount -= bins[axis][i].count;
 
                 // Compute SAH
-                sahtmp = 10.f + (leftcount * leftbox.surface_area() + rightcount * rightbounds[i].surface_area()) * invarea;
+                sahtmp = m_traversal_cost + (leftcount * leftbox.surface_area() + rightcount * rightbounds[i].surface_area()) * invarea;
 
                 // Check if it is better than what we found so far
                 if (sahtmp < sah)
@@ -486,12 +460,16 @@ namespace RadeonRays
         BuildNode(init, bounds, &centroids[0], &m_indices[0]);
 #endif
 
-#ifdef USE_TBB
-        taskgroup_.wait();
-#endif
-
         // Set root_ pointer
         m_root = &m_nodes[0];
+    }
+
+    void Bvh::PrintStatistics(std::ostream& os) const
+    {
+        os << "Class name: " << "Bvh\n";
+        os << "SAH: " << m_usesah ? "enabled\n" : "disabled\n";
+        os << "Number of triangles: " << m_indices.size() << "\n";
+        os << "Number of nodes: " << m_nodecnt << "\n";
     }
 
 }
