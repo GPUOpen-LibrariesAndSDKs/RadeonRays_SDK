@@ -35,6 +35,9 @@ THE SOFTWARE.
 #include "embree2/rtcore_ray.h"
 #include "../async/thread_pool.h"
 
+#include <xmmintrin.h>
+#include <pmmintrin.h>
+
 //count of elements for one thread pool task
 #define TASK_SIZE 256
 
