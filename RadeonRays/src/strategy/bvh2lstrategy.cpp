@@ -692,7 +692,7 @@ namespace RadeonRays
         func->SetArg(arg++, m_gpudata->shapes);
         func->SetArg(arg++, sizeof(int), &m_gpudata->bvhrootidx);
         func->SetArg(arg++, rays);
-        func->SetArg(arg++, sizeof(numrays), &numrays);
+        func->SetArg(arg++, numrays);
         func->SetArg(arg++, sizeof(offset), &offset);
         func->SetArg(arg++, hits);
 
@@ -716,7 +716,7 @@ namespace RadeonRays
         func->SetArg(arg++, m_gpudata->shapes);
         func->SetArg(arg++, sizeof(int), &m_gpudata->bvhrootidx);
         func->SetArg(arg++, rays);
-        func->SetArg(arg++, sizeof(numrays), &numrays);
+        func->SetArg(arg++, numrays);
         func->SetArg(arg++, sizeof(offset), &offset);
         func->SetArg(arg++, hits);
 
