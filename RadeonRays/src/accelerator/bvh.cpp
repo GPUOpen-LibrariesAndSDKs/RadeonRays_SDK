@@ -31,7 +31,7 @@ THE SOFTWARE.
 
 namespace RadeonRays
 {
-    bool is_nan(float v)
+    static bool is_nan(float v)
     {
         return v != v;
     }

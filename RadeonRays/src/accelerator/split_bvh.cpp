@@ -1,5 +1,5 @@
 #include "split_bvh.h"
-#include "mathutils.h"
+#include "math/mathutils.h"
 
 #include <cassert>
 
@@ -9,7 +9,7 @@ namespace RadeonRays
     {
         return float3{ clamp(val.x, a.x, b.x), clamp(val.y, a.y, b.y), clamp(val.z, a.z, b.z)};
     }
-    
+
     void SplitBvh::BuildImpl(bbox const* bounds, int numbounds)
     {
         // Initialize prim refs structures
@@ -49,7 +49,7 @@ namespace RadeonRays
         if (req.numprims < 2)
         {
             node->type = kLeaf;
-            node->startidx = m_indices.size();
+            node->startidx = (int)m_indices.size();
             node->numprims = req.numprims;
             
             for (int i = req.startidx; i < req.startidx + req.numprims; ++i)
@@ -99,8 +99,8 @@ namespace RadeonRays
             
             bool near2far = (req.numprims + req.startidx) & 0x1;
             
-            auto cmpl = [](float a, float b) -> bool { return a < b; };
-            auto cmpge = [](float a, float b) -> bool { return a >= b; };
+            bool (*cmpl)(float, float) = [](float a, float b) -> bool { return a < b; };
+            bool (*cmpge)(float, float) = [](float a, float b) -> bool { return a >= b; };
             auto cmp1 = near2far ? cmpl : cmpge;
             auto cmp2 = near2far ? cmpge : cmpl;
             
