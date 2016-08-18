@@ -35,18 +35,18 @@ namespace RadeonRays
     {
         // WARNING: this is crucial in order for the nodes not to migrate in memory as push_back adds nodes
         nodecnt_ = 0;
-        int newsize = bvh.nodecnt_;
+        int newsize = bvh.m_nodecnt;
         nodes_.resize(newsize);
         extra_.resize(newsize);
 
         // Check if we have been initialized
-        assert(bvh.root_);
+        assert(bvh.m_root);
 
         // Save current root position
         int rootidx = 0;
 
         // Process root
-        ProcessNode(bvh.root_);
+        ProcessNode(bvh.m_root);
 
         // Set next ptr
         nodes_[rootidx].bounds.pmax.w = -1;
@@ -79,12 +79,12 @@ namespace RadeonRays
         nodecnt_ = root_;
 
         // Process root
-        ProcessNode(bvh.root_);
+        ProcessNode(bvh.m_root);
 
         // Set next ptr
         nodes_[root_].bounds.pmax.w = -1;
 
-        for (int j = root_; j < root_ + bvh.nodecnt_; ++j)
+        for (int j = root_; j < root_ + bvh.m_nodecnt; ++j)
         {
             if (nodes_[j].bounds.pmin.w != -1.f)
             {
@@ -93,7 +93,7 @@ namespace RadeonRays
             }
         }
 
-        for (int j = root_; j < root_ + bvh.nodecnt_; ++j)
+        for (int j = root_; j < root_ + bvh.m_nodecnt; ++j)
         {
             if (nodes_[j].bounds.pmin.w == -1.f)
             {
@@ -118,7 +118,7 @@ namespace RadeonRays
                 continue;
             }
 
-            nodecnt += bvhs[i]->nodecnt_;
+            nodecnt += bvhs[i]->m_nodecnt;
         }
 
         nodes_.resize(nodecnt);
@@ -137,12 +137,12 @@ namespace RadeonRays
             roots_[i] = currentroot;
             
             // Process root
-            ProcessNode(bvhs[i]->root_, offsets[i]);
+            ProcessNode(bvhs[i]->m_root, offsets[i]);
 
             // Set next ptr
             nodes_[currentroot].bounds.pmax.w = -1;
 
-            for (int j = currentroot; j < currentroot + bvhs[i]->nodecnt_; ++j)
+            for (int j = currentroot; j < currentroot + bvhs[i]->m_nodecnt; ++j)
             {
                 if (nodes_[j].bounds.pmin.w != -1.f)
                 {
@@ -151,7 +151,7 @@ namespace RadeonRays
                 }
             }
 
-            for (int j = currentroot; j < currentroot + bvhs[i]->nodecnt_; ++j)
+            for (int j = currentroot; j < currentroot + bvhs[i]->m_nodecnt; ++j)
             {
                 if (nodes_[j].bounds.pmin.w == -1.f)
                 {
@@ -168,12 +168,12 @@ namespace RadeonRays
         root_ = nodecnt_;
 
         // Process root
-        ProcessNode(bvhs[numbvhs]->root_);
+        ProcessNode(bvhs[numbvhs]->m_root);
 
         // Set next ptr
         nodes_[root_].bounds.pmax.w = -1;
 
-        for (int j = root_; j < root_ + bvhs[numbvhs]->nodecnt_; ++j)
+        for (int j = root_; j < root_ + bvhs[numbvhs]->m_nodecnt; ++j)
         {
             if (nodes_[j].bounds.pmin.w != -1.f)
             {
@@ -182,7 +182,7 @@ namespace RadeonRays
             }
         }
 
-        for (int j = root_; j < root_ + bvhs[numbvhs]->nodecnt_; ++j)
+        for (int j = root_; j < root_ + bvhs[numbvhs]->m_nodecnt; ++j)
         {
             if (nodes_[j].bounds.pmin.w == -1.f)
             {

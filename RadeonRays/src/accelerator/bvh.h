@@ -24,17 +24,12 @@ THE SOFTWARE.
 
 #include <memory>
 #include <vector>
+#include <list>
 #include <atomic>
+#include <iostream>
 
 
 #include "math/bbox.h"
-
-//#define USE_TBB
-#ifdef USE_TBB
-#define NOMINMAX
-#include <tbb/task_group.h>
-#include <tbb/mutex.h>
-#endif
 
 namespace RadeonRays
 {
@@ -44,10 +39,11 @@ namespace RadeonRays
     class Bvh
     {
     public:
-        Bvh(bool usesah = false)
-            : root_(nullptr)
-            , usesah_(usesah)
-			, height_(0)
+        Bvh(float traversal_cost, bool usesah = false)
+            : m_root(nullptr)
+            , m_usesah(usesah)
+            , m_height(0)
+            , m_traversal_cost(traversal_cost)
         {
         }
 
@@ -57,14 +53,22 @@ namespace RadeonRays
         bbox const& Bounds() const;
 
         // Build function
+        // bounds is an array of bounding boxes
         void Build(bbox const* bounds, int numbounds);
-        
-        // Get reordered prim indices
-        int const* GetIndices() const { return &primids_[0]; }
 
-		// Tree height
-		int height() const { return height_; }
+        // Get tree height
+        int GetHeight() const;
 
+        // Get reordered prim indices Nodes are pointing to
+        virtual int const* GetIndices() const;
+
+        // Get number of indices. 
+        // This number can differ from numbounds passed to Build function for 
+        // some BVH implementations (like SBVH)
+        virtual size_t GetNumIndices() const;
+
+        // Print BVH statistics
+        virtual void PrintStatistics(std::ostream& os) const;
     protected:
         // Build function
         virtual void BuildImpl(bbox const* bounds, int numbounds);
@@ -94,6 +98,8 @@ namespace RadeonRays
         {
             int dim;
             float split;
+            float sah;
+            float overlap;
         };
 
         void BuildNode(SplitRequest const& req, bbox const* bounds, float3 const* centroids, int* primindices);
@@ -108,26 +114,22 @@ namespace RadeonRays
         };
 
         // Bvh nodes
-        std::vector<Node> nodes_;
+        std::vector<Node> m_nodes;
         // Identifiers of leaf primitives
-        std::vector<int> primids_;
-
-#ifdef USE_TBB
-        tbb::atomic<int> nodecnt_;
-        tbb::mutex primitive_mutex_;
-        tbb::task_group taskgroup_;
-#else
+        std::vector<int> m_indices;
         // Node allocator counter, atomic for thread safety
-        std::atomic<int> nodecnt_;
-#endif
+        std::atomic<int> m_nodecnt;
+
         // Bounding box containing all primitives
-        bbox bounds_;
+        bbox m_bounds;
         // Root node
-        Node* root_;
+        Node* m_root;
         // SAH flag
-        bool usesah_;
-		// Tree height
-		int height_;
+        bool m_usesah;
+        // Tree height
+        int m_height;
+        // Node traversal cost
+        float m_traversal_cost;
 
 
     private:
@@ -165,6 +167,21 @@ namespace RadeonRays
 
     inline Bvh::~Bvh()
     {
+    }
+
+    inline int const* Bvh::GetIndices() const 
+    { 
+        return &m_indices[0]; 
+    }
+
+    inline size_t Bvh::GetNumIndices() const 
+    { 
+        return m_indices.size(); 
+    }
+
+    inline int Bvh::GetHeight() const
+    { 
+        return m_height; 
     }
 }
 

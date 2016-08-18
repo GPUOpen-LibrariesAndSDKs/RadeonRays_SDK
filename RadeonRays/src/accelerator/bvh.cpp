@@ -31,7 +31,7 @@ THE SOFTWARE.
 
 namespace RadeonRays
 {
-    bool is_nan(float v)
+    static bool is_nan(float v)
     {
         return v != v;
     }
@@ -41,7 +41,7 @@ namespace RadeonRays
         for (int i = 0; i < numbounds; ++i)
         {
             // Calc bbox
-            bounds_.grow(bounds[i]);
+            m_bounds.grow(bounds[i]);
         }
 
         BuildImpl(bounds, numbounds);
@@ -49,24 +49,23 @@ namespace RadeonRays
 
     bbox const& Bvh::Bounds() const
     {
-        return bounds_;
+        return m_bounds;
     }
-
 
     void  Bvh::InitNodeAllocator(size_t maxnum)
     {
-        nodecnt_ = 0;
-        nodes_.resize(maxnum);
+        m_nodecnt = 0;
+        m_nodes.resize(maxnum);
     }
 
     Bvh::Node* Bvh::AllocateNode()
     {
-        return &nodes_[nodecnt_++];
+        return &m_nodes[m_nodecnt++];
     }
 
     void Bvh::BuildNode(SplitRequest const& req, bbox const* bounds, float3 const* centroids, int* primindices)
     {
-		height_ = std::max(height_, req.level);
+		m_height = std::max(m_height, req.level);
 
         Node* node = AllocateNode();
         node->bounds = req.bounds;
@@ -92,7 +91,7 @@ namespace RadeonRays
             int axis = req.centroid_bounds.maxdim();
             float border = req.centroid_bounds.center()[axis];
 
-            if (usesah_ && req.level < 10)
+            if (m_usesah && req.level < 10)
             {
                 SahSplit ss = FindSahSplit(req, bounds, centroids, primindices);
 
@@ -206,36 +205,11 @@ namespace RadeonRays
             // Right request
             SplitRequest rightrequest = { splitidx, req.numprims - (splitidx - req.startidx), &node->rc, rightbounds, rightcentroid_bounds, req.level + 1 };
 
-#ifdef USE_TBB
-            // Put those to stack
-            // std::vector<std::future<int> > futures;
-            if (leftrequest.numprims > 4096 * 4)
-            {
-                taskgroup_.run(
-                    [=](){
-                    //std::cout << "Handling left " << leftrequest.startidx << " " << leftrequest.numprims << std::endl;
-                    BuildNode(leftrequest, bounds, centroids, primindices);
-                    });
-            }
-            else
-#endif
             {
                 // Put those to stack
                 BuildNode(leftrequest, bounds, centroids, primindices);
             }
 
-#ifdef USE_TBB
-            if (rightrequest.numprims > 4096 * 4 )
-            {
-
-                taskgroup_.run(
-                    [=](){
-                    //std::cout << "Handling right " << rightrequest.startidx << " " << rightrequest.numprims << std::endl;
-                    BuildNode(rightrequest, bounds, centroids, primindices);
-                });
-            }
-            else
-#endif
             {
                 BuildNode(rightrequest, bounds, centroids, primindices);
             }
@@ -334,7 +308,7 @@ namespace RadeonRays
                 rightcount -= bins[axis][i].count;
 
                 // Compute SAH
-                sahtmp = 10.f + (leftcount * leftbox.surface_area() + rightcount * rightbounds[i].surface_area()) * invarea;
+                sahtmp = m_traversal_cost + (leftcount * leftbox.surface_area() + rightcount * rightbounds[i].surface_area()) * invarea;
 
                 // Check if it is better than what we found so far
                 if (sahtmp < sah)
@@ -362,8 +336,8 @@ namespace RadeonRays
 
         // Cache some stuff to have faster partitioning
         std::vector<float3> centroids(numbounds);
-        primids_.resize(numbounds);
-        std::iota(primids_.begin(), primids_.end(), 0);
+        m_indices.resize(numbounds);
+        std::iota(m_indices.begin(), m_indices.end(), 0);
 
         // Calc bbox
         bbox centroid_bounds;
@@ -374,7 +348,7 @@ namespace RadeonRays
             centroids[i] = c;
         }
 
-        SplitRequest init = { 0, numbounds, nullptr, bounds_, centroid_bounds, 0 };
+        SplitRequest init = { 0, numbounds, nullptr, m_bounds, centroid_bounds, 0 };
 
 #ifdef USE_BUILD_STACK
         std::stack<SplitRequest> stack;
@@ -483,15 +457,20 @@ namespace RadeonRays
             if (req.ptr) *req.ptr = node;
         }
 #else
-        BuildNode(init, bounds, &centroids[0], &primids_[0]);
-#endif
-
-#ifdef USE_TBB
-        taskgroup_.wait();
+        BuildNode(init, bounds, &centroids[0], &m_indices[0]);
 #endif
 
         // Set root_ pointer
-        root_ = &nodes_[0];
+        m_root = &m_nodes[0];
+    }
+
+    void Bvh::PrintStatistics(std::ostream& os) const
+    {
+        os << "Class name: " << "Bvh\n";
+        os << "SAH: " << (m_usesah ? "enabled\n" : "disabled\n");
+        os << "Number of triangles: " << m_indices.size() << "\n";
+        os << "Number of nodes: " << m_nodecnt << "\n";
+        os << "Tree height: " << GetHeight() << "\n";
     }
 
 }
