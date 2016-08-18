@@ -58,9 +58,10 @@ namespace RadeonRays
 
         // Build function
         void Build(bbox const* bounds, int numbounds);
-        
+
         // Get reordered prim indices
-        int const* GetIndices() const { return &primids_[0]; }
+        virtual int const* GetIndices() const { return &primids_[0]; }
+        virtual size_t GetNumIndices() const { return primids_.size(); }
 
 		// Tree height
 		int height() const { return height_; }

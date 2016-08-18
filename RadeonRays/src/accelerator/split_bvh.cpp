@@ -34,6 +34,9 @@ namespace RadeonRays
         
         // Start from the top
         BuildNode(init, primrefs);
+
+        // Set root_ pointer
+        root_ = &nodes_[0];
     }
     
     void SplitBvh::BuildNode(SplitRequest& req, PrimRefArray& primrefs)
@@ -51,7 +54,7 @@ namespace RadeonRays
             node->type = kLeaf;
             node->startidx = (int)m_indices.size();
             node->numprims = req.numprims;
-            
+
             for (int i = req.startidx; i < req.startidx + req.numprims; ++i)
             {
                 m_indices.push_back(primrefs[i].idx);

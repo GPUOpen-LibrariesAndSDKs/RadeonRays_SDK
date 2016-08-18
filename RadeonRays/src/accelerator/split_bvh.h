@@ -33,10 +33,13 @@ namespace RadeonRays
         : Bvh(true)
         {
         }
-        
+
         ~SplitBvh();
-        
-        
+
+        // Get reordered prim indices
+        int const* GetIndices() const override { return &m_indices[0]; }
+        size_t GetNumIndices() const override { return m_indices.size(); }
+
     protected:
         struct PrimRef;
         using PrimRefArray = std::vector<PrimRef>;
@@ -46,7 +49,7 @@ namespace RadeonRays
             kObject,
             kSpatial
         };
-        
+
         // Build function
         void BuildImpl(bbox const* bounds, int numbounds) override;
         void BuildNode(SplitRequest& req, PrimRefArray& primrefs);
