@@ -8,7 +8,7 @@ Radeon Rays has three backends,
 - Embree
 
 OpenCL uses GPUs and CPUs that support at least OpenCL 1.2
-Vulkan supports GPUs with Vulkan 1.0 or grater
+Vulkan supports GPUs with Vulkan 1.0 or greater
 Embree uses Intels Optimized CPU ray casting software for x86 and x64 devices
 
 The source tree consist of the following subdirectories:
