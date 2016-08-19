@@ -192,8 +192,8 @@ void Render()
             GLuint position_attr = glGetAttribLocation(program, "inPosition");
             GLuint texcoord_attr = glGetAttribLocation(program, "inTexcoord");
 
-            glVertexAttribPointer(position_attr, 3, GL_FLOAT, GL_FALSE, sizeof(float)* 5, 0);
-            glVertexAttribPointer(texcoord_attr, 2, GL_FLOAT, GL_FALSE, sizeof(float)* 5, (void*)(sizeof(float)* 3));
+            glVertexAttribPointer(position_attr, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 5, 0);
+            glVertexAttribPointer(texcoord_attr, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void*)(sizeof(float) * 3));
 
             glEnableVertexAttribArray(position_attr);
             glEnableVertexAttribArray(texcoord_attr);
@@ -274,7 +274,7 @@ void InitCl()
     {
         ConfigManager::CreateConfigs(g_mode, g_interop, g_cfgs, g_num_bounces);
     }
-    catch(CLWException & exc)
+    catch (CLWException &)
     {
         force_disable_itnerop = true;
         ConfigManager::CreateConfigs(g_mode, false, g_cfgs, g_num_bounces);
@@ -342,9 +342,9 @@ void InitData()
     g_scene.reset(Baikal::Scene::LoadFromObj(filename, basepath));
 
     g_scene->camera_.reset(new PerspectiveCamera(
-    g_camera_pos
-    , g_camera_at
-    , g_camera_up));
+        g_camera_pos
+        , g_camera_at
+        , g_camera_up));
 
     // Adjust sensor size based on current aspect ratio
     float aspect = (float)g_window_width / g_window_height;
@@ -359,12 +359,12 @@ void InitData()
     std::cout << "Camera type: " << (g_scene->camera_->GetAperture() > 0.f ? "Physical" : "Pinhole") << "\n";
     std::cout << "Lens focal length: " << g_scene->camera_->GetFocalLength() * 1000.f << "mm\n";
     std::cout << "Lens focus distance: " << g_scene->camera_->GetFocusDistance() << "m\n";
-    std::cout << "F-Stop: " << 1.f / (g_scene->camera_->GetAperture() * 10.f)  << "\n";
-    std::cout << "Sensor size: " << g_camera_sensor_size.x * 1000.f << "x"  << g_camera_sensor_size.y * 1000.f << "mm\n";
+    std::cout << "F-Stop: " << 1.f / (g_scene->camera_->GetAperture() * 10.f) << "\n";
+    std::cout << "Sensor size: " << g_camera_sensor_size.x * 1000.f << "x" << g_camera_sensor_size.y * 1000.f << "mm\n";
 
     g_scene->SetEnvironment("../Resources/Textures/studio015.hdr", "", g_envmapmul);
 
-    #pragma omp parallel for
+#pragma omp parallel for
     for (int i = 0; i < g_cfgs.size(); ++i)
     {
         //g_cfgs[i].renderer->SetNumBounces(g_num_bounces);
@@ -434,13 +434,13 @@ void OnKey(int key, int x, int y)
         break;
     case GLUT_KEY_RIGHT:
         g_is_right_pressed = true;
-		break;
-	case GLUT_KEY_HOME:
-		g_is_home_pressed = true;
-		break;
-	case GLUT_KEY_END:
-		g_is_end_pressed = true;
-		break;
+        break;
+    case GLUT_KEY_HOME:
+        g_is_home_pressed = true;
+        break;
+    case GLUT_KEY_END:
+        g_is_end_pressed = true;
+        break;
     case GLUT_KEY_F1:
         g_mouse_delta = float2(0, 0);
         break;
@@ -476,37 +476,37 @@ void OnKeyUp(int key, int x, int y)
     case GLUT_KEY_RIGHT:
         g_is_right_pressed = false;
         break;
-	case GLUT_KEY_HOME:
-		g_is_home_pressed = false;
-		break;
-	case GLUT_KEY_END:
-		g_is_end_pressed = false;
-		break;
+    case GLUT_KEY_HOME:
+        g_is_home_pressed = false;
+        break;
+    case GLUT_KEY_END:
+        g_is_end_pressed = false;
+        break;
     case GLUT_KEY_PAGE_DOWN:
+    {
+        ++g_num_bounces;
+        for (int i = 0; i < g_cfgs.size(); ++i)
         {
-            ++g_num_bounces;
+            g_cfgs[i].renderer->SetNumBounces(g_num_bounces);
+            g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
+        }
+        g_samplecount = 0;
+        break;
+    }
+    case GLUT_KEY_PAGE_UP:
+    {
+        if (g_num_bounces > 1)
+        {
+            --g_num_bounces;
             for (int i = 0; i < g_cfgs.size(); ++i)
             {
                 g_cfgs[i].renderer->SetNumBounces(g_num_bounces);
                 g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
             }
             g_samplecount = 0;
-            break;
         }
-    case GLUT_KEY_PAGE_UP:
-        {
-            if (g_num_bounces > 1)
-            {
-                --g_num_bounces;
-                for (int i = 0; i < g_cfgs.size(); ++i)
-                {
-                    g_cfgs[i].renderer->SetNumBounces(g_num_bounces);
-                    g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
-                }
-                g_samplecount = 0;
-            }
-            break;
-        }
+        break;
+    }
     default:
         break;
     }
@@ -560,29 +560,29 @@ void Update()
         update = true;
     }
 
-	if (g_is_right_pressed)
-	{
-		g_scene->camera_->MoveRight((float)dt.count() * kMovementSpeed);
-		update = true;
-	}
+    if (g_is_right_pressed)
+    {
+        g_scene->camera_->MoveRight((float)dt.count() * kMovementSpeed);
+        update = true;
+    }
 
-	if (g_is_left_pressed)
-	{
-		g_scene->camera_->MoveRight(-(float)dt.count() * kMovementSpeed);
-		update = true;
-	}
+    if (g_is_left_pressed)
+    {
+        g_scene->camera_->MoveRight(-(float)dt.count() * kMovementSpeed);
+        update = true;
+    }
 
-	if (g_is_home_pressed)
-	{
-		g_scene->camera_->MoveUp((float)dt.count() * kMovementSpeed);
-		update = true;
-	}
+    if (g_is_home_pressed)
+    {
+        g_scene->camera_->MoveUp((float)dt.count() * kMovementSpeed);
+        update = true;
+    }
 
-	if (g_is_end_pressed)
-	{
-		g_scene->camera_->MoveUp(-(float)dt.count() * kMovementSpeed);
-		update = true;
-	}
+    if (g_is_end_pressed)
+    {
+        g_scene->camera_->MoveUp(-(float)dt.count() * kMovementSpeed);
+        update = true;
+    }
 
     if (update)
     {
@@ -605,92 +605,108 @@ void Update()
         for (int i = 0; i < g_cfgs.size(); ++i)
         {
         g_cfgs[i].renderer->SetNumBounces(numbnc);
-		}*/
-	}
+        }*/
+    }
 
-	if (g_num_samples == -1 || g_samplecount++ < g_num_samples)
-	{
-		g_cfgs[g_primary].renderer->Render(*g_scene.get());
-	}
+    if (g_num_samples == -1 || g_samplecount++ < g_num_samples)
+    {
+        g_cfgs[g_primary].renderer->Render(*g_scene.get());
+    }
 
-	//if (std::chrono::duration_cast<std::chrono::seconds>(time - updatetime).count() > 1)
-	//{
-	for (int i = 0; i < g_cfgs.size(); ++i)
-	{
-		if (g_cfgs[i].type == ConfigManager::kPrimary)
-		continue;
+    //if (std::chrono::duration_cast<std::chrono::seconds>(time - updatetime).count() > 1)
+    //{
+    for (int i = 0; i < g_cfgs.size(); ++i)
+    {
+        if (g_cfgs[i].type == ConfigManager::kPrimary)
+            continue;
 
-		int desired = 1;
-		if (std::atomic_compare_exchange_strong(&g_ctrl[i].newdata, &desired, 0))
-		{
-			{
-				//std::unique_lock<std::mutex> lock(g_ctrl[i].datamutex);
-				//std::cout << "Start updating acc buffer\n"; std::cout.flush();
-				g_cfgs[g_primary].context.WriteBuffer(0, g_outputs[g_primary].copybuffer, &g_outputs[i].fdata[0], g_window_width * g_window_height);
-				//std::cout << "Finished updating acc buffer\n"; std::cout.flush();
-			}
+        int desired = 1;
+        if (std::atomic_compare_exchange_strong(&g_ctrl[i].newdata, &desired, 0))
+        {
+            {
+                //std::unique_lock<std::mutex> lock(g_ctrl[i].datamutex);
+                //std::cout << "Start updating acc buffer\n"; std::cout.flush();
+                g_cfgs[g_primary].context.WriteBuffer(0, g_outputs[g_primary].copybuffer, &g_outputs[i].fdata[0], g_window_width * g_window_height);
+                //std::cout << "Finished updating acc buffer\n"; std::cout.flush();
+            }
 
-			CLWKernel acckernel = g_cfgs[g_primary].renderer->GetAccumulateKernel();
+            CLWKernel acckernel = g_cfgs[g_primary].renderer->GetAccumulateKernel();
 
-			int argc = 0;
-			acckernel.SetArg(argc++, g_outputs[g_primary].copybuffer);
-			acckernel.SetArg(argc++, g_window_width * g_window_width);
-			acckernel.SetArg(argc++, g_outputs[g_primary].output->data());
+            int argc = 0;
+            acckernel.SetArg(argc++, g_outputs[g_primary].copybuffer);
+            acckernel.SetArg(argc++, g_window_width * g_window_width);
+            acckernel.SetArg(argc++, g_outputs[g_primary].output->data());
 
-			int globalsize = g_window_width * g_window_height;
-			g_cfgs[g_primary].context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, acckernel);
-		}
-	}
+            int globalsize = g_window_width * g_window_height;
+            g_cfgs[g_primary].context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, acckernel);
+        }
+    }
 
-	//updatetime = time;
-	//}
+    //updatetime = time;
+    //}
 
-	if (!g_interop)
-	{
-		g_outputs[g_primary].output->GetData(&g_outputs[g_primary].fdata[0]);
+    if (!g_interop)
+    {
+        g_outputs[g_primary].output->GetData(&g_outputs[g_primary].fdata[0]);
 
-		float gamma = 2.2f;
-		for (int i = 0; i < (int)g_outputs[g_primary].fdata.size(); ++i)
-		{
-			g_outputs[g_primary].udata[4 * i] = (unsigned char)clamp(clamp(pow(g_outputs[g_primary].fdata[i].x / g_outputs[g_primary].fdata[i].w, 1.f / gamma), 0.f, 1.f) * 255, 0, 255);
-			g_outputs[g_primary].udata[4 * i + 1] = (unsigned char)clamp(clamp(pow(g_outputs[g_primary].fdata[i].y / g_outputs[g_primary].fdata[i].w, 1.f / gamma), 0.f, 1.f) * 255, 0, 255);
-			g_outputs[g_primary].udata[4 * i + 2] = (unsigned char)clamp(clamp(pow(g_outputs[g_primary].fdata[i].z / g_outputs[g_primary].fdata[i].w, 1.f / gamma), 0.f, 1.f) * 255, 0, 255);
-			g_outputs[g_primary].udata[4 * i + 3] = 1;
-		}
+        float gamma = 2.2f;
+        for (int i = 0; i < (int)g_outputs[g_primary].fdata.size(); ++i)
+        {
+            g_outputs[g_primary].udata[4 * i] = (unsigned char)clamp(clamp(pow(g_outputs[g_primary].fdata[i].x / g_outputs[g_primary].fdata[i].w, 1.f / gamma), 0.f, 1.f) * 255, 0, 255);
+            g_outputs[g_primary].udata[4 * i + 1] = (unsigned char)clamp(clamp(pow(g_outputs[g_primary].fdata[i].y / g_outputs[g_primary].fdata[i].w, 1.f / gamma), 0.f, 1.f) * 255, 0, 255);
+            g_outputs[g_primary].udata[4 * i + 2] = (unsigned char)clamp(clamp(pow(g_outputs[g_primary].fdata[i].z / g_outputs[g_primary].fdata[i].w, 1.f / gamma), 0.f, 1.f) * 255, 0, 255);
+            g_outputs[g_primary].udata[4 * i + 3] = 1;
+        }
 
 
-		glActiveTexture(GL_TEXTURE0);
+        glActiveTexture(GL_TEXTURE0);
 
-		glBindTexture(GL_TEXTURE_2D, g_texture);
+        glBindTexture(GL_TEXTURE_2D, g_texture);
 
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, g_outputs[g_primary].output->width(), g_outputs[g_primary].output->height(), GL_RGBA, GL_UNSIGNED_BYTE, &g_outputs[g_primary].udata[0]);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, g_outputs[g_primary].output->width(), g_outputs[g_primary].output->height(), GL_RGBA, GL_UNSIGNED_BYTE, &g_outputs[g_primary].udata[0]);
 
-		glBindTexture(GL_TEXTURE_2D, 0);
-	}
-	else
-	{
-		std::vector<cl_mem> objects;
-		objects.push_back(g_cl_interop_image);
-		g_cfgs[g_primary].context.AcquireGLObjects(0, objects);
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
+    else
+    {
+        std::vector<cl_mem> objects;
+        objects.push_back(g_cl_interop_image);
+        g_cfgs[g_primary].context.AcquireGLObjects(0, objects);
 
-		CLWKernel copykernel = g_cfgs[g_primary].renderer->GetCopyKernel();
+        CLWKernel copykernel = g_cfgs[g_primary].renderer->GetCopyKernel();
 
-		int argc = 0;
-		copykernel.SetArg(argc++, g_outputs[g_primary].output->data());
-		copykernel.SetArg(argc++, g_outputs[g_primary].output->width());
-		copykernel.SetArg(argc++, g_outputs[g_primary].output->height());
-		copykernel.SetArg(argc++, 2.2f);
-		copykernel.SetArg(argc++, g_cl_interop_image);
+        int argc = 0;
+        copykernel.SetArg(argc++, g_outputs[g_primary].output->data());
+        copykernel.SetArg(argc++, g_outputs[g_primary].output->width());
+        copykernel.SetArg(argc++, g_outputs[g_primary].output->height());
+        copykernel.SetArg(argc++, 2.2f);
+        copykernel.SetArg(argc++, g_cl_interop_image);
 
-		int globalsize = g_outputs[g_primary].output->width() * g_outputs[g_primary].output->height();
-		g_cfgs[g_primary].context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, copykernel);
+        int globalsize = g_outputs[g_primary].output->width() * g_outputs[g_primary].output->height();
+        g_cfgs[g_primary].context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, copykernel);
 
-		g_cfgs[g_primary].context.ReleaseGLObjects(0, objects);
-		g_cfgs[g_primary].context.Finish(0);
-	}
-	//}
+        g_cfgs[g_primary].context.ReleaseGLObjects(0, objects);
+        g_cfgs[g_primary].context.Finish(0);
+    }
 
-	glutPostRedisplay();
+
+    if (g_benchmark)
+    {
+        auto const kNumBenchmarkPasses = 100U;
+
+        Baikal::Renderer::BenchmarkStats stats;
+        g_cfgs[g_primary].renderer->RunBenchmark(*g_scene.get(), kNumBenchmarkPasses, stats);
+
+        auto numrays = stats.resolution.x * stats.resolution.y;
+        std::cout << "Baikal renderer benchmark\n";
+        std::cout << "Number of primary rays: " << numrays << "\n";
+        std::cout << "Primary rays: " << (float)(numrays / (stats.primary_rays_time_in_ms * 0.001f) * 0.000001f) << "mrays/s ( " << stats.primary_rays_time_in_ms << "ms )\n";
+        std::cout << "Secondary rays: " << (float)(numrays / (stats.secondary_rays_time_in_ms * 0.001f) * 0.000001f) << "mrays/s ( " << stats.secondary_rays_time_in_ms << "ms )\n";
+        std::cout << "Shadow rays: " << (float)(numrays / (stats.shadow_rays_time_in_ms * 0.001f) * 0.000001f) << "mrays/s ( " << stats.shadow_rays_time_in_ms << "ms )\n";
+        g_benchmark = false;
+    }
+
+    glutPostRedisplay();
 }
 
 void RenderThread(ControlData& cd)
@@ -789,13 +805,13 @@ int main(int argc, char * argv[])
     g_num_samples = numsamples ? atoi(numsamples) : g_num_samples;
 
     char* camera_aperture = GetCmdOption(argv, argv + argc, "-a");
-    g_camera_aperture = camera_aperture ? atof(camera_aperture) : g_camera_aperture;
+    g_camera_aperture = camera_aperture ? (float)atof(camera_aperture) : g_camera_aperture;
 
     char* camera_dist = GetCmdOption(argv, argv + argc, "-fd");
-    g_camera_focus_distance = camera_dist ? atof(camera_dist) : g_camera_focus_distance;
+    g_camera_focus_distance = camera_dist ? (float)atof(camera_dist) : g_camera_focus_distance;
 
     char* camera_focal_length = GetCmdOption(argv, argv + argc, "-fl");
-    g_camera_focal_length = camera_focal_length ? atof(camera_focal_length) : g_camera_focal_length;
+    g_camera_focal_length = camera_focal_length ? (float)atof(camera_focal_length) : g_camera_focal_length;
 
     char* interop = GetCmdOption(argv, argv + argc, "-interop");
     g_interop = interop ? (atoi(interop) > 0) : g_interop;
@@ -809,15 +825,15 @@ int main(int argc, char * argv[])
     if (cfg)
     {
         if (strcmp(cfg, "cpu") == 0)
-        g_mode = ConfigManager::Mode::kUseSingleCpu;
+            g_mode = ConfigManager::Mode::kUseSingleCpu;
         else if (strcmp(cfg, "gpu") == 0)
-        g_mode = ConfigManager::Mode::kUseSingleGpu;
+            g_mode = ConfigManager::Mode::kUseSingleGpu;
         else if (strcmp(cfg, "mcpu") == 0)
-        g_mode = ConfigManager::Mode::kUseCpus;
+            g_mode = ConfigManager::Mode::kUseCpus;
         else if (strcmp(cfg, "mgpu") == 0)
-        g_mode = ConfigManager::Mode::kUseGpus;
+            g_mode = ConfigManager::Mode::kUseGpus;
         else if (strcmp(cfg, "all") == 0)
-        g_mode = ConfigManager::Mode::kUseAll;
+            g_mode = ConfigManager::Mode::kUseAll;
     }
 
     if (aorays)
@@ -837,14 +853,14 @@ int main(int argc, char * argv[])
     glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
     glutCreateWindow("App");
 
-    #ifndef __APPLE__
+#ifndef __APPLE__
     GLenum err = glewInit();
     if (err != GLEW_OK)
     {
         std::cout << "GLEW initialization failed\n";
         return -1;
     }
-    #endif
+#endif
 
     try
     {
@@ -869,7 +885,7 @@ int main(int argc, char * argv[])
         for (int i = 0; i < g_cfgs.size(); ++i)
         {
             if (i == g_primary)
-            continue;
+                continue;
 
             g_ctrl[i].stop.store(true);
         }

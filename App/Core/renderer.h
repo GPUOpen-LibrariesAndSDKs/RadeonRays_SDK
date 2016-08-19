@@ -22,6 +22,7 @@ THE SOFTWARE.
 #pragma once
 
 #include "math/float3.h"
+#include "math/int2.h"
 #include <cstdint>
 
 namespace Baikal
@@ -49,6 +50,20 @@ namespace Baikal
         virtual void Render(Scene const& scene) = 0;
         // Set output
         virtual void SetOutput(Output* output) = 0;
+
+
+        struct BenchmarkStats
+        {
+            std::uint32_t num_passes;
+
+            RadeonRays::int2 resolution;
+            float primary_rays_time_in_ms;
+            float secondary_rays_time_in_ms;
+            float shadow_rays_time_in_ms;
+        };
+
+        // Run render benchmark
+        virtual void RunBenchmark(Scene const& scene, std::uint32_t num_passes, BenchmarkStats& stats) {}
 
         // Does not make sense to copy it
         Renderer(Renderer const&) = delete;

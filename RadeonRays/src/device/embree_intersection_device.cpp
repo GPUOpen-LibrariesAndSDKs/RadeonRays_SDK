@@ -564,7 +564,7 @@ namespace RadeonRays
             m_instances[shape].mesh_id = shape->GetId();
         }
 
-        ThrowIf(state & ShapeImpl::kStateChangeMotion, "Not implemented for embree device");
+        ThrowIf((state & ShapeImpl::kStateChangeMotion) ? true : false, "Not implemented for embree device");
     }
 
     void EmbreeIntersectionDevice::FillRTCRay(RTCRay& dst, const ray& src) const

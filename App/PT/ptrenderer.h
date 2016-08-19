@@ -62,6 +62,9 @@ namespace Baikal
         // Add function
         CLWKernel GetAccumulateKernel();
 
+        // Run render benchmark
+        void RunBenchmark(Scene const& scene, std::uint32_t num_passes, BenchmarkStats& stats) override;
+
     protected:
         // Resize output-dependent buffers
         void ResizeWorkingSet(Output const& output);

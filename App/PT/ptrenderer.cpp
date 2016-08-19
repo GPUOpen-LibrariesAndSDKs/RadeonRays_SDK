@@ -90,11 +90,11 @@ namespace Baikal
         Buffer* fr_hitcount;
 
         RenderData()
-        : fr_shadowrays(nullptr)
-        , fr_shadowhits(nullptr)
-        , fr_hits(nullptr)
-        , fr_intersections(nullptr)
-        , fr_hitcount(nullptr)
+            : fr_shadowrays(nullptr)
+            , fr_shadowhits(nullptr)
+            , fr_hits(nullptr)
+            , fr_intersections(nullptr)
+            , fr_hitcount(nullptr)
         {
             fr_rays[0] = nullptr;
             fr_rays[1] = nullptr;
@@ -103,25 +103,25 @@ namespace Baikal
 
     // Constructor
     PtRenderer::PtRenderer(CLWContext context, int devidx, int num_bounces)
-    : m_context(context)
-    , m_output(nullptr)
-    , m_render_data(new RenderData)
-    , m_vidmemws(0)
-    , m_resetsampler(true)
-    , m_scene_tracker(context, devidx)
-	, m_num_bounces(num_bounces)
+        : m_context(context)
+        , m_output(nullptr)
+        , m_render_data(new RenderData)
+        , m_vidmemws(0)
+        , m_resetsampler(true)
+        , m_scene_tracker(context, devidx)
+        , m_num_bounces(num_bounces)
     {
-        
+
         // Create parallel primitives
         m_render_data->pp = CLWParallelPrimitives(m_context);
 
         // Load kernels
-        #ifndef RR_EMBED_KERNELS
+#ifndef RR_EMBED_KERNELS
         m_render_data->program = CLWProgram::CreateFromFile("../App/CL/integrator_pt.cl", m_context);
-        #else
+#else
         m_render_data->program = CLWProgram::CreateFromSource(cl_app, std::strlen(cl_integrator_pt), context);
-        #endif
-        
+#endif
+
         m_render_data->sobolmat = m_context.CreateBuffer<unsigned int>(1024 * 52, CL_MEM_READ_ONLY, &g_SobolMatrices[0]);
     }
 
@@ -145,10 +145,10 @@ namespace Baikal
         m_resetsampler = true;
     }
 
-	void PtRenderer::SetNumBounces(int num_bounces)
-	{
-		m_num_bounces = num_bounces;
-	}
+    void PtRenderer::SetNumBounces(int num_bounces)
+    {
+        m_num_bounces = num_bounces;
+    }
 
     void PtRenderer::Preprocess(Scene const& scene)
     {
@@ -285,9 +285,9 @@ namespace Baikal
 
         m_render_data->pixelindices[1] = m_context.CreateBuffer<int>(output.width() * output.height(), CL_MEM_READ_WRITE);
         m_vidmemws += output.width() * output.height() * sizeof(int);
-        
+
         m_render_data->hitcount = m_context.CreateBuffer<int>(1, CL_MEM_READ_WRITE);
-        
+
         auto api = m_scene_tracker.GetIntersectionApi();
 
         // Recreate FR buffers
@@ -318,7 +318,7 @@ namespace Baikal
         CLWKernel genkernel = m_render_data->program.GetKernel(kernel_name);
 
         // Set kernel parameters
-        genkernel.SetArg(0,scene.camera);
+        genkernel.SetArg(0, scene.camera);
         genkernel.SetArg(1, m_output->width());
         genkernel.SetArg(2, m_output->height());
         genkernel.SetArg(3, (int)rand_uint());
@@ -553,15 +553,15 @@ namespace Baikal
     {
         return m_render_data->program.GetKernel("AccumulateData");
     }
-    
+
     // Shade background
     void PtRenderer::ShadeBackground(ClwScene const& scene, int pass)
     {
         // Fetch kernel
         CLWKernel misskernel = m_render_data->program.GetKernel("ShadeBackground");
-        
+
         //int numrays = m_output->width() * m_output->height();
-        
+
         // Set kernel parameters
         int argc = 0;
         misskernel.SetArg(argc++, m_render_data->rays[pass & 0x1]);
@@ -576,12 +576,128 @@ namespace Baikal
         misskernel.SetArg(argc++, m_render_data->paths);
         misskernel.SetArg(argc++, scene.volumes);
         misskernel.SetArg(argc++, m_output->data());
-        
+
         // Run shading kernel
         {
             int globalsize = m_output->width() * m_output->height();
             m_context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, misskernel);
         }
-        
+
+    }
+
+    void PtRenderer::RunBenchmark(Scene const& scene, std::uint32_t num_passes, BenchmarkStats& stats)
+    {
+        stats.num_passes = num_passes;
+        stats.resolution = int2(m_output->width(), m_output->height());
+
+        auto api = m_scene_tracker.GetIntersectionApi();
+        auto& clwscene = m_scene_tracker.CompileScene(scene);
+
+        // Check output
+        assert(m_output);
+
+        // Number of rays to generate
+        int maxrays = m_output->width() * m_output->height();
+
+        // Generate primary
+        GeneratePrimaryRays(clwscene);
+
+        // Copy compacted indices to track reverse indices
+        m_context.CopyBuffer(0, m_render_data->iota, m_render_data->pixelindices[0], 0, 0, m_render_data->iota.GetElementCount());
+        m_context.CopyBuffer(0, m_render_data->iota, m_render_data->pixelindices[1], 0, 0, m_render_data->iota.GetElementCount());
+        m_context.FillBuffer(0, m_render_data->hitcount, maxrays, 1);
+
+
+        // Clear ray hits buffer
+        m_context.FillBuffer(0, m_render_data->hits, 0, m_render_data->hits.GetElementCount());
+
+        // Intersect ray batch
+        auto start = std::chrono::high_resolution_clock::now();
+
+        for (auto i = 0U; i < num_passes; ++i)
+        {
+            api->QueryIntersection(m_render_data->fr_rays[0], m_render_data->fr_hitcount, maxrays, m_render_data->fr_intersections, nullptr, nullptr);
+        }
+
+        m_context.Finish(0);
+
+        auto delta = std::chrono::high_resolution_clock::now() - start;
+
+        stats.primary_rays_time_in_ms = (float)std::chrono::duration_cast<std::chrono::milliseconds>(delta).count() / num_passes;
+
+        // Convert intersections to predicates
+        FilterPathStream(0);
+
+        // Compact batch
+        m_render_data->pp.Compact(0, m_render_data->hits, m_render_data->iota, m_render_data->compacted_indices, m_render_data->hitcount);
+
+        // Advance indices to keep pixel indices up to date
+        RestorePixelIndices(0);
+
+        // Shade hits
+        ShadeSurface(clwscene, 0);
+
+        // Shade missing rays
+        ShadeMiss(clwscene, 0);
+
+        // Intersect ray batch
+        start = std::chrono::high_resolution_clock::now();
+
+        for (auto i = 0U; i < num_passes; ++i)
+        {
+            api->QueryOcclusion(m_render_data->fr_shadowrays, m_render_data->fr_hitcount, maxrays, m_render_data->fr_shadowhits, nullptr, nullptr);
+        }
+
+        m_context.Finish(0);
+
+        delta = std::chrono::high_resolution_clock::now() - start;
+
+        stats.shadow_rays_time_in_ms = (float)std::chrono::duration_cast<std::chrono::milliseconds>(delta).count() / num_passes;
+
+        // Gather light samples and account for visibility
+        GatherLightSamples(clwscene, 0);
+
+        //
+        m_context.Flush(0);
+
+        // Clear ray hits buffer
+        m_context.FillBuffer(0, m_render_data->hits, 0, m_render_data->hits.GetElementCount());
+
+        // Intersect ray batch
+        start = std::chrono::high_resolution_clock::now();
+
+        for (auto i = 0U; i < num_passes; ++i)
+        {
+            api->QueryIntersection(m_render_data->fr_rays[1], m_render_data->fr_hitcount, maxrays, m_render_data->fr_intersections, nullptr, nullptr);
+        }
+
+        m_context.Finish(0);
+
+        delta = std::chrono::high_resolution_clock::now() - start;
+
+        stats.secondary_rays_time_in_ms = (float)std::chrono::duration_cast<std::chrono::milliseconds>(delta).count() / num_passes;
+
+        // Convert intersections to predicates
+        FilterPathStream(1);
+
+        // Compact batch
+        m_render_data->pp.Compact(0, m_render_data->hits, m_render_data->iota, m_render_data->compacted_indices, m_render_data->hitcount);
+
+        // Advance indices to keep pixel indices up to date
+        RestorePixelIndices(1);
+
+        // Shade hits
+        ShadeSurface(clwscene, 1);
+
+        // Shade missing rays
+        ShadeMiss(clwscene, 1);
+
+        api->QueryOcclusion(m_render_data->fr_shadowrays, m_render_data->fr_hitcount, maxrays, m_render_data->fr_shadowhits, nullptr, nullptr);
+
+        // Gather light samples and account for visibility
+        GatherLightSamples(clwscene, 0);
+
+        //
+        m_context.Flush(0);
     }
 }
