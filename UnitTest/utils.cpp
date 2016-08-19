@@ -1,6 +1,7 @@
 #include "utils.h"
 #include "RadeonRays/src/primitive/mesh.h"
 #include "RadeonRays/src/primitive/instance.h"
+#include <cfloat>
 
 using namespace RadeonRays;
 

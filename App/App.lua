@@ -36,6 +36,28 @@ project "App"
         os.execute("rm -rf obj");
     end
 
+    if _OPTIONS["use_vulkan"] then
+        local vulkanSDKPath = os.getenv( "VK_SDK_PATH" );
+        if vulkanSDKPath == nil then
+            vulkanSDKPath = os.getenv( "VULKAN_SDK" );
+        end
+        if vulkanSDKPath ~= nil then
+            configuration {"x32"}
+            libdirs { vulkanSDKPath .. "/Bin32" }
+            configuration {"x64"}
+            libdirs { vulkanSDKPath .. "/Bin" }
+            configuration {}
+        end
+        if os.is("macosx") then
+            --no Vulkan on macOs need to error out TODO
+        elseif os.is("linux") then
+            libdirs { vulkanSDKPath .. "/lib" }
+            links { "vulkan"}
+        elseif os.is("windows") then
+            links {"Anvil"}
+            links{"vulkan-1"}
+        end
+    end
     -- if _OPTIONS["embed_kernels"] then
     --		configuration {}
     --		defines {"FR_EMBED_KERNELS"}
