@@ -67,8 +67,7 @@ namespace RadeonRays
             float border = req.centroid_bounds.center()[axis];
 
             SahSplit os = FindObjectSahSplit(req, primrefs);
-            SahSplit ss = FindSpatialSahSplit(req, primrefs);
-
+            SahSplit ss;
             auto split_type = SplitType::kObject;
 
             // Only use split if
@@ -77,12 +76,12 @@ namespace RadeonRays
             // 3. It is better than object split
             // 4. Object split is not good enought (too much overlap)
             // 5. Our node budget still allows us to split references
-            if (req.level < m_max_split_depth)
+            if (req.level < m_max_split_depth && m_nodecnt < m_num_nodes_required && os.overlap > m_min_overlap)
             {
+                ss = FindSpatialSahSplit(req, primrefs);
+
                 if (!is_nan(ss.split) &&
-                    ss.sah < os.sah &&
-                    os.overlap > m_min_overlap &&
-                    m_nodecnt < m_num_nodes_required)
+                    ss.sah < os.sah)
                 {
                     split_type = SplitType::kSpatial;
                 }
@@ -100,6 +99,13 @@ namespace RadeonRays
                 int extra_refs = 0;
                 SplitPrimRefs(ss, req, primrefs, extra_refs);
                 req.numprims += extra_refs;
+                border = ss.split;
+                axis = ss.dim;
+            }
+            else
+            {
+                border = !is_nan(os.split) ? os.split : border;
+                axis = !is_nan(os.split) ? os.dim : axis;
             }
 
             // Start partitioning and updating extents for children at the same time
