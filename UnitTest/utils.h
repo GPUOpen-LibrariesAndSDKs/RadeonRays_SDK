@@ -1,5 +1,5 @@
 #pragma once
-#include <radeon_rays.h>
+#include "radeon_rays.h"
 
 struct TestShape
 {

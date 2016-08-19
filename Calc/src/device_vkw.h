@@ -98,7 +98,7 @@ namespace Calc
 		Anvil::PrimaryCommandBuffer* GetCommandBuffer() const { return m_command_buffer.get(); }
 
 		// Return platform to allow running together with OpenCL
-		Platform GetPlatform() override { return Platform::kVulkan; }
+		Platform GetPlatform() const override { return Platform::kVulkan; }
 
 		// returns true if the compute pipeline should be used
 		bool GetUseComputePipe() const { return m_use_compute_pipe; }

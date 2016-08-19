@@ -21,7 +21,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
 #pragma once
-#include <radeon_rays.h>
+#include "radeon_rays.h"
 
 #if USE_OPENCL
 

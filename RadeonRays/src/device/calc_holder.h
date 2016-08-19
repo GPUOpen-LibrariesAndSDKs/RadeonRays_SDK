@@ -67,7 +67,7 @@ namespace RadeonRays
 			m_event = decltype(m_event)(event, [device](Calc::Event* event) { device->DeleteEvent(event); });
 		}
 
-		bool Complete() const
+		bool Complete() const override
 		{
 			return m_event->IsComplete();
 		}
