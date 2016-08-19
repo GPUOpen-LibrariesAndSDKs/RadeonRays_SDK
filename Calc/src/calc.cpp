@@ -30,30 +30,30 @@ THE SOFTWARE.
 
 namespace Calc
 {
-	// Create corresponding calc
-	Calc* CreateCalc( Platform inPlatform, int reserved )
-	{
+    // Create corresponding calc
+    Calc* CreateCalc( Platform inPlatform, int reserved )
+    {
 #if USE_OPENCL
-		if ( inPlatform & Platform::kOpenCL )
-		{
-			return new CalcClw();
-		}
-		else
+        if ( inPlatform & Platform::kOpenCL )
+        {
+            return new CalcClw();
+        }
+        else
 #endif
 #if USE_VULKAN
-		if ( inPlatform & Platform::kVulkan )
-		{
-			return new CalcVulkanw();
-		}
-		else
+        if ( inPlatform & Platform::kVulkan )
+        {
+            return new CalcVulkanw();
+        }
+        else
 #endif // USE_VULKAN
-		{
-			return nullptr;
-		}
-	}
+        {
+            return nullptr;
+        }
+    }
 
-	void DeleteCalc(Calc* calc)
-	{
-		delete calc;	
-	}
+    void DeleteCalc(Calc* calc)
+    {
+        delete calc;    
+    }
 }

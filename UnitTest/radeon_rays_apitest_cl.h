@@ -40,11 +40,11 @@ class ApiBackendOpenCL : public ::testing::Test
 public:
     virtual void SetUp()
     {
-		api_ = nullptr;
+        api_ = nullptr;
         int nativeidx = -1;
 
-		// Always use OpenCL
-		IntersectionApi::SetPlatform(DeviceInfo::kOpenCL);
+        // Always use OpenCL
+        IntersectionApi::SetPlatform(DeviceInfo::kOpenCL);
 
         for (auto idx=0U; idx < IntersectionApi::GetDeviceCount(); ++idx)
         {
@@ -67,33 +67,33 @@ public:
         if(api_ != nullptr) IntersectionApi::Delete(api_);
     }
 
-	void Wait()
-	{
-		e_->Wait();
-		api_->DeleteEvent(e_);
-	}
+    void Wait()
+    {
+        e_->Wait();
+        api_->DeleteEvent(e_);
+    }
 
     IntersectionApi* api_;
-	Event* e_;
+    Event* e_;
 
-	static float const * vertices() {
-		static float const vertices[] = {
-			-1.f,-1.f,0.f,
-			1.f,-1.f,0.f,
-			0.f,1.f,0.f,
+    static float const * vertices() {
+        static float const vertices[] = {
+            -1.f,-1.f,0.f,
+            1.f,-1.f,0.f,
+            0.f,1.f,0.f,
 
-		};
-		return vertices;
-	}
-	static int const * indices() {
-		static int const indices[] = { 0, 1, 2 };
-		return indices;
-	}
+        };
+        return vertices;
+    }
+    static int const * indices() {
+        static int const indices[] = { 0, 1, 2 };
+        return indices;
+    }
 
-	static int const * numfaceverts() {
-		static const int numfaceverts[] = { 3 };
-		return numfaceverts;
-	}
+    static int const * numfaceverts() {
+        static const int numfaceverts[] = { 3 };
+        return numfaceverts;
+    }
 };
 
 
@@ -117,7 +117,7 @@ TEST_F(ApiBackendOpenCL, DeviceEnum)
 // The test checks whether the api has been successfully created
 TEST_F(ApiBackendOpenCL, SingleDevice)
 {
-	ASSERT_TRUE(api_ != nullptr);
+    ASSERT_TRUE(api_ != nullptr);
 }
 
 // The test creates a single triangle mesh and tests attach/detach functionality
@@ -137,7 +137,7 @@ TEST_F(ApiBackendOpenCL, Mesh)
 // The test creates an empty scene
 TEST_F(ApiBackendOpenCL, EmptyScene)
 {
-	ASSERT_THROW(api_->Commit(), Exception);
+    ASSERT_THROW(api_->Commit(), Exception);
 }
 
 // The test creates a single triangle mesh and tests attach/detach functionality
@@ -227,11 +227,11 @@ TEST_F(ApiBackendOpenCL, Intersection_1Ray)
 
     Intersection* tmp = nullptr;
     ASSERT_NO_THROW(api_->MapBuffer(isect_buffer, kMapRead, 0, sizeof(Intersection), (void**)&tmp, &e_));
-	Wait();
+    Wait();
 
     isect = *tmp;
     ASSERT_NO_THROW(api_->UnmapBuffer(isect_buffer, tmp, &e_)); 
-	Wait();
+    Wait();
     
     // Check results
     ASSERT_EQ(isect.shapeid, mesh->GetId());
@@ -239,8 +239,8 @@ TEST_F(ApiBackendOpenCL, Intersection_1Ray)
     // Bail out
     ASSERT_NO_THROW(api_->DetachShape(mesh));
     ASSERT_NO_THROW(api_->DeleteShape(mesh));
-	ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
-	ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
+    ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
+    ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
 }
 
 
@@ -248,196 +248,196 @@ TEST_F(ApiBackendOpenCL, Intersection_1Ray)
 TEST_F(ApiBackendOpenCL, Intersection_1Ray_Masked)
 {
 
-	Shape* mesh = nullptr;
+    Shape* mesh = nullptr;
 
-	api_->SetOption("acc.type", "bvh");
-	//api_->SetOption("bvh.force2level", 1.f);
+    api_->SetOption("acc.type", "bvh");
+    //api_->SetOption("bvh.force2level", 1.f);
 
-	// Create mesh
-	ASSERT_NO_THROW(mesh = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
+    // Create mesh
+    ASSERT_NO_THROW(mesh = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
 
-	// Set mask 
-	ASSERT_NO_THROW(mesh->SetMask(0xFFFFFFFF));
+    // Set mask 
+    ASSERT_NO_THROW(mesh->SetMask(0xFFFFFFFF));
 
-	ASSERT_TRUE(mesh != nullptr);
+    ASSERT_TRUE(mesh != nullptr);
 
-	// Attach the mesh to the scene
-	ASSERT_NO_THROW(api_->AttachShape(mesh));
+    // Attach the mesh to the scene
+    ASSERT_NO_THROW(api_->AttachShape(mesh));
 
-	// Prepare the ray
-	ray r(float3(0.f, 0.f, -10.f), float3(0.f, 0.f, 1.f), 10000.f);
-	r.SetMask(0xFFFFFFFF);
+    // Prepare the ray
+    ray r(float3(0.f, 0.f, -10.f), float3(0.f, 0.f, 1.f), 10000.f);
+    r.SetMask(0xFFFFFFFF);
 
-	// Intersection and hit data
-	Intersection isect;
+    // Intersection and hit data
+    Intersection isect;
 
     auto ray_buffer = api_->CreateBuffer(sizeof(ray), &r);
     auto isect_buffer = api_->CreateBuffer(sizeof(Intersection), nullptr);
     auto isect_flag_buffer = api_->CreateBuffer(sizeof(int), nullptr);
 
-	// Commit geometry update
-	ASSERT_NO_THROW(api_->Commit());
+    // Commit geometry update
+    ASSERT_NO_THROW(api_->Commit());
     
-	// Intersect
-	ASSERT_NO_THROW(api_->QueryIntersection(ray_buffer, 1, isect_buffer, nullptr, nullptr ));
+    // Intersect
+    ASSERT_NO_THROW(api_->QueryIntersection(ray_buffer, 1, isect_buffer, nullptr, nullptr ));
     
     Intersection* tmp = nullptr;
     ASSERT_NO_THROW(api_->MapBuffer(isect_buffer, kMapRead, 0, sizeof(Intersection), (void**)&tmp, &e_));
-	Wait();
+    Wait();
     isect = *tmp;
     ASSERT_NO_THROW(api_->UnmapBuffer(isect_buffer, tmp, &e_));
-	Wait();
+    Wait();
     
-	// Check results
-	ASSERT_EQ(isect.shapeid, mesh->GetId());
+    // Check results
+    ASSERT_EQ(isect.shapeid, mesh->GetId());
 
-	mesh->SetMask(0x0);
+    mesh->SetMask(0x0);
 
-	// Commit geometry update
-	ASSERT_NO_THROW(api_->Commit());
-	
+    // Commit geometry update
+    ASSERT_NO_THROW(api_->Commit());
+    
     // Intersect
     ASSERT_NO_THROW(api_->QueryIntersection(ray_buffer, 1, isect_buffer, nullptr, nullptr ));
     
     tmp = nullptr;
     ASSERT_NO_THROW(api_->MapBuffer(isect_buffer, kMapRead, 0, sizeof(Intersection), (void**)&tmp, &e_));
-	Wait();
+    Wait();
     isect = *tmp;
     ASSERT_NO_THROW(api_->UnmapBuffer(isect_buffer, tmp, &e_));
-	Wait();
+    Wait();
     
-	// Check results
-	ASSERT_EQ(isect.shapeid, kNullId);
+    // Check results
+    ASSERT_EQ(isect.shapeid, kNullId);
 
-	mesh->SetMask(0xFF000000);
+    mesh->SetMask(0xFF000000);
     
-	int result = kNullId;
-	// Commit geometry update
-	ASSERT_NO_THROW(api_->Commit());
+    int result = kNullId;
+    // Commit geometry update
+    ASSERT_NO_THROW(api_->Commit());
     // Intersect
     ASSERT_NO_THROW(api_->QueryOcclusion(ray_buffer, 1, isect_flag_buffer, nullptr, nullptr ));
     
     int* isect_flag = nullptr;
     ASSERT_NO_THROW(api_->MapBuffer(isect_flag_buffer, kMapRead, 0, sizeof(int), (void**)&isect_flag, &e_));
-	Wait();
+    Wait();
     result = *isect_flag;
     ASSERT_NO_THROW(api_->UnmapBuffer(isect_flag_buffer, isect_flag, &e_));
-	Wait();
+    Wait();
     
-	// Check results
-	ASSERT_GT(result, 0);
+    // Check results
+    ASSERT_GT(result, 0);
 
-	mesh->SetMask(0xFF000000);
+    mesh->SetMask(0xFF000000);
     
-	r.SetMask(0x000000FF);
+    r.SetMask(0x000000FF);
     
     ray* rr = nullptr;
     ASSERT_NO_THROW(api_->MapBuffer(ray_buffer, kMapWrite, 0, sizeof(ray), (void**)&rr, &e_));
-	Wait();
+    Wait();
     *rr = r;
     ASSERT_NO_THROW(api_->UnmapBuffer(ray_buffer, rr, &e_));
-	Wait();
+    Wait();
 
-	// Commit geometry update
-	ASSERT_NO_THROW(api_->Commit());
+    // Commit geometry update
+    ASSERT_NO_THROW(api_->Commit());
     // Intersect
     ASSERT_NO_THROW(api_->QueryOcclusion(ray_buffer, 1, isect_flag_buffer, nullptr, nullptr ));
     
     isect_flag = nullptr;
     ASSERT_NO_THROW(api_->MapBuffer(isect_flag_buffer, kMapRead, 0, sizeof(int), (void**)&isect_flag, &e_));
-	Wait();
+    Wait();
     result = *isect_flag;
     ASSERT_NO_THROW(api_->UnmapBuffer(isect_flag_buffer, isect_flag, &e_));
-	Wait();
-	// Check results
-	ASSERT_EQ(result, kNullId);
+    Wait();
+    // Check results
+    ASSERT_EQ(result, kNullId);
 
 
-	// Bail out
-	ASSERT_NO_THROW(api_->DetachShape(mesh));
-	ASSERT_NO_THROW(api_->DeleteShape(mesh));
-	ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
-	ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
-	ASSERT_NO_THROW(api_->DeleteBuffer(isect_flag_buffer));
+    // Bail out
+    ASSERT_NO_THROW(api_->DetachShape(mesh));
+    ASSERT_NO_THROW(api_->DeleteShape(mesh));
+    ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
+    ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
+    ASSERT_NO_THROW(api_->DeleteBuffer(isect_flag_buffer));
 
 }
 
 // The test creates a single triangle mesh and tests attach/detach functionality
 TEST_F(ApiBackendOpenCL, Intersection_1Ray_Active)
 {
-	Shape* mesh = nullptr;
+    Shape* mesh = nullptr;
 
-	// Create mesh
-	ASSERT_NO_THROW(mesh = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
+    // Create mesh
+    ASSERT_NO_THROW(mesh = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
 
-	ASSERT_TRUE(mesh != nullptr);
+    ASSERT_TRUE(mesh != nullptr);
 
-	// Attach the mesh to the scene
-	ASSERT_NO_THROW(api_->AttachShape(mesh));
+    // Attach the mesh to the scene
+    ASSERT_NO_THROW(api_->AttachShape(mesh));
 
-	// Prepare the ray
-	ray r(float3(0.f, 0.f, -10.f), float3(0.f, 0.f, 1.f), 10000.f);
+    // Prepare the ray
+    ray r(float3(0.f, 0.f, -10.f), float3(0.f, 0.f, 1.f), 10000.f);
 
-	// Intersection and hit data
-	Intersection isect;
+    // Intersection and hit data
+    Intersection isect;
     
     auto ray_buffer = api_->CreateBuffer(sizeof(ray), &r);
     auto isect_buffer = api_->CreateBuffer(sizeof(Intersection), nullptr);
 
-	// Commit geometry update
-	ASSERT_NO_THROW(api_->Commit());
+    // Commit geometry update
+    ASSERT_NO_THROW(api_->Commit());
     
     // Intersect
     ASSERT_NO_THROW(api_->QueryIntersection(ray_buffer, 1, isect_buffer, nullptr, nullptr ));
     
     Intersection* tmp = nullptr;
     ASSERT_NO_THROW(api_->MapBuffer(isect_buffer, kMapRead, 0, sizeof(Intersection), (void**)&tmp, &e_));
-	Wait();
+    Wait();
     isect = *tmp;
     ASSERT_NO_THROW(api_->UnmapBuffer(isect_buffer, tmp, &e_));
-	Wait();
+    Wait();
     
-	// Check results
-	ASSERT_EQ(isect.shapeid, mesh->GetId());
+    // Check results
+    ASSERT_EQ(isect.shapeid, mesh->GetId());
 
-	isect.primid = kNullId;
-	isect.shapeid = kNullId;
+    isect.primid = kNullId;
+    isect.shapeid = kNullId;
 
-	r.SetActive(false);
+    r.SetActive(false);
     
     ray* rr = nullptr;
     ASSERT_NO_THROW(api_->MapBuffer(ray_buffer, kMapWrite, 0, sizeof(ray), (void**)&rr, &e_));
-	Wait();
+    Wait();
     *rr = r;
     ASSERT_NO_THROW(api_->UnmapBuffer(ray_buffer, rr, &e_));
-	Wait();
+    Wait();
     
     ASSERT_NO_THROW(api_->MapBuffer(isect_buffer, kMapWrite, 0, sizeof(Intersection), (void**)&tmp, &e_));
-	Wait();
+    Wait();
     *tmp = isect;
     ASSERT_NO_THROW(api_->UnmapBuffer(isect_buffer, tmp, &e_));
-	Wait();
+    Wait();
     
     // Intersect
     ASSERT_NO_THROW(api_->QueryIntersection(ray_buffer, 1, isect_buffer, nullptr, nullptr ));
     
     tmp = nullptr;
     ASSERT_NO_THROW(api_->MapBuffer(isect_buffer, kMapRead, 0, sizeof(Intersection), (void**)&tmp, &e_));
-	Wait();
+    Wait();
     isect = *tmp;
     ASSERT_NO_THROW(api_->UnmapBuffer(isect_buffer, tmp, &e_));
-	Wait();
+    Wait();
 
     
-	// Check results
-	ASSERT_EQ(isect.shapeid, kNullId);
+    // Check results
+    ASSERT_EQ(isect.shapeid, kNullId);
 
 
-	// Bail out
-	ASSERT_NO_THROW(api_->DetachShape(mesh));
-	ASSERT_NO_THROW(api_->DeleteShape(mesh));
-	ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
-	ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
+    // Bail out
+    ASSERT_NO_THROW(api_->DetachShape(mesh));
+    ASSERT_NO_THROW(api_->DeleteShape(mesh));
+    ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
+    ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
 }
 
 // The test creates a single triangle mesh and tests attach/detach functionality
@@ -484,12 +484,12 @@ TEST_F(ApiBackendOpenCL, Intersection_3Rays)
     
     Intersection* tmp = nullptr;
     ASSERT_NO_THROW(api_->MapBuffer(isect_buffer, kMapRead, 0, 3*sizeof(Intersection), (void**)&tmp, &e_));
-	Wait();
+    Wait();
     isect[0] = tmp[0];
     isect[1] = tmp[1];
     isect[2] = tmp[2];
     ASSERT_NO_THROW(api_->UnmapBuffer(isect_buffer, tmp, &e_));
-	Wait();
+    Wait();
     
     // Check results
     for (int i=0; i<3; ++i)
@@ -500,8 +500,8 @@ TEST_F(ApiBackendOpenCL, Intersection_3Rays)
     // Bail out
     ASSERT_NO_THROW(api_->DetachShape(mesh));
     ASSERT_NO_THROW(api_->DeleteShape(mesh));
-	ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
-	ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
+    ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
+    ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
 }
 
 
@@ -538,10 +538,10 @@ TEST_F(ApiBackendOpenCL, Intersection_1Ray_Transformed)
     
     Intersection* tmp = nullptr;
     ASSERT_NO_THROW(api_->MapBuffer(isect_buffer, kMapRead, 0, sizeof(Intersection), (void**)&tmp, &e_));
-	Wait();
+    Wait();
     isect = *tmp;
     ASSERT_NO_THROW(api_->UnmapBuffer(isect_buffer, tmp, &e_));
-	Wait();
+    Wait();
     
     // Check results
     ASSERT_EQ(isect.shapeid, mesh->GetId());
@@ -560,10 +560,10 @@ TEST_F(ApiBackendOpenCL, Intersection_1Ray_Transformed)
     
     tmp = nullptr;
     ASSERT_NO_THROW(api_->MapBuffer(isect_buffer, kMapRead, 0, sizeof(Intersection), (void**)&tmp, &e_));
-	Wait();
+    Wait();
     isect = *tmp;
     ASSERT_NO_THROW(api_->UnmapBuffer(isect_buffer, tmp, &e_));
-	Wait();
+    Wait();
     
     // Check results
     ASSERT_EQ(isect.shapeid, -1);
@@ -580,10 +580,10 @@ TEST_F(ApiBackendOpenCL, Intersection_1Ray_Transformed)
     
     tmp = nullptr;
     ASSERT_NO_THROW(api_->MapBuffer(isect_buffer, kMapRead, 0, sizeof(Intersection), (void**)&tmp, &e_));
-	Wait();
+    Wait();
     isect = *tmp;
     ASSERT_NO_THROW(api_->UnmapBuffer(isect_buffer, tmp, &e_));
-	Wait();
+    Wait();
     
     // Check results
     ASSERT_EQ(isect.shapeid, mesh->GetId());
@@ -591,8 +591,8 @@ TEST_F(ApiBackendOpenCL, Intersection_1Ray_Transformed)
     // Bail out
     ASSERT_NO_THROW(api_->DetachShape(mesh));
     ASSERT_NO_THROW(api_->DeleteShape(mesh));
-	ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
-	ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
+    ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
+    ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
 }
 
 // The test checks intersection after geometry addition
@@ -646,10 +646,10 @@ TEST_F(ApiBackendOpenCL, Intersection_1Ray_DynamicGeo)
     
     Intersection* tmp = nullptr;
     ASSERT_NO_THROW(api_->MapBuffer(isect_buffer, kMapRead, 0, sizeof(Intersection), (void**)&tmp, &e_));
-	Wait();
+    Wait();
     isect = *tmp;
     ASSERT_NO_THROW(api_->UnmapBuffer(isect_buffer, tmp, &e_));
-	Wait();
+    Wait();
     
     // Check results
     ASSERT_EQ(isect.shapeid, farmesh->GetId());
@@ -665,10 +665,10 @@ TEST_F(ApiBackendOpenCL, Intersection_1Ray_DynamicGeo)
     
     tmp = nullptr;
     ASSERT_NO_THROW(api_->MapBuffer(isect_buffer, kMapRead, 0, sizeof(Intersection), (void**)&tmp, &e_));
-	Wait();
+    Wait();
     isect = *tmp;
     ASSERT_NO_THROW(api_->UnmapBuffer(isect_buffer, tmp, &e_));
-	Wait();
+    Wait();
     
     // Check results
     ASSERT_EQ(isect.shapeid, closemesh->GetId());
@@ -684,10 +684,10 @@ TEST_F(ApiBackendOpenCL, Intersection_1Ray_DynamicGeo)
     
     tmp = nullptr;
     ASSERT_NO_THROW(api_->MapBuffer(isect_buffer, kMapRead, 0, sizeof(Intersection), (void**)&tmp, &e_));
-	Wait();
+    Wait();
     isect = *tmp;
     ASSERT_NO_THROW(api_->UnmapBuffer(isect_buffer, tmp, &e_));
-	Wait();
+    Wait();
     
     // Check results
     ASSERT_EQ(isect.shapeid, farmesh->GetId());
@@ -696,8 +696,8 @@ TEST_F(ApiBackendOpenCL, Intersection_1Ray_DynamicGeo)
     ASSERT_NO_THROW(api_->DetachShape(farmesh));
     ASSERT_NO_THROW(api_->DeleteShape(farmesh));
     ASSERT_NO_THROW(api_->DeleteShape(closemesh));
-	ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
-	ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
+    ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
+    ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
 }
 
 TEST_F(ApiBackendOpenCL, CornellBoxLoad)
@@ -776,10 +776,10 @@ TEST_F(ApiBackendOpenCL, CornellBox_1Ray)
     
     Intersection* tmp = nullptr;
     ASSERT_NO_THROW(api_->MapBuffer(isect_buffer, kMapRead, 0, sizeof(Intersection), (void**)&tmp, &e_));
-	Wait();
+    Wait();
     isect = *tmp;
     ASSERT_NO_THROW(api_->UnmapBuffer(isect_buffer, tmp, &e_));
-	Wait();
+    Wait();
 
 
     // Delete meshes
@@ -788,163 +788,163 @@ TEST_F(ApiBackendOpenCL, CornellBox_1Ray)
         ASSERT_NO_THROW(api_->DeleteShape(apishapes[i]));
     }
 
-	ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
-	ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
+    ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
+    ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
 }
 
 
 // Test is checking if mesh transform is working as expected
 TEST_F(ApiBackendOpenCL, Intersection_1Ray_TransformedInstance1)
 {
-	// this test uses a single mesh, it added into the world as itself
-	// at <0,-1,1000> AND as an instance at <0,0,2>
-	// ray from <0,0,-10> along the pos z should hit the uninstanced mesh
+    // this test uses a single mesh, it added into the world as itself
+    // at <0,-1,1000> AND as an instance at <0,0,2>
+    // ray from <0,0,-10> along the pos z should hit the uninstanced mesh
 
-	std::vector<TestShape> shapes = { TestShape(vertices(), 3, indices(), 3, numfaceverts(), 1),
-							TestShape(vertices(), 3, indices(), 3, numfaceverts(), 1), 
-							TestShape(vertices(), 3, indices(), 3, numfaceverts(), 1)};
-	TestShape& mesh0 = shapes[0];
-	TestShape& mesh1 = shapes[1];
-	TestShape& instance = shapes[2];
+    std::vector<TestShape> shapes = { TestShape(vertices(), 3, indices(), 3, numfaceverts(), 1),
+                            TestShape(vertices(), 3, indices(), 3, numfaceverts(), 1), 
+                            TestShape(vertices(), 3, indices(), 3, numfaceverts(), 1)};
+    TestShape& mesh0 = shapes[0];
+    TestShape& mesh1 = shapes[1];
+    TestShape& instance = shapes[2];
 
-	// Create meshes
-	// NOTE mesh in world and as a instance upsets the simple TestIntersection API call 
-	ASSERT_NO_THROW(mesh0.shape = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
-	ASSERT_TRUE(mesh0.shape != nullptr);
-	ASSERT_NO_THROW(mesh1.shape = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
-	ASSERT_TRUE(mesh1.shape != nullptr);
+    // Create meshes
+    // NOTE mesh in world and as a instance upsets the simple TestIntersection API call 
+    ASSERT_NO_THROW(mesh0.shape = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
+    ASSERT_TRUE(mesh0.shape != nullptr);
+    ASSERT_NO_THROW(mesh1.shape = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
+    ASSERT_TRUE(mesh1.shape != nullptr);
 
-	// Attach the mesh to the scene
-	ASSERT_NO_THROW(api_->AttachShape(mesh0.shape));
-	// Create instance of a triangle
-	ASSERT_NO_THROW(instance.shape = api_->CreateInstance(mesh1.shape));
+    // Attach the mesh to the scene
+    ASSERT_NO_THROW(api_->AttachShape(mesh0.shape));
+    // Create instance of a triangle
+    ASSERT_NO_THROW(instance.shape = api_->CreateInstance(mesh1.shape));
 
-	matrix m = translation(float3(0, 0, 2));
-	const matrix minv = inverse(m);
-	ASSERT_NO_THROW(instance.shape->SetTransform(m, minv));
+    matrix m = translation(float3(0, 0, 2));
+    const matrix minv = inverse(m);
+    ASSERT_NO_THROW(instance.shape->SetTransform(m, minv));
 
-	ASSERT_NO_THROW(api_->AttachShape(instance.shape));
+    ASSERT_NO_THROW(api_->AttachShape(instance.shape));
 
-	ray r(float3(0.f, 0.f, -10.f), float3(0.f, 0.f, 1.f), 10000.f);
+    ray r(float3(0.f, 0.f, -10.f), float3(0.f, 0.f, 1.f), 10000.f);
 
-	// Intersection and hit data
-	Intersection isect;
+    // Intersection and hit data
+    Intersection isect;
 
-	auto ray_buffer = api_->CreateBuffer(sizeof(ray), &r);
-	auto isect_buffer = api_->CreateBuffer(sizeof(Intersection), nullptr);
+    auto ray_buffer = api_->CreateBuffer(sizeof(ray), &r);
+    auto isect_buffer = api_->CreateBuffer(sizeof(Intersection), nullptr);
 
 
-	// Commit geometry update
-	ASSERT_NO_THROW(api_->Commit());
+    // Commit geometry update
+    ASSERT_NO_THROW(api_->Commit());
 
-	// Intersect
-	ASSERT_NO_THROW(api_->QueryIntersection(ray_buffer, 1, isect_buffer, nullptr, nullptr));
+    // Intersect
+    ASSERT_NO_THROW(api_->QueryIntersection(ray_buffer, 1, isect_buffer, nullptr, nullptr));
 
-	Intersection* tmp = nullptr;
-	ASSERT_NO_THROW(api_->MapBuffer(isect_buffer, kMapRead, 0, sizeof(Intersection), (void**)&tmp, &e_));
-	Wait();
-	isect = *tmp;
-	ASSERT_NO_THROW(api_->UnmapBuffer(isect_buffer, tmp, &e_));
-	Wait();
+    Intersection* tmp = nullptr;
+    ASSERT_NO_THROW(api_->MapBuffer(isect_buffer, kMapRead, 0, sizeof(Intersection), (void**)&tmp, &e_));
+    Wait();
+    isect = *tmp;
+    ASSERT_NO_THROW(api_->UnmapBuffer(isect_buffer, tmp, &e_));
+    Wait();
 
-	// Check results for 1st ray
-	Intersection isect_brute;
-	TestIntersections(shapes.data(), shapes.size(), &r, 1, &isect_brute);
-	// check the test gets the mesh we expect
-	EXPECT_EQ(isect_brute.shapeid, mesh0.shape->GetId());
-	// does the accelerated radeon rays match the test
-	EXPECT_EQ(isect.shapeid, isect_brute.shapeid);
-	EXPECT_LE(std::fabs(isect.uvwt.w - 10.f), 0.01f);
+    // Check results for 1st ray
+    Intersection isect_brute;
+    TestIntersections(shapes.data(), (int)shapes.size(), &r, 1, &isect_brute);
+    // check the test gets the mesh we expect
+    EXPECT_EQ(isect_brute.shapeid, mesh0.shape->GetId());
+    // does the accelerated radeon rays match the test
+    EXPECT_EQ(isect.shapeid, isect_brute.shapeid);
+    EXPECT_LE(std::fabs(isect.uvwt.w - 10.f), 0.01f);
 
-	// Bail out
-	ASSERT_NO_THROW(api_->DetachShape(instance.shape));
-	ASSERT_NO_THROW(api_->DetachShape(mesh0.shape));
-	ASSERT_NO_THROW(api_->DetachShape(mesh1.shape));
-	ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
-	ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
+    // Bail out
+    ASSERT_NO_THROW(api_->DetachShape(instance.shape));
+    ASSERT_NO_THROW(api_->DetachShape(mesh0.shape));
+    ASSERT_NO_THROW(api_->DetachShape(mesh1.shape));
+    ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
+    ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
 
 }
 TEST_F(ApiBackendOpenCL, Intersection_1Ray_TransformedInstance2)
 {
-	// this test uses a single mesh, it added into the world as itself
-	// at <0,-1,1000> AND as an instance at <0,0,-2>
-	// ray from <0,0,-10> along the pos z should hit the instanced mesh
+    // this test uses a single mesh, it added into the world as itself
+    // at <0,-1,1000> AND as an instance at <0,0,-2>
+    // ray from <0,0,-10> along the pos z should hit the instanced mesh
 
-	std::vector<TestShape> shapes = { TestShape(vertices(), 3, indices(), 3, numfaceverts(), 1),
-		TestShape(vertices(), 3, indices(), 3, numfaceverts(), 1),
-		TestShape(vertices(), 3, indices(), 3, numfaceverts(), 1) };
-	TestShape& mesh0 = shapes[0];
-	TestShape& mesh1 = shapes[1];
-	TestShape& instance = shapes[2];
+    std::vector<TestShape> shapes = { TestShape(vertices(), 3, indices(), 3, numfaceverts(), 1),
+        TestShape(vertices(), 3, indices(), 3, numfaceverts(), 1),
+        TestShape(vertices(), 3, indices(), 3, numfaceverts(), 1) };
+    TestShape& mesh0 = shapes[0];
+    TestShape& mesh1 = shapes[1];
+    TestShape& instance = shapes[2];
 
-	// Create meshes
-	// NOTE mesh in world and as a instance upsets the simple TestIntersection API call 
-	ASSERT_NO_THROW(mesh0.shape = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
-	ASSERT_TRUE(mesh0.shape != nullptr);
-	ASSERT_NO_THROW(mesh1.shape = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
-	ASSERT_TRUE(mesh1.shape != nullptr);
+    // Create meshes
+    // NOTE mesh in world and as a instance upsets the simple TestIntersection API call 
+    ASSERT_NO_THROW(mesh0.shape = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
+    ASSERT_TRUE(mesh0.shape != nullptr);
+    ASSERT_NO_THROW(mesh1.shape = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
+    ASSERT_TRUE(mesh1.shape != nullptr);
 
-	// Attach the mesh to the scene
-	ASSERT_NO_THROW(api_->AttachShape(mesh0.shape));
-	// Create instance of a triangle
-	ASSERT_NO_THROW(instance.shape = api_->CreateInstance(mesh1.shape));
+    // Attach the mesh to the scene
+    ASSERT_NO_THROW(api_->AttachShape(mesh0.shape));
+    // Create instance of a triangle
+    ASSERT_NO_THROW(instance.shape = api_->CreateInstance(mesh1.shape));
 
-	//
-	const matrix m = translation(float3(0, 0, -2));
-	const matrix minv = inverse(m);
-	ASSERT_NO_THROW(instance.shape->SetTransform(m, minv));
+    //
+    const matrix m = translation(float3(0, 0, -2));
+    const matrix minv = inverse(m);
+    ASSERT_NO_THROW(instance.shape->SetTransform(m, minv));
 
-	// Prepare the ray
-	ray r(float3(0.f, 0.f, -10.f), float3(0.f, 0.f, 1.f), 10000.f);
+    // Prepare the ray
+    ray r(float3(0.f, 0.f, -10.f), float3(0.f, 0.f, 1.f), 10000.f);
 
 
-	// Commit geometry update
-	EXPECT_NO_THROW(api_->Commit());
+    // Commit geometry update
+    EXPECT_NO_THROW(api_->Commit());
 
-	ASSERT_NO_THROW(api_->AttachShape(instance.shape));
+    ASSERT_NO_THROW(api_->AttachShape(instance.shape));
 
-	// Intersection and hit data
-	Intersection isect;
+    // Intersection and hit data
+    Intersection isect;
 
-	auto ray_buffer = api_->CreateBuffer(sizeof(ray), &r);
-	auto isect_buffer = api_->CreateBuffer(sizeof(Intersection), nullptr);
+    auto ray_buffer = api_->CreateBuffer(sizeof(ray), &r);
+    auto isect_buffer = api_->CreateBuffer(sizeof(Intersection), nullptr);
 
-	// Commit geometry update
-	ASSERT_NO_THROW(api_->Commit());
+    // Commit geometry update
+    ASSERT_NO_THROW(api_->Commit());
 
-	// Intersect
-	ASSERT_NO_THROW(api_->QueryIntersection(ray_buffer, 1, isect_buffer, nullptr, nullptr));
+    // Intersect
+    ASSERT_NO_THROW(api_->QueryIntersection(ray_buffer, 1, isect_buffer, nullptr, nullptr));
 
-	Intersection* tmp = nullptr;
-	ASSERT_NO_THROW(api_->MapBuffer(isect_buffer, kMapRead, 0, sizeof(Intersection), (void**)&tmp, &e_));
-	Wait();
-	isect = *tmp;
-	ASSERT_NO_THROW(api_->UnmapBuffer(isect_buffer, tmp, &e_));
-	Wait();
+    Intersection* tmp = nullptr;
+    ASSERT_NO_THROW(api_->MapBuffer(isect_buffer, kMapRead, 0, sizeof(Intersection), (void**)&tmp, &e_));
+    Wait();
+    isect = *tmp;
+    ASSERT_NO_THROW(api_->UnmapBuffer(isect_buffer, tmp, &e_));
+    Wait();
 
-	// Check results for 1st ray
-	Intersection isect_brute;
-	TestIntersections(shapes.data(), shapes.size(), &r, 1, &isect_brute);
-	// check the test gets the mesh we expect
-	EXPECT_EQ(isect_brute.shapeid, instance.shape->GetId());
-	// does the accelerated radeon rays match the test
-	EXPECT_EQ(isect.shapeid, isect_brute.shapeid);
-	EXPECT_LE(std::fabs(isect.uvwt.w - 8.f), 0.01f);
+    // Check results for 1st ray
+    Intersection isect_brute;
+    TestIntersections(shapes.data(), (int)shapes.size(), &r, 1, &isect_brute);
+    // check the test gets the mesh we expect
+    EXPECT_EQ(isect_brute.shapeid, instance.shape->GetId());
+    // does the accelerated radeon rays match the test
+    EXPECT_EQ(isect.shapeid, isect_brute.shapeid);
+    EXPECT_LE(std::fabs(isect.uvwt.w - 8.f), 0.01f);
 
-	// Bail out
-	ASSERT_NO_THROW(api_->DetachShape(instance.shape));
-	ASSERT_NO_THROW(api_->DetachShape(mesh0.shape));
-	ASSERT_NO_THROW(api_->DetachShape(mesh1.shape));
-	ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
-	ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
+    // Bail out
+    ASSERT_NO_THROW(api_->DetachShape(instance.shape));
+    ASSERT_NO_THROW(api_->DetachShape(mesh0.shape));
+    ASSERT_NO_THROW(api_->DetachShape(mesh1.shape));
+    ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
+    ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
 }
 
 
 TEST_F(ApiBackendOpenCL, Intersection_1Ray_TransformedInstanceFlat)
 {
 
-	// Set flattening
-	api_->SetOption("bvh.forceflat", 1.f);
+    // Set flattening
+    api_->SetOption("bvh.forceflat", 1.f);
     
     Shape* mesh = nullptr;
 
@@ -989,10 +989,10 @@ TEST_F(ApiBackendOpenCL, Intersection_1Ray_TransformedInstanceFlat)
     
     Intersection* tmp = nullptr;
     ASSERT_NO_THROW(api_->MapBuffer(isect_buffer, kMapRead, 0, sizeof(Intersection), (void**)&tmp, &e_));
-	Wait();
+    Wait();
     isect = *tmp;
     ASSERT_NO_THROW(api_->UnmapBuffer(isect_buffer, tmp, &e_));
-	Wait();
+    Wait();
     
     // Check results
     ASSERT_EQ(isect.shapeid, instance->GetId());
@@ -1015,10 +1015,10 @@ TEST_F(ApiBackendOpenCL, Intersection_1Ray_TransformedInstanceFlat)
     
     tmp = nullptr;
     ASSERT_NO_THROW(api_->MapBuffer(isect_buffer, kMapRead, 0, sizeof(Intersection), (void**)&tmp, &e_));
-	Wait();
+    Wait();
     isect = *tmp;
     ASSERT_NO_THROW(api_->UnmapBuffer(isect_buffer, tmp, &e_));
-	Wait();
+    Wait();
 
     // Check results
     ASSERT_EQ(isect.shapeid, mesh->GetId());
@@ -1027,71 +1027,71 @@ TEST_F(ApiBackendOpenCL, Intersection_1Ray_TransformedInstanceFlat)
     // Bail out
     ASSERT_NO_THROW(api_->DetachShape(instance));
     ASSERT_NO_THROW(api_->DeleteShape(mesh));
-	ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
-	ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
+    ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
+    ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
 }
 // Test is checking if mesh transform is working as expected
 // DK: #22 repro case : Commit throws if base shape has not been attached
 TEST_F(ApiBackendOpenCL, Intersection_1Ray_InstanceNoShape)
 {
 
-	Shape* mesh = nullptr;
+    Shape* mesh = nullptr;
 
-	// Create mesh
-	ASSERT_NO_THROW(mesh = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
+    // Create mesh
+    ASSERT_NO_THROW(mesh = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
 
-	ASSERT_TRUE(mesh != nullptr);
+    ASSERT_TRUE(mesh != nullptr);
 
-	// Attach the mesh to the scene
-	//ASSERT_NO_THROW(api_->AttachShape(mesh));
+    // Attach the mesh to the scene
+    //ASSERT_NO_THROW(api_->AttachShape(mesh));
 
-	// Prepare the ray
-	ray r;
-	r.o = float3(0.f, 0.f, -10.f, 1000.f);
-	r.d = float3(0.f, 0.f, 1.f);
+    // Prepare the ray
+    ray r;
+    r.o = float3(0.f, 0.f, -10.f, 1000.f);
+    r.d = float3(0.f, 0.f, 1.f);
 
-	// Intersection and hit data
-	Intersection isect;
+    // Intersection and hit data
+    Intersection isect;
 
-	auto ray_buffer = api_->CreateBuffer(sizeof(ray), &r);
-	auto isect_buffer = api_->CreateBuffer(sizeof(Intersection), nullptr);
+    auto ray_buffer = api_->CreateBuffer(sizeof(ray), &r);
+    auto isect_buffer = api_->CreateBuffer(sizeof(Intersection), nullptr);
 
-	// Create instance of a triangle
-	Shape* instance = nullptr;
-	ASSERT_NO_THROW(instance = api_->CreateInstance(mesh));
+    // Create instance of a triangle
+    Shape* instance = nullptr;
+    ASSERT_NO_THROW(instance = api_->CreateInstance(mesh));
 
-	matrix m = translation(float3(0, 0, 2));
-	matrix minv = inverse(m);
-	ASSERT_NO_THROW(instance->SetTransform(m, minv));
+    matrix m = translation(float3(0, 0, 2));
+    matrix minv = inverse(m);
+    ASSERT_NO_THROW(instance->SetTransform(m, minv));
 
-	ASSERT_NO_THROW(api_->AttachShape(instance));
+    ASSERT_NO_THROW(api_->AttachShape(instance));
 
-	// Prepare the ray
-	r.o = float3(0.f, 0.f, -10.f, 1000.f);
-	r.d = float3(0.f, 0.f, 1.f);
+    // Prepare the ray
+    r.o = float3(0.f, 0.f, -10.f, 1000.f);
+    r.d = float3(0.f, 0.f, 1.f);
 
-	// Commit geometry update
-	ASSERT_NO_THROW(api_->Commit());
+    // Commit geometry update
+    ASSERT_NO_THROW(api_->Commit());
 
-	// Intersect
-	ASSERT_NO_THROW(api_->QueryIntersection(ray_buffer, 1, isect_buffer, nullptr, nullptr));
+    // Intersect
+    ASSERT_NO_THROW(api_->QueryIntersection(ray_buffer, 1, isect_buffer, nullptr, nullptr));
 
-	Intersection* tmp = nullptr;
-	ASSERT_NO_THROW(api_->MapBuffer(isect_buffer, kMapRead, 0, sizeof(Intersection), (void**)&tmp, &e_));
-	Wait();
-	isect = *tmp;
-	ASSERT_NO_THROW(api_->UnmapBuffer(isect_buffer, tmp, &e_));
-	Wait();
+    Intersection* tmp = nullptr;
+    ASSERT_NO_THROW(api_->MapBuffer(isect_buffer, kMapRead, 0, sizeof(Intersection), (void**)&tmp, &e_));
+    Wait();
+    isect = *tmp;
+    ASSERT_NO_THROW(api_->UnmapBuffer(isect_buffer, tmp, &e_));
+    Wait();
 
-	// Check results
-	ASSERT_EQ(isect.shapeid, instance->GetId());
-	ASSERT_LE(std::fabs(isect.uvwt.w - 12.f), 0.01f);
+    // Check results
+    ASSERT_EQ(isect.shapeid, instance->GetId());
+    ASSERT_LE(std::fabs(isect.uvwt.w - 12.f), 0.01f);
 
-	// Bail out
-	ASSERT_NO_THROW(api_->DetachShape(instance));
-	ASSERT_NO_THROW(api_->DeleteShape(mesh));
-	ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
-	ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
+    // Bail out
+    ASSERT_NO_THROW(api_->DetachShape(instance));
+    ASSERT_NO_THROW(api_->DeleteShape(mesh));
+    ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
+    ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
 }
 
 #endif // USE_OPENCL

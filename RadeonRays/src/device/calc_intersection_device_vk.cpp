@@ -29,16 +29,16 @@ THE SOFTWARE.
 
 namespace RadeonRays
 {
-	CalcIntersectionDeviceVK::CalcIntersectionDeviceVK(Calc::Calc* calc, Calc::DeviceVulkan* device)
-	: CalcIntersectionDevice(calc, device)
-	{
+    CalcIntersectionDeviceVK::CalcIntersectionDeviceVK(Calc::Calc* calc, Calc::DeviceVulkan* device)
+    : CalcIntersectionDevice(calc, device)
+    {
 
-	}
+    }
 
-	Buffer* CalcIntersectionDeviceVK::AdoptBuffer(Anvil::Buffer* buffer) const
-	{
-		return new CalcBufferHolder(m_device.get(), new Calc::BufferVulkan(buffer, false));
-	}
+    Buffer* CalcIntersectionDeviceVK::AdoptBuffer(Anvil::Buffer* buffer) const
+    {
+        return new CalcBufferHolder(m_device.get(), new Calc::BufferVulkan(buffer, false));
+    }
 
 }
 #endif

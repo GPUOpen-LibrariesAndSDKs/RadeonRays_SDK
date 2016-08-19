@@ -42,78 +42,78 @@ THE SOFTWARE.
 
 void ConfigManager::CreateConfigs(Mode mode, bool interop, std::vector<Config>& configs, int initial_num_bounces)
 {
-	std::vector<CLWPlatform> platforms;
+    std::vector<CLWPlatform> platforms;
 
-	CLWPlatform::CreateAllPlatforms(platforms);
+    CLWPlatform::CreateAllPlatforms(platforms);
 
-	if (platforms.size() == 0)
-	{
-		throw std::runtime_error("No OpenCL platforms installed.");
-	}
+    if (platforms.size() == 0)
+    {
+        throw std::runtime_error("No OpenCL platforms installed.");
+    }
 
-	configs.clear();
+    configs.clear();
 
-	bool hasprimary = false;
-	for (int i = 0; i < platforms.size(); ++i)
-	{
-		std::vector<CLWDevice> devices;
-		int startidx = (int)configs.size();
+    bool hasprimary = false;
+    for (int i = 0; i < platforms.size(); ++i)
+    {
+        std::vector<CLWDevice> devices;
+        int startidx = (int)configs.size();
 
-		for (int d = 0; d < (int)platforms[i].GetDeviceCount(); ++d)
-		{
-			if ((mode == kUseGpus || mode == kUseSingleGpu) && platforms[i].GetDevice(d).GetType() != CL_DEVICE_TYPE_GPU)
-				continue;
+        for (int d = 0; d < (int)platforms[i].GetDeviceCount(); ++d)
+        {
+            if ((mode == kUseGpus || mode == kUseSingleGpu) && platforms[i].GetDevice(d).GetType() != CL_DEVICE_TYPE_GPU)
+                continue;
 
-			if ((mode == kUseCpus || mode == kUseSingleCpu) && platforms[i].GetDevice(d).GetType() != CL_DEVICE_TYPE_CPU)
-				continue;
+            if ((mode == kUseCpus || mode == kUseSingleCpu) && platforms[i].GetDevice(d).GetType() != CL_DEVICE_TYPE_CPU)
+                continue;
 
-			Config cfg;
-			cfg.caninterop = false;
+            Config cfg;
+            cfg.caninterop = false;
 #ifdef WIN32
-			if (platforms[i].GetDevice(d).HasGlInterop() && !hasprimary && interop)
-			{
-				cl_context_properties props[] =
-				{
-					//OpenCL platform
-					CL_CONTEXT_PLATFORM, (cl_context_properties)((cl_platform_id)platforms[i]),
-					//OpenGL context
-					CL_GL_CONTEXT_KHR, (cl_context_properties)wglGetCurrentContext(),
-					//HDC used to create the OpenGL context
-					CL_WGL_HDC_KHR, (cl_context_properties)wglGetCurrentDC(),
-					0
-				};
+            if (platforms[i].GetDevice(d).HasGlInterop() && !hasprimary && interop)
+            {
+                cl_context_properties props[] =
+                {
+                    //OpenCL platform
+                    CL_CONTEXT_PLATFORM, (cl_context_properties)((cl_platform_id)platforms[i]),
+                    //OpenGL context
+                    CL_GL_CONTEXT_KHR, (cl_context_properties)wglGetCurrentContext(),
+                    //HDC used to create the OpenGL context
+                    CL_WGL_HDC_KHR, (cl_context_properties)wglGetCurrentDC(),
+                    0
+                };
 
-				cfg.context = CLWContext::Create(platforms[i].GetDevice(d), props);
-				devices.push_back(platforms[i].GetDevice(d));
-				cfg.devidx = 0;
-				cfg.type = kPrimary;
-				cfg.caninterop = true;
-				hasprimary = true;
-			}
-			else
+                cfg.context = CLWContext::Create(platforms[i].GetDevice(d), props);
+                devices.push_back(platforms[i].GetDevice(d));
+                cfg.devidx = 0;
+                cfg.type = kPrimary;
+                cfg.caninterop = true;
+                hasprimary = true;
+            }
+            else
 #elif __linux__
 
-			if (platforms[i].GetDevice(d).HasGlInterop() && !hasprimary && interop)
-			{
-				cl_context_properties props[] =
-				{
-					//OpenCL platform
-					CL_CONTEXT_PLATFORM, (cl_context_properties)((cl_platform_id)platforms[i]),
-					//OpenGL context
-					CL_GL_CONTEXT_KHR, (cl_context_properties)glXGetCurrentContext(),
-					//HDC used to create the OpenGL context
-					CL_GLX_DISPLAY_KHR, (cl_context_properties)glXGetCurrentDisplay(),
-					0
-				};
+            if (platforms[i].GetDevice(d).HasGlInterop() && !hasprimary && interop)
+            {
+                cl_context_properties props[] =
+                {
+                    //OpenCL platform
+                    CL_CONTEXT_PLATFORM, (cl_context_properties)((cl_platform_id)platforms[i]),
+                    //OpenGL context
+                    CL_GL_CONTEXT_KHR, (cl_context_properties)glXGetCurrentContext(),
+                    //HDC used to create the OpenGL context
+                    CL_GLX_DISPLAY_KHR, (cl_context_properties)glXGetCurrentDisplay(),
+                    0
+                };
 
-				cfg.context = CLWContext::Create(platforms[i].GetDevice(d), props);
-				devices.push_back(platforms[i].GetDevice(d));
-				cfg.devidx = 0;
-				cfg.type = kPrimary;
-				cfg.caninterop = true;
-				hasprimary = true;
-			}
-			else
+                cfg.context = CLWContext::Create(platforms[i].GetDevice(d), props);
+                devices.push_back(platforms[i].GetDevice(d));
+                cfg.devidx = 0;
+                cfg.type = kPrimary;
+                cfg.caninterop = true;
+                hasprimary = true;
+            }
+            else
 #elif __APPLE__
                 if (platforms[i].GetDevice(d).HasGlInterop() && !hasprimary && interop)
                 {
@@ -134,29 +134,29 @@ void ConfigManager::CreateConfigs(Mode mode, bool interop, std::vector<Config>& 
                 }
                 else
 #endif
-			{
-				cfg.context = CLWContext::Create(platforms[i].GetDevice(d));
-				cfg.devidx = 0;
-				cfg.type = kSecondary;
-			}
+            {
+                cfg.context = CLWContext::Create(platforms[i].GetDevice(d));
+                cfg.devidx = 0;
+                cfg.type = kSecondary;
+            }
 
-			configs.push_back(cfg);
+            configs.push_back(cfg);
 
-			if (mode == kUseSingleGpu || mode == kUseSingleCpu)
-				break;
-		}
+            if (mode == kUseSingleGpu || mode == kUseSingleCpu)
+                break;
+        }
 
-		if (configs.size() == 1 && (mode == kUseSingleGpu || mode == kUseSingleCpu))
-			break;
-	}
+        if (configs.size() == 1 && (mode == kUseSingleGpu || mode == kUseSingleCpu))
+            break;
+    }
 
-	if (!hasprimary)
-	{
-		configs[0].type = kPrimary;
-	}
+    if (!hasprimary)
+    {
+        configs[0].type = kPrimary;
+    }
 
-	for (int i = 0; i < configs.size(); ++i)
-	{
-		configs[i].renderer = new Baikal::PtRenderer(configs[i].context, configs[i].devidx, initial_num_bounces);
-	}
+    for (int i = 0; i < configs.size(); ++i)
+    {
+        configs[i].renderer = new Baikal::PtRenderer(configs[i].context, configs[i].devidx, initial_num_bounces);
+    }
 }

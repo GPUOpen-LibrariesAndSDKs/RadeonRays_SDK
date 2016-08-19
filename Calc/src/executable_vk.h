@@ -28,101 +28,101 @@ namespace Calc {
 
 
 // Class that represent Executable. In Vulkan implementation the only useful is CreateFunction that compiles shader to SPIR-V and then create Function. Each Function is decoupled from others and stored in a separate file.
-	class ExecutableVulkan : public Executable {
-	public:
-		ExecutableVulkan(Anvil::Device *in_device,
-		                 const std::string &inFileName,
-		                 bool in_use_compute_pipe)
-				: Executable(), m_device(in_device),
-				  m_file_name_or_source_code(inFileName), m_source_mode(
-						Anvil::GLSLShaderToSPIRVGenerator::MODE_LOAD_SOURCE_FROM_FILE),
-				  m_use_compute_pipe(in_use_compute_pipe) { }
+    class ExecutableVulkan : public Executable {
+    public:
+        ExecutableVulkan(Anvil::Device *in_device,
+                         const std::string &inFileName,
+                         bool in_use_compute_pipe)
+                : Executable(), m_device(in_device),
+                  m_file_name_or_source_code(inFileName), m_source_mode(
+                        Anvil::GLSLShaderToSPIRVGenerator::MODE_LOAD_SOURCE_FROM_FILE),
+                  m_use_compute_pipe(in_use_compute_pipe) { }
 
-		ExecutableVulkan(Anvil::Device *in_device, char const *in_source_code,
-		                 size_t in_source_code_size, bool in_use_compute_pipe)
-				: Executable(), m_device(in_device),
-				  m_file_name_or_source_code(), m_source_mode(
-						Anvil::GLSLShaderToSPIRVGenerator::MODE_USE_SPECIFIED_SOURCE),
-				  m_use_compute_pipe(in_use_compute_pipe) {
-			m_file_name_or_source_code = std::string(in_source_code,
-			                                         in_source_code_size);
-		}
+        ExecutableVulkan(Anvil::Device *in_device, char const *in_source_code,
+                         size_t in_source_code_size, bool in_use_compute_pipe)
+                : Executable(), m_device(in_device),
+                  m_file_name_or_source_code(), m_source_mode(
+                        Anvil::GLSLShaderToSPIRVGenerator::MODE_USE_SPECIFIED_SOURCE),
+                  m_use_compute_pipe(in_use_compute_pipe) {
+            m_file_name_or_source_code = std::string(in_source_code,
+                                                     in_source_code_size);
+        }
 
-		virtual ~ExecutableVulkan() { }
+        virtual ~ExecutableVulkan() { }
 
-		// adds a defination to all future CreateFunction calls, replaces if
-		// any existing definition of the same name
-		void AddDefinition(const char *name, const char *value) {
-			m_defines[name] = value;
-		}
-		
-		void RemoveDefinition( const char *name ) {
-			auto&& existing = m_defines.find(name);
-			Assert(existing != m_defines.end() );
-			m_defines.erase(existing);
-		}
+        // adds a defination to all future CreateFunction calls, replaces if
+        // any existing definition of the same name
+        void AddDefinition(const char *name, const char *value) {
+            m_defines[name] = value;
+        }
+        
+        void RemoveDefinition( const char *name ) {
+            auto&& existing = m_defines.find(name);
+            Assert(existing != m_defines.end() );
+            m_defines.erase(existing);
+        }
 
-		// Function management use only any predefined defines
-		Function *CreateFunction(char const *name) override {
-			return CreateFunction(name, {} );
-		}
+        // Function management use only any predefined defines
+        Function *CreateFunction(char const *name) override {
+            return CreateFunction(name, {} );
+        }
 
-		// useful whilst developing, not currently used
-		Function *CreateFunction(char const *name, const std::map<const std::string, const std::string>& defines ) {
+        // useful whilst developing, not currently used
+        Function *CreateFunction(char const *name, const std::map<const std::string, const std::string>& defines ) {
 
-			Anvil::GLSLShaderToSPIRVGenerator toSPIRVConverter(	m_device->get_physical_device(),
-																m_source_mode,
-																m_file_name_or_source_code,
-																Anvil::SHADER_STAGE_COMPUTE);
-			// change function name to main via evil define
-			toSPIRVConverter.add_definition_value_pair( name, "main" );
+            Anvil::GLSLShaderToSPIRVGenerator toSPIRVConverter(    m_device->get_physical_device(),
+                                                                m_source_mode,
+                                                                m_file_name_or_source_code,
+                                                                Anvil::SHADER_STAGE_COMPUTE);
+            // change function name to main via evil define
+            toSPIRVConverter.add_definition_value_pair( name, "main" );
 
-			// apply pre-defined defines
-			for (auto &&item : m_defines) {
-				toSPIRVConverter.add_definition_value_pair(item.first,item.second);
-			}
+            // apply pre-defined defines
+            for (auto &&item : m_defines) {
+                toSPIRVConverter.add_definition_value_pair(item.first,item.second);
+            }
 
-			// apply local per-call definitions
-			for (auto &&item : defines) {
-				toSPIRVConverter.add_definition_value_pair(item.first,item.second);
-			}
+            // apply local per-call definitions
+            for (auto &&item : defines) {
+                toSPIRVConverter.add_definition_value_pair(item.first,item.second);
+            }
 
-			toSPIRVConverter.bake_spirv_blob();
+            toSPIRVConverter.bake_spirv_blob();
 
 #ifdef DUMP_SPIRV_BLOB
-			char path[2048];
-			strcpy(path, name);
-			strcat(path, ".spriv");
-			auto fh = fopen( path, "wb");
-			fwrite(toSPIRVConverter.get_spirv_blob(), toSPIRVConverter.get_spirv_blob_size(), 1, fh);
-			fclose(fh);
+            char path[2048];
+            strcpy(path, name);
+            strcat(path, ".spriv");
+            auto fh = fopen( path, "wb");
+            fwrite(toSPIRVConverter.get_spirv_blob(), toSPIRVConverter.get_spirv_blob_size(), 1, fh);
+            fclose(fh);
 #endif
 
 
-			Anvil::ShaderModule *shaderModule = new Anvil::ShaderModule(
-					m_device, toSPIRVConverter);
+            Anvil::ShaderModule *shaderModule = new Anvil::ShaderModule(
+                    m_device, toSPIRVConverter);
 
-			Anvil::ShaderModuleStageEntryPoint functionEntryPoint = Anvil::ShaderModuleStageEntryPoint(
-					"main", shaderModule, Anvil::SHADER_STAGE_COMPUTE);
+            Anvil::ShaderModuleStageEntryPoint functionEntryPoint = Anvil::ShaderModuleStageEntryPoint(
+                    "main", shaderModule, Anvil::SHADER_STAGE_COMPUTE);
 
-			return new FunctionVulkan(m_device, functionEntryPoint,
-			                          shaderModule, m_use_compute_pipe
+            return new FunctionVulkan(m_device, functionEntryPoint,
+                                      shaderModule, m_use_compute_pipe
 #if _DEBUG
-					, m_file_name_or_source_code
+                    , m_file_name_or_source_code
 #endif
-			);
-		}
+            );
+        }
 
-		void DeleteFunction(Function *func) {
-			delete func;
-		}
+        void DeleteFunction(Function *func) {
+            delete func;
+        }
 
-	private:
-		Anvil::Device *m_device;
-		std::string m_file_name_or_source_code;
-		Anvil::GLSLShaderToSPIRVGenerator::Mode m_source_mode;
-		typedef std::map<std::string, std::string> define_table;
-		define_table m_defines;
-		bool m_use_compute_pipe;
-	};
+    private:
+        Anvil::Device *m_device;
+        std::string m_file_name_or_source_code;
+        Anvil::GLSLShaderToSPIRVGenerator::Mode m_source_mode;
+        typedef std::map<std::string, std::string> define_table;
+        define_table m_defines;
+        bool m_use_compute_pipe;
+    };
 }

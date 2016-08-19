@@ -29,84 +29,84 @@ THE SOFTWARE.
 
 namespace Calc
 {
-	DeviceCl* CreateDeviceFromOpenCL(cl_context context, cl_device_id device, cl_command_queue queue)
-	{
-		CLWContext clwContext = CLWContext::Create(context, &device, &queue, 1);
-		auto clwDevice = clwContext.GetDevice(0);
-		return new DeviceClw( clwDevice, clwContext );
-	}
+    DeviceCl* CreateDeviceFromOpenCL(cl_context context, cl_device_id device, cl_command_queue queue)
+    {
+        CLWContext clwContext = CLWContext::Create(context, &device, &queue, 1);
+        auto clwDevice = clwContext.GetDevice(0);
+        return new DeviceClw( clwDevice, clwContext );
+    }
 
-	CalcClw::CalcClw()
-	{
-		try
-		{
-			CLWPlatform::CreateAllPlatforms(m_platforms);
+    CalcClw::CalcClw()
+    {
+        try
+        {
+            CLWPlatform::CreateAllPlatforms(m_platforms);
 
-			// Collect all devices
-			for (auto const& platform : m_platforms)
-			{
-				auto num_devices = platform.GetDeviceCount();
+            // Collect all devices
+            for (auto const& platform : m_platforms)
+            {
+                auto num_devices = platform.GetDeviceCount();
 
-				for (auto i = 0U; i < num_devices; ++i)
-				{
-					auto device = platform.GetDevice(i);
-					m_devices.push_back(device);
-				}
-			}
-		}
-		catch (CLWException& e)
-		{
-			throw ExceptionClw(e.what());
-		}
-	}
+                for (auto i = 0U; i < num_devices; ++i)
+                {
+                    auto device = platform.GetDevice(i);
+                    m_devices.push_back(device);
+                }
+            }
+        }
+        catch (CLWException& e)
+        {
+            throw ExceptionClw(e.what());
+        }
+    }
 
-	CalcClw::~CalcClw()
-	{
-	}
+    CalcClw::~CalcClw()
+    {
+    }
 
-	// Enumerate devices 
-	std::uint32_t CalcClw::GetDeviceCount() const
-	{
-		return static_cast<std::uint32_t>(m_devices.size());
-	}
+    // Enumerate devices 
+    std::uint32_t CalcClw::GetDeviceCount() const
+    {
+        return static_cast<std::uint32_t>(m_devices.size());
+    }
 
-	// Get i-th device spec
-	void CalcClw::GetDeviceSpec(std::uint32_t idx, DeviceSpec& spec) const
-	{
-		if (idx >= m_devices.size())
-		{
-			throw ExceptionClw("Index is out of bounds");
-		}
+    // Get i-th device spec
+    void CalcClw::GetDeviceSpec(std::uint32_t idx, DeviceSpec& spec) const
+    {
+        if (idx >= m_devices.size())
+        {
+            throw ExceptionClw("Index is out of bounds");
+        }
 
-		// Strings leave until the destructor of this object is called
-		// which is pretty much ok
-		spec.name = m_devices[idx].GetName().c_str();
-		spec.vendor = m_devices[idx].GetVendor().c_str();
-		spec.type = Convert2CalcDeviceType(m_devices[idx].GetType());
-		spec.global_mem_size = m_devices[idx].GetGlobalMemSize();
-		spec.local_mem_size = m_devices[idx].GetLocalMemSize();
-		spec.min_alignment = m_devices[idx].GetMinAlignSize();
-		spec.max_alloc_size = m_devices[idx].GetMaxAllocSize();
-		spec.max_local_size = m_devices[idx].GetMaxWorkGroupSize();
-	}
+        // Strings leave until the destructor of this object is called
+        // which is pretty much ok
+        spec.name = m_devices[idx].GetName().c_str();
+        spec.vendor = m_devices[idx].GetVendor().c_str();
+        spec.type = Convert2CalcDeviceType(m_devices[idx].GetType());
+        spec.global_mem_size = m_devices[idx].GetGlobalMemSize();
+        spec.local_mem_size = m_devices[idx].GetLocalMemSize();
+        spec.min_alignment = m_devices[idx].GetMinAlignSize();
+        spec.max_alloc_size = m_devices[idx].GetMaxAllocSize();
+        spec.max_local_size = m_devices[idx].GetMaxWorkGroupSize();
+    }
 
-	// Create the device with specified index
-	Device* CalcClw::CreateDevice(std::uint32_t idx) const
-	{
-		if (idx >= m_devices.size())
-		{
-			throw ExceptionClw("Index is out of bounds");
-		}
+    // Create the device with specified index
+    Device* CalcClw::CreateDevice(std::uint32_t idx) const
+    {
+        if (idx >= m_devices.size())
+        {
+            throw ExceptionClw("Index is out of bounds");
+        }
 
-		try
-		{
-			return new DeviceClw(m_devices[idx]);
-		}
-		catch (CLWException& e)
-		{
-			throw ExceptionClw(e.what());
-		}
-	}
+        try
+        {
+            return new DeviceClw(m_devices[idx]);
+        }
+        catch (CLWException& e)
+        {
+            throw ExceptionClw(e.what());
+        }
+    }
     
     DeviceCl* CalcClw::CreateDevice(cl_context context, cl_device_id device, cl_command_queue queue) const
     {
@@ -123,11 +123,11 @@ namespace Calc
         }
     }
 
-	// Delete the device
-	void CalcClw::DeleteDevice(Device* device)
-	{
-		delete device;
-	}
+    // Delete the device
+    void CalcClw::DeleteDevice(Device* device)
+    {
+        delete device;
+    }
 
 }
 

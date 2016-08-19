@@ -25,18 +25,18 @@ THE SOFTWARE.
 
 namespace Calc
 {
-	class Buffer;
-	class Primitives
-	{
-	public:
-		Primitives() = default;
+    class Buffer;
+    class Primitives
+    {
+    public:
+        Primitives() = default;
         virtual ~Primitives() = default;
 
-		virtual void SortRadixInt32(std::uint32_t queueidx, Buffer const* from_key, Buffer* to_key, Buffer const* from_value, Buffer* to_value, std::size_t size) = 0;
+        virtual void SortRadixInt32(std::uint32_t queueidx, Buffer const* from_key, Buffer* to_key, Buffer const* from_value, Buffer* to_value, std::size_t size) = 0;
 
 
-	private:
-		Primitives(Primitives const&) = delete;
-		Primitives& operator = (Primitives const&) = delete;
-	};
+    private:
+        Primitives(Primitives const&) = delete;
+        Primitives& operator = (Primitives const&) = delete;
+    };
 }

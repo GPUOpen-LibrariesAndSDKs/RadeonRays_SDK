@@ -271,20 +271,20 @@ float IntersectBoxF(ray const* r, float3 invdir, bbox box, float maxt)
 
 int Ray_GetMask(ray const* r)
 {
-	return r->extra.x;
+    return r->extra.x;
 }
 
 int Ray_IsActive(ray const* r)
 {
-	return r->extra.y;
+    return r->extra.y;
 }
 
 float Ray_GetMaxT(ray const* r)
 {
-	return r->o.w;
+    return r->o.w;
 }
 
 float Ray_GetTime(ray const* r)
 {
-	return r->d.w;
+    return r->d.w;
 }

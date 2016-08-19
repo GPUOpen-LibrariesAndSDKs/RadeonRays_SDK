@@ -28,51 +28,51 @@ layout( local_size_x = 64, local_size_y = 1, local_size_z = 1 ) in;
 
 struct bbox
 {
-	vec3 pmin;
-	vec3 pmax;
+    vec3 pmin;
+    vec3 pmax;
 };
 
 struct HlbvhNode
 {
-	uint parent;
-	uint left;
-	uint right;
-	uint next;
+    uint parent;
+    uint left;
+    uint right;
+    uint next;
 };
 
 layout( std140, binding = 0 ) buffer restrict MortoncodesBlock
 {
-	uint Mortoncodes[];
+    uint Mortoncodes[];
 };
 
 layout( std140, binding = 1 ) buffer restrict BoundsBlock
 {
-	bbox Bounds[];
+    bbox Bounds[];
 };
 
 layout( std140, binding = 2 ) buffer restrict readonly NumBlock
 {
-	uint Num;
+    uint Num;
 };
 
 layout( std140, binding = 3) buffer restrict readonly IndicesBlock
 {
-	uint Indices[];
+    uint Indices[];
 };
 
 layout( std430, binding = 4 ) buffer NodesBlock
 {
-	HlbvhNode Nodes[];
+    HlbvhNode Nodes[];
 };
 
 layout( std430, binding = 5 ) buffer FlagsBlock
 {
-	uint Flags[];
+    uint Flags[];
 };
 
 layout( std430, binding = 6) buffer BoundssortedBlock
 {
-	bbox Boundssorted[];
+    bbox Boundssorted[];
 };
 
 uvec2 FindSpan(uint idx);
@@ -84,36 +84,36 @@ uint FindSplit(uvec2 span);
 // by inserting 2 zeros after each bit.
 uint ExpandBits( in uint v)
 {
-	v = (v * 0x00010001u) & 0xFF0000FFu;
-	v = (v * 0x00000101u) & 0x0F00F00Fu;
-	v = (v * 0x00000011u) & 0xC30C30C3u;
-	v = (v * 0x00000005u) & 0x49249249u;
-	return v;
+    v = (v * 0x00010001u) & 0xFF0000FFu;
+    v = (v * 0x00000101u) & 0x0F00F00Fu;
+    v = (v * 0x00000011u) & 0xC30C30C3u;
+    v = (v * 0x00000005u) & 0x49249249u;
+    return v;
 }
 
 // Calculates a 30-bit Morton code for the
 // given 3D point located within the unit cube [0,1].
 uint CalculateMortonCode( in vec3 p)
 {
-	float x = min(max(p.x * 1024.0f, 0.0f), 1023.0f);
-	float y = min(max(p.y * 1024.0f, 0.0f), 1023.0f);
-	float z = min(max(p.z * 1024.0f, 0.0f), 1023.0f);
-	uint xx = ExpandBits(uint(x));
-	uint yy = ExpandBits(uint(y));
-	uint zz = ExpandBits(uint(z));
-	return xx * 4 + yy * 2 + zz;
+    float x = min(max(p.x * 1024.0f, 0.0f), 1023.0f);
+    float y = min(max(p.y * 1024.0f, 0.0f), 1023.0f);
+    float z = min(max(p.z * 1024.0f, 0.0f), 1023.0f);
+    uint xx = ExpandBits(uint(x));
+    uint yy = ExpandBits(uint(y));
+    uint zz = ExpandBits(uint(z));
+    return xx * 4 + yy * 2 + zz;
 }
 
 void CalcMortonCode()
 {
-	uint globalID = gl_GlobalInvocationID.x;
+    uint globalID = gl_GlobalInvocationID.x;
 
-	if (globalID < Num)
-	{
-		bbox bound = Bounds[globalID];
-		vec3 center = 0.5f * (bound.pmax + bound.pmin);
-		Mortoncodes[globalID] = CalculateMortonCode(center);
-	}
+    if (globalID < Num)
+    {
+        bbox bound = Bounds[globalID];
+        vec3 center = 0.5f * (bound.pmax + bound.pmin);
+        Mortoncodes[globalID] = CalculateMortonCode(center);
+    }
 }
 
 #define LEAFIDX(i) ((Num-1) + i)
@@ -121,36 +121,36 @@ void CalcMortonCode()
 
 void BuildHierarchy()
 {
-	uint globalID = gl_GlobalInvocationID.x;
+    uint globalID = gl_GlobalInvocationID.x;
 
-	// Set child
-	if (globalID < Num)
-	{
-		Nodes[LEAFIDX(globalID)].left = Nodes[LEAFIDX(globalID)].right = Indices[globalID];
-		Boundssorted[LEAFIDX(globalID)] = Bounds[Indices[globalID]];
-	}
-	
-	// Set internal nodes
-	if (globalID < Num - 1)
-	{
-		// Find span occupied by the current node
-		uvec2 range = FindSpan(globalID);
+    // Set child
+    if (globalID < Num)
+    {
+        Nodes[LEAFIDX(globalID)].left = Nodes[LEAFIDX(globalID)].right = Indices[globalID];
+        Boundssorted[LEAFIDX(globalID)] = Bounds[Indices[globalID]];
+    }
+    
+    // Set internal nodes
+    if (globalID < Num - 1)
+    {
+        // Find span occupied by the current node
+        uvec2 range = FindSpan(globalID);
 
-		// Find split position inside the range
-		uint  split = FindSplit(range);
+        // Find split position inside the range
+        uint  split = FindSplit(range);
 
-		// Create child nodes if needed
-		uint c1idx = (split == range.x) ? LEAFIDX(split) : NODEIDX(split);
-		uint c2idx = (split + 1 == range.y) ? LEAFIDX(split + 1) : NODEIDX(split + 1);
+        // Create child nodes if needed
+        uint c1idx = (split == range.x) ? LEAFIDX(split) : NODEIDX(split);
+        uint c2idx = (split + 1 == range.y) ? LEAFIDX(split + 1) : NODEIDX(split + 1);
 
-		Nodes[NODEIDX(globalID)].left = c1idx;
-		Nodes[NODEIDX(globalID)].right = c2idx;
-		Nodes[NODEIDX(globalID)].next = (range.y + 1 < Num) ? range.y + 1 : -1;
-		Nodes[c1idx].parent = NODEIDX(globalID);
-		Nodes[c1idx].next = c2idx;
-		Nodes[c2idx].parent = NODEIDX(globalID);
-		Nodes[c2idx].next = Nodes[NODEIDX(globalID)].next;
-	}
+        Nodes[NODEIDX(globalID)].left = c1idx;
+        Nodes[NODEIDX(globalID)].right = c2idx;
+        Nodes[NODEIDX(globalID)].next = (range.y + 1 < Num) ? range.y + 1 : -1;
+        Nodes[c1idx].parent = NODEIDX(globalID);
+        Nodes[c1idx].next = c2idx;
+        Nodes[c2idx].parent = NODEIDX(globalID);
+        Nodes[c2idx].next = Nodes[NODEIDX(globalID)].next;
+    }
 }
 
 bbox bboxunion(bbox b1, bbox b2)
@@ -209,183 +209,183 @@ void RefitBounds()
 // if  representations are equal we consider sucessive indices
 int delta( in uint i1, in uint i2)
 {
-	// Select left end
-	uint left = min(i1, i2);
-	// Select right end
-	uint right = max(i1, i2);
-	// This is to ensure the node breaks if the index is out of bounds
-	if (left < 0 || right >= Num) 
-	{
-		return -1;
-	}
-	// Fetch Morton codes for both ends
-	uint leftcode = Mortoncodes[left];
-	uint rightcode = Mortoncodes[right];
+    // Select left end
+    uint left = min(i1, i2);
+    // Select right end
+    uint right = max(i1, i2);
+    // This is to ensure the node breaks if the index is out of bounds
+    if (left < 0 || right >= Num) 
+    {
+        return -1;
+    }
+    // Fetch Morton codes for both ends
+    uint leftcode = Mortoncodes[left];
+    uint rightcode = Mortoncodes[right];
 
-	// Special handling of duplicated codes: use their indices as a fallback
-	return leftcode != rightcode ? findMSB(leftcode ^ rightcode) : (32 + findMSB(left ^ right));
+    // Special handling of duplicated codes: use their indices as a fallback
+    return leftcode != rightcode ? findMSB(leftcode ^ rightcode) : (32 + findMSB(left ^ right));
 }
 
 // Find span occupied by internal node with index idx
 uvec2 FindSpan(uint idx)
 {
-	// Find the direction of the range
-	int d = sign( delta(idx, idx+1) - delta(idx, idx-1) );
+    // Find the direction of the range
+    int d = sign( delta(idx, idx+1) - delta(idx, idx-1) );
 
-	// Find minimum number of bits for the break on the other side
-	int deltamin = delta(idx, idx-d);
+    // Find minimum number of bits for the break on the other side
+    int deltamin = delta(idx, idx-d);
 
-	// Search conservative far end
-	uint lmax = 2;
-	while (delta(idx,idx + lmax * d) > deltamin)
-		lmax *= 2;
+    // Search conservative far end
+    uint lmax = 2;
+    while (delta(idx,idx + lmax * d) > deltamin)
+        lmax *= 2;
 
-	// Search back to find exact bound
-	// with binary search
-	uint l = 0;
-	uint t = lmax;
-	do
-	{
-		t /= 2;
-		if(delta(idx, idx + (l + t)*d) > deltamin)
-		{
-			l = l + t;
-		}
-	}
-	while (t > 1);
+    // Search back to find exact bound
+    // with binary search
+    uint l = 0;
+    uint t = lmax;
+    do
+    {
+        t /= 2;
+        if(delta(idx, idx + (l + t)*d) > deltamin)
+        {
+            l = l + t;
+        }
+    }
+    while (t > 1);
 
-	// Pack span 
-	uvec2 span;
-	span.x = min(idx, idx + l*d);
-	span.y = max(idx, idx + l*d);
-	return span;
+    // Pack span 
+    uvec2 span;
+    span.x = min(idx, idx + l*d);
+    span.y = max(idx, idx + l*d);
+    return span;
 }
 
 
 // Find split idx within the span
 uint FindSplit(uvec2 span)
 {
-	// Fetch codes for both ends
-	uint left = span.x;
-	uint right = span.y;
+    // Fetch codes for both ends
+    uint left = span.x;
+    uint right = span.y;
 
-	// Calculate the number of identical bits from higher end
-	uint numidentical = delta(left, right);
+    // Calculate the number of identical bits from higher end
+    uint numidentical = delta(left, right);
 
-	do
-	{
-		// Proposed split
-		uint newsplit = (right + left) / 2;
+    do
+    {
+        // Proposed split
+        uint newsplit = (right + left) / 2;
 
-		// If it has more equal leading bits than left and right accept it
-		if (delta(left, newsplit) > numidentical)
-		{
-			left = newsplit;
-		}
-		else
-		{
-			right = newsplit;
-		}
-	}
-	while (right > left + 1);
+        // If it has more equal leading bits than left and right accept it
+        if (delta(left, newsplit) > numidentical)
+        {
+            left = newsplit;
+        }
+        else
+        {
+            right = newsplit;
+        }
+    }
+    while (right > left + 1);
 
-	return left;
+    return left;
 }
 /*
 // Set parent-child relationship
 __kernel void BuildHierarchy(
-	// Sorted Morton codes of the primitives
-	__global int* mortoncodes,
-	// Bounds
-	__global bbox* bounds,
-	// Primitive indices
-	__global int* indices,
-	// Number of primitives
-	int numprims,
-	// Nodes
-	__global HlbvhNode* nodes,
-	// Leaf bounds
-	__global bbox* boundssorted
-	)
+    // Sorted Morton codes of the primitives
+    __global int* mortoncodes,
+    // Bounds
+    __global bbox* bounds,
+    // Primitive indices
+    __global int* indices,
+    // Number of primitives
+    int numprims,
+    // Nodes
+    __global HlbvhNode* nodes,
+    // Leaf bounds
+    __global bbox* boundssorted
+    )
 {
-	int globalid = get_global_id(0);
+    int globalid = get_global_id(0);
 
-	// Set child
-	if (globalid < numprims)
-	{
-		nodes[LEAFIDX(globalid)].left = nodes[LEAFIDX(globalid)].right = indices[globalid];
-		boundssorted[LEAFIDX(globalid)] = bounds[indices[globalid]];
-	}
-	
-	// Set internal nodes
-	if (globalid < numprims - 1)
-	{
-		// Find span occupied by the current node
-		int2 range = FindSpan(mortoncodes, numprims, globalid);
+    // Set child
+    if (globalid < numprims)
+    {
+        nodes[LEAFIDX(globalid)].left = nodes[LEAFIDX(globalid)].right = indices[globalid];
+        boundssorted[LEAFIDX(globalid)] = bounds[indices[globalid]];
+    }
+    
+    // Set internal nodes
+    if (globalid < numprims - 1)
+    {
+        // Find span occupied by the current node
+        int2 range = FindSpan(mortoncodes, numprims, globalid);
 
-		// Find split position inside the range
-		int  split = FindSplit(mortoncodes, numprims, range);
+        // Find split position inside the range
+        int  split = FindSplit(mortoncodes, numprims, range);
 
-		// Create child nodes if needed
-		int c1idx = (split == range.x) ? LEAFIDX(split) : NODEIDX(split);
-		int c2idx = (split + 1 == range.y) ? LEAFIDX(split + 1) : NODEIDX(split + 1);
+        // Create child nodes if needed
+        int c1idx = (split == range.x) ? LEAFIDX(split) : NODEIDX(split);
+        int c2idx = (split + 1 == range.y) ? LEAFIDX(split + 1) : NODEIDX(split + 1);
 
-		nodes[NODEIDX(globalid)].left = c1idx;
-		nodes[NODEIDX(globalid)].right = c2idx;
-		//nodes[NODEIDX(globalid)].next = (range.y + 1 < numprims) ? range.y + 1 : -1;
-		nodes[c1idx].parent = NODEIDX(globalid);
-		//nodes[c1idx].next = c2idx;
-		nodes[c2idx].parent = NODEIDX(globalid);
-		//nodes[c2idx].next = nodes[NODEIDX(globalid)].next;
-	}
+        nodes[NODEIDX(globalid)].left = c1idx;
+        nodes[NODEIDX(globalid)].right = c2idx;
+        //nodes[NODEIDX(globalid)].next = (range.y + 1 < numprims) ? range.y + 1 : -1;
+        nodes[c1idx].parent = NODEIDX(globalid);
+        //nodes[c1idx].next = c2idx;
+        nodes[c2idx].parent = NODEIDX(globalid);
+        //nodes[c2idx].next = nodes[NODEIDX(globalid)].next;
+    }
 }
 
 // Propagate bounds up to the root
 __kernel void RefitBounds(__global bbox* bounds,
-						  int numprims,
-						  __global HlbvhNode* nodes,
-						  __global int* flags
-						  )
+                          int numprims,
+                          __global HlbvhNode* nodes,
+                          __global int* flags
+                          )
 {
-	int globalid = get_global_id(0);
+    int globalid = get_global_id(0);
 
-	// Start from leaf nodes
-	if (globalid < numprims)
-	{
-		// Get my leaf index
-		int idx = LEAFIDX(globalid);
+    // Start from leaf nodes
+    if (globalid < numprims)
+    {
+        // Get my leaf index
+        int idx = LEAFIDX(globalid);
 
-		do
-		{
-			// Move to parent node
-			idx = nodes[idx].parent;
+        do
+        {
+            // Move to parent node
+            idx = nodes[idx].parent;
 
-			// Check node's flag
-			if (atomic_cmpxchg(flags + idx, 0, 1) == 1)
-			{
-				// If the flag was 1 the second child is ready and 
-				// this thread calculates bbox for the node
+            // Check node's flag
+            if (atomic_cmpxchg(flags + idx, 0, 1) == 1)
+            {
+                // If the flag was 1 the second child is ready and 
+                // this thread calculates bbox for the node
 
-				// Fetch kids
-				int lc = nodes[idx].left;
-				int rc = nodes[idx].right;
+                // Fetch kids
+                int lc = nodes[idx].left;
+                int rc = nodes[idx].right;
 
-				// Calculate bounds
-				bbox b = bboxunion(bounds[lc], bounds[rc]);
+                // Calculate bounds
+                bbox b = bboxunion(bounds[lc], bounds[rc]);
 
-				// Write bounds
-				bounds[idx] = b;
-			}
-			else
-			{
-				// If the flag was 0 set it to 1 and bail out.
-				// The thread handling the second child will
-				// handle this node.
-				break;
-			}
-		}
-		while (idx != 0);
-	}
+                // Write bounds
+                bounds[idx] = b;
+            }
+            else
+            {
+                // If the flag was 0 set it to 1 and bail out.
+                // The thread handling the second child will
+                // handle this node.
+                break;
+            }
+        }
+        while (idx != 0);
+    }
 }
 
 */

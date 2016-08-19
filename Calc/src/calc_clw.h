@@ -28,34 +28,34 @@ THE SOFTWARE.
 
 namespace Calc
 {
-	// Implementation of Calc interface using CLW library
-	class CalcClw : public Calc
-	{
-	public:
-		CalcClw();
-		~CalcClw();
+    // Implementation of Calc interface using CLW library
+    class CalcClw : public Calc
+    {
+    public:
+        CalcClw();
+        ~CalcClw();
 
-		// Enumerate devices 
-		std::uint32_t GetDeviceCount() const override;
+        // Enumerate devices 
+        std::uint32_t GetDeviceCount() const override;
 
-		// Get i-th device spec
-		void GetDeviceSpec(std::uint32_t idx, DeviceSpec& spec) const override;
+        // Get i-th device spec
+        void GetDeviceSpec(std::uint32_t idx, DeviceSpec& spec) const override;
 
-		// Create the device with specified index
-		Device* CreateDevice(std::uint32_t idx) const override;
+        // Create the device with specified index
+        Device* CreateDevice(std::uint32_t idx) const override;
         
         // Create the device from specified OpenCL device
         DeviceCl* CreateDevice(cl_context context, cl_device_id device, cl_command_queue queue) const;
 
-		// Delete the device
-		void DeleteDevice(Device* device) override;
+        // Delete the device
+        void DeleteDevice(Device* device) override;
 
-		Platform GetPlatform() final override { return Platform::kOpenCL; };
+        Platform GetPlatform() final override { return Platform::kOpenCL; };
 
 
-	private:
-		std::vector<CLWPlatform> m_platforms;
-		std::vector<CLWDevice> m_devices;
-	};
+    private:
+        std::vector<CLWPlatform> m_platforms;
+        std::vector<CLWDevice> m_devices;
+    };
 }
 

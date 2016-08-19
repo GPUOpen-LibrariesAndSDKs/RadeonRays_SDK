@@ -125,11 +125,11 @@ namespace RadeonRays
         void SetOption(char const* name, float value) override;
         
 
-		IntersectionDevice* GetDevice() const { return m_device.get(); }
+        IntersectionDevice* GetDevice() const { return m_device.get(); }
 
-		IntersectionApiImpl(IntersectionDevice* device);
-	protected:
-		friend class IntersectionApi;
+        IntersectionApiImpl(IntersectionDevice* device);
+    protected:
+        friend class IntersectionApi;
 
         ~IntersectionApiImpl();
 

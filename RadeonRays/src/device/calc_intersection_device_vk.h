@@ -35,7 +35,7 @@ namespace RadeonRays
     public:
         CalcIntersectionDeviceVK(Calc::Calc* calc, Calc::DeviceVulkan* device);
 
-		Buffer* AdoptBuffer(Anvil::Buffer* buffer) const;
+        Buffer* AdoptBuffer(Anvil::Buffer* buffer) const;
     };
 }
 

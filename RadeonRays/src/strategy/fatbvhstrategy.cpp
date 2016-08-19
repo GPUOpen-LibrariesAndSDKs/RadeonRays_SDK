@@ -43,13 +43,13 @@ namespace RadeonRays
 {
     struct FatBvhStrategy::ShapeData
     {
-		// Shape ID
-		Id id;
-		// Index of root bvh node
-		int bvhidx;
-		int mask;
-		int padding1;
-		// Transform
+        // Shape ID
+        Id id;
+        // Index of root bvh node
+        int bvhidx;
+        int mask;
+        int padding1;
+        // Transform
         matrix minv;
         // Motion blur data
         float3 linearvelocity;
@@ -82,18 +82,18 @@ namespace RadeonRays
 
         GpuData(Calc::Device* d)
         : device(d)
-						  , bvh(nullptr)
-						  , vertices(nullptr)
-						  , faces(nullptr)
-						  , shapes(nullptr)
-						  , raycnt(nullptr)
-						  , stack(nullptr)
-						  , executable(nullptr)
-						  , isect_func(nullptr)
-						  , occlude_func(nullptr)
-						  , isect_indirect_func(nullptr)
-						  , occlude_indirect_func(nullptr)
-		{
+                          , bvh(nullptr)
+                          , vertices(nullptr)
+                          , faces(nullptr)
+                          , shapes(nullptr)
+                          , raycnt(nullptr)
+                          , stack(nullptr)
+                          , executable(nullptr)
+                          , isect_func(nullptr)
+                          , occlude_func(nullptr)
+                          , isect_indirect_func(nullptr)
+                          , occlude_indirect_func(nullptr)
+        {
         }
 
         ~GpuData()
@@ -118,32 +118,32 @@ namespace RadeonRays
         , m_bvh(nullptr)
     {
 #ifndef RR_EMBED_KERNELS
-		if (device->GetPlatform() == Calc::Platform::kOpenCL)
-		{
-			char const* headers[] = { "../RadeonRays/src/kernels/CL/common.cl" };
+        if (device->GetPlatform() == Calc::Platform::kOpenCL)
+        {
+            char const* headers[] = { "../RadeonRays/src/kernels/CL/common.cl" };
 
-			int numheaders = sizeof(headers) / sizeof(char const*);
+            int numheaders = sizeof(headers) / sizeof(char const*);
 
-			m_gpudata->executable = m_device->CompileExecutable("../RadeonRays/src/kernels/CL/fatbvh.cl", headers, numheaders);
-		} 
-		else
-		{
-			assert(device->GetPlatform() == Calc::Platform::kVulkan);
-			m_gpudata->executable = m_device->CompileExecutable("../RadeonRays/src/kernels/GLSL/fatbvh.comp", nullptr, 0);
-		}
+            m_gpudata->executable = m_device->CompileExecutable("../RadeonRays/src/kernels/CL/fatbvh.cl", headers, numheaders);
+        } 
+        else
+        {
+            assert(device->GetPlatform() == Calc::Platform::kVulkan);
+            m_gpudata->executable = m_device->CompileExecutable("../RadeonRays/src/kernels/GLSL/fatbvh.comp", nullptr, 0);
+        }
 #else
 #if USE_OPENCL
-		if (device->GetPlatform() == Calc::Platform::kOpenCL)
-		{
-			m_gpudata->executable = m_device->CompileExecutable(g_fatbvh_opencl, std::strlen(g_fatbvh_opencl), nullptr);
-		}
+        if (device->GetPlatform() == Calc::Platform::kOpenCL)
+        {
+            m_gpudata->executable = m_device->CompileExecutable(g_fatbvh_opencl, std::strlen(g_fatbvh_opencl), nullptr);
+        }
 #endif
 
 #if USE_VULKAN
-		if (m_gpudata->executable == nullptr && device->GetPlatform() == Calc::Platform::kVulkan)
-		{
-			m_gpudata->executable = m_device->CompileExecutable(g_fatbvh_vulkan, std::strlen(g_fatbvh_vulkan), nullptr);
-		}
+        if (m_gpudata->executable == nullptr && device->GetPlatform() == Calc::Platform::kVulkan)
+        {
+            m_gpudata->executable = m_device->CompileExecutable(g_fatbvh_vulkan, std::strlen(g_fatbvh_vulkan), nullptr);
+        }
 #endif
 
 #endif

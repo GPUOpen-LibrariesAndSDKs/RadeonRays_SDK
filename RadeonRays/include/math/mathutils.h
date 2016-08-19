@@ -46,10 +46,10 @@ namespace RadeonRays
     inline float rand_float() { return (float)std::rand()/RAND_MAX; }
 
     /// Genarate random uint value
-    inline unsigned	rand_uint() { return (unsigned)std::rand(); }
+    inline unsigned    rand_uint() { return (unsigned)std::rand(); }
 
     /// Convert cartesian coordinates to spherical
-    inline void	cartesian_to_spherical ( float3 const& cart, float& r, float& phi, float& theta )
+    inline void    cartesian_to_spherical ( float3 const& cart, float& r, float& phi, float& theta )
     {
         float temp = std::atan2(cart.x, cart.z);
         r = std::sqrt(cart.x*cart.x + cart.y*cart.y + cart.z*cart.z);
@@ -58,7 +58,7 @@ namespace RadeonRays
     }
 
     /// Convert cartesian coordinates to spherical
-    inline void	cartesian_to_spherical ( float3 const& cart, float3& sph ) 
+    inline void    cartesian_to_spherical ( float3 const& cart, float3& sph ) 
     {
         cartesian_to_spherical(cart, sph.x, sph.y, sph.z);
     }
@@ -94,7 +94,7 @@ namespace RadeonRays
     }
 
     /// Convert spherical coordinates to cartesian 
-    inline void	spherical_to_cartesian ( float r, float phi, float theta, float3& cart )
+    inline void    spherical_to_cartesian ( float r, float phi, float theta, float3& cart )
     {
         cart.y = r * std::cos(theta);
         cart.z = r * std::sin(theta) * std::cos(phi);
@@ -102,7 +102,7 @@ namespace RadeonRays
     }
 
     /// Convert spherical coordinates to cartesian 
-    inline void	spherical_to_cartesian ( float3 const& sph, float3& cart )
+    inline void    spherical_to_cartesian ( float3 const& sph, float3& cart )
     {
         spherical_to_cartesian(sph.x, sph.y, sph.z, cart); 
     }
@@ -160,7 +160,7 @@ namespace RadeonRays
     /// Solve quadratic equation
     /// Returns false in case of no real roots exist
     /// true otherwise
-    bool	solve_quadratic( float a, float b, float c, float& x1, float& x2 );
+    bool    solve_quadratic( float a, float b, float c, float& x1, float& x2 );
 
     /// Matrix transforms
     matrix translation(float3 const& v);
@@ -278,7 +278,7 @@ namespace RadeonRays
         return (1.f - s) * v1 + s * v2;
     }
 
-    inline bool	solve_quadratic( float a, float b, float c, float& x1, float& x2 )
+    inline bool    solve_quadratic( float a, float b, float c, float& x1, float& x2 )
     {
         float d = b*b - 4*a*c;
         if ( d < 0 )
@@ -411,7 +411,7 @@ namespace RadeonRays
         return float3(tp.x, tp.y, tp.z);
     }
 
-    inline quaternion	rotate_quaternion( quaternion const& v, quaternion const& q )
+    inline quaternion    rotate_quaternion( quaternion const& v, quaternion const& q )
     {
         return q * v * q.inverse();
     }

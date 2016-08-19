@@ -22,8 +22,8 @@ THE SOFTWARE.
 
 typedef struct
 {
-	float3 pmin;
-	float3 pmax;
+    float3 pmin;
+    float3 pmax;
 } bbox;
 
 // The following two functions are from
@@ -66,8 +66,8 @@ __kernel void CalcMortonCode(
 
     if (globalid < numpositions)
     {
-		bbox bound = bounds[globalid];
-		float3 center = 0.5f * (bound.pmax + bound.pmin);
+        bbox bound = bounds[globalid];
+        float3 center = 0.5f * (bound.pmax + bound.pmin);
         mortoncodes[globalid] = CalculateMortonCode(center);
     }
 }

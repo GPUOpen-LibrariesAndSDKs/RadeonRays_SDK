@@ -41,11 +41,11 @@ namespace RadeonRays
             kStateChangeTransform = 0x1,
             kStateChangeMotion = 0x2,
             kStateChangeId = 0x4,
-			kStateChangeMask = 0x5
+            kStateChangeMask = 0x5
         };
         
-		// Constructor
-		ShapeImpl();
+        // Constructor
+        ShapeImpl();
 
         // Destructor
         ~ShapeImpl() = 0;
@@ -77,11 +77,11 @@ namespace RadeonRays
         // Get ID
         Id GetId() const override;
 
-		// Set intersection mask 
-		void SetMask(int mask) override;
+        // Set intersection mask 
+        void SetMask(int mask) override;
 
-		// Get intersection mask
-		int  GetMask() const override;
+        // Get intersection mask
+        int  GetMask() const override;
         
         // Get state changes since last OnCommit
         int GetStateChange() const;
@@ -95,17 +95,17 @@ namespace RadeonRays
         matrix worldmatinv_;
         float3 linearmotion_;
         quaternion angulrmotion_;
-		int mask_;
+        int mask_;
         // Id
         Id id_;
         // State change
         mutable int statechange_;
     };
 
-	inline ShapeImpl::ShapeImpl()
-	{
-		SetMask(0xFFFFFFFF);
-	}
+    inline ShapeImpl::ShapeImpl()
+    {
+        SetMask(0xFFFFFFFF);
+    }
 
     inline ShapeImpl::~ShapeImpl()
     {
@@ -172,16 +172,16 @@ namespace RadeonRays
         return false;
     }
 
-	inline void ShapeImpl::SetMask(int mask)
-	{
-		mask_ = mask;
-		statechange_ |= kStateChangeMask;
-	}
+    inline void ShapeImpl::SetMask(int mask)
+    {
+        mask_ = mask;
+        statechange_ |= kStateChangeMask;
+    }
 
-	inline int  ShapeImpl::GetMask() const
-	{
-		return mask_;
-	}
+    inline int  ShapeImpl::GetMask() const
+    {
+        return mask_;
+    }
 }
 
 

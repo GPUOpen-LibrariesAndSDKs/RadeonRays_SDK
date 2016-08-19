@@ -27,7 +27,7 @@ varying vec2 Texcoord;
 
 void main()
 {
-	Texcoord = inTexcoord;
-	gl_Position = vec4(inPosition, 1.0);
+    Texcoord = inTexcoord;
+    gl_Position = vec4(inPosition, 1.0);
 }
 

@@ -33,8 +33,8 @@ THE SOFTWARE.
 #endif
 
 #if USE_VULKAN
-#	include "../device/calc_intersection_device_vk.h"
-#	include "calc_vk.h"
+#    include "../device/calc_intersection_device_vk.h"
+#    include "calc_vk.h"
 #endif
 
 #ifdef USE_EMBREE
@@ -43,132 +43,132 @@ THE SOFTWARE.
 
 namespace RadeonRays
 {
-	static RadeonRays::DeviceInfo::Platform s_calc_platform = RadeonRays::DeviceInfo::Platform::kAny;
+    static RadeonRays::DeviceInfo::Platform s_calc_platform = RadeonRays::DeviceInfo::Platform::kAny;
 
-#define GetCalc_impl(platform)														\
-    static Calc::Calc* GetCalc##platform()											\
-    {																				\
-        static Calc::Calc* s_calc##platform = nullptr;								\
-        if (!s_calc##platform)														\
-        {																			\
-            s_calc##platform = Calc::CreateCalc(Calc::Platform::k##platform, 0);	\
-        }																			\
-        return s_calc##platform;													\
+#define GetCalc_impl(platform)                                                        \
+    static Calc::Calc* GetCalc##platform()                                            \
+    {                                                                                \
+        static Calc::Calc* s_calc##platform = nullptr;                                \
+        if (!s_calc##platform)                                                        \
+        {                                                                            \
+            s_calc##platform = Calc::CreateCalc(Calc::Platform::k##platform, 0);    \
+        }                                                                            \
+        return s_calc##platform;                                                    \
     }
 
-	GetCalc_impl(OpenCL)
+    GetCalc_impl(OpenCL)
 
-	GetCalc_impl(Vulkan)
+    GetCalc_impl(Vulkan)
 #undef GetCalc_impl
 
-	static Calc::Calc* GetCalc()
-	{
-		// if CL allowed see if we have any devices if not
-		// try Vulkan if allowed, if neither try embree if allowed
+    static Calc::Calc* GetCalc()
+    {
+        // if CL allowed see if we have any devices if not
+        // try Vulkan if allowed, if neither try embree if allowed
 #if USE_OPENCL
-		if( s_calc_platform & DeviceInfo::Platform::kOpenCL )
-		{
-			auto* calc = GetCalcOpenCL();
-			if (calc != nullptr) { return calc; }
-		}
+        if( s_calc_platform & DeviceInfo::Platform::kOpenCL )
+        {
+            auto* calc = GetCalcOpenCL();
+            if (calc != nullptr) { return calc; }
+        }
 #endif
 #if USE_VULKAN
-		if ( s_calc_platform & DeviceInfo::Platform::kVulkan )
-		{
-			auto* calc = GetCalcVulkan();
-			if (calc != nullptr) { return calc; }
-		}
+        if ( s_calc_platform & DeviceInfo::Platform::kVulkan )
+        {
+            auto* calc = GetCalcVulkan();
+            if (calc != nullptr) { return calc; }
+        }
 #endif
-		return nullptr;
-	}
-	void IntersectionApi::SetPlatform(const DeviceInfo::Platform platform)
-	{
-		s_calc_platform = platform;
-	}
+        return nullptr;
+    }
+    void IntersectionApi::SetPlatform(const DeviceInfo::Platform platform)
+    {
+        s_calc_platform = platform;
+    }
 
     std::uint32_t IntersectionApi::GetDeviceCount()
     {
-		auto* calc = GetCalc();
-		std::uint32_t result = 0;
-		if (calc != nullptr)
-		{
-			result += GetCalc()->GetDeviceCount();
-		}
-		// embree is always the last device
+        auto* calc = GetCalc();
+        std::uint32_t result = 0;
+        if (calc != nullptr)
+        {
+            result += GetCalc()->GetDeviceCount();
+        }
+        // embree is always the last device
 #ifdef USE_EMBREE
-		if (s_calc_platform & DeviceInfo::Platform::kEmbree)
-		{
-			++result;
-		}
+        if (s_calc_platform & DeviceInfo::Platform::kEmbree)
+        {
+            ++result;
+        }
 #endif //USE_EMBREE
 
         return result;
     }
-	static bool IsDeviceIndexEmbree(uint32_t devidx)
-	{
+    static bool IsDeviceIndexEmbree(uint32_t devidx)
+    {
 
 #ifdef USE_EMBREE
-		auto* calc = GetCalc();
-		if (calc != nullptr)
-		{
-			if (devidx == GetCalc()->GetDeviceCount())
-			{
-				return true;
-			}
-		}
-		else if(devidx == 0)
-		{
-			return true;
-		}
+        auto* calc = GetCalc();
+        if (calc != nullptr)
+        {
+            if (devidx == GetCalc()->GetDeviceCount())
+            {
+                return true;
+            }
+        }
+        else if(devidx == 0)
+        {
+            return true;
+        }
 #endif //USE_EMBREE
-		return false;
-	}
+        return false;
+    }
 
     void IntersectionApi::GetDeviceInfo(std::uint32_t devidx, DeviceInfo& devinfo)
     {
 
-		auto* calc = GetCalc();
-		std::uint32_t result = 0;
+        auto* calc = GetCalc();
+        std::uint32_t result = 0;
 
-		if (IsDeviceIndexEmbree(devidx))
-		{
+        if (IsDeviceIndexEmbree(devidx))
+        {
 #ifdef USE_EMBREE
-			devinfo.name = "embree";
-			devinfo.vendor = "intel";
-			devinfo.type = DeviceInfo::kCpu;
-			devinfo.platform = DeviceInfo::kEmbree;
+            devinfo.name = "embree";
+            devinfo.vendor = "intel";
+            devinfo.type = DeviceInfo::kCpu;
+            devinfo.platform = DeviceInfo::kEmbree;
 #else
-			assert(false);
+            assert(false);
 #endif //USE_EMBREE
-			return;
-		}
-		assert(calc);
+            return;
+        }
+        assert(calc);
 
-		Calc::DeviceSpec spec;
-		calc->GetDeviceSpec(devidx, spec);
+        Calc::DeviceSpec spec;
+        calc->GetDeviceSpec(devidx, spec);
 
-		// TODO: careful with memory management of strings
-		devinfo.name = spec.name;
-		devinfo.vendor = spec.vendor;
-		devinfo.type = spec.type == Calc::DeviceType::kGpu ? DeviceInfo::kGpu : DeviceInfo::kCpu;
+        // TODO: careful with memory management of strings
+        devinfo.name = spec.name;
+        devinfo.vendor = spec.vendor;
+        devinfo.type = spec.type == Calc::DeviceType::kGpu ? DeviceInfo::kGpu : DeviceInfo::kCpu;
     }
 
     IntersectionApi* IntersectionApi::Create(std::uint32_t devidx)
     {
-		if (IsDeviceIndexEmbree(devidx))
-		{
+        if (IsDeviceIndexEmbree(devidx))
+        {
 #ifdef USE_EMBREE
-			return new IntersectionApiImpl(new EmbreeIntersectionDevice());
+            return new IntersectionApiImpl(new EmbreeIntersectionDevice());
 #endif //USE_EMBREE
-		}
-		else
-		{
-			auto* calc = GetCalc();
-			if (calc != nullptr)
-			{
-				return new IntersectionApiImpl(new CalcIntersectionDevice(calc, calc->CreateDevice(devidx)));
-			}
-		}
+        }
+        else
+        {
+            auto* calc = GetCalc();
+            if (calc != nullptr)
+            {
+                return new IntersectionApiImpl(new CalcIntersectionDevice(calc, calc->CreateDevice(devidx)));
+            }
+        }
 
         return nullptr;
     }
@@ -179,31 +179,31 @@ namespace RadeonRays
         delete api;
     }
 #ifdef USE_VULKAN
-	RRAPI IntersectionApi* CreateFromVulkan(Anvil::Device* device, Anvil::CommandPool* cmd_pool)
-	{
-		auto calc = dynamic_cast<Calc::Calc*>(GetCalcVulkan());
-		if (calc)
-		{
-			return new IntersectionApiImpl(new CalcIntersectionDeviceVK(calc, Calc::CreateDeviceFromVulkan(device, cmd_pool)));
-		}
-		else
-		{
-			return nullptr;	
-		}
-	}
+    RRAPI IntersectionApi* CreateFromVulkan(Anvil::Device* device, Anvil::CommandPool* cmd_pool)
+    {
+        auto calc = dynamic_cast<Calc::Calc*>(GetCalcVulkan());
+        if (calc)
+        {
+            return new IntersectionApiImpl(new CalcIntersectionDeviceVK(calc, Calc::CreateDeviceFromVulkan(device, cmd_pool)));
+        }
+        else
+        {
+            return nullptr;    
+        }
+    }
 #endif
 #ifdef USE_OPENCL
-    RRAPI IntersectionApi* CreateFromOpenClContext(cl_context		context, cl_device_id device, cl_command_queue queue)
+    RRAPI IntersectionApi* CreateFromOpenClContext(cl_context        context, cl_device_id device, cl_command_queue queue)
     {
         auto calc = dynamic_cast<Calc::Calc*>(GetCalcOpenCL());
-		if (calc)
+        if (calc)
         {
             return new IntersectionApiImpl(new CalcIntersectionDeviceCl(calc, Calc::CreateDeviceFromOpenCL(context, device, queue)));
-		}
-		else
-		{
-			return nullptr;
-		}
+        }
+        else
+        {
+            return nullptr;
+        }
     }
 #endif
 

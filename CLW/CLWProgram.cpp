@@ -210,23 +210,23 @@ CLWProgram CLWProgram::CreateFromFile(char const* filename,
     std::vector<char const*> headerstrs;
     std::vector<size_t> headerssizes;
 
-	if (numheaders > 0)
-	{
-		for (int i = 0; i < numheaders; ++i)
-		{
-			std::vector<char> headersource;
-			load_file_contents(headernames[i], headersource, false);
-			headerssizes.push_back(headersource.size());
-			headers.push_back(std::move(headersource));
-			headerstrs.push_back(&headers[i][0]);
-		}
+    if (numheaders > 0)
+    {
+        for (int i = 0; i < numheaders; ++i)
+        {
+            std::vector<char> headersource;
+            load_file_contents(headernames[i], headersource, false);
+            headerssizes.push_back(headersource.size());
+            headers.push_back(std::move(headersource));
+            headerstrs.push_back(&headers[i][0]);
+        }
 
-		return CreateFromSource(&sourcecode[0], sourcecode.size(), &headerstrs[0], headernames, &headerssizes[0], numheaders, context);
-	}
-	else
-	{
-		return CreateFromSource(&sourcecode[0], sourcecode.size(), context);
-	}
+        return CreateFromSource(&sourcecode[0], sourcecode.size(), &headerstrs[0], headernames, &headerssizes[0], numheaders, context);
+    }
+    else
+    {
+        return CreateFromSource(&sourcecode[0], sourcecode.size(), context);
+    }
 }
 
 CLWProgram::CLWProgram(cl_program program)
@@ -235,7 +235,7 @@ CLWProgram::CLWProgram(cl_program program)
     cl_int status = CL_SUCCESS;
     cl_uint numKernels;
     status = clCreateKernelsInProgram(*this, 0, nullptr, &numKernels);
-	ThrowIf(numKernels == 0, CL_BUILD_ERROR, "clCreateKernelsInProgram return 0 kernels");
+    ThrowIf(numKernels == 0, CL_BUILD_ERROR, "clCreateKernelsInProgram return 0 kernels");
 
     ThrowIf(status != CL_SUCCESS, status, "clCreateKernelsInProgram failed");
     

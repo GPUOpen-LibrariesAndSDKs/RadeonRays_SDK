@@ -30,59 +30,59 @@ THE SOFTWARE.
 
 namespace RadeonRays
 {
-	struct CalcBufferHolder : public RadeonRays::Buffer
-	{
+    struct CalcBufferHolder : public RadeonRays::Buffer
+    {
 
-		CalcBufferHolder(Calc::Device* device, Calc::Buffer* buffer)
-			: m_buffer(buffer, [device](Calc::Buffer* buffer) { device->DeleteBuffer(buffer); })
-		{
-		}
+        CalcBufferHolder(Calc::Device* device, Calc::Buffer* buffer)
+            : m_buffer(buffer, [device](Calc::Buffer* buffer) { device->DeleteBuffer(buffer); })
+        {
+        }
 
-		~CalcBufferHolder() = default;
+        ~CalcBufferHolder() = default;
 
-		Calc::Buffer* GetData() const
-		{
-			return m_buffer.get();
-		}
+        Calc::Buffer* GetData() const
+        {
+            return m_buffer.get();
+        }
 
-		std::unique_ptr<Calc::Buffer, std::function<void(Calc::Buffer*)>> m_buffer;
-	};
+        std::unique_ptr<Calc::Buffer, std::function<void(Calc::Buffer*)>> m_buffer;
+    };
 
-	struct CalcEventHolder : public RadeonRays::Event
-	{
-		CalcEventHolder()
-			: m_event()
-		{
-		}
+    struct CalcEventHolder : public RadeonRays::Event
+    {
+        CalcEventHolder()
+            : m_event()
+        {
+        }
 
-		CalcEventHolder(Calc::Device* device, Calc::Event* event)
-			: m_event(event, [device](Calc::Event* event) { device->DeleteEvent(event); })
-		{
-		}
+        CalcEventHolder(Calc::Device* device, Calc::Event* event)
+            : m_event(event, [device](Calc::Event* event) { device->DeleteEvent(event); })
+        {
+        }
 
-		~CalcEventHolder() = default;
+        ~CalcEventHolder() = default;
 
-		void Set(Calc::Device* device, Calc::Event* event)
-		{
-			m_event = decltype(m_event)(event, [device](Calc::Event* event) { device->DeleteEvent(event); });
-		}
+        void Set(Calc::Device* device, Calc::Event* event)
+        {
+            m_event = decltype(m_event)(event, [device](Calc::Event* event) { device->DeleteEvent(event); });
+        }
 
-		bool Complete() const override
-		{
-			return m_event->IsComplete();
-		}
+        bool Complete() const override
+        {
+            return m_event->IsComplete();
+        }
 
-		void Wait() override
-		{
-			return m_event->Wait();
-		}
+        void Wait() override
+        {
+            return m_event->Wait();
+        }
 
-		Calc::Event* GetData()
-		{
-			return m_event.get();
-		}
+        Calc::Event* GetData()
+        {
+            return m_event.get();
+        }
 
-		std::unique_ptr<Calc::Event, std::function<void(Calc::Event*)>> m_event;
-	};
+        std::unique_ptr<Calc::Event, std::function<void(Calc::Event*)>> m_event;
+    };
 }
 

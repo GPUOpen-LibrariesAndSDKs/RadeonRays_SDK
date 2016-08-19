@@ -14,7 +14,7 @@ project "UnitTest"
     end
 
     if _ACTION == "vs2012" then
-	defines{ "GTEST_HAS_TR1_TUPLE=0" }
+    defines{ "GTEST_HAS_TR1_TUPLE=0" }
     end
 
     if _OPTIONS["use_opencl"] then

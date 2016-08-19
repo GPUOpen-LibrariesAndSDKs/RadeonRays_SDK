@@ -42,8 +42,8 @@ float3 Sample_MapToHemisphere(
     u = cross(n, v);
     
     // Calculate 2D sample
-	float r1 = sample.x;
-	float r2 = sample.y;
+    float r1 = sample.x;
+    float r2 = sample.y;
     
     // Transform to spherical coordinates
     float sinpsi = sin(2*PI*r1);
@@ -141,18 +141,18 @@ float BalanceHeuristic(int nf, float fpdf, int ng, float gpdf)
 
 typedef struct
 {
-	uint seq;
-	uint s0;
-	uint s1;
-	uint s2;
+    uint seq;
+    uint s0;
+    uint s1;
+    uint s2;
 } SobolSampler;
 
 float2 UniformSampler_Sample2D(Rng* rng)
 {
-	float2 sample;
-	sample.x = RandFloat(rng);
-	sample.y = RandFloat(rng);
-	return sample;
+    float2 sample;
+    sample.x = RandFloat(rng);
+    sample.y = RandFloat(rng);
+    return sample;
 }
 
 #define MATSIZE 52
@@ -161,14 +161,14 @@ float2 UniformSampler_Sample2D(Rng* rng)
 // 
 float SobolSampler_Sample1D(uint index, uint dimension, uint scramble, __global uint const* mat)
 {
-	uint result = scramble;
-	for (uint i = dimension * MATSIZE; index; index >>= 1, ++i)
-	{
-		if (index & 1)
-			result ^= mat[i];
-	}
+    uint result = scramble;
+    for (uint i = dimension * MATSIZE; index; index >>= 1, ++i)
+    {
+        if (index & 1)
+            result ^= mat[i];
+    }
 
-	return result * (1.f / (1UL << 32));
+    return result * (1.f / (1UL << 32));
 }
 
 

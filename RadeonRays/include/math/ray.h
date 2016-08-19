@@ -32,16 +32,16 @@ namespace RadeonRays
     struct ray
     {
         ray(float3 const& oo = float3(0,0,0), 
-			float3 const& dd = float3(0,0,0), 
-			float maxt = std::numeric_limits<float>::max(), 
-			float time = 0.f)
+            float3 const& dd = float3(0,0,0), 
+            float maxt = std::numeric_limits<float>::max(), 
+            float time = 0.f)
             : o(oo)
             , d(dd)
         {
             SetMaxT(maxt);
             SetTime(time);
-			SetMask(0xFFFFFFFF);
-			SetActive(true);
+            SetMask(0xFFFFFFFF);
+            SetActive(true);
         }
 
         float3 operator ()(float t) const
@@ -54,44 +54,44 @@ namespace RadeonRays
             d.w = time;
         }
 
-		float GetTime() const
-		{
-			return d.w;
-		}
+        float GetTime() const
+        {
+            return d.w;
+        }
 
         void SetMaxT(float maxt)
         {
             o.w = maxt;
         }
 
-		float GetMaxT() const
-		{
-			return o.w;
-		}
+        float GetMaxT() const
+        {
+            return o.w;
+        }
 
-		void SetMask(int mask)
-		{
-			extra.x = mask;
-		}
+        void SetMask(int mask)
+        {
+            extra.x = mask;
+        }
 
-		int GetMask() const
-		{
-			return extra.x;
-		}
+        int GetMask() const
+        {
+            return extra.x;
+        }
 
-		void SetActive(bool active)
-		{
-			extra.y = active ? 1 : 0;
-		}
+        void SetActive(bool active)
+        {
+            extra.y = active ? 1 : 0;
+        }
 
-		bool IsActive() const
-		{
-			return extra.y > 0;
-		}
+        bool IsActive() const
+        {
+            return extra.y > 0;
+        }
 
         float4 o;
         float4 d;
-		int2 extra;
-		int2 padding;
+        int2 extra;
+        int2 padding;
     };
 }

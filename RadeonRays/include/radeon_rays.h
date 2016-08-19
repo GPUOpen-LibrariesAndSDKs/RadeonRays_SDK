@@ -28,7 +28,7 @@ THE SOFTWARE.
 #include "math/matrix.h"
 #include "math/ray.h"
 #include "math/mathutils.h"
-		
+        
 #define RADEONRAYS_API_VERSION 2.0
 
 #if !RR_STATIC_LIBRARY
@@ -50,9 +50,9 @@ THE SOFTWARE.
 #endif
 namespace RadeonRays
 {
-	struct Intersection;
+    struct Intersection;
 
-	/// Represents a device, which can be used by API for intersection purposes.
+    /// Represents a device, which can be used by API for intersection purposes.
     /// API is distributing the work across multiple devices itsels, so
     /// this structure is only used to query devices configuration and
     /// limit the number of devices available for the API.
@@ -66,14 +66,14 @@ namespace RadeonRays
             kAccelerator
         };
 
-		enum Platform
-		{
-			kOpenCL = 0x1,
-			kVulkan = 0x2,
-			kEmbree = 0x4,
+        enum Platform
+        {
+            kOpenCL = 0x1,
+            kVulkan = 0x2,
+            kEmbree = 0x4,
 
-			kAny = 0xFF
-		};
+            kAny = 0xFF
+        };
 
         // Device name
         char const* name;
@@ -81,7 +81,7 @@ namespace RadeonRays
         char const* vendor;
         // Device type
         Type type;
-		Platform platform;
+        Platform platform;
     };
 
     // Forward declaration of entities
@@ -111,9 +111,9 @@ namespace RadeonRays
         virtual void SetId(Id id) = 0;
         virtual Id GetId() const = 0;
 
-		// Geometry mask to mask out intersections
-		virtual void SetMask(int mask) = 0;
-		virtual int  GetMask() const = 0;
+        // Geometry mask to mask out intersections
+        virtual void SetMask(int mask) = 0;
+        virtual int  GetMask() const = 0;
     };
 
     // Buffer represents a chunk of memory hosted inside the API
@@ -143,18 +143,18 @@ namespace RadeonRays
         virtual char const* what() const = 0;
     };
 
-	// must match Intersection struct on the GPU side exactly!
+    // must match Intersection struct on the GPU side exactly!
     struct Intersection
     {
-		// Shape ID
-		Id shapeid;
-		// Primitve ID
-		Id primid;
+        // Shape ID
+        Id shapeid;
+        // Primitve ID
+        Id primid;
 
-		int padding0;
-		int padding1;
-		
-		// UV parametrization
+        int padding0;
+        int padding1;
+        
+        // UV parametrization
         float4 uvwt;
 
         Intersection();
@@ -178,17 +178,17 @@ namespace RadeonRays
     {
     public:
 
-		/******************************************
-		Backend management
-		*******************************************/
-		// By default RadeonRays will any platform with potential GPU accelerations,
-		// if you prefer to specify which platform call SetPlatform before 
-		// GetDeviceInfo/GetDeviceCount for each specific platform
-		// By default will choose OpenCL if available, and if not Vulkan
-		// Note: this may be sub optimal in some case. to avoid enum all devices
-		// across all platforms explicitly before deciding on platform and 
-		// device(s) to use
-		static void SetPlatform(const DeviceInfo::Platform platform);
+        /******************************************
+        Backend management
+        *******************************************/
+        // By default RadeonRays will any platform with potential GPU accelerations,
+        // if you prefer to specify which platform call SetPlatform before 
+        // GetDeviceInfo/GetDeviceCount for each specific platform
+        // By default will choose OpenCL if available, and if not Vulkan
+        // Note: this may be sub optimal in some case. to avoid enum all devices
+        // across all platforms explicitly before deciding on platform and 
+        // device(s) to use
+        static void SetPlatform(const DeviceInfo::Platform platform);
 
 
         /******************************************

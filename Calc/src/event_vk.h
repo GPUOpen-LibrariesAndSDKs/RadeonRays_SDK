@@ -25,36 +25,36 @@ THE SOFTWARE.
 #include "wrappers/event.h"
 
 namespace Calc {
-	class DeviceVulkanw;
+    class DeviceVulkanw;
 
-	// Vulkan version of Event. It does not used any OS primitives but ensures using existing functionality whether an execution of the CommandBuffer has been completed or not.
-	class EventVulkan : public Event
-	{
-	public:
-		EventVulkan( const DeviceVulkanw* in_device ) :
-				m_device( in_device )
-		{
-			m_event_fence = m_device->GetFenceId();
-		}
+    // Vulkan version of Event. It does not used any OS primitives but ensures using existing functionality whether an execution of the CommandBuffer has been completed or not.
+    class EventVulkan : public Event
+    {
+    public:
+        EventVulkan( const DeviceVulkanw* in_device ) :
+                m_device( in_device )
+        {
+            m_event_fence = m_device->GetFenceId();
+        }
 
-		virtual ~EventVulkan()
-		{
-			m_device = nullptr;
-		}
+        virtual ~EventVulkan()
+        {
+            m_device = nullptr;
+        }
 
-		void Wait() override
-		{
-			Assert( nullptr != m_device );
-			m_device->WaitForFence(m_event_fence);
-		}
+        void Wait() override
+        {
+            Assert( nullptr != m_device );
+            m_device->WaitForFence(m_event_fence);
+        }
 
-		bool IsComplete() const override
-		{
-			Assert( nullptr != m_device );
-			return m_device->HasFenceBeenPassed(m_event_fence);
-		}
-	private:
-		const DeviceVulkanw* m_device;
-		std::atomic<uint64_t>           m_event_fence;
-	};
+        bool IsComplete() const override
+        {
+            Assert( nullptr != m_device );
+            return m_device->HasFenceBeenPassed(m_event_fence);
+        }
+    private:
+        const DeviceVulkanw* m_device;
+        std::atomic<uint64_t>           m_event_fence;
+    };
 }

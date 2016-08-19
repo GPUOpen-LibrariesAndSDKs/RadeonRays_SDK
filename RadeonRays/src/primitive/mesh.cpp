@@ -32,7 +32,7 @@ namespace RadeonRays
         int const* vidx, int vistride,
         int const* nfaceverts,
         int nfaces)
-		: puretriangle_(true)
+        : puretriangle_(true)
     {
         // Handle vertices
         // Allocate space in advance
@@ -59,7 +59,7 @@ namespace RadeonRays
         // If mesh consists of triangles only apply parallel loading
         if (nfaceverts == nullptr)
         {
-			puretriangle_ = true;
+            puretriangle_ = true;
 
             int istride = (vistride == 0) ? (3 * sizeof(int)) : vistride;
 
@@ -99,7 +99,7 @@ namespace RadeonRays
                     faces_[i].i3 = *((int const*)(vidxptr + 3 * sizeof(int)));
                     faces_[i].type_ = FaceType::QUAD;
 
-					puretriangle_ = false;
+                    puretriangle_ = false;
 
                     // Goto next primitive
                     vidxptr += (vistride == 0) ? (4 * sizeof(int)) : vistride;
@@ -112,34 +112,34 @@ namespace RadeonRays
         }
     }
 
-	int Mesh::GetTransformedFace(int const faceidx, matrix const & transform, float3* outverts) const
+    int Mesh::GetTransformedFace(int const faceidx, matrix const & transform, float3* outverts) const
     {
-		// origin code special cased identity matrix. TODO check speed regressions
-		outverts[0] = transform_point(vertices_[faces_[faceidx].i0], transform);
-		outverts[1] = transform_point(vertices_[faces_[faceidx].i1], transform);
-		outverts[2] = transform_point(vertices_[faces_[faceidx].i2], transform);
+        // origin code special cased identity matrix. TODO check speed regressions
+        outverts[0] = transform_point(vertices_[faces_[faceidx].i0], transform);
+        outverts[1] = transform_point(vertices_[faces_[faceidx].i1], transform);
+        outverts[2] = transform_point(vertices_[faces_[faceidx].i2], transform);
 
-		if (faces_[faceidx].type_ == FaceType::QUAD)
-		{
-			outverts[3] = transform_point(vertices_[faces_[faceidx].i3], transform);
-			return 4;
-		} else
-		{
-			return 3;
-		}
+        if (faces_[faceidx].type_ == FaceType::QUAD)
+        {
+            outverts[3] = transform_point(vertices_[faces_[faceidx].i3], transform);
+            return 4;
+        } else
+        {
+            return 3;
+        }
     }
 
     void Mesh::GetFaceBounds(int faceidx, bool objectspace, bbox& bounds) const
     {
-		float3 verts[4];
-		const int numVert = GetTransformedFace(faceidx, objectspace ? matrix() : worldmat_, verts);
-		bounds = bbox(verts[0], verts[1]);
-		bounds.grow(verts[2]);
+        float3 verts[4];
+        const int numVert = GetTransformedFace(faceidx, objectspace ? matrix() : worldmat_, verts);
+        bounds = bbox(verts[0], verts[1]);
+        bounds.grow(verts[2]);
 
-		if(numVert == 4 )
-		{
-			bounds.grow(verts[3]);
-		}
+        if(numVert == 4 )
+        {
+            bounds.grow(verts[3]);
+        }
     }
 
     Mesh::~Mesh()

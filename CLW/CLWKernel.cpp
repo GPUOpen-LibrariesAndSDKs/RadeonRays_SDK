@@ -42,9 +42,9 @@ void CLWKernel::SetArg(unsigned int idx, ParameterHolder param)
 
 void CLWKernel::SetArg(unsigned int idx, size_t size, void* ptr)
 {
-	cl_int status = CL_SUCCESS;
-	
-	status = clSetKernelArg(*this, idx, size, ptr);
-		
-	ThrowIf(status != CL_SUCCESS, status, "clSetKernelArg failed");
+    cl_int status = CL_SUCCESS;
+    
+    status = clSetKernelArg(*this, idx, size, ptr);
+        
+    ThrowIf(status != CL_SUCCESS, status, "clSetKernelArg failed");
 }

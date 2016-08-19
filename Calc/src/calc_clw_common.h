@@ -26,41 +26,41 @@ THE SOFTWARE.
 
 namespace Calc
 {
-	inline cl_mem_flags Convert2ClCreationFlags(std::uint32_t flags)
-	{
-		// TODO: implement correctly
-		return CL_MEM_READ_WRITE;
-	}
+    inline cl_mem_flags Convert2ClCreationFlags(std::uint32_t flags)
+    {
+        // TODO: implement correctly
+        return CL_MEM_READ_WRITE;
+    }
 
-	inline cl_mem_flags Convert2ClMapFlags(std::uint32_t flags)
-	{
-		cl_mem_flags res = 0;
+    inline cl_mem_flags Convert2ClMapFlags(std::uint32_t flags)
+    {
+        cl_mem_flags res = 0;
 
-		if (flags & kMapRead)
-			res |= CL_MAP_READ;
+        if (flags & kMapRead)
+            res |= CL_MAP_READ;
 
-		if (flags & kMapWrite)
-			res |= CL_MAP_WRITE;
+        if (flags & kMapWrite)
+            res |= CL_MAP_WRITE;
 
-		return res;
-	}
+        return res;
+    }
 
-	inline DeviceType Convert2CalcDeviceType(cl_device_type type)
-	{
-		DeviceType res = DeviceType::kUnknown;
-		switch (type)
-		{
-		case CL_DEVICE_TYPE_CPU:
-			res = DeviceType::kCpu;
-			break;
-		case CL_DEVICE_TYPE_GPU:
-			res = DeviceType::kGpu;
-			break;
-		case CL_DEVICE_TYPE_ACCELERATOR:
-			res = DeviceType::kAccelerator;
-			break;
-		}
+    inline DeviceType Convert2CalcDeviceType(cl_device_type type)
+    {
+        DeviceType res = DeviceType::kUnknown;
+        switch (type)
+        {
+        case CL_DEVICE_TYPE_CPU:
+            res = DeviceType::kCpu;
+            break;
+        case CL_DEVICE_TYPE_GPU:
+            res = DeviceType::kGpu;
+            break;
+        case CL_DEVICE_TYPE_ACCELERATOR:
+            res = DeviceType::kAccelerator;
+            break;
+        }
 
-		return res;
-	}
+        return res;
+    }
 }

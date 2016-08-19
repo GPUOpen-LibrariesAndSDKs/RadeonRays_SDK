@@ -26,17 +26,17 @@ THE SOFTWARE.
 
 namespace Calc
 {
-	// Exception implementation with CLW
-	class ExceptionClw : public Exception
-	{
-	public:
-		ExceptionClw(std::string what) : m_what(what) {}
-		~ExceptionClw() {}
+    // Exception implementation with CLW
+    class ExceptionClw : public Exception
+    {
+    public:
+        ExceptionClw(std::string what) : m_what(what) {}
+        ~ExceptionClw() {}
 
-		char const* what() const override { return m_what.c_str(); }
+        char const* what() const override { return m_what.c_str(); }
 
-	private:
-		std::string m_what;
-	};
+    private:
+        std::string m_what;
+    };
 }
 

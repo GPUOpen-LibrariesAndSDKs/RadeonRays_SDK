@@ -104,17 +104,17 @@ float3 Sample2D(Texture const* texture, __global char const* texturedata, float2
         // Filter and return the result
         return valx;
     }
-	else if (texture->fmt == RGBA16)
-	{
-		__global half const* mydatah = (__global half const*)mydata;
+    else if (texture->fmt == RGBA16)
+    {
+        __global half const* mydatah = (__global half const*)mydata;
 
-		float valx = vload_half(0, mydatah + 4*(width * y + x));
-		float valy = vload_half(0, mydatah + 4*(width * y + x) + 1);
-		float valz = vload_half(0, mydatah + 4*(width * y + x) + 2);
+        float valx = vload_half(0, mydatah + 4*(width * y + x));
+        float valy = vload_half(0, mydatah + 4*(width * y + x) + 1);
+        float valz = vload_half(0, mydatah + 4*(width * y + x) + 2);
 
-		return make_float3(valx, valy, valz);
-	}
-	else
+        return make_float3(valx, valy, valz);
+    }
+    else
     {
         __global uchar4 const* mydatac = (__global uchar4 const*)mydata;
 

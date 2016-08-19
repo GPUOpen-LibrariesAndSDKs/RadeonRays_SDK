@@ -27,9 +27,9 @@ THE SOFTWARE.
 // 2D distribution function
 typedef struct __Distribution2D
 {
-	int w;
-	int h;
-	__global float const* data;
+    int w;
+    int h;
+    __global float const* data;
 } Distribution2D;
 
 #ifndef APPLE
@@ -171,24 +171,24 @@ float3 GetOrthoVector(float3 n)
 
 float2 Distribution2D_Sample(Distribution2D const* dist, float2 sample, float* pdf)
 {
-	return make_float2(0.f, 0.f);
+    return make_float2(0.f, 0.f);
 }
 
 float Distribution2D_GetPdf(Distribution2D const* dist, float2 sample)
 {
-	return 0.f;
+    return 0.f;
 }
 
 uint upper_power_of_two(uint v)
 {
-	v--;
-	v |= v >> 1;
-	v |= v >> 2;
-	v |= v >> 4;
-	v |= v >> 8;
-	v |= v >> 16;
-	v++;
-	return v;
+    v--;
+    v |= v >> 1;
+    v |= v >> 2;
+    v |= v >> 4;
+    v |= v >> 8;
+    v |= v >> 16;
+    v++;
+    return v;
 }
 
 

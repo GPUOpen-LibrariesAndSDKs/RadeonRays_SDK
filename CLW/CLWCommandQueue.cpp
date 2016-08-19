@@ -56,7 +56,7 @@ CLWCommandQueue::CLWCommandQueue(cl_command_queue cmdQueue)
 
 CLWCommandQueue::CLWCommandQueue()
 {
-	
+    
 }
 
 CLWCommandQueue::~CLWCommandQueue()

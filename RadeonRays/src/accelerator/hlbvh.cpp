@@ -59,69 +59,69 @@ namespace RadeonRays
         // * 3 since only triangles are supported just yet
         m_gpudata->positions = m_device->CreateBuffer(numprims * sizeof(float3), Calc::BufferType::kWrite);
         // * 3 since 3 vertex indices + 1 material idx
-		m_gpudata->morton_codes = m_device->CreateBuffer(numprims * sizeof(int), Calc::BufferType::kWrite);
+        m_gpudata->morton_codes = m_device->CreateBuffer(numprims * sizeof(int), Calc::BufferType::kWrite);
         
         
         std::vector<int> iota(numprims);
         std::iota(iota.begin(), iota.end(), 0);
         
         m_gpudata->prim_indices = m_device->CreateBuffer(numprims * sizeof(int), Calc::BufferType::kWrite, &iota[0]);
-		m_gpudata->morton_codes = m_device->CreateBuffer(numprims * sizeof(int), Calc::BufferType::kWrite);
-		m_gpudata->sorted_morton_codes = m_device->CreateBuffer(numprims * sizeof(int), Calc::BufferType::kWrite);
-		m_gpudata->sorted_prim_indices = m_device->CreateBuffer(numprims * sizeof(int), Calc::BufferType::kWrite);
+        m_gpudata->morton_codes = m_device->CreateBuffer(numprims * sizeof(int), Calc::BufferType::kWrite);
+        m_gpudata->sorted_morton_codes = m_device->CreateBuffer(numprims * sizeof(int), Calc::BufferType::kWrite);
+        m_gpudata->sorted_prim_indices = m_device->CreateBuffer(numprims * sizeof(int), Calc::BufferType::kWrite);
         
         m_gpudata->nodes = m_device->CreateBuffer(2 * numprims * sizeof(Node), Calc::BufferType::kWrite);
         // Bounds
-		m_gpudata->bounds = m_device->CreateBuffer(numprims * sizeof(bbox), Calc::BufferType::kWrite);
-		m_gpudata->sorted_bounds = m_device->CreateBuffer(numprims * sizeof(bbox), Calc::BufferType::kWrite);
+        m_gpudata->bounds = m_device->CreateBuffer(numprims * sizeof(bbox), Calc::BufferType::kWrite);
+        m_gpudata->sorted_bounds = m_device->CreateBuffer(numprims * sizeof(bbox), Calc::BufferType::kWrite);
         // Propagation flags
-		m_gpudata->flags = m_device->CreateBuffer(2 * numprims * sizeof(int), Calc::BufferType::kWrite);
+        m_gpudata->flags = m_device->CreateBuffer(2 * numprims * sizeof(int), Calc::BufferType::kWrite);
     }
     
     void Hlbvh::InitGpuData()
     {
 #ifndef RR_EMBED_KERNELS
-		if ( m_device->GetPlatform() == Calc::Platform::kOpenCL )
-		{
-			m_gpudata->executable = m_device->CompileExecutable( "../RadeonRays/src/kernels/CL/hlbvh_build.cl", nullptr, 0 );
-		}
+        if ( m_device->GetPlatform() == Calc::Platform::kOpenCL )
+        {
+            m_gpudata->executable = m_device->CompileExecutable( "../RadeonRays/src/kernels/CL/hlbvh_build.cl", nullptr, 0 );
+        }
 
-		else
-		{
-			assert( m_device->GetPlatform() == Calc::Platform::kVulkan );
-			m_gpudata->executable = m_device->CompileExecutable( "../RadeonRays/src/kernels/GLSL/hlbvh_build.comp", nullptr, 0 );
-		}
+        else
+        {
+            assert( m_device->GetPlatform() == Calc::Platform::kVulkan );
+            m_gpudata->executable = m_device->CompileExecutable( "../RadeonRays/src/kernels/GLSL/hlbvh_build.comp", nullptr, 0 );
+        }
 #else
-		auto& device = m_device;
+        auto& device = m_device;
 #if USE_OPENCL
-		if (device->GetPlatform() == Calc::Platform::kOpenCL)
-		{
-			m_gpudata->executable = m_device->CompileExecutable(g_hlbvh_build_opencl, std::strlen(g_hlbvh_build_opencl), nullptr);
-		}
+        if (device->GetPlatform() == Calc::Platform::kOpenCL)
+        {
+            m_gpudata->executable = m_device->CompileExecutable(g_hlbvh_build_opencl, std::strlen(g_hlbvh_build_opencl), nullptr);
+        }
 #endif
 
 #if USE_VULKAN
-		if (m_gpudata->executable == nullptr && device->GetPlatform() == Calc::Platform::kVulkan)
-		{
-			m_gpudata->executable = m_device->CompileExecutable(g_hlbvh_build_vulkan, std::strlen(g_hlbvh_build_vulkan), nullptr);
-		}
+        if (m_gpudata->executable == nullptr && device->GetPlatform() == Calc::Platform::kVulkan)
+        {
+            m_gpudata->executable = m_device->CompileExecutable(g_hlbvh_build_vulkan, std::strlen(g_hlbvh_build_vulkan), nullptr);
+        }
 #endif
 
 #endif
-		m_gpudata->morton_code_func = m_gpudata->executable->CreateFunction("CalcMortonCode");
-		m_gpudata->build_func = m_gpudata->executable->CreateFunction("BuildHierarchy");
-		m_gpudata->refit_func = m_gpudata->executable->CreateFunction("RefitBounds");
+        m_gpudata->morton_code_func = m_gpudata->executable->CreateFunction("CalcMortonCode");
+        m_gpudata->build_func = m_gpudata->executable->CreateFunction("BuildHierarchy");
+        m_gpudata->refit_func = m_gpudata->executable->CreateFunction("RefitBounds");
 
         // Allocate GPU buffers
         AllocateBuffers(INITIAL_TRIANGLE_CAPACITY);
         
         // Initialize parallel primitives
-		if (!m_device->HasBuiltinPrimitives())
-		{
-			throw ExceptionImpl("This device does not support HLBVH construction\n");
-		}
-		
-		m_gpudata->pp = m_device->CreatePrimitives();
+        if (!m_device->HasBuiltinPrimitives())
+        {
+            throw ExceptionImpl("This device does not support HLBVH construction\n");
+        }
+        
+        m_gpudata->pp = m_device->CreatePrimitives();
     }
     
     // Build function
@@ -133,8 +133,8 @@ namespace RadeonRays
         BuildImpl(bounds, numbounds);
 #ifdef _DEBUG
         m_device->Finish(0);
-		// Note, that this is total time spent for setup and construction 
-		// including the time spent waiting in the queue.
+        // Note, that this is total time spent for setup and construction 
+        // including the time spent waiting in the queue.
         auto d = std::chrono::high_resolution_clock::now() - s;
         std::cout << "HLBVH setup + construction CPU time: " << std::chrono::duration_cast<std::chrono::milliseconds>(d).count() << "ms\n";
 #endif
@@ -145,7 +145,7 @@ namespace RadeonRays
     bbox const& Hlbvh::Bounds() const
     {
         // TODO: implement me
-		static bbox s_tmp;
+        static bbox s_tmp;
         return s_tmp;
     }
     
@@ -155,50 +155,50 @@ namespace RadeonRays
         int size = numbounds;
         
         // Make sure to allocate enough mem on GPU
-		// We are trying to reuse space as reallocation takes time
-		// but this call might be really frequent
+        // We are trying to reuse space as reallocation takes time
+        // but this call might be really frequent
         if (size > m_gpudata->positions->GetSize())
         {
             AllocateBuffers(size);
         }
         
 
-		// Write bounds buffer
-		{
-			bbox* tmp = nullptr;
-			Calc::Event* e = nullptr;
-			m_device->MapBuffer(m_gpudata->bounds, 0, 0, sizeof(bbox) * numbounds, Calc::kMapWrite, (void**)&tmp, &e);
-			e->Wait();
-			m_device->DeleteEvent(e);
+        // Write bounds buffer
+        {
+            bbox* tmp = nullptr;
+            Calc::Event* e = nullptr;
+            m_device->MapBuffer(m_gpudata->bounds, 0, 0, sizeof(bbox) * numbounds, Calc::kMapWrite, (void**)&tmp, &e);
+            e->Wait();
+            m_device->DeleteEvent(e);
 
 
-			std::memcpy(tmp, bounds, sizeof(bbox) * numbounds);
-			m_device->UnmapBuffer(m_gpudata->bounds, 0, tmp, &e);
-			e->Wait();
-			m_device->DeleteEvent(e);
-		}
-		
-		// Initialize flags with zero 
-		{
-			int* tmp = nullptr;
-			Calc::Event* e = nullptr;
-			m_device->MapBuffer(m_gpudata->flags, 0, 0, sizeof(int) * 2 * numbounds, Calc::kMapWrite, (void**)&tmp, &e);
-			e->Wait();
-			m_device->DeleteEvent(e);
+            std::memcpy(tmp, bounds, sizeof(bbox) * numbounds);
+            m_device->UnmapBuffer(m_gpudata->bounds, 0, tmp, &e);
+            e->Wait();
+            m_device->DeleteEvent(e);
+        }
+        
+        // Initialize flags with zero 
+        {
+            int* tmp = nullptr;
+            Calc::Event* e = nullptr;
+            m_device->MapBuffer(m_gpudata->flags, 0, 0, sizeof(int) * 2 * numbounds, Calc::kMapWrite, (void**)&tmp, &e);
+            e->Wait();
+            m_device->DeleteEvent(e);
 
-			std::memset(tmp, 0, sizeof(int) * numbounds * 2);
+            std::memset(tmp, 0, sizeof(int) * numbounds * 2);
 
-			m_device->UnmapBuffer(m_gpudata->flags, 0, tmp, &e);
+            m_device->UnmapBuffer(m_gpudata->flags, 0, tmp, &e);
 
-			e->Wait();
-			m_device->DeleteEvent(e);
-		}
+            e->Wait();
+            m_device->DeleteEvent(e);
+        }
         
         // Calculate Morton codes array
         int arg = 0;
-		m_gpudata->morton_code_func->SetArg(arg++, m_gpudata->morton_codes);
-		m_gpudata->morton_code_func->SetArg(arg++, m_gpudata->bounds);
-		m_gpudata->morton_code_func->SetArg(arg++, sizeof(size), &size);
+        m_gpudata->morton_code_func->SetArg(arg++, m_gpudata->morton_codes);
+        m_gpudata->morton_code_func->SetArg(arg++, m_gpudata->bounds);
+        m_gpudata->morton_code_func->SetArg(arg++, sizeof(size), &size);
         
         // Calculate global size
         int globalsize = ((size + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
@@ -212,33 +212,33 @@ namespace RadeonRays
         // Prepare tree construction kernel
         arg = 0;
         m_gpudata->build_func->SetArg(arg++, m_gpudata->sorted_morton_codes);
-		m_gpudata->build_func->SetArg(arg++, m_gpudata->bounds);
-		m_gpudata->build_func->SetArg(arg++, sizeof(size), &size);
-		m_gpudata->build_func->SetArg(arg++, m_gpudata->sorted_prim_indices);
-		m_gpudata->build_func->SetArg(arg++, m_gpudata->nodes);
-		m_gpudata->build_func->SetArg(arg++, m_gpudata->sorted_bounds);
+        m_gpudata->build_func->SetArg(arg++, m_gpudata->bounds);
+        m_gpudata->build_func->SetArg(arg++, sizeof(size), &size);
+        m_gpudata->build_func->SetArg(arg++, m_gpudata->sorted_prim_indices);
+        m_gpudata->build_func->SetArg(arg++, m_gpudata->nodes);
+        m_gpudata->build_func->SetArg(arg++, m_gpudata->sorted_bounds);
         
         // Calculate global size
         globalsize = ((size + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
         
         // Launch hierarchy emission kernel
-		m_device->Execute(m_gpudata->build_func, 0, globalsize, kWorkGroupSize, nullptr);
+        m_device->Execute(m_gpudata->build_func, 0, globalsize, kWorkGroupSize, nullptr);
         
         // Refit bounds
         arg = 0;
-		m_gpudata->refit_func->SetArg(arg++, m_gpudata->sorted_bounds);
-		m_gpudata->refit_func->SetArg(arg++, sizeof(size), &size);
-		m_gpudata->refit_func->SetArg(arg++, m_gpudata->nodes);
-		m_gpudata->refit_func->SetArg(arg++, m_gpudata->flags);
+        m_gpudata->refit_func->SetArg(arg++, m_gpudata->sorted_bounds);
+        m_gpudata->refit_func->SetArg(arg++, sizeof(size), &size);
+        m_gpudata->refit_func->SetArg(arg++, m_gpudata->nodes);
+        m_gpudata->refit_func->SetArg(arg++, m_gpudata->flags);
         
         globalsize = ((size + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
         
         // Launch refit kernel
-		m_device->Execute(m_gpudata->refit_func, 0, globalsize, kWorkGroupSize, nullptr);
+        m_device->Execute(m_gpudata->refit_func, 0, globalsize, kWorkGroupSize, nullptr);
 
         
 
-		/// DEBUG CODE
+        /// DEBUG CODE
         /*std::vector<Node> nodes(size * 2 - 1);
         context_.ReadBuffer(0, gpudata_->nodes_, &nodes[0], 0, size * 2 - 1).Wait();
         

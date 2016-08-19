@@ -18,16 +18,16 @@ project "App"
         links {"RadeonRays", "freeglut", "glew"}
 
         configuration {"x32"}
-        	libdirs { "../3rdParty/glew/lib/x86", "../3rdParty/freeglut/lib/x86", "../3rdParty/embree/lib/x86", "../3rdParty/oiio/lib/x86" }
+            libdirs { "../3rdParty/glew/lib/x86", "../3rdParty/freeglut/lib/x86", "../3rdParty/embree/lib/x86", "../3rdParty/oiio/lib/x86" }
         configuration {"x64"}
-        	libdirs { "../3rdParty/glew/lib/x64", "../3rdParty/freeglut/lib/x64", "../3rdParty/embree/lib/x64", "../3rdParty/oiio/lib/x64"}
+            libdirs { "../3rdParty/glew/lib/x64", "../3rdParty/freeglut/lib/x64", "../3rdParty/embree/lib/x64", "../3rdParty/oiio/lib/x64"}
 
         configuration {}
 
         configuration {"Debug"}
-		  links {"OpenImageIOD"}
-	    configuration {"Release"}
-		  links {"OpenImageIO"}
+          links {"OpenImageIOD"}
+        configuration {"Release"}
+          links {"OpenImageIO"}
     end
 
     if os.is("linux") then
@@ -59,10 +59,10 @@ project "App"
         end
     end
     -- if _OPTIONS["embed_kernels"] then
-    --		configuration {}
-    --		defines {"FR_EMBED_KERNELS"}
-    --		os.execute("python ../Tools/scripts/stringify.py ./CL/ > ./CL/cache/kernels.h")
---		print ">> App: CL kernels embedded"
+    --      configuration {}
+    --      defines {"FR_EMBED_KERNELS"}
+    --      os.execute("python ../Tools/scripts/stringify.py ./CL/ > ./CL/cache/kernels.h")
+--      print ">> App: CL kernels embedded"
 --    end
 
     configuration {"x32", "Debug"}

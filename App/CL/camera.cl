@@ -67,13 +67,13 @@ __kernel void PerspectiveCamera_GeneratePaths(
                              int randseed,
                              // Output rays
                              __global ray* rays,
-							 __global SobolSampler* samplers,
-							 __global uint const* sobolmat,
-							 int reset
+                             __global SobolSampler* samplers,
+                             __global uint const* sobolmat,
+                             int reset
 #ifndef NO_PATH_DATA
-							 ,__global Path* paths
+                             ,__global Path* paths
 #endif
-		)
+        )
 {
     int2 globalid;
     globalid.x  = get_global_id(0);
@@ -86,7 +86,7 @@ __kernel void PerspectiveCamera_GeneratePaths(
         __global ray* myray = rays + globalid.y * imgwidth + globalid.x;
 
 #ifndef NO_PATH_DATA
-		__global Path* mypath = paths + globalid.y * imgwidth + globalid.x;
+        __global Path* mypath = paths + globalid.y * imgwidth + globalid.x;
 #endif
         
         // Prepare RNG
@@ -94,23 +94,23 @@ __kernel void PerspectiveCamera_GeneratePaths(
         InitRng(randseed +  globalid.x * 157 + 10433 * globalid.y, &rng);
 
 #ifdef SOBOL
-		__global SobolSampler* sampler = samplers + globalid.y * imgwidth + globalid.x;
+        __global SobolSampler* sampler = samplers + globalid.y * imgwidth + globalid.x;
 
-		if (reset)
-		{
-			sampler->seq = 0;
-			sampler->s0 = RandUint(&rng);
-		}
-		else
-		{
-			sampler->seq++;
-		}
+        if (reset)
+        {
+            sampler->seq = 0;
+            sampler->s0 = RandUint(&rng);
+        }
+        else
+        {
+            sampler->seq++;
+        }
 
-		float2 sample0;
-		sample0.x = SobolSampler_Sample1D(sampler->seq, kPixelX, sampler->s0, sobolmat);
-		sample0.y = SobolSampler_Sample1D(sampler->seq, kPixelY, sampler->s0, sobolmat);
+        float2 sample0;
+        sample0.x = SobolSampler_Sample1D(sampler->seq, kPixelX, sampler->s0, sobolmat);
+        sample0.y = SobolSampler_Sample1D(sampler->seq, kPixelY, sampler->s0, sobolmat);
 #else
-		float2 sample0 = UniformSampler_Sample2D(&rng);
+        float2 sample0 = UniformSampler_Sample2D(&rng);
 #endif
         
         // Calculate [0..1] image plane sample
@@ -128,18 +128,18 @@ __kernel void PerspectiveCamera_GeneratePaths(
         // Origin == camera position + nearz * d
         myray->o.xyz = camera->p + camera->zcap.x * myray->d.xyz;
         // Max T value = zfar - znear since we moved origin to znear
-		myray->o.w = camera->zcap.y - camera->zcap.x;
+        myray->o.w = camera->zcap.y - camera->zcap.x;
         // Generate random time from 0 to 1
-		myray->d.w = sample0.x;
-		// Set ray max
-		myray->extra.x = 0xFFFFFFFF;
-		myray->extra.y = 0xFFFFFFFF;
+        myray->d.w = sample0.x;
+        // Set ray max
+        myray->extra.x = 0xFFFFFFFF;
+        myray->extra.y = 0xFFFFFFFF;
 
 #ifndef NO_PATH_DATA
-		mypath->throughput = make_float3(1.f, 1.f, 1.f);
-		mypath->volume = -1;
-		mypath->flags = 0;
-		mypath->active = 0xFF;
+        mypath->throughput = make_float3(1.f, 1.f, 1.f);
+        mypath->volume = -1;
+        mypath->flags = 0;
+        mypath->active = 0xFF;
 #endif
     }
 }

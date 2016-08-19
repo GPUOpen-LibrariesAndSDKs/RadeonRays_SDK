@@ -100,7 +100,7 @@ namespace RadeonRays
 
     inline float3 cross(float3 const& v1, float3 const& v2)
     {
-        /// |i	 j	 k|
+        /// |i     j     k|
         /// |v1x  v1y  v1z|
         /// |v2x  v2y  v2z|
         return float3(v1.y * v2.z - v2.y * v1.z, v2.x * v1.z - v1.x * v2.z, v1.x * v2.y - v1.y * v2.x);

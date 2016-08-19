@@ -43,18 +43,18 @@ THE SOFTWARE.
 class ShaderManager
 {
 public:
-	ShaderManager();
-	~ShaderManager();
-	
-	GLuint GetProgram(std::string const& name);
-	
+    ShaderManager();
+    ~ShaderManager();
+    
+    GLuint GetProgram(std::string const& name);
+    
 private:
-	GLuint CompileProgram(std::string const& name);
-	
-	ShaderManager(ShaderManager const&);
-	ShaderManager& operator = (ShaderManager const&);
-	
-	std::map<std::string, GLuint> shadercache_;
+    GLuint CompileProgram(std::string const& name);
+    
+    ShaderManager(ShaderManager const&);
+    ShaderManager& operator = (ShaderManager const&);
+    
+    std::map<std::string, GLuint> shadercache_;
 };
 
 #endif

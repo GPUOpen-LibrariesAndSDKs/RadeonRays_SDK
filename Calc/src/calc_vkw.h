@@ -32,37 +32,37 @@ THE SOFTWARE.
 
 namespace Calc
 {
-	// Implementation of Calc interface using Vulkan library
-	class CalcVulkanw : public Calc
-	{
-	public:
-		CalcVulkanw();
-		~CalcVulkanw();
+    // Implementation of Calc interface using Vulkan library
+    class CalcVulkanw : public Calc
+    {
+    public:
+        CalcVulkanw();
+        ~CalcVulkanw();
 
-		// Enumerate devices 
-		std::uint32_t GetDeviceCount() const override;
+        // Enumerate devices 
+        std::uint32_t GetDeviceCount() const override;
 
-		// Get i-th device spec
-		void GetDeviceSpec( std::uint32_t idx, DeviceSpec& spec ) const override;
+        // Get i-th device spec
+        void GetDeviceSpec( std::uint32_t idx, DeviceSpec& spec ) const override;
 
-		// Create the device with specified index
-		Device* CreateDevice( std::uint32_t idx ) const override;
+        // Create the device with specified index
+        Device* CreateDevice( std::uint32_t idx ) const override;
 
-		// create a vulkan device from an existing vulkan device and command pool
-		static Device* CreateDevice( Anvil::Device* device, Anvil::CommandPool* cmd_pool);
+        // create a vulkan device from an existing vulkan device and command pool
+        static Device* CreateDevice( Anvil::Device* device, Anvil::CommandPool* cmd_pool);
 
-		// Delete the device
-		void DeleteDevice( Device* device ) override;
+        // Delete the device
+        void DeleteDevice( Device* device ) override;
 
-		Platform GetPlatform() final override { return Platform::kVulkan; };
+        Platform GetPlatform() final override { return Platform::kVulkan; };
 
-	private:
-		// Initialize a Vulkan resources
-		void InitializeInstance();
+    private:
+        // Initialize a Vulkan resources
+        void InitializeInstance();
 
-		// Vulkan instance
-		Anvil::Instance*	m_anvil_instance;
-	};
+        // Vulkan instance
+        Anvil::Instance*    m_anvil_instance;
+    };
 }
 
 #endif // USE_VULKAN

@@ -106,17 +106,17 @@ static const char cl_sh[]= \
 "        // Filter and return the result \n"\
 "        return valx; \n"\
 "    } \n"\
-"	else if (texture->fmt == RGBA16) \n"\
-"	{ \n"\
-"		__global half const* mydatah = (__global half const*)mydata; \n"\
+"    else if (texture->fmt == RGBA16) \n"\
+"    { \n"\
+"        __global half const* mydatah = (__global half const*)mydata; \n"\
 " \n"\
-"		float valx = vload_half(0, mydatah + 4*(width * y + x)); \n"\
-"		float valy = vload_half(0, mydatah + 4*(width * y + x) + 1); \n"\
-"		float valz = vload_half(0, mydatah + 4*(width * y + x) + 2); \n"\
+"        float valx = vload_half(0, mydatah + 4*(width * y + x)); \n"\
+"        float valy = vload_half(0, mydatah + 4*(width * y + x) + 1); \n"\
+"        float valz = vload_half(0, mydatah + 4*(width * y + x) + 2); \n"\
 " \n"\
-"		return make_float3(valx, valy, valz); \n"\
-"	} \n"\
-"	else \n"\
+"        return make_float3(valx, valy, valz); \n"\
+"    } \n"\
+"    else \n"\
 "    { \n"\
 "        __global uchar4 const* mydatac = (__global uchar4 const*)mydata; \n"\
 " \n"\
@@ -553,15 +553,15 @@ static const char cl_app[]= \
 "    int startvtx; \n"\
 "    // Number of vertices \n"\
 "    int numvertices; \n"\
-"	// Linear motion vector \n"\
-"	float3 linearvelocity; \n"\
-"	// Angular velocity \n"\
-"	float4 angularvelocity; \n"\
-"	// Transform \n"\
-"	float4 m0; \n"\
-"	float4 m1; \n"\
-"	float4 m2; \n"\
-"	float4 m3; \n"\
+"    // Linear motion vector \n"\
+"    float3 linearvelocity; \n"\
+"    // Angular velocity \n"\
+"    float4 angularvelocity; \n"\
+"    // Transform \n"\
+"    float4 m0; \n"\
+"    float4 m1; \n"\
+"    float4 m2; \n"\
+"    float4 m3; \n"\
 "} Shape; \n"\
 " \n"\
 "// Emissive object \n"\
@@ -616,56 +616,56 @@ static const char cl_app[]= \
 " \n"\
 "float3 transform_point(float3 p, float4 m0, float4 m1, float4 m2, float4 m3) \n"\
 "{ \n"\
-"	float3 res; \n"\
-"	res.x = m0.s0 * p.x + m0.s1 * p.y + m0.s2 * p.z + m0.s3; \n"\
-"	res.y = m1.s0 * p.x + m1.s1 * p.y + m1.s2 * p.z + m1.s3; \n"\
-"	res.z = m2.s0 * p.x + m2.s1 * p.y + m2.s2 * p.z + m2.s3; \n"\
-"	return res; \n"\
+"    float3 res; \n"\
+"    res.x = m0.s0 * p.x + m0.s1 * p.y + m0.s2 * p.z + m0.s3; \n"\
+"    res.y = m1.s0 * p.x + m1.s1 * p.y + m1.s2 * p.z + m1.s3; \n"\
+"    res.z = m2.s0 * p.x + m2.s1 * p.y + m2.s2 * p.z + m2.s3; \n"\
+"    return res; \n"\
 "} \n"\
 " \n"\
 "float3 transform_vector(float3 p, float4 m0, float4 m1, float4 m2, float4 m3) \n"\
 "{ \n"\
-"	float3 res; \n"\
-"	res.x = m0.s0 * p.x + m0.s1 * p.y + m0.s2 * p.z; \n"\
-"	res.y = m1.s0 * p.x + m1.s1 * p.y + m1.s2 * p.z; \n"\
-"	res.z = m2.s0 * p.x + m2.s1 * p.y + m2.s2 * p.z; \n"\
-"	return res; \n"\
+"    float3 res; \n"\
+"    res.x = m0.s0 * p.x + m0.s1 * p.y + m0.s2 * p.z; \n"\
+"    res.y = m1.s0 * p.x + m1.s1 * p.y + m1.s2 * p.z; \n"\
+"    res.z = m2.s0 * p.x + m2.s1 * p.y + m2.s2 * p.z; \n"\
+"    return res; \n"\
 "} \n"\
 " \n"\
 "float4 quaternion_mul(float4 q1, float4 q2) \n"\
 "{ \n"\
-"	float4 res; \n"\
-"	res.x = q1.y*q2.z - q1.z*q2.y + q2.w*q1.x + q1.w*q2.x; \n"\
-"	res.y = q1.z*q2.x - q1.x*q2.z + q2.w*q1.y + q1.w*q2.y; \n"\
-"	res.z = q1.x*q2.y - q2.x*q1.y + q2.w*q1.z + q1.w*q2.z; \n"\
-"	res.w = q1.w*q2.w - q1.x*q2.x - q1.y*q2.y - q1.z*q2.z; \n"\
-"	return res; \n"\
+"    float4 res; \n"\
+"    res.x = q1.y*q2.z - q1.z*q2.y + q2.w*q1.x + q1.w*q2.x; \n"\
+"    res.y = q1.z*q2.x - q1.x*q2.z + q2.w*q1.y + q1.w*q2.y; \n"\
+"    res.z = q1.x*q2.y - q2.x*q1.y + q2.w*q1.z + q1.w*q2.z; \n"\
+"    res.w = q1.w*q2.w - q1.x*q2.x - q1.y*q2.y - q1.z*q2.z; \n"\
+"    return res; \n"\
 "} \n"\
 " \n"\
 "float4 quaternion_conjugate(float4 q) \n"\
 "{ \n"\
-"	return make_float4(-q.x, -q.y, -q.z, q.w); \n"\
+"    return make_float4(-q.x, -q.y, -q.z, q.w); \n"\
 "} \n"\
 " \n"\
 "float4 quaternion_inverse(float4 q) \n"\
 "{ \n"\
-"	float sqnorm = q.x*q.x + q.y*q.y + q.z*q.z + q.w*q.w; \n"\
+"    float sqnorm = q.x*q.x + q.y*q.y + q.z*q.z + q.w*q.w; \n"\
 " \n"\
-"	if (sqnorm != 0.f) \n"\
-"	{ \n"\
-"		return quaternion_conjugate(q) / sqnorm; \n"\
-"	} \n"\
-"	else \n"\
-"	{ \n"\
-"		return make_float4(0.f, 0.f, 0.f, 1.f); \n"\
-"	} \n"\
+"    if (sqnorm != 0.f) \n"\
+"    { \n"\
+"        return quaternion_conjugate(q) / sqnorm; \n"\
+"    } \n"\
+"    else \n"\
+"    { \n"\
+"        return make_float4(0.f, 0.f, 0.f, 1.f); \n"\
+"    } \n"\
 "} \n"\
 " \n"\
 "float3 rotate_vector(float3 v, float4 q) \n"\
 "{ \n"\
-"	float4 qinv = quaternion_inverse(q); \n"\
-"	float4 vv = make_float4(v.x, v.y, v.z, 0); \n"\
-"	return quaternion_mul(q, quaternion_mul(vv, qinv)).xyz; \n"\
+"    float4 qinv = quaternion_inverse(q); \n"\
+"    float4 vv = make_float4(v.x, v.y, v.z, 0); \n"\
+"    return quaternion_mul(q, quaternion_mul(vv, qinv)).xyz; \n"\
 "} \n"\
 " \n"\
 "uint WangHash(uint seed) \n"\
@@ -837,20 +837,20 @@ static const char cl_app[]= \
 "    } \n"\
 "    else if (texture->fmt == RGBA16) \n"\
 "    { \n"\
-"		__global half const* mydatah = (__global half const*)mydata; \n"\
+"        __global half const* mydatah = (__global half const*)mydata; \n"\
 " \n"\
 "        // Get 4 values \n"\
 "        float3 valx = vload_half4(width * y + x, mydatah).xyz; \n"\
-"		float3 valx1 = vload_half4(width * y + x1, mydatah).xyz; \n"\
-"		float3 valy1 = vload_half4(width * y1 + x, mydatah).xyz; \n"\
-"		float3 valx1y1 = vload_half4(width * y1 + x1, mydatah).xyz; \n"\
+"        float3 valx1 = vload_half4(width * y + x1, mydatah).xyz; \n"\
+"        float3 valy1 = vload_half4(width * y1 + x, mydatah).xyz; \n"\
+"        float3 valx1y1 = vload_half4(width * y1 + x1, mydatah).xyz; \n"\
 " \n"\
 "        // Filter and return the result \n"\
 "        return lerp(lerp(valx, valx1, wx), lerp(valy1, valx1y1, wx), wy); \n"\
 "    } \n"\
-"	else \n"\
-"	{ \n"\
-"		__global uchar4 const* mydatac = (__global uchar4 const*)mydata; \n"\
+"    else \n"\
+"    { \n"\
+"        __global uchar4 const* mydatac = (__global uchar4 const*)mydata; \n"\
 " \n"\
 "        // Get 4 values \n"\
 "        uchar4 valx = *(mydatac + width * y + x); \n"\
@@ -865,7 +865,7 @@ static const char cl_app[]= \
 " \n"\
 "        // Filter and return the result \n"\
 "        return lerp(lerp(valxf, valx1f, wx), lerp(valy1f, valx1y1f, wx), wy); \n"\
-"	} \n"\
+"    } \n"\
 "} \n"\
 " \n"\
 "/// Sample 2D lat-long IBL map \n"\
@@ -1362,7 +1362,7 @@ static const char cl_app[]= \
 "        myray->o.xyz = camera->p + camera->zcap.x * myray->d.xyz; \n"\
 "        // Zcap == (znear, zfar) \n"\
 "        myray->o.w = camera->zcap.y; \n"\
-"		// Generate random time from 0 to 1 \n"\
+"        // Generate random time from 0 to 1 \n"\
 "        myray->d.w = RandFloat(&rng); \n"\
 "    } \n"\
 "} \n"\
@@ -1429,7 +1429,7 @@ static const char cl_app[]= \
 " \n"\
 "        // Fetch incoming ray \n"\
 "        float3 wi = -normalize(rays[hitidx].d.xyz); \n"\
-"		float time = rays[hitidx].d.w; \n"\
+"        float time = rays[hitidx].d.w; \n"\
 " \n"\
 "        // Determine shape and polygon \n"\
 "        int shapeid = isects[hitidx].shapeid - 1; \n"\
@@ -1438,8 +1438,8 @@ static const char cl_app[]= \
 " \n"\
 "        // Extract shape data \n"\
 "        Shape shape = shapes[shapeid]; \n"\
-"		float3 linearvelocity = shape.linearvelocity; \n"\
-"		float4 angularvelocity = shape.angularvelocity; \n"\
+"        float3 linearvelocity = shape.linearvelocity; \n"\
+"        float4 angularvelocity = shape.angularvelocity; \n"\
 " \n"\
 "        // Fetch indices starting from startidx and offset by primid \n"\
 "        int i0 = indices[shape.startidx + 3*primid]; \n"\

@@ -33,10 +33,10 @@ THE SOFTWARE.
 namespace Calc
 {
     class DeviceCl;
-	class Buffer;
+    class Buffer;
     
-	DeviceCl* CreateDeviceFromOpenCL(cl_context context, cl_device_id device, cl_command_queue queue);
+    DeviceCl* CreateDeviceFromOpenCL(cl_context context, cl_device_id device, cl_command_queue queue);
 
-	Buffer* CreateBufferFromOpenCL(DeviceCl* device, cl_mem buffer);
+    Buffer* CreateBufferFromOpenCL(DeviceCl* device, cl_mem buffer);
 }
 

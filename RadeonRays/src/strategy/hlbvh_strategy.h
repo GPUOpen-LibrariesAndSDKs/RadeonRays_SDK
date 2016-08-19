@@ -29,52 +29,52 @@ THE SOFTWARE.
 
 namespace RadeonRays
 {
-	class Hlbvh;
+    class Hlbvh;
 
-	class HlbvhStrategy : public Strategy
-	{
-	public:
-		HlbvhStrategy(Calc::Device* device);
+    class HlbvhStrategy : public Strategy
+    {
+    public:
+        HlbvhStrategy(Calc::Device* device);
 
-		void Preprocess(World const& world) override;
+        void Preprocess(World const& world) override;
 
-		void QueryIntersection(std::uint32_t queueidx,
-			Calc::Buffer const* rays,
-			std::uint32_t numrays,
-			Calc::Buffer* hits,
-			Calc::Event const* waitevent,
-			Calc::Event** event) const override;
+        void QueryIntersection(std::uint32_t queueidx,
+            Calc::Buffer const* rays,
+            std::uint32_t numrays,
+            Calc::Buffer* hits,
+            Calc::Event const* waitevent,
+            Calc::Event** event) const override;
 
-		void QueryOcclusion(std::uint32_t queueidx,
-			Calc::Buffer const* rays,
-			std::uint32_t numrays,
-			Calc::Buffer* hits,
-			Calc::Event const* waitevent,
-			Calc::Event** event) const override;
+        void QueryOcclusion(std::uint32_t queueidx,
+            Calc::Buffer const* rays,
+            std::uint32_t numrays,
+            Calc::Buffer* hits,
+            Calc::Event const* waitevent,
+            Calc::Event** event) const override;
 
-		void QueryIntersection(std::uint32_t queueidx,
-			Calc::Buffer const* rays,
-			Calc::Buffer const* numrays,
-			std::uint32_t maxrays,
-			Calc::Buffer* hits,
-			Calc::Event const* waitevent,
-			Calc::Event** event) const override;
+        void QueryIntersection(std::uint32_t queueidx,
+            Calc::Buffer const* rays,
+            Calc::Buffer const* numrays,
+            std::uint32_t maxrays,
+            Calc::Buffer* hits,
+            Calc::Event const* waitevent,
+            Calc::Event** event) const override;
 
-		void QueryOcclusion(std::uint32_t queueidx,
-			Calc::Buffer const* rays,
-			Calc::Buffer const* numrays,
-			std::uint32_t maxrays,
-			Calc::Buffer* hits,
-			Calc::Event const* waitevent,
-			Calc::Event** event) const override;
+        void QueryOcclusion(std::uint32_t queueidx,
+            Calc::Buffer const* rays,
+            Calc::Buffer const* numrays,
+            std::uint32_t maxrays,
+            Calc::Buffer* hits,
+            Calc::Event const* waitevent,
+            Calc::Event** event) const override;
 
-	private:
-		struct GpuData;
-		struct ShapeData;
+    private:
+        struct GpuData;
+        struct ShapeData;
 
-		// Implementation data
-		std::unique_ptr<GpuData> m_gpudata;
-		// Bvh data structure
-		std::unique_ptr<Hlbvh> m_bvh;
-	};
+        // Implementation data
+        std::unique_ptr<GpuData> m_gpudata;
+        // Bvh data structure
+        std::unique_ptr<Hlbvh> m_bvh;
+    };
 }
