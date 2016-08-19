@@ -89,7 +89,7 @@ namespace Calc
         // DeviceCl overrides
         Buffer* CreateBuffer(cl_mem buffer) override;
 
-		Platform GetPlatform() { return Platform::kOpenCL; }
+		Platform GetPlatform() const override { return Platform::kOpenCL; }
 
 	protected:
 		EventClw* CreateEventClw() const;

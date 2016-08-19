@@ -67,7 +67,7 @@ namespace Calc
 
 		// Return specification of the device
 		virtual void GetSpec(DeviceSpec& spec) = 0;
-		virtual Platform GetPlatform() = 0;
+		virtual Platform GetPlatform() const = 0;
 
 		// Buffer creation and deletion
 		virtual Buffer* CreateBuffer(std::size_t size, std::uint32_t flags) = 0;

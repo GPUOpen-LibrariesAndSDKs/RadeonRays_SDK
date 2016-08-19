@@ -396,7 +396,7 @@ TEST_F(ApiConformanceCL, GPU_CornellBox_10000RandomRays_AnyHit_Bruteforce)
 	ExpectAnyRaysOk<10000>(api);
 }
 
-TEST_F(ApiConformanceCL, CornellBox_10000RaysRandom_ClosestHit_Events_Bruteforce)
+TEST_F(ApiConformanceCL, DISABLED_CornellBox_10000RaysRandom_ClosestHit_Events_Bruteforce)
 {
 	int const kNumRays = 10000;
 

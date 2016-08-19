@@ -421,9 +421,8 @@ namespace RadeonRays
                         facedata[myidx].idx[0] = myfaces[faceidx].idx[0] + startidx;
                         facedata[myidx].idx[1] = myfaces[faceidx].idx[1] + startidx;
                         facedata[myidx].idx[2] = myfaces[faceidx].idx[2] + startidx;
-                        facedata[myidx].idx[3] = myfaces[faceidx].idx[3] + startidx;
 
-                        facedata[myidx].cnt = (myfaces[faceidx].type_ == Mesh::FaceType::QUAD ? 4 : 3);
+                        facedata[myidx].cnt = 3;
                         facedata[myidx].id = faceidx;
                     }
                 }

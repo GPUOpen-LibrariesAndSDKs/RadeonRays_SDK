@@ -23,7 +23,7 @@ THE SOFTWARE.
 
 #ifndef INTERSECTION_DEVICE_H
 #define INTERSECTION_DEVICE_H
-#include <radeon_rays.h>
+#include "radeon_rays.h"
 
 namespace RadeonRays
 {
