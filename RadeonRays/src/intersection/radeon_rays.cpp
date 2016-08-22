@@ -33,8 +33,8 @@ THE SOFTWARE.
 #endif
 
 #if USE_VULKAN
-#    include "../device/calc_intersection_device_vk.h"
-#    include "calc_vk.h"
+#include "../device/calc_intersection_device_vk.h"
+#include "calc_vk.h"
 #endif
 
 #ifdef USE_EMBREE
@@ -81,6 +81,7 @@ namespace RadeonRays
 #endif
         return nullptr;
     }
+
     void IntersectionApi::SetPlatform(const DeviceInfo::Platform platform)
     {
         s_calc_platform = platform;
@@ -188,7 +189,7 @@ namespace RadeonRays
         }
         else
         {
-            return nullptr;    
+            return nullptr;
         }
     }
 #endif
@@ -208,5 +209,3 @@ namespace RadeonRays
 #endif
 
 }
-
-

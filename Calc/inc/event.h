@@ -21,10 +21,12 @@ THE SOFTWARE.
 ********************************************************************/
 #pragma once
 
+#include "calc_common.h"
+
 namespace Calc
 {
-    // Manages region of device memory 
-    class Event
+    // Manages region of device memory
+    class CALC_API Event
     {
     public:
         Event() {}

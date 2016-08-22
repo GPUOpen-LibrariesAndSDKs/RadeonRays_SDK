@@ -20,13 +20,15 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
 #pragma once
+
+#include "calc_common.h"
+
 #include "device_vk.h"
 
 namespace Anvil { class Device; class CommandPool; }
 
 namespace Calc
 {
-    DeviceVulkan* CreateDeviceFromVulkan(Anvil::Device* device, Anvil::CommandPool* cmd_pool);
-    
-}
+    CALC_API DeviceVulkan* CreateDeviceFromVulkan(Anvil::Device* device, Anvil::CommandPool* cmd_pool);
 
+}

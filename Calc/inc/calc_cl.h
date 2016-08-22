@@ -21,6 +21,8 @@ THE SOFTWARE.
 ********************************************************************/
 #pragma once
 
+#include "calc_common.h"
+
 #include <string>
 #include <cstdint>
 
@@ -34,9 +36,8 @@ namespace Calc
 {
     class DeviceCl;
     class Buffer;
-    
-    DeviceCl* CreateDeviceFromOpenCL(cl_context context, cl_device_id device, cl_command_queue queue);
 
-    Buffer* CreateBufferFromOpenCL(DeviceCl* device, cl_mem buffer);
+    CALC_API DeviceCl* CreateDeviceFromOpenCL(cl_context context, cl_device_id device, cl_command_queue queue);
+
+    CALC_API Buffer* CreateBufferFromOpenCL(DeviceCl* device, cl_mem buffer);
 }
-

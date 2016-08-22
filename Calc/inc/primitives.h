@@ -21,12 +21,13 @@ THE SOFTWARE.
 ********************************************************************/
 #pragma once
 
+#include "calc_common.h"
 #include <cstdint>
 
 namespace Calc
 {
     class Buffer;
-    class Primitives
+    class CALC_API Primitives
     {
     public:
         Primitives() = default;

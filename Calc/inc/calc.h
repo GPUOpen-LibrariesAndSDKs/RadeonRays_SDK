@@ -36,13 +36,13 @@ namespace Calc
     //  * Can provide device specifications
     //  * Can create and delete specified devices
     //
-    class Calc
+    class CALC_API Calc
     {
     public:
         Calc() = default;
         virtual ~Calc() = default;
 
-        // Enumerate devices 
+        // Enumerate devices
         virtual std::uint32_t GetDeviceCount() const = 0;
 
         // Get i-th device spec
@@ -63,6 +63,6 @@ namespace Calc
     };
 
     // Create corresponding calc
-    Calc* CreateCalc( Platform inPlatform, int reserved);
-    void DeleteCalc(Calc* calc);
+    CALC_API Calc* CreateCalc( Platform inPlatform, int reserved);
+    CALC_API void DeleteCalc(Calc* calc);
 }

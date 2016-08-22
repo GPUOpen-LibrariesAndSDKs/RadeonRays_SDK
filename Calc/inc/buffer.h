@@ -21,10 +21,12 @@ THE SOFTWARE.
 ********************************************************************/
 #pragma once
 
+#include "calc_common.h"
+
 namespace Calc
 {
-    // Manages region of device memory 
-    class Buffer
+    // Manages region of device memory
+    class CALC_API Buffer
     {
     public:
         Buffer() {}

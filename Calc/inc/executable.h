@@ -21,6 +21,8 @@ THE SOFTWARE.
 ********************************************************************/
 #pragma once
 
+#include "calc_common.h"
+
 #include <cstddef>
 #include <cstdint>
 
@@ -33,7 +35,7 @@ namespace Calc
     };
 
     // Represents individual callable unit within an executable
-    class Function
+    class CALC_API Function
     {
     public:
         Function() {}
@@ -49,7 +51,7 @@ namespace Calc
     };
 
     // Executable which is capable of being launched on a device
-    class Executable
+    class CALC_API Executable
     {
     public:
         Executable() {}

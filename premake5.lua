@@ -41,23 +41,28 @@ newoption {
 }
 
 newoption {
-    trigger = "library_only", 
+    trigger = "library_only",
     description = "Don't define a solution just add library to calling parent premake solution"
 }
 
 newoption {
-    trigger = "no_tests", 
+    trigger = "no_tests",
     description = "Don't add any unit tests and remove any test functionality from the library"
 }
 
 newoption {
-    trigger = "static_library", 
+    trigger = "static_library",
     description = "Create static libraries rather than dynamic"
 }
 
 newoption {
-    trigger = "benchmark", 
+    trigger = "benchmark",
     description = "Benchmark with command line interface instead of App."
+}
+
+newoption {
+    trigger = "static_calc",
+    description = "Link Calc(compute abstraction layer) statically"
 }
 
 if not _OPTIONS["use_opencl"] and not _OPTIONS["use_vulkan"] and not _OPTIONS["use_embree"] then
@@ -102,15 +107,15 @@ if _OPTIONS["package"] then
     os.execute("cp ./Tools/deploy/premake4.lua ./dist")
     os.execute("cp ./Tools/deploy/OpenCLSearch.lua ./dist")
     os.execute("cp ./Tools/deploy/App.lua ./dist/App")
-    os.execute("cp ./Tools/deploy/CLW.lua ./dist/CLW")      
+    os.execute("cp ./Tools/deploy/CLW.lua ./dist/CLW")
     os.execute("cp -r ./Tools/premake ./dist")
-    
+
     os.execute("cp -r ./3rdParty/freeglut ./dist/3rdParty/")
     os.execute("cp -r ./3rdParty/glew ./dist/3rdParty/")
     os.execute("cp -r ./3rdParty/oiio ./dist/3rdParty/")
     os.execute("cp -r ./3rdParty/oiio16 ./dist/3rdParty/")
     os.execute("cp -r ./Tools/deploy/LICENSE.txt ./dist")
-    os.execute("cp -r ./Tools/deploy/README.md ./dist")                  
+    os.execute("cp -r ./Tools/deploy/README.md ./dist")
 elseif _OPTIONS["submit"] then
     if os.is("macosx") then
         osPremakeFolder = "osx"
@@ -147,7 +152,7 @@ else
     if not _OPTIONS["library_only"] then
         solution "RadeonRays"
 
-        configurations { "Debug", "Release" }           
+        configurations { "Debug", "Release" }
         language "C++"
         flags { "NoMinimalRebuild", "EnableSSE", "EnableSSE2" }
     end
@@ -174,7 +179,7 @@ else
     else
         platforms {"x32", "x64"}
     end
-    
+
     if os.is("windows") then
         targetName = "win"
         defines{ "WIN32" }
@@ -185,10 +190,10 @@ else
     end
 
     if _OPTIONS["use_opencl"] then
-        defines{"USE_OPENCL=1"}        
+        defines{"USE_OPENCL=1"}
     end
     if _OPTIONS["use_vulkan"] then
-        defines{"USE_VULKAN=1"} 
+        defines{"USE_VULKAN=1"}
         vulkanPath = ""
         vulkanSDKPath = os.getenv( "VK_SDK_PATH" );
         if vulkanSDKPath == nil then
@@ -196,7 +201,7 @@ else
         end
 
         if vulkanSDKPath ~= nil then
-            if os.is("linux") then    
+            if os.is("linux") then
                 vulkanPath = vulkanSDKPath .. "/include"
             else
                 vulkanPath = vulkanSDKPath .. "/Include"
@@ -223,8 +228,8 @@ else
     configuration {"x32", "Debug"}
         targetsuffix "D"
     configuration {"x64", "Release"}
-        targetsuffix "64"   
-    
+        targetsuffix "64"
+
     configuration {} -- back to all configurations
 
     if  _OPTIONS["use_vulkan"] then
@@ -245,21 +250,21 @@ else
         if fileExists("./CLW/CLW.lua") then
             dofile("./CLW/CLW.lua")
         end
-        
-        if not _OPTIONS["library_only"] then 
+
+        if not _OPTIONS["library_only"] then
             if fileExists("./App/App.lua") then
                 dofile("./App/App.lua")
             end
-        end 
+        end
     end
-    
-    if not _OPTIONS["no_tests"] then 
+
+    if not _OPTIONS["no_tests"] then
         if fileExists("./Gtest/gtest.lua") then
             dofile("./Gtest/gtest.lua")
-        end     
+        end
         if fileExists("./UnitTest/UnitTest.lua") then
             dofile("./UnitTest/UnitTest.lua")
-        end        
+        end
     end
 
 end

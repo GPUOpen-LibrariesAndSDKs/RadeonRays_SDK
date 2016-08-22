@@ -105,7 +105,7 @@ namespace RadeonRays
     {
         world_.DetachShape(shape);
     }
-    
+
     void IntersectionApiImpl::DetachAll()
     {
         world_.DetachAll();
@@ -149,21 +149,22 @@ namespace RadeonRays
     {
         m_device->DeleteEvent(event);
     }
-    
+
     Buffer* IntersectionApiImpl::CreateBuffer(size_t size, void* initdata) const
     {
         return m_device->CreateBuffer(size, initdata);
     }
-    
+
     void IntersectionApiImpl::MapBuffer(Buffer* buffer, MapType type, size_t offset, size_t size, void** data, Event** event) const
     {
         return m_device->MapBuffer(buffer, type, offset, size, data, event);
     }
-    
+
     void IntersectionApiImpl::UnmapBuffer(Buffer* buffer, void* ptr, Event** event) const
     {
         return m_device->UnmapBuffer(buffer, ptr, event);
     }
+
 #ifdef USE_OPENCL
     RRAPI Buffer* CreateFromOpenClBuffer(RadeonRays::IntersectionApi* api, cl_mem buffer)
     {
@@ -201,4 +202,3 @@ namespace RadeonRays
     }
 #endif
 }
-

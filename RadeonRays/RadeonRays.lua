@@ -7,14 +7,20 @@ project "RadeonRays"
     location "../RadeonRays"
     includedirs { "./include", "../Calc/inc" }
     links {"Calc"}
+
+    if not _OPTIONS["static_calc"] then
+        defines {"CALC_IMPORT_API"};
+    end
+
     defines {"EXPORT_API"}
+
     files { "../RadeonRays/**.h", "../RadeonRays/**.cpp","../RadeonRays/src/kernels/CL/**.cl", "../RadeonRays/src/kernels/GLSL/**.comp"}
-    
+
     if not os.is("macosx") then
         linkoptions {"-Wl,--no-undefined"}
-    elseif os.is("macosx") then 
+    elseif os.is("macosx") then
         filter { "kind:SharedLib", "system:macosx" }
-            linkoptions { '-Wl,-install_name', '-Wl,@loader_path/%{cfg.linktarget.name}' }
+        linkoptions { '-Wl,-install_name', '-Wl,@loader_path/%{cfg.linktarget.name}' }
     end
 
     excludes {"../RadeonRays/src/device/embree*"}
@@ -51,22 +57,22 @@ project "RadeonRays"
         defines {"RR_EMBED_KERNELS=1"}
 
         if _OPTIONS["use_vulkan"] then
-            os.execute( "python ../Tools/scripts/stringify.py " .. 
-                                os.getcwd() .. "../RadeonRays/src/kernels/GLSL/ "  .. 
+            os.execute( "python ../Tools/scripts/stringify.py " ..
+                                os.getcwd() .. "../RadeonRays/src/kernels/GLSL/ "  ..
                                 ".comp " ..
                                 "vulkan " ..
-                                 "> ./src/kernelcache/kernels_vk.h"                           
-                                ) 
+                                 "> ./src/kernelcache/kernels_vk.h"
+                                )
             print ">> RadeonRays: VK kernels embedded"
         end
-        
+
         if _OPTIONS["use_opencl"] then
-            os.execute( "python ../Tools/scripts/stringify.py " .. 
-                                os.getcwd() .. "../RadeonRays/src/kernels/CL/ "  .. 
+            os.execute( "python ../Tools/scripts/stringify.py " ..
+                                os.getcwd() .. "../RadeonRays/src/kernels/CL/ "  ..
                                 ".cl " ..
                                 "opencl " ..
-                                 "> ./src/kernelcache/kernels_cl.h"                           
-                                ) 
+                                 "> ./src/kernelcache/kernels_cl.h"
+                                )
             print ">> RadeonRays: CL kernels embedded"
         end
     end
@@ -78,8 +84,6 @@ project "RadeonRays"
     end
 
     if _OPTIONS["use_opencl"] then
-        includedirs { "../CLW" }
-        links {"CLW"}
         files {"../RadeonRays/**.cl" }
     end
 
@@ -139,5 +143,3 @@ project "RadeonRays"
     configuration {"x64", "Release"}
         targetdir "../Bin/Release/x64"
     configuration {}
-    
-

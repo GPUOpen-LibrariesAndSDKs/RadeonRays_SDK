@@ -54,12 +54,12 @@ namespace Calc
     };
 
     // Main interface to control compute device
-    //    * Can create buffers 
+    //    * Can create buffers
     //    * Move data from system memory and back
     //  * Launch kernels
     //  * Control synchronization events
     //
-    class Device
+    class CALC_API Device
     {
     public:
         Device() = default;
@@ -91,7 +91,7 @@ namespace Calc
         virtual Executable* CompileExecutable(char const* filename,
                                               char const** headernames,
                                               int numheaders) = 0;
-        
+
         virtual void DeleteExecutable(Executable* executable) = 0;
 
         // Executable management
@@ -127,20 +127,20 @@ namespace Calc
         Device& operator = (Device const&) = delete;
     };
 
-     
-    template <typename T> 
+
+    template <typename T>
     inline void Device::ReadTypedBuffer(Buffer const* buffer, std::uint32_t queue, std::size_t offset, std::size_t size, T* dst, Event** e) const
     {
         ReadBuffer(buffer, queue, offset * sizeof(T), size * sizeof(T), dst, e);
     }
 
-    template <typename T> 
+    template <typename T>
     inline void Device::WriteTypedBuffer(Buffer const* buffer, std::uint32_t queue, std::size_t offset, std::size_t size, T* src, Event** e)
     {
         WriteBuffer(buffer, queue, offset * sizeof(T), size * sizeof(T), src, e);
     }
 
-    template <typename T> 
+    template <typename T>
     inline void Device::MapTypedBuffer(Buffer const* buffer, std::uint32_t queue, std::size_t offset, std::size_t size, std::uint32_t map_type, T** mapdata, Event** e)
     {
         MapBuffer(buffer, queue, offset * sizeof(T), size * sizeof(T), map_type, reinterpret_cast<void**>(mapdata), e);

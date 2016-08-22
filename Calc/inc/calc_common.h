@@ -21,6 +21,27 @@ THE SOFTWARE.
 ********************************************************************/
 #pragma once
 
+#ifndef CALC_STATIC_LIBRARY
+#ifdef WIN32
+    #ifdef CALC_EXPORT_API
+        #define CALC_API __declspec(dllexport)
+    #else
+        #define CALC_API __declspec(dllimport)
+    #endif
+#elif defined(__GNUC__)
+    #ifdef CALC_EXPORT_API
+        #define CALC_API __attribute__((visibility ("default")))
+    #else
+        #define CALC_API
+    #endif
+#endif
+#else
+#define CALC_API
+#endif
+
+#include <cstdint>
+#include <type_traits>
+
 namespace Calc
 {
     enum BufferType
@@ -36,7 +57,7 @@ namespace Calc
         kMapWrite = 0x2
     };
 
-    enum class DeviceType : uint8_t
+    enum class DeviceType : std::uint8_t
     {
         kUnknown,
         kGpu,
@@ -52,7 +73,7 @@ namespace Calc
         kAny            = 0xFF
     };
 
-    enum class SourceType : uint8_t
+    enum class SourceType : std::uint8_t
     {
         kOpenCL            = (1 << 0),
         kGLSL            = (1 << 1),

@@ -1,9 +1,9 @@
 project "App"
     kind "ConsoleApp"
     location "../App"
-    links {"RadeonRays", "CLW"}
+    links {"RadeonRays", "CLW", "Calc"}
     files { "../App/**.h", "../App/**.cpp", "../App/**.cl", "../App/**.fsh", "../App/**.vsh" }
-    includedirs{ "../RadeonRays/include", "../CLW", "." } 
+    includedirs{ "../RadeonRays/include", "../CLW", "." }
 
     if os.is("macosx") then
         includedirs {"../3rdParty/oiio16/include"}

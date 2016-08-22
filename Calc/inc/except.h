@@ -21,10 +21,12 @@ THE SOFTWARE.
 ********************************************************************/
 #pragma once
 
+#include "calc_common.h"
+
 namespace Calc
 {
     // Exception
-    class Exception
+    class CALC_API Exception
     {
     public:
         Exception() {}
