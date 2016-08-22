@@ -6,10 +6,13 @@ project "RadeonRays"
     end
     location "../RadeonRays"
     includedirs { "./include", "../Calc/inc" }
+
     links {"Calc"}
 
     if not _OPTIONS["static_calc"] then
         defines {"CALC_IMPORT_API"};
+    else
+        links {"CLW"}
     end
 
     defines {"EXPORT_API"}
