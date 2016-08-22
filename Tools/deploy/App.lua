@@ -17,19 +17,19 @@ project "App"
         buildoptions "-std=c++11 -stdlib=libc++"
         links {"OpenImageIO"}
     end
-	
+    
     if os.is("windows") then
         includedirs { "../3rdParty/glew/include", "../3rdParty/freeglut/include", "../3rdParty/oiio/include"  }
-		links {"freeglut", "glew"}
+        links {"freeglut", "glew"}
 
-		configuration {"x64"}
-			libdirs { "../3rdParty/glew/lib/x64", "../3rdParty/freeglut/lib/x64", "../3rdParty/embree/lib/x64", "../3rdParty/oiio/lib/x64"}
-    	configuration {}
+        configuration {"x64"}
+            libdirs { "../3rdParty/glew/lib/x64", "../3rdParty/freeglut/lib/x64", "../3rdParty/embree/lib/x64", "../3rdParty/oiio/lib/x64"}
+        configuration {}
 
         configuration {"Debug"}
-		  links {"OpenImageIOD"}
-	    configuration {"Release"}
-		  links {"OpenImageIO"}
+          links {"OpenImageIOD"}
+        configuration {"Release"}
+          links {"OpenImageIO"}
     end
 
     if os.is("linux") then
@@ -39,15 +39,14 @@ project "App"
     end
 
     if _OPTIONS["embed_kernels"] then
-		configuration {}
-		defines {"FR_EMBED_KERNELS"}
-		os.execute("python ../scripts/stringify.py ./CL/ > ./CL/cache/kernels.h")
-		print ">> App: CL kernels embedded"
+        configuration {}
+        defines {"FR_EMBED_KERNELS"}
+        os.execute("python ../scripts/stringify.py ./CL/ > ./CL/cache/kernels.h")
+        print ">> App: CL kernels embedded"
     end
-	
+    
     configuration {"x64", "Debug"}
         targetdir "../Bin/Debug/x64"
     configuration {"x64", "Release"}
         targetdir "../Bin/Release/x64"
     configuration {}
-    

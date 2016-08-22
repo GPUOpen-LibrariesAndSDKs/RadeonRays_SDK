@@ -38,6 +38,3 @@ project "CLW"
     configuration {"x64", "Release"}
         targetdir "../Bin/Release/x64"
     configuration {}
-    
-
-		

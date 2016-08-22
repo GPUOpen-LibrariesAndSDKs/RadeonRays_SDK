@@ -26,8 +26,8 @@ newoption {
 
 
 newoption {
-	trigger = "use_vulkan",
-	description = "Use vulkan for GPU hit testing"
+    trigger = "use_vulkan",
+    description = "Use vulkan for GPU hit testing"
 }
 
 newoption {
@@ -55,6 +55,10 @@ newoption {
     description = "Create static libraries rather than dynamic"
 }
 
+newoption {
+    trigger = "benchmark", 
+    description = "Benchmark with command line interface instead of App."
+}
 
 if not _OPTIONS["use_opencl"] and not _OPTIONS["use_vulkan"] and not _OPTIONS["use_embree"] then
     _OPTIONS["use_opencl"] = 1
@@ -65,14 +69,14 @@ if _OPTIONS["library_only"] then
 end
 
 function build(config)
-	if os.is("windows") then
-		buildcmd="devenv RadeonRays.sln /build \"" .. config .. "|x64\""
-	else
-		config=config .. "_x64"
-		buildcmd="make config=" .. config
-	end
+    if os.is("windows") then
+        buildcmd="devenv RadeonRays.sln /build \"" .. config .. "|x64\""
+    else
+        config=config .. "_x64"
+        buildcmd="make config=" .. config
+    end
 
-	return os.execute(buildcmd)
+    return os.execute(buildcmd)
 end
 
 
