@@ -11,7 +11,7 @@ project "Calc"
         os.execute("rm -rf obj");
         end
     end
-	
+
     configuration {"x32", "Debug"}
         targetdir "../Bin/Debug/x86"
     configuration {"x64", "Debug"}
@@ -21,6 +21,3 @@ project "Calc"
     configuration {"x64", "Release"}
         targetdir "../Bin/Release/x64"
     configuration {}
-    
-
-		

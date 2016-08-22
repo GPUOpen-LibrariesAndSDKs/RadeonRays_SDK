@@ -1,13 +1,13 @@
 project "Gtest"
     location "../Gtest"
     kind "StaticLib"
-	includedirs { ".", "include" }
-	defines { "GTEST_HAS_PTHREAD=0" }
+    includedirs { ".", "include" }
+    defines { "GTEST_HAS_PTHREAD=0" }
     files { "src/gtest-all.cc", "src/gtest_main.cc" }
     buildoptions { "-g", "-Wall" }
 
     if _ACTION == "vs2012" then
-	defines{ "GTEST_HAS_TR1_TUPLE=0" }
+    defines{ "GTEST_HAS_TR1_TUPLE=0" }
     end
 
     
