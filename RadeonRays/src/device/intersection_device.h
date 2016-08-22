@@ -27,51 +27,51 @@ THE SOFTWARE.
 
 namespace RadeonRays
 {
-	class World;
-	///< The class represents a device capable of making intersection queries
-	///<
-	class IntersectionDevice
-	{
-	public:
-		IntersectionDevice() = default;
+    class World;
+    ///< The class represents a device capable of making intersection queries
+    ///<
+    class IntersectionDevice
+    {
+    public:
+        IntersectionDevice() = default;
 
-		virtual ~IntersectionDevice() = default;
+        virtual ~IntersectionDevice() = default;
 
         // Do all necessary scene preprocessing.
         // The call is blocking.
-		virtual void Preprocess(World const& world) = 0;
+        virtual void Preprocess(World const& world) = 0;
 
         // Create a buffer of a specified size with specified initial data.
         // if initdata == nullptr the buffer is allocated, but not initialized.
-		virtual Buffer* CreateBuffer(size_t size, void* initdata) const = 0;
+        virtual Buffer* CreateBuffer(size_t size, void* initdata) const = 0;
 
         // Release buffer memory.
-		virtual void DeleteBuffer(Buffer* const) const = 0;
+        virtual void DeleteBuffer(Buffer* const) const = 0;
 
         // Release an event (this method is optimized for frequent calls)
-		virtual void DeleteEvent(Event* const) const = 0;
+        virtual void DeleteEvent(Event* const) const = 0;
 
         // Map buffer data.
         // The call is non-blocking if event is passed it, otherwise (event == nullptr) it is blocking.
-		virtual void MapBuffer(Buffer* buffer, MapType type, size_t offset, size_t size, void** data, Event** event) const = 0;
+        virtual void MapBuffer(Buffer* buffer, MapType type, size_t offset, size_t size, void** data, Event** event) const = 0;
 
         // Unmap buffer data.
         // The call is non-blocking if event is passed it, otherwise (event == nullptr) it is blocking.
-		virtual void UnmapBuffer(Buffer* buffer, void* ptr, Event** event) const = 0;
+        virtual void UnmapBuffer(Buffer* buffer, void* ptr, Event** event) const = 0;
 
         // Find intersection for the rays in rays buffer and write them into hits buffer.
         // rays is assumed AOS with elements of type RadeonRays::ray.
         // hits is assumed AOS with elements of type RadeonRays::Intersection.
         // The call waits until waitevent is resolved (on a target device) if waitevent != nullptr.
         // The call is non-blocking if event is passed it, otherwise (event == nullptr) it is blocking.
-		virtual void QueryIntersection(Buffer const* rays, int numrays, Buffer* hits, Event const* waitevent, Event** event) const = 0;
+        virtual void QueryIntersection(Buffer const* rays, int numrays, Buffer* hits, Event const* waitevent, Event** event) const = 0;
 
         // Find if the rays in rays buffer intersect any of the primitives in the scene.
         // rays is assumed AOS with elements of type RadeonRays::ray.
         // hits is assumed AOS with elements of type int (-1 if no intersection, 1 otherwise).
         // The call waits until waitevent is resolved (on a target device) if waitevent != nullptr.
         // The call is non-blocking if event is passed it, otherwise (event == nullptr) it is blocking.
-		virtual void QueryOcclusion(Buffer const* rays, int numrays, Buffer* hits, Event const* waitevent, Event** event) const = 0;
+        virtual void QueryOcclusion(Buffer const* rays, int numrays, Buffer* hits, Event const* waitevent, Event** event) const = 0;
 
         // Find intersection for the rays in rays buffer and write them into hits buffer. Take the number of rays from the buffer in remote memory.
         // rays is assumed AOS with elements of type RadeonRays::ray.
@@ -79,7 +79,7 @@ namespace RadeonRays
         // hits is assumed AOS with elements of type RadeonRays::Intersection.
         // The call waits until waitevent is resolved (on a target device) if waitevent != nullptr.
         // The call is non-blocking if event is passed it, otherwise (event == nullptr) it is blocking.
-		virtual void QueryIntersection(Buffer const* rays, Buffer const* numrays, int maxrays, Buffer* hits, Event const* waitevent, Event** event) const = 0;
+        virtual void QueryIntersection(Buffer const* rays, Buffer const* numrays, int maxrays, Buffer* hits, Event const* waitevent, Event** event) const = 0;
 
         // Find if the rays in rays buffer intersect any of the primitives in the scene. Take the number of rays from the buffer in remote memory.
         // rays is assumed AOS with elements of type RadeonRays::ray.
@@ -87,11 +87,11 @@ namespace RadeonRays
         // hits is assumed AOS with elements of type RadeonRays::Intersection.
         // The call waits until waitevent is resolved (on a target device) if waitevent != nullptr.
         // The call is non-blocking if event is passed it, otherwise (event == nullptr) it is blocking.
-		virtual void QueryOcclusion(Buffer const* rays, Buffer const* numrays, int maxrays, Buffer* hits, Event const* waitevent, Event** event) const = 0;
-	
-		IntersectionDevice(IntersectionDevice const&) = delete;
-		IntersectionDevice& operator = (IntersectionDevice const&) = delete;
-	};
+        virtual void QueryOcclusion(Buffer const* rays, Buffer const* numrays, int maxrays, Buffer* hits, Event const* waitevent, Event** event) const = 0;
+    
+        IntersectionDevice(IntersectionDevice const&) = delete;
+        IntersectionDevice& operator = (IntersectionDevice const&) = delete;
+    };
 }
 
 

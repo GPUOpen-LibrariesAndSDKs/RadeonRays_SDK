@@ -55,8 +55,8 @@ namespace Baikal
         void Render(Scene const& scene) override;
         // Set output
         void SetOutput(Output* output) override;
-		// Set number of light bounces
-		void SetNumBounces(int num_bounces);
+        // Set number of light bounces
+        void SetNumBounces(int num_bounces);
         // Interop function
         CLWKernel GetCopyKernel();
         // Add function
@@ -111,8 +111,8 @@ namespace Baikal
         // Working set
         size_t m_vidmemws;
 
-	private:
-		int m_num_bounces;
+    private:
+        int m_num_bounces;
     };
 
 }

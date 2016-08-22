@@ -54,9 +54,9 @@ public:
         cl_platform_id platform[2];
         cl_device_id device;
        
-		api_ = nullptr;
-		queue_ = nullptr;
-		rawcontext_ = nullptr;
+        api_ = nullptr;
+        queue_ = nullptr;
+        rawcontext_ = nullptr;
 
         // Create OpenCL stuff
 
@@ -150,17 +150,17 @@ TEST_F(ApiCl, Intersection_1Ray)
     ASSERT_NO_THROW(api_->QueryIntersection(ray_buffer, 1, isect_buffer, nullptr, nullptr ));
     
     Intersection* tmp = nullptr;
-	Event* e = nullptr;
+    Event* e = nullptr;
     ASSERT_NO_THROW(api_->MapBuffer(isect_buffer, kMapRead, 0, sizeof(Intersection), (void**)&tmp, &e));
 
-	e->Wait();
-	api_->DeleteEvent(e);
+    e->Wait();
+    api_->DeleteEvent(e);
 
     isect = *tmp;
     ASSERT_NO_THROW(api_->UnmapBuffer(isect_buffer, tmp, &e));
 
-	e->Wait();
-	api_->DeleteEvent(e);
+    e->Wait();
+    api_->DeleteEvent(e);
     
     // Check results
     ASSERT_EQ(isect.shapeid, mesh->GetId());

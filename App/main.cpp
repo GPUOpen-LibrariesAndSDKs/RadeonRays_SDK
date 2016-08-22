@@ -80,7 +80,7 @@ char const* g_path =
 "../Resources/bmw";
 char const* g_modelname = "i8.obj";
 
-std::unique_ptr<ShaderManager>	g_shader_manager;
+std::unique_ptr<ShaderManager>    g_shader_manager;
 
 GLuint g_vertex_buffer;
 GLuint g_index_buffer;

@@ -29,40 +29,40 @@ THE SOFTWARE.
 namespace Calc
 {
 
-	struct DeviceSpec;
-	class Device;
+    struct DeviceSpec;
+    class Device;
 
-	// Base api interface for device enumeration and creation
-	//  * Can provide device specifications
-	//  * Can create and delete specified devices
-	//
-	class Calc
-	{
-	public:
+    // Base api interface for device enumeration and creation
+    //  * Can provide device specifications
+    //  * Can create and delete specified devices
+    //
+    class Calc
+    {
+    public:
         Calc() = default;
         virtual ~Calc() = default;
 
-		// Enumerate devices 
-		virtual std::uint32_t GetDeviceCount() const = 0;
+        // Enumerate devices 
+        virtual std::uint32_t GetDeviceCount() const = 0;
 
-		// Get i-th device spec
-		virtual void GetDeviceSpec(std::uint32_t idx, DeviceSpec& spec) const = 0;
+        // Get i-th device spec
+        virtual void GetDeviceSpec(std::uint32_t idx, DeviceSpec& spec) const = 0;
 
-		// Create the device with specified index
-		virtual Device* CreateDevice(std::uint32_t idx) const = 0;
+        // Create the device with specified index
+        virtual Device* CreateDevice(std::uint32_t idx) const = 0;
 
-		// Delete the device
-		virtual void DeleteDevice(Device* device) = 0;
+        // Delete the device
+        virtual void DeleteDevice(Device* device) = 0;
 
-		// return the platform used
-		virtual Platform GetPlatform() = 0;
+        // return the platform used
+        virtual Platform GetPlatform() = 0;
 
-		// Forbidden stuff
-		Calc(Calc const&) = delete;
-		Calc& operator = (Calc const&) = delete;
-	};
+        // Forbidden stuff
+        Calc(Calc const&) = delete;
+        Calc& operator = (Calc const&) = delete;
+    };
 
-	// Create corresponding calc
-	Calc* CreateCalc( Platform inPlatform, int reserved);
-	void DeleteCalc(Calc* calc);
+    // Create corresponding calc
+    Calc* CreateCalc( Platform inPlatform, int reserved);
+    void DeleteCalc(Calc* calc);
 }

@@ -51,8 +51,8 @@ public:
         cl_int status = CL_SUCCESS;
         cl_platform_id platform;
         cl_device_id device;
-		queue_ = nullptr;
-		rawcontext_ = nullptr;
+        queue_ = nullptr;
+        rawcontext_ = nullptr;
 
         // Create OpenCL stuff
         status = clGetPlatformIDs(1, &platform, nullptr);
@@ -84,8 +84,8 @@ public:
     {
         clReleaseCommandQueue(queue_);
         clReleaseContext(rawcontext_);
-		queue_ = nullptr;
-		rawcontext_ = nullptr;
+        queue_ = nullptr;
+        rawcontext_ = nullptr;
 
     }
     

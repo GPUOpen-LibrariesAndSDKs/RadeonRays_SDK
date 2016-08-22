@@ -74,8 +74,8 @@ public:
     template <typename T> CLWEvent  UnmapBuffer(unsigned int idx,  CLWBuffer<T> buffer, T* mappedData) const;
 
     template <size_t globalSize, size_t localSize, typename ... Types> CLWEvent Launch1D(unsigned int idx, cl_kernel kernel, Types ... args);
-	template <size_t globalSize, size_t localSize, typename ... Types> CLWEvent Launch1D(unsigned int idx, cl_kernel kernel, CLWEvent depEvent, Types ... args);
-	template <size_t globalSize, size_t localSize, typename ... Types> CLWEvent Launch1D(unsigned int idx, cl_kernel kernel, std::vector<CLWEvent> const& events, Types ... args);
+    template <size_t globalSize, size_t localSize, typename ... Types> CLWEvent Launch1D(unsigned int idx, cl_kernel kernel, CLWEvent depEvent, Types ... args);
+    template <size_t globalSize, size_t localSize, typename ... Types> CLWEvent Launch1D(unsigned int idx, cl_kernel kernel, std::vector<CLWEvent> const& events, Types ... args);
 
     CLWEvent Launch1D(unsigned int idx, size_t globalSize, size_t localSize, cl_kernel kernel);
     CLWEvent Launch1D(unsigned int idx, size_t globalSize, size_t localSize, cl_kernel kernel, CLWEvent depEvent);
@@ -90,7 +90,7 @@ public:
     CLWEvent Launch3D(unsigned int idx, size_t* globalSize, size_t* localSize, cl_kernel kernel, std::vector<CLWEvent> const& events);
 
     void Finish(unsigned int idx) const;
-	void Flush(unsigned int idx) const;
+    void Flush(unsigned int idx) const;
 
     // GL interop 
     void AcquireGLObjects(unsigned int idx, std::vector<cl_mem> const& objects) const;
@@ -155,29 +155,29 @@ template <size_t globalSize, size_t localSize, typename ... Types> CLWEvent CLWC
         params[i].SetArg(kernel, i);
     }
 
-	return Launch1D(idx, globalSize, localSize, kernel);
+    return Launch1D(idx, globalSize, localSize, kernel);
 }
 
 template <size_t globalSize, size_t localSize, typename ... Types> CLWEvent CLWContext::Launch1D(unsigned int idx, cl_kernel kernel, CLWEvent depEvent, Types ... args)
 {
-	std::vector<ParameterHolder> params{ args... };
-	for (unsigned int i = 0; i < params.size(); ++i)
-	{
-		params[i].SetArg(kernel, i);
-	}
+    std::vector<ParameterHolder> params{ args... };
+    for (unsigned int i = 0; i < params.size(); ++i)
+    {
+        params[i].SetArg(kernel, i);
+    }
 
-	return Launch1D(idx, globalSize, localSize, kernel, depEvent);
+    return Launch1D(idx, globalSize, localSize, kernel, depEvent);
 }
 
 template <size_t globalSize, size_t localSize, typename ... Types> CLWEvent CLWContext::Launch1D(unsigned int idx, cl_kernel kernel, std::vector<CLWEvent> const& events, Types ... args)
 {
-	std::vector<ParameterHolder> params{ args... };
-	for (unsigned int i = 0; i < params.size(); ++i)
-	{
-		params[i].SetArg(kernel, i);
-	}
+    std::vector<ParameterHolder> params{ args... };
+    for (unsigned int i = 0; i < params.size(); ++i)
+    {
+        params[i].SetArg(kernel, i);
+    }
 
-	return Launch1D(idx, globalSize, localSize, kernel, events);
+    return Launch1D(idx, globalSize, localSize, kernel, events);
 }
 
 template <typename T> CLWEvent  CLWContext::CopyBuffer(unsigned int idx, CLWBuffer<T> source, CLWBuffer<T> dest, size_t srcOffset, size_t destOffset, size_t elemCount) const

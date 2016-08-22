@@ -41,7 +41,7 @@ CLWDevice::CLWDevice(cl_device_id id) : ReferenceCounter<cl_device_id, clRetainD
     GetDeviceInfoParameter(*this, CL_DEVICE_LOCAL_MEM_SIZE, localMemSize_);
     GetDeviceInfoParameter(*this, CL_DEVICE_LOCAL_MEM_TYPE, localMemType_);
     GetDeviceInfoParameter(*this, CL_DEVICE_MAX_MEM_ALLOC_SIZE, maxAllocSize_);
-	GetDeviceInfoParameter(*this, CL_DEVICE_MIN_DATA_TYPE_ALIGN_SIZE, minAlignSize_);
+    GetDeviceInfoParameter(*this, CL_DEVICE_MIN_DATA_TYPE_ALIGN_SIZE, minAlignSize_);
 }
 
 CLWDevice::~CLWDevice()
@@ -120,12 +120,12 @@ cl_ulong CLWDevice::GetMaxAllocSize() const
 
 cl_uint CLWDevice::GetMinAlignSize() const
 {
-	return minAlignSize_;
+    return minAlignSize_;
 }
 
 bool CLWDevice::HasGlInterop() const
 {
-	return extensions_.find("cl_khr_gl_sharing") != std::string::npos
+    return extensions_.find("cl_khr_gl_sharing") != std::string::npos
     || extensions_.find("cl_APPLE_gl_sharing") != std::string::npos;
 }
 

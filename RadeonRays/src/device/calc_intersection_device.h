@@ -33,52 +33,52 @@ THE SOFTWARE.
 
 namespace RadeonRays
 {
-	class Strategy;
-	struct CalcEventHolder;
+    class Strategy;
+    struct CalcEventHolder;
 
-	///< The class represents Calc based intersection device.
-	///< It uses Calc::Device abstraction to implement intersection algorithm.
-	///<
-	class CalcIntersectionDevice : public IntersectionDevice
-	{
-	public:
-		//
-		CalcIntersectionDevice(Calc::Calc* calc, Calc::Device* device);
-		~CalcIntersectionDevice();
+    ///< The class represents Calc based intersection device.
+    ///< It uses Calc::Device abstraction to implement intersection algorithm.
+    ///<
+    class CalcIntersectionDevice : public IntersectionDevice
+    {
+    public:
+        //
+        CalcIntersectionDevice(Calc::Calc* calc, Calc::Device* device);
+        ~CalcIntersectionDevice();
 
-		void Preprocess(World const& world) override;
+        void Preprocess(World const& world) override;
 
-		Buffer* CreateBuffer(size_t size, void* initdata) const override;
+        Buffer* CreateBuffer(size_t size, void* initdata) const override;
 
-		void DeleteBuffer(Buffer* const) const override;
+        void DeleteBuffer(Buffer* const) const override;
 
-		void DeleteEvent(Event* const) const override;
+        void DeleteEvent(Event* const) const override;
 
-		void MapBuffer(Buffer* buffer, MapType type, size_t offset, size_t size, void** data, Event** event) const override;
+        void MapBuffer(Buffer* buffer, MapType type, size_t offset, size_t size, void** data, Event** event) const override;
 
-		void UnmapBuffer(Buffer* buffer, void* ptr, Event** event) const override;
+        void UnmapBuffer(Buffer* buffer, void* ptr, Event** event) const override;
 
-		void QueryIntersection(Buffer const* rays, int numrays, Buffer* hitinfos, Event const* waitevent, Event** event) const override;
+        void QueryIntersection(Buffer const* rays, int numrays, Buffer* hitinfos, Event const* waitevent, Event** event) const override;
 
-		void QueryOcclusion(Buffer const* rays, int numrays, Buffer* hitresults, Event const* waitevent, Event** event) const override;
+        void QueryOcclusion(Buffer const* rays, int numrays, Buffer* hitresults, Event const* waitevent, Event** event) const override;
 
-		void QueryIntersection(Buffer const* rays, Buffer const* numrays, int maxrays, Buffer* hitinfos, Event const* waitevent, Event** event) const override;
+        void QueryIntersection(Buffer const* rays, Buffer const* numrays, int maxrays, Buffer* hitinfos, Event const* waitevent, Event** event) const override;
 
-		void QueryOcclusion(Buffer const* rays, Buffer const* numrays, int maxrays, Buffer* hitresults, Event const* waitevent, Event** event) const override;
+        void QueryOcclusion(Buffer const* rays, Buffer const* numrays, int maxrays, Buffer* hitresults, Event const* waitevent, Event** event) const override;
 
-		Calc::Platform GetPlatform() const { return m_device->GetPlatform(); }
-	protected:
-		CalcEventHolder* CreateEventHolder() const;
-		void	  ReleaseEventHolder(CalcEventHolder* e) const;
+        Calc::Platform GetPlatform() const { return m_device->GetPlatform(); }
+    protected:
+        CalcEventHolder* CreateEventHolder() const;
+        void      ReleaseEventHolder(CalcEventHolder* e) const;
 
-		std::unique_ptr<Calc::Device, std::function<void(Calc::Device*)>> m_device;
-		std::unique_ptr<Strategy> m_intersector;
-		std::string m_intersector_string;
+        std::unique_ptr<Calc::Device, std::function<void(Calc::Device*)>> m_device;
+        std::unique_ptr<Strategy> m_intersector;
+        std::string m_intersector_string;
 
-		// Initial number of events in the pool
-		static const std::size_t EVENT_POOL_INITIAL_SIZE = 100;
-		// Event pool
-		mutable std::queue<CalcEventHolder*> m_event_pool;
-	};
+        // Initial number of events in the pool
+        static const std::size_t EVENT_POOL_INITIAL_SIZE = 100;
+        // Event pool
+        mutable std::queue<CalcEventHolder*> m_event_pool;
+    };
 }
 

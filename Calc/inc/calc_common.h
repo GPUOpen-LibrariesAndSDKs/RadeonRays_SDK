@@ -23,56 +23,56 @@ THE SOFTWARE.
 
 namespace Calc
 {
-	enum BufferType
-	{
-		kRead = 0x1,
-		kWrite = 0x2,
-		kPinned = 0x4
-	};
+    enum BufferType
+    {
+        kRead = 0x1,
+        kWrite = 0x2,
+        kPinned = 0x4
+    };
 
-	enum MapType
-	{
-		kMapRead = 0x1,
-		kMapWrite = 0x2
-	};
+    enum MapType
+    {
+        kMapRead = 0x1,
+        kMapWrite = 0x2
+    };
 
-	enum class DeviceType : uint8_t
-	{
-		kUnknown,
-		kGpu,
-		kCpu,
-		kAccelerator
-	};
+    enum class DeviceType : uint8_t
+    {
+        kUnknown,
+        kGpu,
+        kCpu,
+        kAccelerator
+    };
 
-	enum Platform
-	{
-		kOpenCL			= (1 << 0),
-		kVulkan			= (1 << 1),
+    enum Platform
+    {
+        kOpenCL            = (1 << 0),
+        kVulkan            = (1 << 1),
 
-		kAny			= 0xFF
-	};
+        kAny            = 0xFF
+    };
 
-	enum class SourceType : uint8_t
-	{
-		kOpenCL			= (1 << 0),
-		kGLSL			= (1 << 1),
-		kCL_SPIRV		= (1 << 2),
-		kGLSL_SPIRV		= (1 << 3),
+    enum class SourceType : uint8_t
+    {
+        kOpenCL            = (1 << 0),
+        kGLSL            = (1 << 1),
+        kCL_SPIRV        = (1 << 2),
+        kGLSL_SPIRV        = (1 << 3),
 
-		kHostNative		= (1 << 4),
-		kAccelNative	= (1 << 5),
-	};
+        kHostNative        = (1 << 4),
+        kAccelNative    = (1 << 5),
+    };
 
-	inline SourceType operator | (const SourceType lhs, const SourceType rhs)
-	{
-		using T = typename std::underlying_type<SourceType>::type;
-		return static_cast<SourceType>(static_cast<T>(lhs) | static_cast<T>(rhs));
-	}
+    inline SourceType operator | (const SourceType lhs, const SourceType rhs)
+    {
+        using T = typename std::underlying_type<SourceType>::type;
+        return static_cast<SourceType>(static_cast<T>(lhs) | static_cast<T>(rhs));
+    }
 
-	inline SourceType operator & (const SourceType lhs, const SourceType rhs)
-	{
-		using T = typename std::underlying_type<SourceType>::type;
-		return static_cast<SourceType>(static_cast<T>(lhs) & static_cast<T>(rhs));
-	}
+    inline SourceType operator & (const SourceType lhs, const SourceType rhs)
+    {
+        using T = typename std::underlying_type<SourceType>::type;
+        return static_cast<SourceType>(static_cast<T>(lhs) & static_cast<T>(rhs));
+    }
 
 }

@@ -26,48 +26,48 @@ THE SOFTWARE.
 
 namespace Calc
 {
-	class Buffer;
+    class Buffer;
 
-	struct SharedMemory
-	{
-	};
+    struct SharedMemory
+    {
+    };
 
-	// Represents individual callable unit within an executable
-	class Function
-	{
-	public:
-		Function() {}
-		virtual ~Function() = 0;
+    // Represents individual callable unit within an executable
+    class Function
+    {
+    public:
+        Function() {}
+        virtual ~Function() = 0;
 
-		// Argument setters
-		virtual void SetArg(std::uint32_t idx, std::size_t arg_size, void* arg) = 0;
-		virtual void SetArg(std::uint32_t idx, Buffer const* arg) = 0;
-		virtual void SetArg(std::uint32_t idx, std::size_t size, SharedMemory shmem) = 0;
+        // Argument setters
+        virtual void SetArg(std::uint32_t idx, std::size_t arg_size, void* arg) = 0;
+        virtual void SetArg(std::uint32_t idx, Buffer const* arg) = 0;
+        virtual void SetArg(std::uint32_t idx, std::size_t size, SharedMemory shmem) = 0;
 
-		Function(Function const&) = delete;
-		Function& operator = (Function const&) = delete;
-	};
+        Function(Function const&) = delete;
+        Function& operator = (Function const&) = delete;
+    };
 
-	// Executable which is capable of being launched on a device
-	class Executable
-	{
-	public:
-		Executable() {}
-		virtual ~Executable() = 0;
+    // Executable which is capable of being launched on a device
+    class Executable
+    {
+    public:
+        Executable() {}
+        virtual ~Executable() = 0;
 
-		// Function management
-		virtual Function* CreateFunction(char const* name) = 0;
-		virtual void DeleteFunction(Function* func) = 0;
+        // Function management
+        virtual Function* CreateFunction(char const* name) = 0;
+        virtual void DeleteFunction(Function* func) = 0;
 
-		Executable(Executable const&) = delete;
-		Executable& operator = (Executable const&) = delete;
-	};
+        Executable(Executable const&) = delete;
+        Executable& operator = (Executable const&) = delete;
+    };
 
-	inline Executable::~Executable()
-	{
-	}
+    inline Executable::~Executable()
+    {
+    }
 
-	inline Function::~Function()
-	{
-	}
+    inline Function::~Function()
+    {
+    }
 }

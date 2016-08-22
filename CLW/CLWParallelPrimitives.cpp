@@ -30,7 +30,7 @@ THE SOFTWARE.
 
 #ifdef RR_EMBED_KERNELS
 #if USE_OPENCL
-#	include <CLW/kernelcache/clwkernels_cl.h>
+#    include <CLW/kernelcache/clwkernels_cl.h>
 #endif
 #endif // RR_EMBED_KERNELS
 
@@ -636,16 +636,16 @@ CLWBuffer<cl_int> CLWParallelPrimitives::GetTempIntBuffer(size_t size)
 
 CLWBuffer<char> CLWParallelPrimitives::GetTempCharBuffer(size_t size)
 {
-	auto iter = charBufferCache_.find(size);
+    auto iter = charBufferCache_.find(size);
 
-	if (iter != charBufferCache_.end())
-	{
-		CLWBuffer<char> tmp = iter->second;
-		charBufferCache_.erase(iter);
-		return tmp;
-	}
+    if (iter != charBufferCache_.end())
+    {
+        CLWBuffer<char> tmp = iter->second;
+        charBufferCache_.erase(iter);
+        return tmp;
+    }
 
-	return context_.CreateBuffer<char>(size, CL_MEM_READ_WRITE);
+    return context_.CreateBuffer<char>(size, CL_MEM_READ_WRITE);
 }
 
 CLWBuffer<cl_float> CLWParallelPrimitives::GetTempFloatBuffer(size_t size)
@@ -735,70 +735,70 @@ CLWEvent CLWParallelPrimitives::SortRadix(unsigned int deviceIdx, CLWBuffer<cl_i
 }
 
 CLWEvent CLWParallelPrimitives::SortRadix(unsigned int deviceIdx, CLWBuffer<char> inputKeys, CLWBuffer<char> outputKeys,
-	CLWBuffer<char> inputValues, CLWBuffer<char> outputValues, int numElems)
+    CLWBuffer<char> inputValues, CLWBuffer<char> outputValues, int numElems)
 {
-	int GROUP_BLOCK_SIZE = (WG_SIZE * 4 * 8);
-	int NUM_BLOCKS = (numElems + GROUP_BLOCK_SIZE - 1) / GROUP_BLOCK_SIZE;
+    int GROUP_BLOCK_SIZE = (WG_SIZE * 4 * 8);
+    int NUM_BLOCKS = (numElems + GROUP_BLOCK_SIZE - 1) / GROUP_BLOCK_SIZE;
 
-	auto deviceHistograms = GetTempIntBuffer(NUM_BLOCKS * 16);
-	auto deviceTempKeysBuffer = GetTempCharBuffer(numElems * 4);
-	auto deviceTempValsBuffer = GetTempCharBuffer(numElems * 4);
+    auto deviceHistograms = GetTempIntBuffer(NUM_BLOCKS * 16);
+    auto deviceTempKeysBuffer = GetTempCharBuffer(numElems * 4);
+    auto deviceTempValsBuffer = GetTempCharBuffer(numElems * 4);
 
-	auto fromKeys = &inputKeys;
-	auto fromVals = &inputValues;
-	auto toKeys = &deviceTempKeysBuffer;
-	auto toVals = &deviceTempValsBuffer;
+    auto fromKeys = &inputKeys;
+    auto fromVals = &inputValues;
+    auto toKeys = &deviceTempKeysBuffer;
+    auto toVals = &deviceTempValsBuffer;
 
-	CLWKernel histogramKernel = program_.GetKernel("BitHistogram");
-	CLWKernel scatterKeysAndVals = program_.GetKernel("ScatterKeysAndValues");
+    CLWKernel histogramKernel = program_.GetKernel("BitHistogram");
+    CLWKernel scatterKeysAndVals = program_.GetKernel("ScatterKeysAndValues");
 
-	CLWEvent event;
+    CLWEvent event;
 
-	for (int offset = 0; offset < 32; offset += 4)
-	{
-		// Split
-		histogramKernel.SetArg(0, offset);
-		histogramKernel.SetArg(1, *fromKeys);
-		histogramKernel.SetArg(2, numElems);
-		histogramKernel.SetArg(3, deviceHistograms);
+    for (int offset = 0; offset < 32; offset += 4)
+    {
+        // Split
+        histogramKernel.SetArg(0, offset);
+        histogramKernel.SetArg(1, *fromKeys);
+        histogramKernel.SetArg(2, numElems);
+        histogramKernel.SetArg(3, deviceHistograms);
 
-		context_.Launch1D(0, NUM_BLOCKS*WG_SIZE, WG_SIZE, histogramKernel);
+        context_.Launch1D(0, NUM_BLOCKS*WG_SIZE, WG_SIZE, histogramKernel);
 
-		// Scan histograms
-		ScanExclusiveAdd(0, deviceHistograms, deviceHistograms);
+        // Scan histograms
+        ScanExclusiveAdd(0, deviceHistograms, deviceHistograms);
 
-		//context_.ReadBuffer(0, deviceHistograms, &hist[0], 16).Wait();
+        //context_.ReadBuffer(0, deviceHistograms, &hist[0], 16).Wait();
 
-		// Scatter keys
-		scatterKeysAndVals.SetArg(0, offset);
-		scatterKeysAndVals.SetArg(1, *fromKeys);
-		scatterKeysAndVals.SetArg(2, *fromVals);
-		scatterKeysAndVals.SetArg(3, numElems);
-		scatterKeysAndVals.SetArg(4, deviceHistograms);
-		scatterKeysAndVals.SetArg(5, *toKeys);
-		scatterKeysAndVals.SetArg(6, *toVals);
+        // Scatter keys
+        scatterKeysAndVals.SetArg(0, offset);
+        scatterKeysAndVals.SetArg(1, *fromKeys);
+        scatterKeysAndVals.SetArg(2, *fromVals);
+        scatterKeysAndVals.SetArg(3, numElems);
+        scatterKeysAndVals.SetArg(4, deviceHistograms);
+        scatterKeysAndVals.SetArg(5, *toKeys);
+        scatterKeysAndVals.SetArg(6, *toVals);
 
-		event = context_.Launch1D(0, NUM_BLOCKS*WG_SIZE, WG_SIZE, scatterKeysAndVals);
+        event = context_.Launch1D(0, NUM_BLOCKS*WG_SIZE, WG_SIZE, scatterKeysAndVals);
 
-		//context_.ReadBuffer(0, *toKeys, &keys[0], 64).Wait();
+        //context_.ReadBuffer(0, *toKeys, &keys[0], 64).Wait();
 
-		if (offset == 0)
-		{
-			fromKeys = &outputKeys;
-			fromVals = &outputValues;
-		}
+        if (offset == 0)
+        {
+            fromKeys = &outputKeys;
+            fromVals = &outputValues;
+        }
 
-		// Swap pointers
-		std::swap(fromKeys, toKeys);
-		std::swap(fromVals, toVals);
-	}
+        // Swap pointers
+        std::swap(fromKeys, toKeys);
+        std::swap(fromVals, toVals);
+    }
 
-	// Return buffers to memory manager
-	ReclaimTempIntBuffer(deviceHistograms);
-	ReclaimTempCharBuffer(deviceTempKeysBuffer);
-	ReclaimTempCharBuffer(deviceTempValsBuffer);
+    // Return buffers to memory manager
+    ReclaimTempIntBuffer(deviceHistograms);
+    ReclaimTempCharBuffer(deviceTempKeysBuffer);
+    ReclaimTempCharBuffer(deviceTempValsBuffer);
 
-	return event;
+    return event;
 }
 
 
@@ -881,14 +881,14 @@ void CLWParallelPrimitives::ReclaimTempIntBuffer(CLWBuffer<cl_int> buffer)
 
 void CLWParallelPrimitives::ReclaimTempCharBuffer(CLWBuffer<char> buffer)
 {
-	auto iter = charBufferCache_.find(buffer.GetElementCount());
+    auto iter = charBufferCache_.find(buffer.GetElementCount());
 
-	if (iter != charBufferCache_.end())
-	{
-		return;
-	}
+    if (iter != charBufferCache_.end())
+    {
+        return;
+    }
 
-	charBufferCache_[buffer.GetElementCount()] = buffer;
+    charBufferCache_[buffer.GetElementCount()] = buffer;
 }
 
 void CLWParallelPrimitives::ReclaimTempFloatBuffer(CLWBuffer<cl_float> buffer)
@@ -939,29 +939,29 @@ CLWEvent CLWParallelPrimitives::Compact(unsigned int deviceIdx, CLWBuffer<cl_int
 
 CLWEvent CLWParallelPrimitives::Compact(unsigned int deviceIdx, CLWBuffer<cl_int> predicate, CLWBuffer<cl_int> input, CLWBuffer<cl_int> output, CLWBuffer<cl_int> newSize)
 {
-	/// Scan predicate array first to temp buffer
+    /// Scan predicate array first to temp buffer
 
-	size_t numElems = predicate.GetElementCount();
+    size_t numElems = predicate.GetElementCount();
 
-	CLWBuffer<cl_int> addresses = GetTempIntBuffer(numElems);
+    CLWBuffer<cl_int> addresses = GetTempIntBuffer(numElems);
 
-	ScanExclusiveAdd(deviceIdx, predicate, addresses);
+    ScanExclusiveAdd(deviceIdx, predicate, addresses);
 
-	int NUM_BLOCKS = (int)((numElems + WG_SIZE - 1) / WG_SIZE);
+    int NUM_BLOCKS = (int)((numElems + WG_SIZE - 1) / WG_SIZE);
 
-	CLWKernel compactKernel = program_.GetKernel("compact_int_1");
+    CLWKernel compactKernel = program_.GetKernel("compact_int_1");
 
-	compactKernel.SetArg(0, predicate);
-	compactKernel.SetArg(1, addresses);
-	compactKernel.SetArg(2, input);
-	compactKernel.SetArg(3, (cl_uint)numElems);
-	compactKernel.SetArg(4, output);
-	compactKernel.SetArg(5, newSize);
+    compactKernel.SetArg(0, predicate);
+    compactKernel.SetArg(1, addresses);
+    compactKernel.SetArg(2, input);
+    compactKernel.SetArg(3, (cl_uint)numElems);
+    compactKernel.SetArg(4, output);
+    compactKernel.SetArg(5, newSize);
 
-	/// TODO: unsafe as it is used in the kernel, may have problems on DMA devices
-	ReclaimTempIntBuffer(addresses);
+    /// TODO: unsafe as it is used in the kernel, may have problems on DMA devices
+    ReclaimTempIntBuffer(addresses);
 
-	return context_.Launch1D(deviceIdx, NUM_BLOCKS * WG_SIZE, WG_SIZE, compactKernel);
+    return context_.Launch1D(deviceIdx, NUM_BLOCKS * WG_SIZE, WG_SIZE, compactKernel);
 }
 
 

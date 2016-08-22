@@ -65,7 +65,7 @@ namespace RadeonRays
 
     void Bvh::BuildNode(SplitRequest const& req, bbox const* bounds, float3 const* centroids, int* primindices)
     {
-		m_height = std::max(m_height, req.level);
+        m_height = std::max(m_height, req.level);
 
         Node* node = AllocateNode();
         node->bounds = req.bounds;

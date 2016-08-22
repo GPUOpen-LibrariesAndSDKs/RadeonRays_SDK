@@ -34,11 +34,11 @@ THE SOFTWARE.
 #endif
 
 namespace RadeonRays {
-	class IntersectionApi;
-	class Buffer;
+    class IntersectionApi;
+    class Buffer;
 
-	RRAPI IntersectionApi* CreateFromOpenClContext(cl_context context, cl_device_id device, cl_command_queue queue);
-	RRAPI Buffer* CreateFromOpenClBuffer(IntersectionApi* api, cl_mem buffer);
+    RRAPI IntersectionApi* CreateFromOpenClContext(cl_context context, cl_device_id device, cl_command_queue queue);
+    RRAPI Buffer* CreateFromOpenClBuffer(IntersectionApi* api, cl_mem buffer);
 }
 
 

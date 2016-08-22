@@ -299,22 +299,22 @@ static const char g_bvh_opencl[]= \
 " \n"\
 "int Ray_GetMask(ray const* r) \n"\
 "{ \n"\
-"	return r->extra.x; \n"\
+"    return r->extra.x; \n"\
 "} \n"\
 " \n"\
 "int Ray_IsActive(ray const* r) \n"\
 "{ \n"\
-"	return r->extra.y; \n"\
+"    return r->extra.y; \n"\
 "} \n"\
 " \n"\
 "float Ray_GetMaxT(ray const* r) \n"\
 "{ \n"\
-"	return r->o.w; \n"\
+"    return r->o.w; \n"\
 "} \n"\
 " \n"\
 "float Ray_GetTime(ray const* r) \n"\
 "{ \n"\
-"	return r->d.w; \n"\
+"    return r->d.w; \n"\
 "} \n"\
 "/************************************************************************* \n"\
 "EXTENSIONS \n"\
@@ -399,15 +399,15 @@ static const char g_bvh_opencl[]= \
 "    v2 = scenedata->vertices[face.idx[1]]; \n"\
 "    v3 = scenedata->vertices[face.idx[2]]; \n"\
 " \n"\
-"	int shapemask = scenedata->shapes[face.shapeidx].mask; \n"\
+"    int shapemask = scenedata->shapes[face.shapeidx].mask; \n"\
 " \n"\
-"	if (Ray_GetMask(r) & shapemask) \n"\
-"	{ \n"\
-"		if (IntersectTriangleP(r, v1, v2, v3)) \n"\
-"		{ \n"\
-"			return true; \n"\
-"		} \n"\
-"	} \n"\
+"    if (Ray_GetMask(r) & shapemask) \n"\
+"    { \n"\
+"        if (IntersectTriangleP(r, v1, v2, v3)) \n"\
+"        { \n"\
+"            return true; \n"\
+"        } \n"\
+"    } \n"\
 " \n"\
 "    return false; \n"\
 "} \n"\
@@ -545,11 +545,11 @@ static const char g_bvh_opencl[]= \
 " \n"\
 "        if (Ray_IsActive(&r)) \n"\
 "        { \n"\
-"        	// Calculate closest hit \n"\
-"        	IntersectSceneClosest(&scenedata, &r, &isect); \n"\
+"            // Calculate closest hit \n"\
+"            IntersectSceneClosest(&scenedata, &r, &isect); \n"\
 " \n"\
-"        	// Write data back in case of a hit \n"\
-"        	hits[ridx] = isect; \n"\
+"            // Write data back in case of a hit \n"\
+"            hits[ridx] = isect; \n"\
 "        } \n"\
 "    } \n"\
 "} \n"\
@@ -561,10 +561,10 @@ static const char g_bvh_opencl[]= \
 "    __global BvhNode const* nodes,   // BVH nodes \n"\
 "    __global float3 const* vertices, // Scene positional data \n"\
 "    __global Face const* faces,    // Scene indices \n"\
-"	__global ShapeData const* shapes,     // Shapes \n"\
+"    __global ShapeData const* shapes,     // Shapes \n"\
 "    __global ray const* rays,        // Ray workload \n"\
 "    int offset,                // Offset in rays array \n"\
-"    int numrays,               // Number of rays to process					 \n"\
+"    int numrays,               // Number of rays to process                     \n"\
 "    __global int* hitresults,  // Hit results \n"\
 "    __global int* raycnt \n"\
 "    ) \n"\
@@ -605,11 +605,11 @@ static const char g_bvh_opencl[]= \
 "        // Fetch ray \n"\
 "        ray r = rays[ridx]; \n"\
 " \n"\
-"		if (Ray_IsActive(&r)) \n"\
-"		{ \n"\
-"			// Calculate any intersection \n"\
-"			hitresults[ridx] = IntersectSceneAny(&scenedata, &r) ? 1 : -1; \n"\
-"		} \n"\
+"        if (Ray_IsActive(&r)) \n"\
+"        { \n"\
+"            // Calculate any intersection \n"\
+"            hitresults[ridx] = IntersectSceneAny(&scenedata, &r) ? 1 : -1; \n"\
+"        } \n"\
 "    } \n"\
 "} \n"\
 " \n"\
@@ -619,7 +619,7 @@ static const char g_bvh_opencl[]= \
 "    __global BvhNode const* nodes,   // BVH nodes \n"\
 "    __global float3 const* vertices, // Scene positional data \n"\
 "    __global Face const* faces,      // Scene indices \n"\
-"	__global ShapeData const* shapes,     // Shapes \n"\
+"    __global ShapeData const* shapes,     // Shapes \n"\
 "    __global ray const* rays,        // Ray workload \n"\
 "    int offset,                // Offset in rays array \n"\
 "    __global int const* numrays,     // Number of rays in the workload \n"\
@@ -663,15 +663,15 @@ static const char g_bvh_opencl[]= \
 "            break; \n"\
 " \n"\
 "        // Fetch ray \n"\
-"		ray r = rays[ridx]; \n"\
+"        ray r = rays[ridx]; \n"\
 " \n"\
-"		if (Ray_IsActive(&r)) \n"\
-"		{ \n"\
-"			// Calculate closest hit \n"\
-"			IntersectSceneClosest(&scenedata, &r, &isect); \n"\
-"			// Write data back in case of a hit \n"\
-"			hits[ridx] = isect; \n"\
-"		} \n"\
+"        if (Ray_IsActive(&r)) \n"\
+"        { \n"\
+"            // Calculate closest hit \n"\
+"            IntersectSceneClosest(&scenedata, &r, &isect); \n"\
+"            // Write data back in case of a hit \n"\
+"            hits[ridx] = isect; \n"\
+"        } \n"\
 "    } \n"\
 "} \n"\
 " \n"\
@@ -682,7 +682,7 @@ static const char g_bvh_opencl[]= \
 "    __global BvhNode const* nodes,   // BVH nodes \n"\
 "    __global float3 const* vertices, // Scene positional data \n"\
 "    __global Face const* faces,    // Scene indices \n"\
-"	__global ShapeData const* shapes,     // Shapes \n"\
+"    __global ShapeData const* shapes,     // Shapes \n"\
 "    __global ray const* rays,        // Ray workload \n"\
 "    int offset,                // Offset in rays array \n"\
 "    __global int const* numrays,     // Number of rays in the workload \n"\
@@ -726,11 +726,11 @@ static const char g_bvh_opencl[]= \
 "        // Fetch ray \n"\
 "        ray r = rays[ridx]; \n"\
 " \n"\
-"		if (Ray_IsActive(&r)) \n"\
-"		{ \n"\
-"			// Calculate any intersection \n"\
-"			hitresults[ridx] = IntersectSceneAny(&scenedata, &r) ? 1 : -1; \n"\
-"		} \n"\
+"        if (Ray_IsActive(&r)) \n"\
+"        { \n"\
+"            // Calculate any intersection \n"\
+"            hitresults[ridx] = IntersectSceneAny(&scenedata, &r) ? 1 : -1; \n"\
+"        } \n"\
 "    } \n"\
 "} \n"\
 " \n"\
@@ -766,15 +766,15 @@ static const char g_bvh_opencl[]= \
 "        // Fetch ray \n"\
 "        ray r = rays[global_id]; \n"\
 " \n"\
-"		if (Ray_IsActive(&r)) \n"\
-"		{ \n"\
-"			// Calculate closest hit \n"\
-"			Intersection isect; \n"\
-"			IntersectSceneClosest(&scenedata, &r, &isect); \n"\
+"        if (Ray_IsActive(&r)) \n"\
+"        { \n"\
+"            // Calculate closest hit \n"\
+"            Intersection isect; \n"\
+"            IntersectSceneClosest(&scenedata, &r, &isect); \n"\
 " \n"\
-"			// Write data back in case of a hit \n"\
-"			hits[global_id] = isect; \n"\
-"		} \n"\
+"            // Write data back in case of a hit \n"\
+"            hits[global_id] = isect; \n"\
+"        } \n"\
 "    } \n"\
 "} \n"\
 " \n"\
@@ -787,7 +787,7 @@ static const char g_bvh_opencl[]= \
 "__global ShapeData const* shapes,     // Shapes \n"\
 "__global ray const* rays,        // Ray workload \n"\
 "int offset,                // Offset in rays array \n"\
-"int numrays,               // Number of rays to process					 \n"\
+"int numrays,               // Number of rays to process                     \n"\
 "__global int* hitresults  // Hit results \n"\
 ") \n"\
 "{ \n"\
@@ -810,11 +810,11 @@ static const char g_bvh_opencl[]= \
 "        // Fetch ray \n"\
 "        ray r = rays[offset + global_id]; \n"\
 " \n"\
-"		if (Ray_IsActive(&r)) \n"\
-"		{ \n"\
-"			// Calculate any intersection \n"\
-"			hitresults[offset + global_id] = IntersectSceneAny(&scenedata, &r) ? 1 : -1; \n"\
-"		} \n"\
+"        if (Ray_IsActive(&r)) \n"\
+"        { \n"\
+"            // Calculate any intersection \n"\
+"            hitresults[offset + global_id] = IntersectSceneAny(&scenedata, &r) ? 1 : -1; \n"\
+"        } \n"\
 "    } \n"\
 "} \n"\
 " \n"\
@@ -850,14 +850,14 @@ static const char g_bvh_opencl[]= \
 "        int idx = offset + global_id; \n"\
 "        ray r = rays[idx]; \n"\
 " \n"\
-"		if (Ray_IsActive(&r)) \n"\
-"		{ \n"\
-"			// Calculate closest hit \n"\
-"			Intersection isect; \n"\
-"			IntersectSceneClosest(&scenedata, &r, &isect); \n"\
-"			// Write data back in case of a hit \n"\
-"			hits[idx] = isect; \n"\
-"		} \n"\
+"        if (Ray_IsActive(&r)) \n"\
+"        { \n"\
+"            // Calculate closest hit \n"\
+"            Intersection isect; \n"\
+"            IntersectSceneClosest(&scenedata, &r, &isect); \n"\
+"            // Write data back in case of a hit \n"\
+"            hits[idx] = isect; \n"\
+"        } \n"\
 "    } \n"\
 "} \n"\
 " \n"\
@@ -893,11 +893,11 @@ static const char g_bvh_opencl[]= \
 "        // Fetch ray \n"\
 "        ray r = rays[offset + global_id]; \n"\
 " \n"\
-"		if (Ray_IsActive(&r)) \n"\
-"		{ \n"\
-"			// Calculate any intersection \n"\
-"			hitresults[offset + global_id] = IntersectSceneAny(&scenedata, &r) ? 1 : -1; \n"\
-"		} \n"\
+"        if (Ray_IsActive(&r)) \n"\
+"        { \n"\
+"            // Calculate any intersection \n"\
+"            hitresults[offset + global_id] = IntersectSceneAny(&scenedata, &r) ? 1 : -1; \n"\
+"        } \n"\
 "    } \n"\
 "} \n"\
 ;
@@ -1200,22 +1200,22 @@ static const char g_bvh2l_opencl[]= \
 " \n"\
 "int Ray_GetMask(ray const* r) \n"\
 "{ \n"\
-"	return r->extra.x; \n"\
+"    return r->extra.x; \n"\
 "} \n"\
 " \n"\
 "int Ray_IsActive(ray const* r) \n"\
 "{ \n"\
-"	return r->extra.y; \n"\
+"    return r->extra.y; \n"\
 "} \n"\
 " \n"\
 "float Ray_GetMaxT(ray const* r) \n"\
 "{ \n"\
-"	return r->o.w; \n"\
+"    return r->o.w; \n"\
 "} \n"\
 " \n"\
 "float Ray_GetTime(ray const* r) \n"\
 "{ \n"\
-"	return r->d.w; \n"\
+"    return r->d.w; \n"\
 "} \n"\
 " \n"\
 "/************************************************************************* \n"\
@@ -1299,10 +1299,10 @@ static const char g_bvh2l_opencl[]= \
 "    v2 = scenedata->vertices[face.idx[1]]; \n"\
 "    v3 = scenedata->vertices[face.idx[2]]; \n"\
 " \n"\
-"	if (IntersectTriangleP(r, v1, v2, v3)) \n"\
-"	{ \n"\
-"		return true; \n"\
-"	} \n"\
+"    if (IntersectTriangleP(r, v1, v2, v3)) \n"\
+"    { \n"\
+"        return true; \n"\
+"    } \n"\
 " \n"\
 "    return false; \n"\
 "} \n"\
@@ -1560,12 +1560,12 @@ static const char g_bvh2l_opencl[]= \
 " \n"\
 "        if (Ray_IsActive(&r)) \n"\
 "        { \n"\
-"        	// Calculate closest hit \n"\
-"        	Intersection isect; \n"\
-"        	IntersectSceneClosest2L(&scenedata, &r, &isect); \n"\
+"            // Calculate closest hit \n"\
+"            Intersection isect; \n"\
+"            IntersectSceneClosest2L(&scenedata, &r, &isect); \n"\
 " \n"\
-"        	// Write data back in case of a hit \n"\
-"        	hits[idx] = isect; \n"\
+"            // Write data back in case of a hit \n"\
+"            hits[idx] = isect; \n"\
 "        } \n"\
 "    } \n"\
 "} \n"\
@@ -1604,8 +1604,8 @@ static const char g_bvh2l_opencl[]= \
 " \n"\
 "        if (Ray_IsActive(&r)) \n"\
 "        { \n"\
-"        	// Calculate any intersection \n"\
-"        	hitresults[offset + global_id] = IntersectSceneAny2L(&scenedata, &r) ? 1 : -1; \n"\
+"            // Calculate any intersection \n"\
+"            hitresults[offset + global_id] = IntersectSceneAny2L(&scenedata, &r) ? 1 : -1; \n"\
 "        } \n"\
 "    } \n"\
 "} \n"\
@@ -1644,14 +1644,14 @@ static const char g_bvh2l_opencl[]= \
 "        int idx = offset + global_id; \n"\
 "        ray r = rays[idx]; \n"\
 " \n"\
-"		if (Ray_IsActive(&r)) \n"\
-"		{ \n"\
-"			// Calculate closest hit \n"\
-"			Intersection isect; \n"\
-"			IntersectSceneClosest2L(&scenedata, &r, &isect); \n"\
+"        if (Ray_IsActive(&r)) \n"\
+"        { \n"\
+"            // Calculate closest hit \n"\
+"            Intersection isect; \n"\
+"            IntersectSceneClosest2L(&scenedata, &r, &isect); \n"\
 " \n"\
-"			hits[idx] = isect; \n"\
-"		} \n"\
+"            hits[idx] = isect; \n"\
+"        } \n"\
 "    } \n"\
 "} \n"\
 " \n"\
@@ -1970,22 +1970,22 @@ static const char g_common_opencl[]= \
 " \n"\
 "int Ray_GetMask(ray const* r) \n"\
 "{ \n"\
-"	return r->extra.x; \n"\
+"    return r->extra.x; \n"\
 "} \n"\
 " \n"\
 "int Ray_IsActive(ray const* r) \n"\
 "{ \n"\
-"	return r->extra.y; \n"\
+"    return r->extra.y; \n"\
 "} \n"\
 " \n"\
 "float Ray_GetMaxT(ray const* r) \n"\
 "{ \n"\
-"	return r->o.w; \n"\
+"    return r->o.w; \n"\
 "} \n"\
 " \n"\
 "float Ray_GetTime(ray const* r) \n"\
 "{ \n"\
-"	return r->d.w; \n"\
+"    return r->d.w; \n"\
 "} \n"\
 ;
 static const char g_fatbvh_opencl[]= \
@@ -2287,22 +2287,22 @@ static const char g_fatbvh_opencl[]= \
 " \n"\
 "int Ray_GetMask(ray const* r) \n"\
 "{ \n"\
-"	return r->extra.x; \n"\
+"    return r->extra.x; \n"\
 "} \n"\
 " \n"\
 "int Ray_IsActive(ray const* r) \n"\
 "{ \n"\
-"	return r->extra.y; \n"\
+"    return r->extra.y; \n"\
 "} \n"\
 " \n"\
 "float Ray_GetMaxT(ray const* r) \n"\
 "{ \n"\
-"	return r->o.w; \n"\
+"    return r->o.w; \n"\
 "} \n"\
 " \n"\
 "float Ray_GetTime(ray const* r) \n"\
 "{ \n"\
-"	return r->d.w; \n"\
+"    return r->d.w; \n"\
 "} \n"\
 "/************************************************************************* \n"\
 "EXTENSIONS \n"\
@@ -2320,22 +2320,22 @@ static const char g_fatbvh_opencl[]= \
 " \n"\
 "typedef struct \n"\
 "{ \n"\
-"	bbox lbound; \n"\
-"	bbox rbound; \n"\
+"    bbox lbound; \n"\
+"    bbox rbound; \n"\
 "} FatBvhNode; \n"\
 " \n"\
 "typedef struct \n"\
 "{ \n"\
-"	// BVH structure \n"\
-"	__global FatBvhNode const* 	nodes; \n"\
-"	// Scene positional data \n"\
-"	__global float3 const* 		vertices; \n"\
-"	// Scene indices \n"\
-"	__global Face const* 		faces; \n"\
-"	// Shape IDs \n"\
-"	__global ShapeData const* 	shapes; \n"\
-"	// Extra data \n"\
-"	__global int const* 			extra; \n"\
+"    // BVH structure \n"\
+"    __global FatBvhNode const*     nodes; \n"\
+"    // Scene positional data \n"\
+"    __global float3 const*         vertices; \n"\
+"    // Scene indices \n"\
+"    __global Face const*         faces; \n"\
+"    // Shape IDs \n"\
+"    __global ShapeData const*     shapes; \n"\
+"    // Extra data \n"\
+"    __global int const*             extra; \n"\
 "} SceneData; \n"\
 " \n"\
 "/************************************************************************* \n"\
@@ -2349,250 +2349,250 @@ static const char g_fatbvh_opencl[]= \
 "**************************************************************************/ \n"\
 "//  intersect a ray with leaf BVH node \n"\
 "void IntersectLeafClosest( \n"\
-"	SceneData const* scenedata, \n"\
-"	int faceidx, \n"\
-"	ray const* r,                // ray to instersect \n"\
-"	Intersection* isect          // Intersection structure \n"\
-"	) \n"\
+"    SceneData const* scenedata, \n"\
+"    int faceidx, \n"\
+"    ray const* r,                // ray to instersect \n"\
+"    Intersection* isect          // Intersection structure \n"\
+"    ) \n"\
 "{ \n"\
-"	float3 v1, v2, v3; \n"\
-"	Face face; \n"\
+"    float3 v1, v2, v3; \n"\
+"    Face face; \n"\
 " \n"\
-"	face = scenedata->faces[faceidx]; \n"\
-"	v1 = scenedata->vertices[face.idx[0]]; \n"\
-"	v2 = scenedata->vertices[face.idx[1]]; \n"\
-"	v3 = scenedata->vertices[face.idx[2]]; \n"\
+"    face = scenedata->faces[faceidx]; \n"\
+"    v1 = scenedata->vertices[face.idx[0]]; \n"\
+"    v2 = scenedata->vertices[face.idx[1]]; \n"\
+"    v3 = scenedata->vertices[face.idx[2]]; \n"\
 " \n"\
-"	int shapemask = scenedata->shapes[face.shapeidx].mask; \n"\
+"    int shapemask = scenedata->shapes[face.shapeidx].mask; \n"\
 " \n"\
-"	if (Ray_GetMask(r) & shapemask) \n"\
-"	{ \n"\
-"		if (IntersectTriangle(r, v1, v2, v3, isect)) \n"\
-"		{ \n"\
-"			isect->primid = face.id; \n"\
-"			isect->shapeid = scenedata->shapes[face.shapeidx].id; \n"\
-"		} \n"\
-"	} \n"\
+"    if (Ray_GetMask(r) & shapemask) \n"\
+"    { \n"\
+"        if (IntersectTriangle(r, v1, v2, v3, isect)) \n"\
+"        { \n"\
+"            isect->primid = face.id; \n"\
+"            isect->shapeid = scenedata->shapes[face.shapeidx].id; \n"\
+"        } \n"\
+"    } \n"\
 "} \n"\
 " \n"\
 "//  intersect a ray with leaf BVH node \n"\
 "bool IntersectLeafAny( \n"\
-"	SceneData const* scenedata, \n"\
-"	int faceidx, \n"\
-"	ray const* r                      // ray to instersect \n"\
-"	) \n"\
+"    SceneData const* scenedata, \n"\
+"    int faceidx, \n"\
+"    ray const* r                      // ray to instersect \n"\
+"    ) \n"\
 "{ \n"\
-"	float3 v1, v2, v3; \n"\
-"	Face face; \n"\
+"    float3 v1, v2, v3; \n"\
+"    Face face; \n"\
 " \n"\
-"	face = scenedata->faces[faceidx]; \n"\
-"	v1 = scenedata->vertices[face.idx[0]]; \n"\
-"	v2 = scenedata->vertices[face.idx[1]]; \n"\
-"	v3 = scenedata->vertices[face.idx[2]]; \n"\
+"    face = scenedata->faces[faceidx]; \n"\
+"    v1 = scenedata->vertices[face.idx[0]]; \n"\
+"    v2 = scenedata->vertices[face.idx[1]]; \n"\
+"    v3 = scenedata->vertices[face.idx[2]]; \n"\
 " \n"\
-"	int shapemask = scenedata->shapes[face.shapeidx].mask; \n"\
+"    int shapemask = scenedata->shapes[face.shapeidx].mask; \n"\
 " \n"\
-"	if (Ray_GetMask(r) & shapemask) \n"\
-"	{ \n"\
-"		if (IntersectTriangleP(r, v1, v2, v3)) \n"\
-"		{ \n"\
-"			return true; \n"\
-"		} \n"\
-"	} \n"\
+"    if (Ray_GetMask(r) & shapemask) \n"\
+"    { \n"\
+"        if (IntersectTriangleP(r, v1, v2, v3)) \n"\
+"        { \n"\
+"            return true; \n"\
+"        } \n"\
+"    } \n"\
 " \n"\
-"	return false; \n"\
+"    return false; \n"\
 "} \n"\
 " \n"\
 "#ifndef GLOBAL_STACK \n"\
 "// intersect Ray against the whole BVH structure \n"\
 "bool IntersectSceneClosest(SceneData const* scenedata, ray const* r, Intersection* isect, __global int* stack, __local int* ldsstack) \n"\
 "{ \n"\
-"	const float3 invdir = native_recip(r->d.xyz); \n"\
+"    const float3 invdir = native_recip(r->d.xyz); \n"\
 " \n"\
-"	isect->uvwt = make_float4(0.f, 0.f, 0.f, r->o.w); \n"\
-"	isect->shapeid = -1; \n"\
-"	isect->primid = -1; \n"\
+"    isect->uvwt = make_float4(0.f, 0.f, 0.f, r->o.w); \n"\
+"    isect->shapeid = -1; \n"\
+"    isect->primid = -1; \n"\
 " \n"\
-"	if (r->o.w < 0.f) \n"\
-"		return false; \n"\
+"    if (r->o.w < 0.f) \n"\
+"        return false; \n"\
 " \n"\
-"	__global int* gsptr = stack; \n"\
-"	__local  int* lsptr = ldsstack; \n"\
+"    __global int* gsptr = stack; \n"\
+"    __local  int* lsptr = ldsstack; \n"\
 " \n"\
-"	*lsptr = -1; \n"\
-"	lsptr += 64; \n"\
+"    *lsptr = -1; \n"\
+"    lsptr += 64; \n"\
 " \n"\
-"	int idx = 0; \n"\
-"	FatBvhNode node; \n"\
+"    int idx = 0; \n"\
+"    FatBvhNode node; \n"\
 " \n"\
-"	bool leftleaf = false; \n"\
-"	bool rightleaf = false; \n"\
-"	float lefthit = 0.f; \n"\
-"	float righthit = 0.f; \n"\
-"	int step = 0; \n"\
+"    bool leftleaf = false; \n"\
+"    bool rightleaf = false; \n"\
+"    float lefthit = 0.f; \n"\
+"    float righthit = 0.f; \n"\
+"    int step = 0; \n"\
 " \n"\
-"	while (idx > -1) \n"\
-"	{ \n"\
-"		while (idx > -1) \n"\
-"		{ \n"\
-"			node = scenedata->nodes[idx]; \n"\
+"    while (idx > -1) \n"\
+"    { \n"\
+"        while (idx > -1) \n"\
+"        { \n"\
+"            node = scenedata->nodes[idx]; \n"\
 " \n"\
-"			leftleaf = LEAFNODE(node.lbound); \n"\
-"			rightleaf = LEAFNODE(node.rbound); \n"\
+"            leftleaf = LEAFNODE(node.lbound); \n"\
+"            rightleaf = LEAFNODE(node.rbound); \n"\
 " \n"\
-"			lefthit = leftleaf ? -1.f : IntersectBoxF(r, invdir, node.lbound, isect->uvwt.w); \n"\
-"			righthit = rightleaf ? -1.f : IntersectBoxF(r, invdir, node.rbound, isect->uvwt.w); \n"\
+"            lefthit = leftleaf ? -1.f : IntersectBoxF(r, invdir, node.lbound, isect->uvwt.w); \n"\
+"            righthit = rightleaf ? -1.f : IntersectBoxF(r, invdir, node.rbound, isect->uvwt.w); \n"\
 " \n"\
-"			if (leftleaf) \n"\
-"			{ \n"\
-"				IntersectLeafClosest(scenedata, STARTIDX(node.lbound), r, isect); \n"\
-"			} \n"\
+"            if (leftleaf) \n"\
+"            { \n"\
+"                IntersectLeafClosest(scenedata, STARTIDX(node.lbound), r, isect); \n"\
+"            } \n"\
 " \n"\
-"			if (rightleaf) \n"\
-"			{ \n"\
-"				IntersectLeafClosest(scenedata, STARTIDX(node.rbound), r, isect); \n"\
-"			} \n"\
+"            if (rightleaf) \n"\
+"            { \n"\
+"                IntersectLeafClosest(scenedata, STARTIDX(node.rbound), r, isect); \n"\
+"            } \n"\
 " \n"\
-"			if (lefthit > 0.f && righthit > 0.f) \n"\
-"			{ \n"\
-"				int deferred = -1; \n"\
-"				if (lefthit > righthit) \n"\
-"				{ \n"\
-"					idx = (int)node.rbound.pmax.w; \n"\
-"					deferred = (int)node.lbound.pmax.w;; \n"\
-"				} \n"\
-"				else \n"\
-"				{ \n"\
-"					idx = (int)node.lbound.pmax.w; \n"\
-"					deferred = (int)node.rbound.pmax.w; \n"\
-"				} \n"\
+"            if (lefthit > 0.f && righthit > 0.f) \n"\
+"            { \n"\
+"                int deferred = -1; \n"\
+"                if (lefthit > righthit) \n"\
+"                { \n"\
+"                    idx = (int)node.rbound.pmax.w; \n"\
+"                    deferred = (int)node.lbound.pmax.w;; \n"\
+"                } \n"\
+"                else \n"\
+"                { \n"\
+"                    idx = (int)node.lbound.pmax.w; \n"\
+"                    deferred = (int)node.rbound.pmax.w; \n"\
+"                } \n"\
 " \n"\
-"				if (lsptr - ldsstack >= SHORT_STACK_SIZE * 64) \n"\
-"				{ \n"\
-"					for (int i = 1; i < SHORT_STACK_SIZE; ++i) \n"\
-"					{ \n"\
-"						gsptr[i] = ldsstack[i * 64]; \n"\
-"					} \n"\
+"                if (lsptr - ldsstack >= SHORT_STACK_SIZE * 64) \n"\
+"                { \n"\
+"                    for (int i = 1; i < SHORT_STACK_SIZE; ++i) \n"\
+"                    { \n"\
+"                        gsptr[i] = ldsstack[i * 64]; \n"\
+"                    } \n"\
 " \n"\
-"					gsptr += SHORT_STACK_SIZE; \n"\
-"					lsptr = ldsstack + 64; \n"\
-"				} \n"\
+"                    gsptr += SHORT_STACK_SIZE; \n"\
+"                    lsptr = ldsstack + 64; \n"\
+"                } \n"\
 " \n"\
-"				*lsptr = deferred; \n"\
-"				lsptr += 64; \n"\
+"                *lsptr = deferred; \n"\
+"                lsptr += 64; \n"\
 " \n"\
-"				continue; \n"\
-"			} \n"\
-"			else if (lefthit > 0) \n"\
-"			{ \n"\
-"				idx = (int)node.lbound.pmax.w; \n"\
-"				continue; \n"\
-"			} \n"\
-"			else if (righthit > 0) \n"\
-"			{ \n"\
-"				idx = (int)node.rbound.pmax.w; \n"\
-"				continue; \n"\
-"			} \n"\
+"                continue; \n"\
+"            } \n"\
+"            else if (lefthit > 0) \n"\
+"            { \n"\
+"                idx = (int)node.lbound.pmax.w; \n"\
+"                continue; \n"\
+"            } \n"\
+"            else if (righthit > 0) \n"\
+"            { \n"\
+"                idx = (int)node.rbound.pmax.w; \n"\
+"                continue; \n"\
+"            } \n"\
 " \n"\
-"			lsptr -= 64; \n"\
-"			idx = *(lsptr); \n"\
-"		} \n"\
+"            lsptr -= 64; \n"\
+"            idx = *(lsptr); \n"\
+"        } \n"\
 " \n"\
-"		if (gsptr > stack) \n"\
-"		{ \n"\
-"			gsptr -= SHORT_STACK_SIZE; \n"\
+"        if (gsptr > stack) \n"\
+"        { \n"\
+"            gsptr -= SHORT_STACK_SIZE; \n"\
 " \n"\
-"			for (int i = 1; i < SHORT_STACK_SIZE; ++i) \n"\
-"			{ \n"\
-"				ldsstack[i * 64] = gsptr[i]; \n"\
-"			} \n"\
+"            for (int i = 1; i < SHORT_STACK_SIZE; ++i) \n"\
+"            { \n"\
+"                ldsstack[i * 64] = gsptr[i]; \n"\
+"            } \n"\
 " \n"\
-"			lsptr = ldsstack + (SHORT_STACK_SIZE - 1) * 64; \n"\
-"			idx = ldsstack[64 * (SHORT_STACK_SIZE - 1)]; \n"\
-"		} \n"\
-"	} \n"\
+"            lsptr = ldsstack + (SHORT_STACK_SIZE - 1) * 64; \n"\
+"            idx = ldsstack[64 * (SHORT_STACK_SIZE - 1)]; \n"\
+"        } \n"\
+"    } \n"\
 " \n"\
-"	return isect->shapeid >= 0; \n"\
+"    return isect->shapeid >= 0; \n"\
 "} \n"\
 "#else \n"\
 "// intersect Ray against the whole BVH structure \n"\
 "bool IntersectSceneClosest(SceneData const* scenedata, ray const* r, Intersection* isect) \n"\
 "{ \n"\
-"	const float3 invdir = native_recip(r->d.xyz); \n"\
+"    const float3 invdir = native_recip(r->d.xyz); \n"\
 " \n"\
-"	isect->uvwt = make_float4(0.f, 0.f, 0.f, r->o.w); \n"\
-"	isect->shapeid = -1; \n"\
-"	isect->primid = -1; \n"\
+"    isect->uvwt = make_float4(0.f, 0.f, 0.f, r->o.w); \n"\
+"    isect->shapeid = -1; \n"\
+"    isect->primid = -1; \n"\
 " \n"\
-"	if (r->o.w < 0.f) \n"\
-"		return false; \n"\
+"    if (r->o.w < 0.f) \n"\
+"        return false; \n"\
 "     \n"\
-"	int stack[32]; \n"\
+"    int stack[32]; \n"\
 " \n"\
-"	int* sptr = stack; \n"\
-"	*sptr++ = -1; \n"\
+"    int* sptr = stack; \n"\
+"    *sptr++ = -1; \n"\
 " \n"\
-"	int idx = 0; \n"\
-"	FatBvhNode node; \n"\
+"    int idx = 0; \n"\
+"    FatBvhNode node; \n"\
 " \n"\
-"	bool leftleaf = false; \n"\
-"	bool rightleaf = false; \n"\
-"	float lefthit = 0.f; \n"\
-"	float righthit = 0.f; \n"\
-"	int step = 0; \n"\
+"    bool leftleaf = false; \n"\
+"    bool rightleaf = false; \n"\
+"    float lefthit = 0.f; \n"\
+"    float righthit = 0.f; \n"\
+"    int step = 0; \n"\
 " \n"\
-"	while (idx > -1) \n"\
-"	{ \n"\
-"		node = scenedata->nodes[idx]; \n"\
+"    while (idx > -1) \n"\
+"    { \n"\
+"        node = scenedata->nodes[idx]; \n"\
 " \n"\
-"		leftleaf = LEAFNODE(node.lbound); \n"\
-"		rightleaf = LEAFNODE(node.rbound); \n"\
+"        leftleaf = LEAFNODE(node.lbound); \n"\
+"        rightleaf = LEAFNODE(node.rbound); \n"\
 " \n"\
-"		lefthit = leftleaf ? -1.f : IntersectBoxF(r, invdir, node.lbound, isect->uvwt.w); \n"\
-"		righthit = rightleaf ? -1.f : IntersectBoxF(r, invdir, node.rbound, isect->uvwt.w); \n"\
+"        lefthit = leftleaf ? -1.f : IntersectBoxF(r, invdir, node.lbound, isect->uvwt.w); \n"\
+"        righthit = rightleaf ? -1.f : IntersectBoxF(r, invdir, node.rbound, isect->uvwt.w); \n"\
 " \n"\
-"		if (leftleaf) \n"\
-"		{ \n"\
-"			IntersectLeafClosest(scenedata, STARTIDX(node.lbound), r, isect); \n"\
-"		} \n"\
+"        if (leftleaf) \n"\
+"        { \n"\
+"            IntersectLeafClosest(scenedata, STARTIDX(node.lbound), r, isect); \n"\
+"        } \n"\
 " \n"\
-"		if (rightleaf) \n"\
-"		{ \n"\
-"			IntersectLeafClosest(scenedata, STARTIDX(node.rbound), r, isect); \n"\
-"		} \n"\
+"        if (rightleaf) \n"\
+"        { \n"\
+"            IntersectLeafClosest(scenedata, STARTIDX(node.rbound), r, isect); \n"\
+"        } \n"\
 " \n"\
-"		if (lefthit > 0.f && righthit > 0.f) \n"\
-"		{ \n"\
-"			int deferred = -1; \n"\
-"			if (lefthit > righthit) \n"\
-"			{ \n"\
-"				idx = (int)node.rbound.pmax.w; \n"\
-"				deferred = (int)node.lbound.pmax.w;; \n"\
-"			} \n"\
-"			else \n"\
-"			{ \n"\
-"				idx = (int)node.lbound.pmax.w; \n"\
-"				deferred = (int)node.rbound.pmax.w; \n"\
-"			} \n"\
+"        if (lefthit > 0.f && righthit > 0.f) \n"\
+"        { \n"\
+"            int deferred = -1; \n"\
+"            if (lefthit > righthit) \n"\
+"            { \n"\
+"                idx = (int)node.rbound.pmax.w; \n"\
+"                deferred = (int)node.lbound.pmax.w;; \n"\
+"            } \n"\
+"            else \n"\
+"            { \n"\
+"                idx = (int)node.lbound.pmax.w; \n"\
+"                deferred = (int)node.rbound.pmax.w; \n"\
+"            } \n"\
 " \n"\
-"		            *sptr++ = deferred; \n"\
-"			continue; \n"\
-"		} \n"\
-"		else if (lefthit > 0) \n"\
-"		{ \n"\
-"			idx = (int)node.lbound.pmax.w; \n"\
-"			continue; \n"\
-"		} \n"\
-"		else if (righthit > 0) \n"\
-"		{ \n"\
-"			idx = (int)node.rbound.pmax.w; \n"\
-"			continue; \n"\
-"		} \n"\
+"                    *sptr++ = deferred; \n"\
+"            continue; \n"\
+"        } \n"\
+"        else if (lefthit > 0) \n"\
+"        { \n"\
+"            idx = (int)node.lbound.pmax.w; \n"\
+"            continue; \n"\
+"        } \n"\
+"        else if (righthit > 0) \n"\
+"        { \n"\
+"            idx = (int)node.rbound.pmax.w; \n"\
+"            continue; \n"\
+"        } \n"\
 " \n"\
-"        		idx = *--sptr; \n"\
-"	} \n"\
+"                idx = *--sptr; \n"\
+"    } \n"\
 " \n"\
-"	return isect->shapeid >= 0; \n"\
+"    return isect->shapeid >= 0; \n"\
 "} \n"\
 "#endif \n"\
 " \n"\
@@ -2600,392 +2600,392 @@ static const char g_fatbvh_opencl[]= \
 "// intersect Ray against the whole BVH structure \n"\
 "bool IntersectSceneAny(SceneData const* scenedata, ray const* r, __global int* stack, __local int* ldsstack) \n"\
 "{ \n"\
-"	const float3 invdir = native_recip(r->d.xyz); \n"\
+"    const float3 invdir = native_recip(r->d.xyz); \n"\
 " \n"\
-"	__global int* gsptr = stack; \n"\
-"	__local  int* lsptr = ldsstack; \n"\
+"    __global int* gsptr = stack; \n"\
+"    __local  int* lsptr = ldsstack; \n"\
 " \n"\
-"	if (r->o.w < 0.f) \n"\
-"		return false; \n"\
+"    if (r->o.w < 0.f) \n"\
+"        return false; \n"\
 " \n"\
-"	*lsptr = -1; \n"\
-"	lsptr += 64; \n"\
+"    *lsptr = -1; \n"\
+"    lsptr += 64; \n"\
 " \n"\
-"	int idx = 0; \n"\
-"	FatBvhNode node; \n"\
+"    int idx = 0; \n"\
+"    FatBvhNode node; \n"\
 " \n"\
-"	bool leftleaf = false; \n"\
-"	bool rightleaf = false; \n"\
-"	float lefthit = 0.f; \n"\
-"	float righthit = 0.f; \n"\
+"    bool leftleaf = false; \n"\
+"    bool rightleaf = false; \n"\
+"    float lefthit = 0.f; \n"\
+"    float righthit = 0.f; \n"\
 " \n"\
-"	while (idx > -1) \n"\
-"	{ \n"\
-"		while (idx > -1) \n"\
-"		{ \n"\
-"			node = scenedata->nodes[idx]; \n"\
+"    while (idx > -1) \n"\
+"    { \n"\
+"        while (idx > -1) \n"\
+"        { \n"\
+"            node = scenedata->nodes[idx]; \n"\
 " \n"\
-"			leftleaf = LEAFNODE(node.lbound); \n"\
-"			rightleaf = LEAFNODE(node.rbound); \n"\
+"            leftleaf = LEAFNODE(node.lbound); \n"\
+"            rightleaf = LEAFNODE(node.rbound); \n"\
 " \n"\
-"			lefthit = leftleaf ? -1.f : IntersectBoxF(r, invdir, node.lbound, r->o.w); \n"\
-"			righthit = rightleaf ? -1.f : IntersectBoxF(r, invdir, node.rbound, r->o.w); \n"\
+"            lefthit = leftleaf ? -1.f : IntersectBoxF(r, invdir, node.lbound, r->o.w); \n"\
+"            righthit = rightleaf ? -1.f : IntersectBoxF(r, invdir, node.rbound, r->o.w); \n"\
 " \n"\
-"			if (leftleaf) \n"\
-"			{ \n"\
-"				if (IntersectLeafAny(scenedata, STARTIDX(node.lbound), r)) \n"\
-"                    				return true; \n"\
-"			} \n"\
+"            if (leftleaf) \n"\
+"            { \n"\
+"                if (IntersectLeafAny(scenedata, STARTIDX(node.lbound), r)) \n"\
+"                                    return true; \n"\
+"            } \n"\
 " \n"\
-"			if (rightleaf) \n"\
-"			{ \n"\
-"				if (IntersectLeafAny(scenedata, STARTIDX(node.rbound), r)) \n"\
-"			                    return true; \n"\
-"			} \n"\
+"            if (rightleaf) \n"\
+"            { \n"\
+"                if (IntersectLeafAny(scenedata, STARTIDX(node.rbound), r)) \n"\
+"                                return true; \n"\
+"            } \n"\
 " \n"\
-"			if (lefthit > 0.f && righthit > 0.f) \n"\
-"			{ \n"\
-"				int deferred = -1; \n"\
-"				if (lefthit > righthit) \n"\
-"				{ \n"\
-"					idx = (int)node.rbound.pmax.w; \n"\
-"					deferred = (int)node.lbound.pmax.w;; \n"\
+"            if (lefthit > 0.f && righthit > 0.f) \n"\
+"            { \n"\
+"                int deferred = -1; \n"\
+"                if (lefthit > righthit) \n"\
+"                { \n"\
+"                    idx = (int)node.rbound.pmax.w; \n"\
+"                    deferred = (int)node.lbound.pmax.w;; \n"\
 " \n"\
-"				} \n"\
-"				else \n"\
-"				{ \n"\
-"					idx = (int)node.lbound.pmax.w; \n"\
-"					deferred = (int)node.rbound.pmax.w; \n"\
-"				} \n"\
+"                } \n"\
+"                else \n"\
+"                { \n"\
+"                    idx = (int)node.lbound.pmax.w; \n"\
+"                    deferred = (int)node.rbound.pmax.w; \n"\
+"                } \n"\
 " \n"\
-"				if (lsptr - ldsstack >= SHORT_STACK_SIZE * 64) \n"\
-"				{ \n"\
-"					for (int i = 1; i < SHORT_STACK_SIZE; ++i) \n"\
-"					{ \n"\
-"						gsptr[i] = ldsstack[i * 64]; \n"\
-"					} \n"\
+"                if (lsptr - ldsstack >= SHORT_STACK_SIZE * 64) \n"\
+"                { \n"\
+"                    for (int i = 1; i < SHORT_STACK_SIZE; ++i) \n"\
+"                    { \n"\
+"                        gsptr[i] = ldsstack[i * 64]; \n"\
+"                    } \n"\
 " \n"\
-"					gsptr += SHORT_STACK_SIZE; \n"\
-"					lsptr = ldsstack + 64; \n"\
-"				} \n"\
+"                    gsptr += SHORT_STACK_SIZE; \n"\
+"                    lsptr = ldsstack + 64; \n"\
+"                } \n"\
 " \n"\
-"				*lsptr = deferred; \n"\
-"				lsptr += 64; \n"\
-"				continue; \n"\
-"			} \n"\
-"			else if (lefthit > 0) \n"\
-"			{ \n"\
-"				idx = (int)node.lbound.pmax.w; \n"\
-"				continue; \n"\
-"			} \n"\
-"			else if (righthit > 0) \n"\
-"			{ \n"\
-"				idx = (int)node.rbound.pmax.w; \n"\
-"				continue; \n"\
-"			} \n"\
+"                *lsptr = deferred; \n"\
+"                lsptr += 64; \n"\
+"                continue; \n"\
+"            } \n"\
+"            else if (lefthit > 0) \n"\
+"            { \n"\
+"                idx = (int)node.lbound.pmax.w; \n"\
+"                continue; \n"\
+"            } \n"\
+"            else if (righthit > 0) \n"\
+"            { \n"\
+"                idx = (int)node.rbound.pmax.w; \n"\
+"                continue; \n"\
+"            } \n"\
 " \n"\
-"			lsptr -= 64; \n"\
-"			idx = *(lsptr); \n"\
-"		} \n"\
+"            lsptr -= 64; \n"\
+"            idx = *(lsptr); \n"\
+"        } \n"\
 " \n"\
-"		if (gsptr > stack) \n"\
-"		{ \n"\
-"			gsptr -= SHORT_STACK_SIZE; \n"\
+"        if (gsptr > stack) \n"\
+"        { \n"\
+"            gsptr -= SHORT_STACK_SIZE; \n"\
 " \n"\
-"			for (int i = 1; i < SHORT_STACK_SIZE; ++i) \n"\
-"			{ \n"\
-"				ldsstack[i * 64] = gsptr[i]; \n"\
-"			} \n"\
+"            for (int i = 1; i < SHORT_STACK_SIZE; ++i) \n"\
+"            { \n"\
+"                ldsstack[i * 64] = gsptr[i]; \n"\
+"            } \n"\
 " \n"\
-"			lsptr = ldsstack + (SHORT_STACK_SIZE - 1) * 64; \n"\
-"			idx = ldsstack[64 * (SHORT_STACK_SIZE - 1)]; \n"\
-"		} \n"\
-"	} \n"\
+"            lsptr = ldsstack + (SHORT_STACK_SIZE - 1) * 64; \n"\
+"            idx = ldsstack[64 * (SHORT_STACK_SIZE - 1)]; \n"\
+"        } \n"\
+"    } \n"\
 " \n"\
-"	return false; \n"\
+"    return false; \n"\
 "} \n"\
 "#else \n"\
 "// intersect Ray against the whole BVH structure \n"\
 "bool IntersectSceneAny(SceneData const* scenedata, ray const* r) \n"\
 "{ \n"\
-"	const float3 invdir = native_recip(r->d.xyz); \n"\
+"    const float3 invdir = native_recip(r->d.xyz); \n"\
 " \n"\
-"	if (r->o.w < 0.f) \n"\
-"		return false; \n"\
+"    if (r->o.w < 0.f) \n"\
+"        return false; \n"\
 "     \n"\
-"	int stack[32]; \n"\
+"    int stack[32]; \n"\
 " \n"\
-"	int* sptr = stack; \n"\
-"	*sptr++ = -1; \n"\
+"    int* sptr = stack; \n"\
+"    *sptr++ = -1; \n"\
 " \n"\
-"	int idx = 0; \n"\
-"	FatBvhNode node; \n"\
+"    int idx = 0; \n"\
+"    FatBvhNode node; \n"\
 " \n"\
-"	bool leftleaf = false; \n"\
-"	bool rightleaf = false; \n"\
-"	float lefthit = 0.f; \n"\
-"	float righthit = 0.f; \n"\
-"	int step = 0; \n"\
+"    bool leftleaf = false; \n"\
+"    bool rightleaf = false; \n"\
+"    float lefthit = 0.f; \n"\
+"    float righthit = 0.f; \n"\
+"    int step = 0; \n"\
 " \n"\
-"	bool found = false; \n"\
+"    bool found = false; \n"\
 " \n"\
-"	while (idx > -1) \n"\
-"	{ \n"\
-"		node = scenedata->nodes[idx]; \n"\
+"    while (idx > -1) \n"\
+"    { \n"\
+"        node = scenedata->nodes[idx]; \n"\
 " \n"\
-"		leftleaf = LEAFNODE(node.lbound); \n"\
-"		rightleaf = LEAFNODE(node.rbound); \n"\
+"        leftleaf = LEAFNODE(node.lbound); \n"\
+"        rightleaf = LEAFNODE(node.rbound); \n"\
 " \n"\
-"		lefthit = leftleaf ? -1.f : IntersectBoxF(r, invdir, node.lbound, r->o.w); \n"\
-"		righthit = rightleaf ? -1.f : IntersectBoxF(r, invdir, node.rbound, r->o.w); \n"\
+"        lefthit = leftleaf ? -1.f : IntersectBoxF(r, invdir, node.lbound, r->o.w); \n"\
+"        righthit = rightleaf ? -1.f : IntersectBoxF(r, invdir, node.rbound, r->o.w); \n"\
 " \n"\
-"		if (leftleaf) \n"\
-"		{ \n"\
-"			if (IntersectLeafAny(scenedata, STARTIDX(node.lbound), r)) \n"\
-"			{ \n"\
-"			    found = true; \n"\
-"			    break; \n"\
-"			} \n"\
-"		} \n"\
-"		 \n"\
-"		if (rightleaf) \n"\
-"		{ \n"\
-"			if (IntersectLeafAny(scenedata, STARTIDX(node.rbound), r)) \n"\
-"		            { \n"\
-"		                found = true; \n"\
-"		                break; \n"\
-"		            } \n"\
-"		} \n"\
+"        if (leftleaf) \n"\
+"        { \n"\
+"            if (IntersectLeafAny(scenedata, STARTIDX(node.lbound), r)) \n"\
+"            { \n"\
+"                found = true; \n"\
+"                break; \n"\
+"            } \n"\
+"        } \n"\
+"         \n"\
+"        if (rightleaf) \n"\
+"        { \n"\
+"            if (IntersectLeafAny(scenedata, STARTIDX(node.rbound), r)) \n"\
+"                    { \n"\
+"                        found = true; \n"\
+"                        break; \n"\
+"                    } \n"\
+"        } \n"\
 " \n"\
-"		if (lefthit > 0.f && righthit > 0.f) \n"\
-"		{ \n"\
-"			int deferred = -1; \n"\
-"			if (lefthit > righthit) \n"\
-"			{ \n"\
-"				idx = (int)node.rbound.pmax.w; \n"\
-"				deferred = (int)node.lbound.pmax.w;; \n"\
-"			} \n"\
-"			else \n"\
-"			{ \n"\
-"				idx = (int)node.lbound.pmax.w; \n"\
-"				deferred = (int)node.rbound.pmax.w; \n"\
-"			} \n"\
+"        if (lefthit > 0.f && righthit > 0.f) \n"\
+"        { \n"\
+"            int deferred = -1; \n"\
+"            if (lefthit > righthit) \n"\
+"            { \n"\
+"                idx = (int)node.rbound.pmax.w; \n"\
+"                deferred = (int)node.lbound.pmax.w;; \n"\
+"            } \n"\
+"            else \n"\
+"            { \n"\
+"                idx = (int)node.lbound.pmax.w; \n"\
+"                deferred = (int)node.rbound.pmax.w; \n"\
+"            } \n"\
 " \n"\
-"		            *sptr++ = deferred; \n"\
-"		} \n"\
-"		else if (lefthit > 0) \n"\
-"		{ \n"\
-"			idx = (int)node.lbound.pmax.w; \n"\
-"		} \n"\
-"		else if (righthit > 0) \n"\
-"		{ \n"\
-"			idx = (int)node.rbound.pmax.w; \n"\
-"		} \n"\
+"                    *sptr++ = deferred; \n"\
+"        } \n"\
+"        else if (lefthit > 0) \n"\
+"        { \n"\
+"            idx = (int)node.lbound.pmax.w; \n"\
+"        } \n"\
+"        else if (righthit > 0) \n"\
+"        { \n"\
+"            idx = (int)node.rbound.pmax.w; \n"\
+"        } \n"\
 " \n"\
-"		if (lefthit <= 0.f && righthit <= 0.f) \n"\
-"			idx = *--sptr; \n"\
-"	} \n"\
+"        if (lefthit <= 0.f && righthit <= 0.f) \n"\
+"            idx = *--sptr; \n"\
+"    } \n"\
 " \n"\
-"	return found; \n"\
+"    return found; \n"\
 "} \n"\
 " \n"\
 "#endif \n"\
 " \n"\
 "__attribute__((reqd_work_group_size(64, 1, 1))) \n"\
 "__kernel void IntersectClosest( \n"\
-"	// Input \n"\
-"	__global FatBvhNode const* nodes,   // BVH nodes \n"\
-"	__global float3 const* vertices, // Scene positional data \n"\
-"	__global Face const* faces,    // Scene indices \n"\
-"	__global ShapeData const* shapes, // Shape data \n"\
-"	__global ray const* rays,        // Ray workload \n"\
-"	int offset,                // Offset in rays array \n"\
-"	int numrays,               // Number of rays to process \n"\
-"	__global Intersection* hits // Hit datas \n"\
-"	, __global int* stack \n"\
-"	) \n"\
+"    // Input \n"\
+"    __global FatBvhNode const* nodes,   // BVH nodes \n"\
+"    __global float3 const* vertices, // Scene positional data \n"\
+"    __global Face const* faces,    // Scene indices \n"\
+"    __global ShapeData const* shapes, // Shape data \n"\
+"    __global ray const* rays,        // Ray workload \n"\
+"    int offset,                // Offset in rays array \n"\
+"    int numrays,               // Number of rays to process \n"\
+"    __global Intersection* hits // Hit datas \n"\
+"    , __global int* stack \n"\
+"    ) \n"\
 "{ \n"\
-"	__local int ldsstack[SHORT_STACK_SIZE * 64]; \n"\
+"    __local int ldsstack[SHORT_STACK_SIZE * 64]; \n"\
 " \n"\
-"	int global_id = get_global_id(0); \n"\
-"	int local_id = get_local_id(0); \n"\
-"	int group_id = get_group_id(0); \n"\
+"    int global_id = get_global_id(0); \n"\
+"    int local_id = get_local_id(0); \n"\
+"    int group_id = get_group_id(0); \n"\
 " \n"\
-"	// Fill scene data  \n"\
-"	SceneData scenedata = \n"\
-"	{ \n"\
-"		nodes, \n"\
-"		vertices, \n"\
-"		faces, \n"\
-"		shapes, \n"\
-"		0 \n"\
-"	}; \n"\
+"    // Fill scene data  \n"\
+"    SceneData scenedata = \n"\
+"    { \n"\
+"        nodes, \n"\
+"        vertices, \n"\
+"        faces, \n"\
+"        shapes, \n"\
+"        0 \n"\
+"    }; \n"\
 " \n"\
-"	if (global_id < numrays) \n"\
-"	{ \n"\
-"		// Fetch ray \n"\
-"		ray r = rays[global_id]; \n"\
-"		 \n"\
-"		if (Ray_IsActive(&r)) \n"\
-"		{ \n"\
-"			// Calculate closest hit \n"\
-"			Intersection isect; \n"\
+"    if (global_id < numrays) \n"\
+"    { \n"\
+"        // Fetch ray \n"\
+"        ray r = rays[global_id]; \n"\
+"         \n"\
+"        if (Ray_IsActive(&r)) \n"\
+"        { \n"\
+"            // Calculate closest hit \n"\
+"            Intersection isect; \n"\
 "#ifndef GLOBAL_STACK  \n"\
-"			IntersectSceneClosest(&scenedata, &r, &isect, stack + group_id * 64 * 32 + local_id * 32, ldsstack + local_id); \n"\
+"            IntersectSceneClosest(&scenedata, &r, &isect, stack + group_id * 64 * 32 + local_id * 32, ldsstack + local_id); \n"\
 "#else \n"\
-"			IntersectSceneClosest(&scenedata, &r, &isect); \n"\
+"            IntersectSceneClosest(&scenedata, &r, &isect); \n"\
 "#endif \n"\
 " \n"\
-"			// Write data back in case of a hit \n"\
-"			hits[global_id] = isect; \n"\
-"		} \n"\
-"	} \n"\
+"            // Write data back in case of a hit \n"\
+"            hits[global_id] = isect; \n"\
+"        } \n"\
+"    } \n"\
 "} \n"\
 " \n"\
 "__attribute__((reqd_work_group_size(64, 1, 1))) \n"\
 "__kernel void IntersectAny( \n"\
-"	// Input \n"\
-"	__global FatBvhNode const* nodes,   // BVH nodes \n"\
-"	__global float3 const* vertices, // Scene positional data \n"\
-"	__global Face const* faces,    // Scene indices \n"\
-"	__global ShapeData const* shapes,     // Shape data \n"\
-"	__global ray const* rays,        // Ray workload \n"\
-"	int offset,                // Offset in rays array \n"\
-"	int numrays,               // Number of rays to process					 \n"\
-"	__global int* hitresults  // Hit results \n"\
-"	, __global int* stack \n"\
-"	) \n"\
+"    // Input \n"\
+"    __global FatBvhNode const* nodes,   // BVH nodes \n"\
+"    __global float3 const* vertices, // Scene positional data \n"\
+"    __global Face const* faces,    // Scene indices \n"\
+"    __global ShapeData const* shapes,     // Shape data \n"\
+"    __global ray const* rays,        // Ray workload \n"\
+"    int offset,                // Offset in rays array \n"\
+"    int numrays,               // Number of rays to process                     \n"\
+"    __global int* hitresults  // Hit results \n"\
+"    , __global int* stack \n"\
+"    ) \n"\
 "{ \n"\
 " \n"\
-"	__local int ldsstack[SHORT_STACK_SIZE * 64]; \n"\
-"	int global_id = get_global_id(0); \n"\
-"	int local_id = get_local_id(0); \n"\
-"	int group_id = get_group_id(0); \n"\
+"    __local int ldsstack[SHORT_STACK_SIZE * 64]; \n"\
+"    int global_id = get_global_id(0); \n"\
+"    int local_id = get_local_id(0); \n"\
+"    int group_id = get_group_id(0); \n"\
 " \n"\
-"	// Fill scene data  \n"\
-"	SceneData scenedata = \n"\
-"	{ \n"\
-"		nodes, \n"\
-"		vertices, \n"\
-"		faces, \n"\
-"		shapes, \n"\
-"		0 \n"\
-"	}; \n"\
+"    // Fill scene data  \n"\
+"    SceneData scenedata = \n"\
+"    { \n"\
+"        nodes, \n"\
+"        vertices, \n"\
+"        faces, \n"\
+"        shapes, \n"\
+"        0 \n"\
+"    }; \n"\
 " \n"\
-"	if (global_id < numrays) \n"\
-"	{ \n"\
-"		// Fetch ray \n"\
-"		ray r = rays[global_id]; \n"\
+"    if (global_id < numrays) \n"\
+"    { \n"\
+"        // Fetch ray \n"\
+"        ray r = rays[global_id]; \n"\
 " \n"\
-"		if (Ray_IsActive(&r)) \n"\
-"		{ \n"\
-"			// Calculate any intersection \n"\
-"#ifndef GLOBAL_STACK  \n"\
-"			hitresults[global_id] = IntersectSceneAny(&scenedata, &r, stack + group_id * 64 * 32 + local_id * 32, ldsstack + local_id) ? 1 : -1; \n"\
-"#else \n"\
-"			hitresults[global_id] = IntersectSceneAny(&scenedata, &r) ? 1 : -1; \n"\
-"#endif \n"\
-"		} \n"\
-"	} \n"\
-"} \n"\
-" \n"\
-"__attribute__((reqd_work_group_size(64, 1, 1))) \n"\
-"// Version with range check \n"\
-"__kernel void IntersectClosestRC( \n"\
-"	__global FatBvhNode const* nodes,   // BVH nodes \n"\
-"	__global float3 const* vertices, // Scene positional data \n"\
-"	__global Face const* faces,      // Scene indices \n"\
-"	__global ShapeData const* shapes,     // Shape data \n"\
-"	__global ray const* rays,        // Ray workload \n"\
-"	int offset,                // Offset in rays array \n"\
-"	__global int const* numrays,     // Number of rays in the workload \n"\
-"	__global Intersection* hits // Hit datas \n"\
-"	, __global int* stack \n"\
-"	) \n"\
-"{ \n"\
-"	__local int ldsstack[SHORT_STACK_SIZE * 64]; \n"\
-" \n"\
-"	int global_id = get_global_id(0); \n"\
-"	int local_id = get_local_id(0); \n"\
-"	int group_id = get_group_id(0); \n"\
-" \n"\
-"	// Fill scene data  \n"\
-"	SceneData scenedata = \n"\
-"	{ \n"\
-"		nodes, \n"\
-"		vertices, \n"\
-"		faces, \n"\
-"		shapes, \n"\
-"		0 \n"\
-"	}; \n"\
-" \n"\
-"	// Handle only working subset \n"\
-"	if (global_id < *numrays) \n"\
-"	{ \n"\
-"		// Fetch ray \n"\
-"		ray r = rays[global_id]; \n"\
-" \n"\
-"		if (Ray_IsActive(&r)) \n"\
-"		{ \n"\
-"			// Calculate closest hit \n"\
-"			Intersection isect; \n"\
-"#ifndef GLOBAL_STACK  \n"\
-"			IntersectSceneClosest(&scenedata, &r, &isect, stack + group_id * 64 * 32 + local_id * 32, ldsstack + local_id); \n"\
-"#else \n"\
-"			IntersectSceneClosest(&scenedata, &r, &isect); \n"\
-"#endif \n"\
-"			// Write data back in case of a hit \n"\
-"			hits[global_id] = isect; \n"\
-"		} \n"\
-"	} \n"\
-"} \n"\
-" \n"\
-"__attribute__((reqd_work_group_size(64, 1, 1))) \n"\
-"// Version with range check \n"\
-"__kernel void IntersectAnyRC( \n"\
-"	// Input \n"\
-"	__global FatBvhNode const* nodes,   // BVH nodes \n"\
-"	__global float3 const* vertices, // Scene positional data \n"\
-"	__global Face const* faces,    // Scene indices \n"\
-"	__global ShapeData const* shapes,     // Shape data \n"\
-"	__global ray const* rays,        // Ray workload \n"\
-"	int offset,                // Offset in rays array \n"\
-"	__global int const* numrays,     // Number of rays in the workload \n"\
-"	__global int* hitresults   // Hit results \n"\
-"	, __global int* stack \n"\
-"	) \n"\
-"{ \n"\
-"	__local int ldsstack[SHORT_STACK_SIZE * 64]; \n"\
-"	int global_id = get_global_id(0); \n"\
-"	int local_id = get_local_id(0); \n"\
-"	int group_id = get_group_id(0); \n"\
-" \n"\
-"	// Fill scene data  \n"\
-"	SceneData scenedata = \n"\
-"	{ \n"\
-"		nodes, \n"\
-"		vertices, \n"\
-"		faces, \n"\
-"		shapes, \n"\
-"		0 \n"\
-"	}; \n"\
-" \n"\
-"	// Handle only working subset \n"\
-"	if (global_id < *numrays) \n"\
-"	{ \n"\
-"		// Fetch ray \n"\
-"		ray r = rays[global_id]; \n"\
-" \n"\
-"		if (Ray_IsActive(&r)) \n"\
-"		{ \n"\
-"			// Calculate any intersection \n"\
+"        if (Ray_IsActive(&r)) \n"\
+"        { \n"\
+"            // Calculate any intersection \n"\
 "#ifndef GLOBAL_STACK  \n"\
 "            hitresults[global_id] = IntersectSceneAny(&scenedata, &r, stack + group_id * 64 * 32 + local_id * 32, ldsstack + local_id) ? 1 : -1; \n"\
 "#else \n"\
 "            hitresults[global_id] = IntersectSceneAny(&scenedata, &r) ? 1 : -1; \n"\
 "#endif \n"\
-"		} \n"\
-"	} \n"\
+"        } \n"\
+"    } \n"\
+"} \n"\
+" \n"\
+"__attribute__((reqd_work_group_size(64, 1, 1))) \n"\
+"// Version with range check \n"\
+"__kernel void IntersectClosestRC( \n"\
+"    __global FatBvhNode const* nodes,   // BVH nodes \n"\
+"    __global float3 const* vertices, // Scene positional data \n"\
+"    __global Face const* faces,      // Scene indices \n"\
+"    __global ShapeData const* shapes,     // Shape data \n"\
+"    __global ray const* rays,        // Ray workload \n"\
+"    int offset,                // Offset in rays array \n"\
+"    __global int const* numrays,     // Number of rays in the workload \n"\
+"    __global Intersection* hits // Hit datas \n"\
+"    , __global int* stack \n"\
+"    ) \n"\
+"{ \n"\
+"    __local int ldsstack[SHORT_STACK_SIZE * 64]; \n"\
+" \n"\
+"    int global_id = get_global_id(0); \n"\
+"    int local_id = get_local_id(0); \n"\
+"    int group_id = get_group_id(0); \n"\
+" \n"\
+"    // Fill scene data  \n"\
+"    SceneData scenedata = \n"\
+"    { \n"\
+"        nodes, \n"\
+"        vertices, \n"\
+"        faces, \n"\
+"        shapes, \n"\
+"        0 \n"\
+"    }; \n"\
+" \n"\
+"    // Handle only working subset \n"\
+"    if (global_id < *numrays) \n"\
+"    { \n"\
+"        // Fetch ray \n"\
+"        ray r = rays[global_id]; \n"\
+" \n"\
+"        if (Ray_IsActive(&r)) \n"\
+"        { \n"\
+"            // Calculate closest hit \n"\
+"            Intersection isect; \n"\
+"#ifndef GLOBAL_STACK  \n"\
+"            IntersectSceneClosest(&scenedata, &r, &isect, stack + group_id * 64 * 32 + local_id * 32, ldsstack + local_id); \n"\
+"#else \n"\
+"            IntersectSceneClosest(&scenedata, &r, &isect); \n"\
+"#endif \n"\
+"            // Write data back in case of a hit \n"\
+"            hits[global_id] = isect; \n"\
+"        } \n"\
+"    } \n"\
+"} \n"\
+" \n"\
+"__attribute__((reqd_work_group_size(64, 1, 1))) \n"\
+"// Version with range check \n"\
+"__kernel void IntersectAnyRC( \n"\
+"    // Input \n"\
+"    __global FatBvhNode const* nodes,   // BVH nodes \n"\
+"    __global float3 const* vertices, // Scene positional data \n"\
+"    __global Face const* faces,    // Scene indices \n"\
+"    __global ShapeData const* shapes,     // Shape data \n"\
+"    __global ray const* rays,        // Ray workload \n"\
+"    int offset,                // Offset in rays array \n"\
+"    __global int const* numrays,     // Number of rays in the workload \n"\
+"    __global int* hitresults   // Hit results \n"\
+"    , __global int* stack \n"\
+"    ) \n"\
+"{ \n"\
+"    __local int ldsstack[SHORT_STACK_SIZE * 64]; \n"\
+"    int global_id = get_global_id(0); \n"\
+"    int local_id = get_local_id(0); \n"\
+"    int group_id = get_group_id(0); \n"\
+" \n"\
+"    // Fill scene data  \n"\
+"    SceneData scenedata = \n"\
+"    { \n"\
+"        nodes, \n"\
+"        vertices, \n"\
+"        faces, \n"\
+"        shapes, \n"\
+"        0 \n"\
+"    }; \n"\
+" \n"\
+"    // Handle only working subset \n"\
+"    if (global_id < *numrays) \n"\
+"    { \n"\
+"        // Fetch ray \n"\
+"        ray r = rays[global_id]; \n"\
+" \n"\
+"        if (Ray_IsActive(&r)) \n"\
+"        { \n"\
+"            // Calculate any intersection \n"\
+"#ifndef GLOBAL_STACK  \n"\
+"            hitresults[global_id] = IntersectSceneAny(&scenedata, &r, stack + group_id * 64 * 32 + local_id * 32, ldsstack + local_id) ? 1 : -1; \n"\
+"#else \n"\
+"            hitresults[global_id] = IntersectSceneAny(&scenedata, &r) ? 1 : -1; \n"\
+"#endif \n"\
+"        } \n"\
+"    } \n"\
 "} \n"\
 ;
 static const char g_grid_opencl[]= \
@@ -3287,22 +3287,22 @@ static const char g_grid_opencl[]= \
 " \n"\
 "int Ray_GetMask(ray const* r) \n"\
 "{ \n"\
-"	return r->extra.x; \n"\
+"    return r->extra.x; \n"\
 "} \n"\
 " \n"\
 "int Ray_IsActive(ray const* r) \n"\
 "{ \n"\
-"	return r->extra.y; \n"\
+"    return r->extra.y; \n"\
 "} \n"\
 " \n"\
 "float Ray_GetMaxT(ray const* r) \n"\
 "{ \n"\
-"	return r->o.w; \n"\
+"    return r->o.w; \n"\
 "} \n"\
 " \n"\
 "float Ray_GetTime(ray const* r) \n"\
 "{ \n"\
-"	return r->d.w; \n"\
+"    return r->d.w; \n"\
 "} \n"\
 " \n"\
 "/************************************************************************* \n"\
@@ -4138,22 +4138,22 @@ static const char g_hlbvh_opencl[]= \
 " \n"\
 "int Ray_GetMask(ray const* r) \n"\
 "{ \n"\
-"	return r->extra.x; \n"\
+"    return r->extra.x; \n"\
 "} \n"\
 " \n"\
 "int Ray_IsActive(ray const* r) \n"\
 "{ \n"\
-"	return r->extra.y; \n"\
+"    return r->extra.y; \n"\
 "} \n"\
 " \n"\
 "float Ray_GetMaxT(ray const* r) \n"\
 "{ \n"\
-"	return r->o.w; \n"\
+"    return r->o.w; \n"\
 "} \n"\
 " \n"\
 "float Ray_GetTime(ray const* r) \n"\
 "{ \n"\
-"	return r->d.w; \n"\
+"    return r->d.w; \n"\
 "} \n"\
 " /************************************************************************* \n"\
 "   EXTENSIONS \n"\
@@ -4162,8 +4162,8 @@ static const char g_hlbvh_opencl[]= \
 " \n"\
 " \n"\
 "   /************************************************************************* \n"\
-"	TYPE DEFINITIONS \n"\
-"	**************************************************************************/ \n"\
+"    TYPE DEFINITIONS \n"\
+"    **************************************************************************/ \n"\
 "#define STARTIDX(x)     (((int)((x).left))) \n"\
 "#define LEAFNODE(x)     (((x).left) == ((x).right)) \n"\
 "#define STACK_SIZE 64 \n"\
@@ -4172,26 +4172,26 @@ static const char g_hlbvh_opencl[]= \
 " \n"\
 "typedef struct \n"\
 "{ \n"\
-"	int parent; \n"\
-"	int left; \n"\
-"	int right; \n"\
-"	int next; \n"\
+"    int parent; \n"\
+"    int left; \n"\
+"    int right; \n"\
+"    int next; \n"\
 "} HlbvhNode; \n"\
 " \n"\
 "typedef struct \n"\
 "{ \n"\
-"	// BVH structure \n"\
-"	__global HlbvhNode const* nodes; \n"\
-"	// Scene bounds \n"\
-"	__global bbox const* bounds; \n"\
-"	// Scene positional data \n"\
-"	__global float3 const* vertices; \n"\
-"	// Scene indices \n"\
-"	__global Face const* faces; \n"\
-"	// Shape IDs \n"\
-"	__global ShapeData const* shapes; \n"\
-"	// Extra data \n"\
-"	__global int const* extra; \n"\
+"    // BVH structure \n"\
+"    __global HlbvhNode const* nodes; \n"\
+"    // Scene bounds \n"\
+"    __global bbox const* bounds; \n"\
+"    // Scene positional data \n"\
+"    __global float3 const* vertices; \n"\
+"    // Scene indices \n"\
+"    __global Face const* faces; \n"\
+"    // Shape IDs \n"\
+"    __global ShapeData const* shapes; \n"\
+"    // Extra data \n"\
+"    __global int const* extra; \n"\
 "} SceneData; \n"\
 " \n"\
 "/************************************************************************* \n"\
@@ -4205,61 +4205,61 @@ static const char g_hlbvh_opencl[]= \
 "  **************************************************************************/ \n"\
 "  //  intersect a ray with leaf BVH node \n"\
 "bool IntersectLeafClosest( \n"\
-"	SceneData const* scenedata, \n"\
-"	int faceidx, \n"\
-"	ray const* r,                // ray to instersect \n"\
-"	Intersection* isect          // Intersection structure \n"\
-"	) \n"\
+"    SceneData const* scenedata, \n"\
+"    int faceidx, \n"\
+"    ray const* r,                // ray to instersect \n"\
+"    Intersection* isect          // Intersection structure \n"\
+"    ) \n"\
 "{ \n"\
-"	float3 v1, v2, v3; \n"\
-"	Face face; \n"\
+"    float3 v1, v2, v3; \n"\
+"    Face face; \n"\
 " \n"\
-"	face = scenedata->faces[faceidx]; \n"\
-"	v1 = scenedata->vertices[face.idx[0]]; \n"\
-"	v2 = scenedata->vertices[face.idx[1]]; \n"\
-"	v3 = scenedata->vertices[face.idx[2]]; \n"\
+"    face = scenedata->faces[faceidx]; \n"\
+"    v1 = scenedata->vertices[face.idx[0]]; \n"\
+"    v2 = scenedata->vertices[face.idx[1]]; \n"\
+"    v3 = scenedata->vertices[face.idx[2]]; \n"\
 " \n"\
-"	int shapemask = scenedata->shapes[face.shapeidx].mask; \n"\
+"    int shapemask = scenedata->shapes[face.shapeidx].mask; \n"\
 " \n"\
-"	if (Ray_GetMask(r) & shapemask) \n"\
-"	{ \n"\
-"		if (IntersectTriangle(r, v1, v2, v3, isect)) \n"\
-"		{ \n"\
-"			isect->primid = face.id; \n"\
-"			isect->shapeid = scenedata->shapes[face.shapeidx].id; \n"\
-"			return true; \n"\
-"		} \n"\
-"	} \n"\
+"    if (Ray_GetMask(r) & shapemask) \n"\
+"    { \n"\
+"        if (IntersectTriangle(r, v1, v2, v3, isect)) \n"\
+"        { \n"\
+"            isect->primid = face.id; \n"\
+"            isect->shapeid = scenedata->shapes[face.shapeidx].id; \n"\
+"            return true; \n"\
+"        } \n"\
+"    } \n"\
 " \n"\
-"	return false; \n"\
+"    return false; \n"\
 "} \n"\
 " \n"\
 "//  intersect a ray with leaf BVH node \n"\
 "bool IntersectLeafAny( \n"\
-"	SceneData const* scenedata, \n"\
-"	int faceidx, \n"\
-"	ray const* r                      // ray to instersect \n"\
-"	) \n"\
+"    SceneData const* scenedata, \n"\
+"    int faceidx, \n"\
+"    ray const* r                      // ray to instersect \n"\
+"    ) \n"\
 "{ \n"\
-"	float3 v1, v2, v3; \n"\
-"	Face face; \n"\
+"    float3 v1, v2, v3; \n"\
+"    Face face; \n"\
 " \n"\
-"	face = scenedata->faces[faceidx]; \n"\
-"	v1 = scenedata->vertices[face.idx[0]]; \n"\
-"	v2 = scenedata->vertices[face.idx[1]]; \n"\
-"	v3 = scenedata->vertices[face.idx[2]]; \n"\
+"    face = scenedata->faces[faceidx]; \n"\
+"    v1 = scenedata->vertices[face.idx[0]]; \n"\
+"    v2 = scenedata->vertices[face.idx[1]]; \n"\
+"    v3 = scenedata->vertices[face.idx[2]]; \n"\
 " \n"\
-"	int shapemask = scenedata->shapes[face.shapeidx].mask; \n"\
+"    int shapemask = scenedata->shapes[face.shapeidx].mask; \n"\
 " \n"\
-"	if (Ray_GetMask(r) & shapemask) \n"\
-"	{ \n"\
-"		if (IntersectTriangleP(r, v1, v2, v3)) \n"\
-"		{ \n"\
-"			return true; \n"\
-"		} \n"\
-"	} \n"\
+"    if (Ray_GetMask(r) & shapemask) \n"\
+"    { \n"\
+"        if (IntersectTriangleP(r, v1, v2, v3)) \n"\
+"        { \n"\
+"            return true; \n"\
+"        } \n"\
+"    } \n"\
 " \n"\
-"	return false; \n"\
+"    return false; \n"\
 "} \n"\
 " \n"\
 "#define LDS_BUG \n"\
@@ -4268,76 +4268,76 @@ static const char g_hlbvh_opencl[]= \
 "// intersect Ray against the whole BVH structure \n"\
 "bool IntersectSceneClosest(SceneData const* scenedata, ray const* r, Intersection* isect) \n"\
 "{ \n"\
-"	const float3 invdir = native_recip(r->d.xyz); \n"\
+"    const float3 invdir = native_recip(r->d.xyz); \n"\
 " \n"\
-"	isect->uvwt = make_float4(0.f, 0.f, 0.f, r->o.w); \n"\
-"	isect->shapeid = -1; \n"\
-"	isect->primid = -1; \n"\
+"    isect->uvwt = make_float4(0.f, 0.f, 0.f, r->o.w); \n"\
+"    isect->shapeid = -1; \n"\
+"    isect->primid = -1; \n"\
 " \n"\
-"	int stack[STACK_SIZE]; \n"\
-"	int* ptr = stack; \n"\
+"    int stack[STACK_SIZE]; \n"\
+"    int* ptr = stack; \n"\
 " \n"\
-"	*ptr++ = -1; \n"\
+"    *ptr++ = -1; \n"\
 " \n"\
-"	int idx = 0; \n"\
+"    int idx = 0; \n"\
 " \n"\
-"	HlbvhNode node; \n"\
-"	bbox lbox; \n"\
-"	bbox rbox; \n"\
+"    HlbvhNode node; \n"\
+"    bbox lbox; \n"\
+"    bbox rbox; \n"\
 " \n"\
-"	float lefthit = 0.f; \n"\
-"	float righthit = 0.f; \n"\
+"    float lefthit = 0.f; \n"\
+"    float righthit = 0.f; \n"\
 " \n"\
-"	while (idx > -1) \n"\
-"	{ \n"\
-"		node = scenedata->nodes[idx]; \n"\
+"    while (idx > -1) \n"\
+"    { \n"\
+"        node = scenedata->nodes[idx]; \n"\
 " \n"\
-"		if (LEAFNODE(node)) \n"\
-"		{ \n"\
-"			IntersectLeafClosest(scenedata, STARTIDX(node), r, isect); \n"\
-"		} \n"\
-"		else \n"\
-"		{ \n"\
-"			lbox = scenedata->bounds[node.left]; \n"\
-"			rbox = scenedata->bounds[node.right]; \n"\
+"        if (LEAFNODE(node)) \n"\
+"        { \n"\
+"            IntersectLeafClosest(scenedata, STARTIDX(node), r, isect); \n"\
+"        } \n"\
+"        else \n"\
+"        { \n"\
+"            lbox = scenedata->bounds[node.left]; \n"\
+"            rbox = scenedata->bounds[node.right]; \n"\
 " \n"\
-"			lefthit = IntersectBoxF(r, invdir, lbox, isect->uvwt.w); \n"\
-"			righthit = IntersectBoxF(r, invdir, rbox, isect->uvwt.w); \n"\
+"            lefthit = IntersectBoxF(r, invdir, lbox, isect->uvwt.w); \n"\
+"            righthit = IntersectBoxF(r, invdir, rbox, isect->uvwt.w); \n"\
 " \n"\
-"			if (lefthit > 0.f && righthit > 0.f) \n"\
-"			{ \n"\
-"				int deferred = -1; \n"\
-"				if (lefthit > righthit) \n"\
-"				{ \n"\
-"					idx = node.right; \n"\
-"					deferred = node.left; \n"\
-"				} \n"\
-"				else \n"\
-"				{ \n"\
-"					idx = node.left; \n"\
-"					deferred = node.right; \n"\
-"				} \n"\
+"            if (lefthit > 0.f && righthit > 0.f) \n"\
+"            { \n"\
+"                int deferred = -1; \n"\
+"                if (lefthit > righthit) \n"\
+"                { \n"\
+"                    idx = node.right; \n"\
+"                    deferred = node.left; \n"\
+"                } \n"\
+"                else \n"\
+"                { \n"\
+"                    idx = node.left; \n"\
+"                    deferred = node.right; \n"\
+"                } \n"\
 " \n"\
-"				*ptr++ = deferred; \n"\
-"				continue; \n"\
-"			} \n"\
-"			else if (lefthit > 0) \n"\
-"			{ \n"\
-"				idx = node.left; \n"\
-"				continue; \n"\
-"			} \n"\
-"			else if (righthit > 0) \n"\
-"			{ \n"\
-"				idx = node.right; \n"\
-"				continue; \n"\
-"			} \n"\
-"		} \n"\
+"                *ptr++ = deferred; \n"\
+"                continue; \n"\
+"            } \n"\
+"            else if (lefthit > 0) \n"\
+"            { \n"\
+"                idx = node.left; \n"\
+"                continue; \n"\
+"            } \n"\
+"            else if (righthit > 0) \n"\
+"            { \n"\
+"                idx = node.right; \n"\
+"                continue; \n"\
+"            } \n"\
+"        } \n"\
 " \n"\
-"		idx = *--ptr; \n"\
-"	} \n"\
+"        idx = *--ptr; \n"\
+"    } \n"\
 " \n"\
 " \n"\
-"	return isect->shapeid >= 0; \n"\
+"    return isect->shapeid >= 0; \n"\
 "} \n"\
 " \n"\
 " \n"\
@@ -4345,99 +4345,99 @@ static const char g_hlbvh_opencl[]= \
 "// intersect Ray against the whole BVH structure \n"\
 "bool IntersectSceneAny(SceneData const* scenedata, ray const* r) \n"\
 "{ \n"\
-"	//return false; \n"\
+"    //return false; \n"\
 " \n"\
-"	const float3 invdir = native_recip(r->d.xyz); \n"\
+"    const float3 invdir = native_recip(r->d.xyz); \n"\
 " \n"\
-"	//if (get_global_id(0) == 0) \n"\
-"	//{ \n"\
+"    //if (get_global_id(0) == 0) \n"\
+"    //{ \n"\
 " \n"\
-"	//} \n"\
+"    //} \n"\
 " \n"\
-"	int stack[STACK_SIZE]; \n"\
-"	int* ptr = stack; \n"\
+"    int stack[STACK_SIZE]; \n"\
+"    int* ptr = stack; \n"\
 " \n"\
-"	*ptr++ = -1; \n"\
+"    *ptr++ = -1; \n"\
 " \n"\
-"	int idx = 0; \n"\
+"    int idx = 0; \n"\
 " \n"\
-"	HlbvhNode node; \n"\
-"	bbox lbox; \n"\
-"	bbox rbox; \n"\
+"    HlbvhNode node; \n"\
+"    bbox lbox; \n"\
+"    bbox rbox; \n"\
 " \n"\
-"	float lefthit = 0.f; \n"\
-"	float righthit = 0.f; \n"\
-"	bool hit = false; \n"\
+"    float lefthit = 0.f; \n"\
+"    float righthit = 0.f; \n"\
+"    bool hit = false; \n"\
 " \n"\
-"	int step = 0; \n"\
-"	//if (get_global_id(0) == 1) \n"\
-"		//printf(\"Starting %d\\n\", get_global_id(0) ); \n"\
-"	while (idx > -1) \n"\
-"	{ \n"\
-"		//printf(\"%d\", get_global_id(0)); \n"\
-"		step++; \n"\
-"		//if (get_global_id(0) == 1) \n"\
-"		//{ \n"\
-"			//printf(\"Node %d %d\\n\", idx, step ); \n"\
-"		//} \n"\
+"    int step = 0; \n"\
+"    //if (get_global_id(0) == 1) \n"\
+"        //printf(\"Starting %d\\n\", get_global_id(0) ); \n"\
+"    while (idx > -1) \n"\
+"    { \n"\
+"        //printf(\"%d\", get_global_id(0)); \n"\
+"        step++; \n"\
+"        //if (get_global_id(0) == 1) \n"\
+"        //{ \n"\
+"            //printf(\"Node %d %d\\n\", idx, step ); \n"\
+"        //} \n"\
 " \n"\
-"		if (step > 10000) \n"\
-"			return false; \n"\
+"        if (step > 10000) \n"\
+"            return false; \n"\
 " \n"\
-"		node = scenedata->nodes[idx]; \n"\
+"        node = scenedata->nodes[idx]; \n"\
 " \n"\
-"		if (LEAFNODE(node)) \n"\
-"		{ \n"\
-"			if (IntersectLeafAny(scenedata, STARTIDX(node), r)) \n"\
-"			{ \n"\
-"				hit = true; \n"\
-"				break; \n"\
-"			} \n"\
-"		} \n"\
-"		else \n"\
-"		{ \n"\
-"			lbox = scenedata->bounds[node.left]; \n"\
-"			rbox = scenedata->bounds[node.right]; \n"\
+"        if (LEAFNODE(node)) \n"\
+"        { \n"\
+"            if (IntersectLeafAny(scenedata, STARTIDX(node), r)) \n"\
+"            { \n"\
+"                hit = true; \n"\
+"                break; \n"\
+"            } \n"\
+"        } \n"\
+"        else \n"\
+"        { \n"\
+"            lbox = scenedata->bounds[node.left]; \n"\
+"            rbox = scenedata->bounds[node.right]; \n"\
 " \n"\
-"			lefthit = IntersectBoxF(r, invdir, lbox, r->o.w); \n"\
-"			righthit = IntersectBoxF(r, invdir, rbox, r->o.w); \n"\
+"            lefthit = IntersectBoxF(r, invdir, lbox, r->o.w); \n"\
+"            righthit = IntersectBoxF(r, invdir, rbox, r->o.w); \n"\
 " \n"\
-"			if (lefthit > 0.f && righthit > 0.f) \n"\
-"			{ \n"\
-"				int deferred = -1; \n"\
-"				if (lefthit > righthit) \n"\
-"				{ \n"\
-"					idx = node.right; \n"\
-"					deferred = node.left; \n"\
-"				} \n"\
-"				else \n"\
-"				{ \n"\
-"					idx = node.left; \n"\
-"					deferred = node.right; \n"\
-"				} \n"\
+"            if (lefthit > 0.f && righthit > 0.f) \n"\
+"            { \n"\
+"                int deferred = -1; \n"\
+"                if (lefthit > righthit) \n"\
+"                { \n"\
+"                    idx = node.right; \n"\
+"                    deferred = node.left; \n"\
+"                } \n"\
+"                else \n"\
+"                { \n"\
+"                    idx = node.left; \n"\
+"                    deferred = node.right; \n"\
+"                } \n"\
 " \n"\
-"				*ptr++ = deferred; \n"\
-"				continue; \n"\
-"			} \n"\
-"			else if (lefthit > 0) \n"\
-"			{ \n"\
-"				idx = node.left; \n"\
-"				continue; \n"\
-"			} \n"\
-"			else if (righthit > 0) \n"\
-"			{ \n"\
-"				idx = node.right; \n"\
-"				continue; \n"\
-"			} \n"\
-"		} \n"\
+"                *ptr++ = deferred; \n"\
+"                continue; \n"\
+"            } \n"\
+"            else if (lefthit > 0) \n"\
+"            { \n"\
+"                idx = node.left; \n"\
+"                continue; \n"\
+"            } \n"\
+"            else if (righthit > 0) \n"\
+"            { \n"\
+"                idx = node.right; \n"\
+"                continue; \n"\
+"            } \n"\
+"        } \n"\
 " \n"\
-"		idx = *--ptr; \n"\
-"	} \n"\
+"        idx = *--ptr; \n"\
+"    } \n"\
 " \n"\
-"	//if (get_global_id(0) == 1) \n"\
-"	//printf(\"Exiting %d\\n\", get_global_id(0) ); \n"\
+"    //if (get_global_id(0) == 1) \n"\
+"    //printf(\"Exiting %d\\n\", get_global_id(0) ); \n"\
 " \n"\
-"	return hit; \n"\
+"    return hit; \n"\
 "} \n"\
 " \n"\
 "#else \n"\
@@ -4445,107 +4445,107 @@ static const char g_hlbvh_opencl[]= \
 "// intersect Ray against the whole BVH structure \n"\
 "bool IntersectSceneClosest(SceneData const* scenedata, ray const* r, Intersection* isect, __global int* stack, __local int* ldsstack) \n"\
 "{ \n"\
-"	const float3 invdir = native_recip(r->d.xyz); \n"\
+"    const float3 invdir = native_recip(r->d.xyz); \n"\
 " \n"\
-"	isect->uvwt = make_float4(0.f, 0.f, 0.f, r->o.w); \n"\
-"	isect->shapeid = -1; \n"\
-"	isect->primid = -1; \n"\
+"    isect->uvwt = make_float4(0.f, 0.f, 0.f, r->o.w); \n"\
+"    isect->shapeid = -1; \n"\
+"    isect->primid = -1; \n"\
 " \n"\
-"	__global int* gsptr = stack; \n"\
-"	__local  int* lsptr = ldsstack; \n"\
+"    __global int* gsptr = stack; \n"\
+"    __local  int* lsptr = ldsstack; \n"\
 " \n"\
-"	*lsptr = -1; \n"\
-"	lsptr += 64; \n"\
+"    *lsptr = -1; \n"\
+"    lsptr += 64; \n"\
 " \n"\
-"	int idx = 0; \n"\
+"    int idx = 0; \n"\
 " \n"\
-"	HlbvhNode node; \n"\
-"	bbox lbox; \n"\
-"	bbox rbox; \n"\
+"    HlbvhNode node; \n"\
+"    bbox lbox; \n"\
+"    bbox rbox; \n"\
 " \n"\
-"	float lefthit = 0.f; \n"\
-"	float righthit = 0.f; \n"\
+"    float lefthit = 0.f; \n"\
+"    float righthit = 0.f; \n"\
 " \n"\
-"	while (idx > -1) \n"\
-"	{ \n"\
-"		while (idx > -1) \n"\
-"		{ \n"\
-"			node = scenedata->nodes[idx]; \n"\
+"    while (idx > -1) \n"\
+"    { \n"\
+"        while (idx > -1) \n"\
+"        { \n"\
+"            node = scenedata->nodes[idx]; \n"\
 " \n"\
-"			if (LEAFNODE(node)) \n"\
-"			{ \n"\
-"				IntersectLeafClosest(scenedata, STARTIDX(node), r, isect); \n"\
-"			} \n"\
-"			else \n"\
-"			{ \n"\
-"				lbox = scenedata->bounds[node.left]; \n"\
-"				rbox = scenedata->bounds[node.right]; \n"\
+"            if (LEAFNODE(node)) \n"\
+"            { \n"\
+"                IntersectLeafClosest(scenedata, STARTIDX(node), r, isect); \n"\
+"            } \n"\
+"            else \n"\
+"            { \n"\
+"                lbox = scenedata->bounds[node.left]; \n"\
+"                rbox = scenedata->bounds[node.right]; \n"\
 " \n"\
-"				lefthit = IntersectBoxF(r, invdir, lbox, isect->uvwt.w); \n"\
-"				righthit = IntersectBoxF(r, invdir, rbox, isect->uvwt.w); \n"\
+"                lefthit = IntersectBoxF(r, invdir, lbox, isect->uvwt.w); \n"\
+"                righthit = IntersectBoxF(r, invdir, rbox, isect->uvwt.w); \n"\
 " \n"\
-"				if (lefthit > 0.f && righthit > 0.f) \n"\
-"				{ \n"\
-"					int deferred = -1; \n"\
-"					if (lefthit > righthit) \n"\
-"					{ \n"\
-"						idx = node.right; \n"\
-"						deferred = node.left; \n"\
-"					} \n"\
-"					else \n"\
-"					{ \n"\
-"						idx = node.left; \n"\
-"						deferred = node.right; \n"\
-"					} \n"\
+"                if (lefthit > 0.f && righthit > 0.f) \n"\
+"                { \n"\
+"                    int deferred = -1; \n"\
+"                    if (lefthit > righthit) \n"\
+"                    { \n"\
+"                        idx = node.right; \n"\
+"                        deferred = node.left; \n"\
+"                    } \n"\
+"                    else \n"\
+"                    { \n"\
+"                        idx = node.left; \n"\
+"                        deferred = node.right; \n"\
+"                    } \n"\
 " \n"\
-"					if (lsptr - ldsstack >= SHORT_STACK_SIZE * 64) \n"\
-"					{ \n"\
-"						for (int i = 1; i < SHORT_STACK_SIZE; ++i) \n"\
-"						{ \n"\
-"							gsptr[i] = ldsstack[i * 64]; \n"\
-"						} \n"\
+"                    if (lsptr - ldsstack >= SHORT_STACK_SIZE * 64) \n"\
+"                    { \n"\
+"                        for (int i = 1; i < SHORT_STACK_SIZE; ++i) \n"\
+"                        { \n"\
+"                            gsptr[i] = ldsstack[i * 64]; \n"\
+"                        } \n"\
 " \n"\
-"						gsptr += SHORT_STACK_SIZE; \n"\
-"						lsptr = ldsstack + 64; \n"\
-"					} \n"\
+"                        gsptr += SHORT_STACK_SIZE; \n"\
+"                        lsptr = ldsstack + 64; \n"\
+"                    } \n"\
 " \n"\
-"					*lsptr = deferred; \n"\
-"					lsptr += 64; \n"\
+"                    *lsptr = deferred; \n"\
+"                    lsptr += 64; \n"\
 " \n"\
-"					continue; \n"\
-"				} \n"\
-"				else if (lefthit > 0) \n"\
-"				{ \n"\
-"					idx = node.left; \n"\
-"					continue; \n"\
-"				} \n"\
-"				else if (righthit > 0) \n"\
-"				{ \n"\
-"					idx = node.right; \n"\
-"					continue; \n"\
-"				} \n"\
-"			} \n"\
+"                    continue; \n"\
+"                } \n"\
+"                else if (lefthit > 0) \n"\
+"                { \n"\
+"                    idx = node.left; \n"\
+"                    continue; \n"\
+"                } \n"\
+"                else if (righthit > 0) \n"\
+"                { \n"\
+"                    idx = node.right; \n"\
+"                    continue; \n"\
+"                } \n"\
+"            } \n"\
 " \n"\
-"			lsptr -= 64; \n"\
-"			idx = *(lsptr); \n"\
-"		} \n"\
+"            lsptr -= 64; \n"\
+"            idx = *(lsptr); \n"\
+"        } \n"\
 " \n"\
-"		if (gsptr > stack) \n"\
-"		{ \n"\
-"			gsptr -= SHORT_STACK_SIZE; \n"\
+"        if (gsptr > stack) \n"\
+"        { \n"\
+"            gsptr -= SHORT_STACK_SIZE; \n"\
 " \n"\
-"			for (int i = 1; i < SHORT_STACK_SIZE; ++i) \n"\
-"			{ \n"\
-"				ldsstack[i * 64] = gsptr[i]; \n"\
-"			} \n"\
+"            for (int i = 1; i < SHORT_STACK_SIZE; ++i) \n"\
+"            { \n"\
+"                ldsstack[i * 64] = gsptr[i]; \n"\
+"            } \n"\
 " \n"\
-"			lsptr = ldsstack + (SHORT_STACK_SIZE - 1) * 64; \n"\
-"			idx = ldsstack[64 * (SHORT_STACK_SIZE - 1)]; \n"\
-"		} \n"\
-"	} \n"\
+"            lsptr = ldsstack + (SHORT_STACK_SIZE - 1) * 64; \n"\
+"            idx = ldsstack[64 * (SHORT_STACK_SIZE - 1)]; \n"\
+"        } \n"\
+"    } \n"\
 " \n"\
 " \n"\
-"	return isect->shapeid >= 0; \n"\
+"    return isect->shapeid >= 0; \n"\
 "} \n"\
 " \n"\
 " \n"\
@@ -4553,103 +4553,103 @@ static const char g_hlbvh_opencl[]= \
 "// intersect Ray against the whole BVH structure \n"\
 "bool IntersectSceneAny(SceneData const* scenedata, ray const* r, __global int* stack, __local int* ldsstack) \n"\
 "{ \n"\
-"	const float3 invdir = native_recip(r->d.xyz); \n"\
+"    const float3 invdir = native_recip(r->d.xyz); \n"\
 " \n"\
-"	__global int* gsptr = stack; \n"\
-"	__local  int* lsptr = ldsstack; \n"\
+"    __global int* gsptr = stack; \n"\
+"    __local  int* lsptr = ldsstack; \n"\
 " \n"\
-"	*lsptr = -1; \n"\
-"	lsptr += 64; \n"\
+"    *lsptr = -1; \n"\
+"    lsptr += 64; \n"\
 " \n"\
-"	int idx = 0; \n"\
+"    int idx = 0; \n"\
 " \n"\
-"	HlbvhNode node; \n"\
-"	bbox lbox; \n"\
-"	bbox rbox; \n"\
+"    HlbvhNode node; \n"\
+"    bbox lbox; \n"\
+"    bbox rbox; \n"\
 " \n"\
-"	float lefthit = 0.f; \n"\
-"	float righthit = 0.f; \n"\
+"    float lefthit = 0.f; \n"\
+"    float righthit = 0.f; \n"\
 " \n"\
-"	while (idx > -1) \n"\
-"	{ \n"\
-"		while (idx > -1) \n"\
-"		{ \n"\
-"			node = scenedata->nodes[idx]; \n"\
+"    while (idx > -1) \n"\
+"    { \n"\
+"        while (idx > -1) \n"\
+"        { \n"\
+"            node = scenedata->nodes[idx]; \n"\
 " \n"\
-"			if (LEAFNODE(node)) \n"\
-"			{ \n"\
-"				if (IntersectLeafAny(scenedata, STARTIDX(node), r)) \n"\
-"					return true; \n"\
-"			} \n"\
-"			else \n"\
-"			{ \n"\
-"				lbox = scenedata->bounds[node.left]; \n"\
-"				rbox = scenedata->bounds[node.right]; \n"\
+"            if (LEAFNODE(node)) \n"\
+"            { \n"\
+"                if (IntersectLeafAny(scenedata, STARTIDX(node), r)) \n"\
+"                    return true; \n"\
+"            } \n"\
+"            else \n"\
+"            { \n"\
+"                lbox = scenedata->bounds[node.left]; \n"\
+"                rbox = scenedata->bounds[node.right]; \n"\
 " \n"\
-"				lefthit = IntersectBoxF(r, invdir, lbox, r->o.w); \n"\
-"				righthit = IntersectBoxF(r, invdir, rbox, r->o.w); \n"\
+"                lefthit = IntersectBoxF(r, invdir, lbox, r->o.w); \n"\
+"                righthit = IntersectBoxF(r, invdir, rbox, r->o.w); \n"\
 " \n"\
-"				if (lefthit > 0.f && righthit > 0.f) \n"\
-"				{ \n"\
-"					int deferred = -1; \n"\
-"					if (lefthit > righthit) \n"\
-"					{ \n"\
-"						idx = node.right; \n"\
-"						deferred = node.left; \n"\
-"					} \n"\
-"					else \n"\
-"					{ \n"\
-"						idx = node.left; \n"\
-"						deferred = node.right; \n"\
-"					} \n"\
+"                if (lefthit > 0.f && righthit > 0.f) \n"\
+"                { \n"\
+"                    int deferred = -1; \n"\
+"                    if (lefthit > righthit) \n"\
+"                    { \n"\
+"                        idx = node.right; \n"\
+"                        deferred = node.left; \n"\
+"                    } \n"\
+"                    else \n"\
+"                    { \n"\
+"                        idx = node.left; \n"\
+"                        deferred = node.right; \n"\
+"                    } \n"\
 " \n"\
-"					if (lsptr - ldsstack >= SHORT_STACK_SIZE * 64) \n"\
-"					{ \n"\
-"						for (int i = 1; i < SHORT_STACK_SIZE; ++i) \n"\
-"						{ \n"\
-"							gsptr[i] = ldsstack[i * 64]; \n"\
-"						} \n"\
+"                    if (lsptr - ldsstack >= SHORT_STACK_SIZE * 64) \n"\
+"                    { \n"\
+"                        for (int i = 1; i < SHORT_STACK_SIZE; ++i) \n"\
+"                        { \n"\
+"                            gsptr[i] = ldsstack[i * 64]; \n"\
+"                        } \n"\
 " \n"\
-"						gsptr += SHORT_STACK_SIZE; \n"\
-"						lsptr = ldsstack + 64; \n"\
-"					} \n"\
+"                        gsptr += SHORT_STACK_SIZE; \n"\
+"                        lsptr = ldsstack + 64; \n"\
+"                    } \n"\
 " \n"\
-"					*lsptr = deferred; \n"\
-"					lsptr += 64; \n"\
+"                    *lsptr = deferred; \n"\
+"                    lsptr += 64; \n"\
 " \n"\
-"					continue; \n"\
-"				} \n"\
-"				else if (lefthit > 0) \n"\
-"				{ \n"\
-"					idx = node.left; \n"\
-"					continue; \n"\
-"				} \n"\
-"				else if (righthit > 0) \n"\
-"				{ \n"\
-"					idx = node.right; \n"\
-"					continue; \n"\
-"				} \n"\
-"			} \n"\
+"                    continue; \n"\
+"                } \n"\
+"                else if (lefthit > 0) \n"\
+"                { \n"\
+"                    idx = node.left; \n"\
+"                    continue; \n"\
+"                } \n"\
+"                else if (righthit > 0) \n"\
+"                { \n"\
+"                    idx = node.right; \n"\
+"                    continue; \n"\
+"                } \n"\
+"            } \n"\
 " \n"\
-"			lsptr -= 64; \n"\
-"			idx = *(lsptr); \n"\
-"		} \n"\
+"            lsptr -= 64; \n"\
+"            idx = *(lsptr); \n"\
+"        } \n"\
 " \n"\
-"		if (gsptr > stack) \n"\
-"		{ \n"\
-"			gsptr -= SHORT_STACK_SIZE; \n"\
+"        if (gsptr > stack) \n"\
+"        { \n"\
+"            gsptr -= SHORT_STACK_SIZE; \n"\
 " \n"\
-"			for (int i = 1; i < SHORT_STACK_SIZE; ++i) \n"\
-"			{ \n"\
-"				ldsstack[i * 64] = gsptr[i]; \n"\
-"			} \n"\
+"            for (int i = 1; i < SHORT_STACK_SIZE; ++i) \n"\
+"            { \n"\
+"                ldsstack[i * 64] = gsptr[i]; \n"\
+"            } \n"\
 " \n"\
-"			lsptr = ldsstack + (SHORT_STACK_SIZE - 1) * 64; \n"\
-"			idx = ldsstack[64 * (SHORT_STACK_SIZE - 1)]; \n"\
-"		} \n"\
-"	} \n"\
+"            lsptr = ldsstack + (SHORT_STACK_SIZE - 1) * 64; \n"\
+"            idx = ldsstack[64 * (SHORT_STACK_SIZE - 1)]; \n"\
+"        } \n"\
+"    } \n"\
 " \n"\
-"	return false; \n"\
+"    return false; \n"\
 "} \n"\
 " \n"\
 " \n"\
@@ -4657,218 +4657,218 @@ static const char g_hlbvh_opencl[]= \
 " \n"\
 "__attribute__((reqd_work_group_size(64, 1, 1))) \n"\
 "__kernel void IntersectClosest( \n"\
-"	// Input \n"\
-"	__global HlbvhNode const* nodes,   // BVH nodes \n"\
-"	__global bbox const* bounds,   // BVH nodes \n"\
-"	__global float3 const* vertices, // Scene positional data \n"\
-"	__global Face const* faces,    // Scene indices \n"\
-"	__global ShapeData const* shapes, // Shape data \n"\
-"	__global ray const* rays,        // Ray workload \n"\
-"	int offset,                // Offset in rays array \n"\
-"	int numrays,               // Number of rays to process \n"\
-"	__global Intersection* hits // Hit datas \n"\
-"	, __global int* stack \n"\
-"	) \n"\
+"    // Input \n"\
+"    __global HlbvhNode const* nodes,   // BVH nodes \n"\
+"    __global bbox const* bounds,   // BVH nodes \n"\
+"    __global float3 const* vertices, // Scene positional data \n"\
+"    __global Face const* faces,    // Scene indices \n"\
+"    __global ShapeData const* shapes, // Shape data \n"\
+"    __global ray const* rays,        // Ray workload \n"\
+"    int offset,                // Offset in rays array \n"\
+"    int numrays,               // Number of rays to process \n"\
+"    __global Intersection* hits // Hit datas \n"\
+"    , __global int* stack \n"\
+"    ) \n"\
 "{ \n"\
 "#ifndef LDS_BUG \n"\
-"	__local int ldsstack[SHORT_STACK_SIZE * 64]; \n"\
+"    __local int ldsstack[SHORT_STACK_SIZE * 64]; \n"\
 "#endif \n"\
 " \n"\
-"	int global_id = get_global_id(0); \n"\
-"	int local_id = get_local_id(0); \n"\
-"	int group_id = get_group_id(0); \n"\
+"    int global_id = get_global_id(0); \n"\
+"    int local_id = get_local_id(0); \n"\
+"    int group_id = get_group_id(0); \n"\
 " \n"\
-"	// Fill scene data \n"\
-"	SceneData scenedata = \n"\
-"	{ \n"\
-"		nodes, \n"\
-"		bounds, \n"\
-"		vertices, \n"\
-"		faces, \n"\
-"		shapes, \n"\
-"		0 \n"\
-"	}; \n"\
+"    // Fill scene data \n"\
+"    SceneData scenedata = \n"\
+"    { \n"\
+"        nodes, \n"\
+"        bounds, \n"\
+"        vertices, \n"\
+"        faces, \n"\
+"        shapes, \n"\
+"        0 \n"\
+"    }; \n"\
 " \n"\
-"	if (global_id < numrays) \n"\
-"	{ \n"\
-"		// Fetch ray \n"\
-"		ray r = rays[global_id]; \n"\
+"    if (global_id < numrays) \n"\
+"    { \n"\
+"        // Fetch ray \n"\
+"        ray r = rays[global_id]; \n"\
 " \n"\
-"		if (Ray_IsActive(&r)) \n"\
-"		{ \n"\
-"			// Calculate closest hit \n"\
-"			Intersection isect; \n"\
+"        if (Ray_IsActive(&r)) \n"\
+"        { \n"\
+"            // Calculate closest hit \n"\
+"            Intersection isect; \n"\
 "#ifndef LDS_BUG \n"\
-"			IntersectSceneClosest(&scenedata, &r, &isect, stack + group_id * 64 * 32 + local_id * 32, ldsstack + local_id); \n"\
+"            IntersectSceneClosest(&scenedata, &r, &isect, stack + group_id * 64 * 32 + local_id * 32, ldsstack + local_id); \n"\
 "#else \n"\
-"			IntersectSceneClosest(&scenedata, &r, &isect); \n"\
+"            IntersectSceneClosest(&scenedata, &r, &isect); \n"\
 "#endif \n"\
-"			// Write data back in case of a hit \n"\
-"			hits[global_id] = isect; \n"\
-"		} \n"\
-"	} \n"\
+"            // Write data back in case of a hit \n"\
+"            hits[global_id] = isect; \n"\
+"        } \n"\
+"    } \n"\
 "} \n"\
 " \n"\
 "__attribute__((reqd_work_group_size(64, 1, 1))) \n"\
 "__kernel void IntersectAny( \n"\
-"	// Input \n"\
-"	// Input \n"\
-"	__global HlbvhNode const* nodes,   // BVH nodes \n"\
-"	__global bbox const* bounds,   // BVH nodes \n"\
-"	__global float3 const* vertices, // Scene positional data \n"\
-"	__global Face const* faces,    // Scene indices \n"\
-"	__global ShapeData const* shapes,     // Shape data \n"\
-"	__global ray const* rays,        // Ray workload \n"\
-"	int offset,                // Offset in rays array \n"\
-"	int numrays,               // Number of rays to process					 \n"\
-"	__global int* hitresults  // Hit results \n"\
-"	, __global int* stack \n"\
-"	) \n"\
+"    // Input \n"\
+"    // Input \n"\
+"    __global HlbvhNode const* nodes,   // BVH nodes \n"\
+"    __global bbox const* bounds,   // BVH nodes \n"\
+"    __global float3 const* vertices, // Scene positional data \n"\
+"    __global Face const* faces,    // Scene indices \n"\
+"    __global ShapeData const* shapes,     // Shape data \n"\
+"    __global ray const* rays,        // Ray workload \n"\
+"    int offset,                // Offset in rays array \n"\
+"    int numrays,               // Number of rays to process                     \n"\
+"    __global int* hitresults  // Hit results \n"\
+"    , __global int* stack \n"\
+"    ) \n"\
 "{ \n"\
 " \n"\
 "#ifndef LDS_BUG \n"\
-"	__local int ldsstack[SHORT_STACK_SIZE * 64]; \n"\
+"    __local int ldsstack[SHORT_STACK_SIZE * 64]; \n"\
 "#endif \n"\
 " \n"\
-"	int global_id = get_global_id(0); \n"\
-"	int local_id = get_local_id(0); \n"\
-"	int group_id = get_group_id(0); \n"\
+"    int global_id = get_global_id(0); \n"\
+"    int local_id = get_local_id(0); \n"\
+"    int group_id = get_group_id(0); \n"\
 " \n"\
-"	// Fill scene data  \n"\
-"	SceneData scenedata = \n"\
-"	{ \n"\
-"		nodes, \n"\
-"		bounds, \n"\
-"		vertices, \n"\
-"		faces, \n"\
-"		shapes, \n"\
-"		0 \n"\
-"	}; \n"\
+"    // Fill scene data  \n"\
+"    SceneData scenedata = \n"\
+"    { \n"\
+"        nodes, \n"\
+"        bounds, \n"\
+"        vertices, \n"\
+"        faces, \n"\
+"        shapes, \n"\
+"        0 \n"\
+"    }; \n"\
 " \n"\
-"	if (global_id < numrays) \n"\
-"	{ \n"\
-"		// Fetch ray \n"\
-"		ray r = rays[global_id]; \n"\
+"    if (global_id < numrays) \n"\
+"    { \n"\
+"        // Fetch ray \n"\
+"        ray r = rays[global_id]; \n"\
 " \n"\
-"		if (Ray_IsActive(&r)) \n"\
-"		{ \n"\
-"			// Calculate any intersection \n"\
+"        if (Ray_IsActive(&r)) \n"\
+"        { \n"\
+"            // Calculate any intersection \n"\
 "#ifndef LDS_BUG \n"\
-"			hitresults[global_id] = IntersectSceneAny(&scenedata, &r, stack + group_id * 64 * 32 + local_id * 32, ldsstack + local_id) ? 1 : -1; \n"\
+"            hitresults[global_id] = IntersectSceneAny(&scenedata, &r, stack + group_id * 64 * 32 + local_id * 32, ldsstack + local_id) ? 1 : -1; \n"\
 "#else \n"\
-"			hitresults[global_id] = IntersectSceneAny(&scenedata, &r) ? 1 : -1; \n"\
+"            hitresults[global_id] = IntersectSceneAny(&scenedata, &r) ? 1 : -1; \n"\
 "#endif \n"\
-"		} \n"\
-"	} \n"\
+"        } \n"\
+"    } \n"\
 "} \n"\
 " \n"\
 "__attribute__((reqd_work_group_size(64, 1, 1))) \n"\
 "// Version with range check \n"\
 "__kernel void IntersectClosestRC( \n"\
-"	// Input \n"\
-"	__global HlbvhNode const* nodes,   // BVH nodes \n"\
-"	__global bbox const* bounds,   // BVH nodes \n"\
-"	__global float3 const* vertices, // Scene positional data \n"\
-"	__global Face const* faces,      // Scene indices \n"\
-"	__global ShapeData const* shapes,     // Shape data \n"\
-"	__global ray const* rays,        // Ray workload \n"\
-"	int offset,                // Offset in rays array \n"\
-"	__global int const* numrays,     // Number of rays in the workload \n"\
-"	__global Intersection* hits // Hit datas \n"\
-"	, __global int* stack \n"\
-"	) \n"\
+"    // Input \n"\
+"    __global HlbvhNode const* nodes,   // BVH nodes \n"\
+"    __global bbox const* bounds,   // BVH nodes \n"\
+"    __global float3 const* vertices, // Scene positional data \n"\
+"    __global Face const* faces,      // Scene indices \n"\
+"    __global ShapeData const* shapes,     // Shape data \n"\
+"    __global ray const* rays,        // Ray workload \n"\
+"    int offset,                // Offset in rays array \n"\
+"    __global int const* numrays,     // Number of rays in the workload \n"\
+"    __global Intersection* hits // Hit datas \n"\
+"    , __global int* stack \n"\
+"    ) \n"\
 "{ \n"\
 "#ifndef LDS_BUG \n"\
-"	__local int ldsstack[SHORT_STACK_SIZE * 64]; \n"\
+"    __local int ldsstack[SHORT_STACK_SIZE * 64]; \n"\
 "#endif \n"\
 " \n"\
-"	int global_id = get_global_id(0); \n"\
-"	int local_id = get_local_id(0); \n"\
-"	int group_id = get_group_id(0); \n"\
+"    int global_id = get_global_id(0); \n"\
+"    int local_id = get_local_id(0); \n"\
+"    int group_id = get_group_id(0); \n"\
 " \n"\
-"	// Fill scene data  \n"\
-"	SceneData scenedata = \n"\
-"	{ \n"\
-"		nodes, \n"\
-"		bounds, \n"\
-"		vertices, \n"\
-"		faces, \n"\
-"		shapes, \n"\
-"		0 \n"\
-"	}; \n"\
+"    // Fill scene data  \n"\
+"    SceneData scenedata = \n"\
+"    { \n"\
+"        nodes, \n"\
+"        bounds, \n"\
+"        vertices, \n"\
+"        faces, \n"\
+"        shapes, \n"\
+"        0 \n"\
+"    }; \n"\
 " \n"\
-"	// Handle only working subset \n"\
-"	if (global_id < *numrays) \n"\
-"	{ \n"\
-"		// Fetch ray \n"\
-"		ray r = rays[global_id]; \n"\
+"    // Handle only working subset \n"\
+"    if (global_id < *numrays) \n"\
+"    { \n"\
+"        // Fetch ray \n"\
+"        ray r = rays[global_id]; \n"\
 " \n"\
-"		if (Ray_IsActive(&r)) \n"\
-"		{ \n"\
-"			// Calculate closest hit \n"\
-"			Intersection isect; \n"\
+"        if (Ray_IsActive(&r)) \n"\
+"        { \n"\
+"            // Calculate closest hit \n"\
+"            Intersection isect; \n"\
 "#ifndef LDS_BUG \n"\
-"			IntersectSceneClosest(&scenedata, &r, &isect, stack + group_id * 64 * 32 + local_id * 32, ldsstack + local_id); \n"\
+"            IntersectSceneClosest(&scenedata, &r, &isect, stack + group_id * 64 * 32 + local_id * 32, ldsstack + local_id); \n"\
 "#else \n"\
-"			IntersectSceneClosest(&scenedata, &r, &isect); \n"\
+"            IntersectSceneClosest(&scenedata, &r, &isect); \n"\
 "#endif \n"\
 " \n"\
-"			// Write data back in case of a hit \n"\
-"			hits[global_id] = isect; \n"\
-"		} \n"\
-"	} \n"\
+"            // Write data back in case of a hit \n"\
+"            hits[global_id] = isect; \n"\
+"        } \n"\
+"    } \n"\
 "} \n"\
 " \n"\
 "__attribute__((reqd_work_group_size(64, 1, 1))) \n"\
 "// Version with range check \n"\
 "__kernel void IntersectAnyRC( \n"\
-"	// Input \n"\
-"	__global HlbvhNode const* nodes,   // BVH nodes \n"\
-"	__global bbox const* bounds,   // BVH nodes \n"\
-"	__global float3 const* vertices, // Scene positional data \n"\
-"	__global Face const* faces,    // Scene indices \n"\
-"	__global ShapeData const* shapes,     // Shape data \n"\
-"	__global ray const* rays,        // Ray workload \n"\
-"	int offset,                // Offset in rays array \n"\
-"	__global int const* numrays,     // Number of rays in the workload \n"\
-"	__global int* hitresults   // Hit results \n"\
-"	, __global int* stack \n"\
-"	) \n"\
+"    // Input \n"\
+"    __global HlbvhNode const* nodes,   // BVH nodes \n"\
+"    __global bbox const* bounds,   // BVH nodes \n"\
+"    __global float3 const* vertices, // Scene positional data \n"\
+"    __global Face const* faces,    // Scene indices \n"\
+"    __global ShapeData const* shapes,     // Shape data \n"\
+"    __global ray const* rays,        // Ray workload \n"\
+"    int offset,                // Offset in rays array \n"\
+"    __global int const* numrays,     // Number of rays in the workload \n"\
+"    __global int* hitresults   // Hit results \n"\
+"    , __global int* stack \n"\
+"    ) \n"\
 "{ \n"\
 "#ifndef LDS_BUG \n"\
-"	__local int ldsstack[SHORT_STACK_SIZE * 64]; \n"\
+"    __local int ldsstack[SHORT_STACK_SIZE * 64]; \n"\
 "#endif \n"\
-"	int global_id = get_global_id(0); \n"\
-"	int local_id = get_local_id(0); \n"\
-"	int group_id = get_group_id(0); \n"\
+"    int global_id = get_global_id(0); \n"\
+"    int local_id = get_local_id(0); \n"\
+"    int group_id = get_group_id(0); \n"\
 " \n"\
-"	// Fill scene data  \n"\
-"	SceneData scenedata = \n"\
-"	{ \n"\
-"		nodes, \n"\
-"		bounds, \n"\
-"		vertices, \n"\
-"		faces, \n"\
-"		shapes, \n"\
-"		0 \n"\
-"	}; \n"\
+"    // Fill scene data  \n"\
+"    SceneData scenedata = \n"\
+"    { \n"\
+"        nodes, \n"\
+"        bounds, \n"\
+"        vertices, \n"\
+"        faces, \n"\
+"        shapes, \n"\
+"        0 \n"\
+"    }; \n"\
 " \n"\
-"	// Handle only working subset \n"\
-"	if (global_id < *numrays) \n"\
-"	{ \n"\
-"		// Fetch ray \n"\
-"		ray r = rays[global_id]; \n"\
+"    // Handle only working subset \n"\
+"    if (global_id < *numrays) \n"\
+"    { \n"\
+"        // Fetch ray \n"\
+"        ray r = rays[global_id]; \n"\
 " \n"\
-"		if (Ray_IsActive(&r)) \n"\
-"		{ \n"\
-"			// Calculate any intersection \n"\
+"        if (Ray_IsActive(&r)) \n"\
+"        { \n"\
+"            // Calculate any intersection \n"\
 "#ifndef LDS_BUG \n"\
-"			hitresults[global_id] = IntersectSceneAny(&scenedata, &r, stack + group_id * 64 * 32 + local_id * 32, ldsstack + local_id) ? 1 : -1; \n"\
+"            hitresults[global_id] = IntersectSceneAny(&scenedata, &r, stack + group_id * 64 * 32 + local_id * 32, ldsstack + local_id) ? 1 : -1; \n"\
 "#else \n"\
-"			hitresults[global_id] = IntersectSceneAny(&scenedata, &r) ? 1 : -1; \n"\
+"            hitresults[global_id] = IntersectSceneAny(&scenedata, &r) ? 1 : -1; \n"\
 "#endif \n"\
-"		} \n"\
-"	} \n"\
+"        } \n"\
+"    } \n"\
 "} \n"\
 ;
 static const char g_hlbvh_build_opencl[]= \
@@ -4896,8 +4896,8 @@ static const char g_hlbvh_build_opencl[]= \
 " \n"\
 "typedef struct \n"\
 "{ \n"\
-"	float3 pmin; \n"\
-"	float3 pmax; \n"\
+"    float3 pmin; \n"\
+"    float3 pmax; \n"\
 "} bbox; \n"\
 " \n"\
 "// The following two functions are from \n"\
@@ -4940,8 +4940,8 @@ static const char g_hlbvh_build_opencl[]= \
 " \n"\
 "    if (globalid < numpositions) \n"\
 "    { \n"\
-"		bbox bound = bounds[globalid]; \n"\
-"		float3 center = 0.5f * (bound.pmax + bound.pmin); \n"\
+"        bbox bound = bounds[globalid]; \n"\
+"        float3 center = 0.5f * (bound.pmax + bound.pmin); \n"\
 "        mortoncodes[globalid] = CalculateMortonCode(center); \n"\
 "    } \n"\
 "} \n"\
@@ -5614,7 +5614,7 @@ static const char g_qbvh_opencl[]= \
 "    __global int* shapeids,    // Shape IDs \n"\
 "    __global ray* rays,        // Ray workload \n"\
 "    int offset,                // Offset in rays array \n"\
-"    int numrays,               // Number of rays to process					 \n"\
+"    int numrays,               // Number of rays to process                     \n"\
 "    __global int* hitresults,  // Hit results \n"\
 "    __global Intersection* hits // Hit datas \n"\
 "    ) \n"\
@@ -5665,7 +5665,7 @@ static const char g_qbvh_opencl[]= \
 "    __global int* shapeids,    // Shape IDs \n"\
 "    __global ray* rays,        // Ray workload \n"\
 "    int offset,                // Offset in rays array \n"\
-"    int numrays,               // Number of rays to process					 \n"\
+"    int numrays,               // Number of rays to process                     \n"\
 "    __global int* hitresults   // Hit results \n"\
 "    ) \n"\
 "{ \n"\
@@ -5701,7 +5701,7 @@ static const char g_qbvh_opencl[]= \
 "    __global ray* rays,        // Ray workload \n"\
 "    __global int* rayindices, \n"\
 "    int offset,                // Offset in rays array \n"\
-"    __global int* numrays,               // Number of rays to process					 \n"\
+"    __global int* numrays,               // Number of rays to process                     \n"\
 "    __global Intersection* hits // Hit datas \n"\
 "    ) \n"\
 "{ \n"\

@@ -23,16 +23,16 @@ THE SOFTWARE.
 
 namespace Calc
 {
-	// Exception
-	class Exception
-	{
-	public:
-		Exception() {}
-		virtual ~Exception() = 0;
-		virtual char const* what() const = 0;
-	};
+    // Exception
+    class Exception
+    {
+    public:
+        Exception() {}
+        virtual ~Exception() = 0;
+        virtual char const* what() const = 0;
+    };
 
-	inline Exception::~Exception()
-	{
-	}
+    inline Exception::~Exception()
+    {
+    }
 }

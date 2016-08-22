@@ -26,15 +26,15 @@ THE SOFTWARE.
 
 namespace Calc {
 
-	class ExceptionVk : public Exception
-	{
-	public:
-		ExceptionVk( std::string what ) : m_what( what ) {}
-		~ExceptionVk() {}
+    class ExceptionVk : public Exception
+    {
+    public:
+        ExceptionVk( std::string what ) : m_what( what ) {}
+        ~ExceptionVk() {}
 
-		char const* what() const override { return m_what.c_str(); }
+        char const* what() const override { return m_what.c_str(); }
 
-	private:
-		std::string m_what;
-	};
+    private:
+        std::string m_what;
+    };
 }

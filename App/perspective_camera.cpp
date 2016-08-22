@@ -62,13 +62,13 @@ void PerspectiveCamera::Rotate(float3 v, float angle)
                                m_forward.x, m_forward.y, m_forward.z, 0.f,
                                0.f, 0.f, 0.f, 1.f);
 
-	// Create camera orientation quaternion
+    // Create camera orientation quaternion
     quaternion q = normalize(quaternion(cam_matrix));
 
-	// Rotate camera frame around v
+    // Rotate camera frame around v
     q = q * rotation_quaternion(v, -angle);
 
-	// Uncomress back to lookat
+    // Uncomress back to lookat
     q.to_matrix(cam_matrix);
 
     m_up = normalize(float3(cam_matrix.m00, cam_matrix.m01, cam_matrix.m02));
@@ -91,70 +91,70 @@ void PerspectiveCamera::MoveForward(float distance)
 // Move along camera X direction
 void PerspectiveCamera::MoveRight(float distance)
 {
-	m_p += distance * m_right;
+    m_p += distance * m_right;
 }
 
 // Move along camera Y direction
 void PerspectiveCamera::MoveUp(float distance)
 {
-	m_p += distance * m_up;
+    m_p += distance * m_up;
 }
 
 // Arcball rotation
 void PerspectiveCamera::ArcballRotateHorizontally(float3 c, float angle)
 {
-	// Build camera matrix
-	matrix cam_matrix = matrix(
-		m_up.x, m_up.y, m_up.z, 0,
-		m_right.x, m_right.y, m_right.z, 0,
-		m_forward.x, m_forward.y, m_forward.z, 0,
-		0, 0, 0, 1);
+    // Build camera matrix
+    matrix cam_matrix = matrix(
+        m_up.x, m_up.y, m_up.z, 0,
+        m_right.x, m_right.y, m_right.z, 0,
+        m_forward.x, m_forward.y, m_forward.z, 0,
+        0, 0, 0, 1);
 
-	// Create camera orientation quaternion
-	quaternion q = normalize(quaternion(cam_matrix));
+    // Create camera orientation quaternion
+    quaternion q = normalize(quaternion(cam_matrix));
 
-	// Rotation of camera around the center of interest by a == rotation of the frame by -a and rotation of the position by a
-	q = q * rotation_quaternion(float3(0.f, 1.f, 0.f), -angle);
+    // Rotation of camera around the center of interest by a == rotation of the frame by -a and rotation of the position by a
+    q = q * rotation_quaternion(float3(0.f, 1.f, 0.f), -angle);
 
-	// Rotate the frame
-	q.to_matrix(cam_matrix);
+    // Rotate the frame
+    q.to_matrix(cam_matrix);
 
-	m_up = normalize(float3(cam_matrix.m00, cam_matrix.m01, cam_matrix.m02));
-	m_right = normalize(float3(cam_matrix.m10, cam_matrix.m11, cam_matrix.m12));
-	m_forward = normalize(float3(cam_matrix.m20, cam_matrix.m21, cam_matrix.m22));
+    m_up = normalize(float3(cam_matrix.m00, cam_matrix.m01, cam_matrix.m02));
+    m_right = normalize(float3(cam_matrix.m10, cam_matrix.m11, cam_matrix.m12));
+    m_forward = normalize(float3(cam_matrix.m20, cam_matrix.m21, cam_matrix.m22));
 
-	// Rotate the position
-	float3 dir = c - m_p;
-	dir = rotate_vector(dir, rotation_quaternion(float3(0.f, 1.f, 0.f), angle));
-	
-	m_p = c - dir;
+    // Rotate the position
+    float3 dir = c - m_p;
+    dir = rotate_vector(dir, rotation_quaternion(float3(0.f, 1.f, 0.f), angle));
+    
+    m_p = c - dir;
 }
 
 void PerspectiveCamera::ArcballRotateVertically(float3 c, float angle)
 {
-	// Build camera matrix
-	matrix cam_matrix = matrix(
-		m_up.x, m_up.y, m_up.z, 0,
-		m_right.x, m_right.y, m_right.z, 0,
-		m_forward.x, m_forward.y, m_forward.z, 0,
-		0, 0, 0, 1);
+    // Build camera matrix
+    matrix cam_matrix = matrix(
+        m_up.x, m_up.y, m_up.z, 0,
+        m_right.x, m_right.y, m_right.z, 0,
+        m_forward.x, m_forward.y, m_forward.z, 0,
+        0, 0, 0, 1);
 
-	// Create camera orientation quaternion
-	quaternion q = normalize(quaternion(cam_matrix));
+    // Create camera orientation quaternion
+    quaternion q = normalize(quaternion(cam_matrix));
 
-	// Rotation of camera around the center of interest by a == rotation of the frame by -a and rotation of the position by a
-	q = q * rotation_quaternion(m_right, -angle);
+    // Rotation of camera around the center of interest by a == rotation of the frame by -a and rotation of the position by a
+    q = q * rotation_quaternion(m_right, -angle);
 
-	// Rotate the frame
-	q.to_matrix(cam_matrix);
+    // Rotate the frame
+    q.to_matrix(cam_matrix);
 
-	m_up = normalize(float3(cam_matrix.m00, cam_matrix.m01, cam_matrix.m02));
-	m_right = normalize(float3(cam_matrix.m10, cam_matrix.m11, cam_matrix.m12));
-	m_forward = normalize(float3(cam_matrix.m20, cam_matrix.m21, cam_matrix.m22));
+    m_up = normalize(float3(cam_matrix.m00, cam_matrix.m01, cam_matrix.m02));
+    m_right = normalize(float3(cam_matrix.m10, cam_matrix.m11, cam_matrix.m12));
+    m_forward = normalize(float3(cam_matrix.m20, cam_matrix.m21, cam_matrix.m22));
 
-	// Rotate the position
-	float3 dir = c - m_p;
-	dir = rotate_vector(dir, rotation_quaternion(m_right, angle));
+    // Rotate the position
+    float3 dir = c - m_p;
+    dir = rotate_vector(dir, rotation_quaternion(m_right, angle));
 
-	m_p = c - dir;
+    m_p = c - dir;
 }

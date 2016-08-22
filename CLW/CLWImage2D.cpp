@@ -57,7 +57,7 @@ CLWImage2D CLWImage2D::CreateFromGLTexture(cl_context context, cl_GLint texture)
 {
     cl_int status = CL_SUCCESS;
 
-	// TODO: handle that gracefully: GL_TEXTURE_2D
+    // TODO: handle that gracefully: GL_TEXTURE_2D
     cl_mem deviceImg = clCreateFromGLTexture(context, CL_MEM_WRITE_ONLY, 0x0DE1, 0, texture, &status);
     
     ThrowIf(status != CL_SUCCESS, status, "clCreateFromGLTexture failed");

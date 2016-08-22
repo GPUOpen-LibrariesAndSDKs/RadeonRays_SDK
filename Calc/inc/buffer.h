@@ -23,17 +23,17 @@ THE SOFTWARE.
 
 namespace Calc
 {
-	// Manages region of device memory 
-	class Buffer
-	{
-	public:
-		Buffer() {}
-		virtual ~Buffer(){};
+    // Manages region of device memory 
+    class Buffer
+    {
+    public:
+        Buffer() {}
+        virtual ~Buffer(){};
 
-		virtual std::size_t GetSize() const = 0;
+        virtual std::size_t GetSize() const = 0;
 
-		Buffer(Buffer const&) = delete;
-		Buffer& operator = (Buffer const&) = delete;
-	};
+        Buffer(Buffer const&) = delete;
+        Buffer& operator = (Buffer const&) = delete;
+    };
 
 }

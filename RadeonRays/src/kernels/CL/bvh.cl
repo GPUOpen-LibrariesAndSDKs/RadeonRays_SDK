@@ -107,15 +107,15 @@ bool IntersectLeafAny(
     v2 = scenedata->vertices[face.idx[1]];
     v3 = scenedata->vertices[face.idx[2]];
 
-	int shapemask = scenedata->shapes[face.shapeidx].mask;
+    int shapemask = scenedata->shapes[face.shapeidx].mask;
 
-	if (Ray_GetMask(r) & shapemask)
-	{
-		if (IntersectTriangleP(r, v1, v2, v3))
-		{
-			return true;
-		}
-	}
+    if (Ray_GetMask(r) & shapemask)
+    {
+        if (IntersectTriangleP(r, v1, v2, v3))
+        {
+            return true;
+        }
+    }
 
     return false;
 }
@@ -253,11 +253,11 @@ __global int*          raycnt
 
         if (Ray_IsActive(&r))
         {
-        	// Calculate closest hit
-        	IntersectSceneClosest(&scenedata, &r, &isect);
+            // Calculate closest hit
+            IntersectSceneClosest(&scenedata, &r, &isect);
 
-        	// Write data back in case of a hit
-        	hits[ridx] = isect;
+            // Write data back in case of a hit
+            hits[ridx] = isect;
         }
     }
 }
@@ -269,10 +269,10 @@ __kernel void IntersectAnyAMD(
     __global BvhNode const* nodes,   // BVH nodes
     __global float3 const* vertices, // Scene positional data
     __global Face const* faces,    // Scene indices
-	__global ShapeData const* shapes,     // Shapes
+    __global ShapeData const* shapes,     // Shapes
     __global ray const* rays,        // Ray workload
     int offset,                // Offset in rays array
-    int numrays,               // Number of rays to process					
+    int numrays,               // Number of rays to process                    
     __global int* hitresults,  // Hit results
     __global int* raycnt
     )
@@ -313,11 +313,11 @@ __kernel void IntersectAnyAMD(
         // Fetch ray
         ray r = rays[ridx];
 
-		if (Ray_IsActive(&r))
-		{
-			// Calculate any intersection
-			hitresults[ridx] = IntersectSceneAny(&scenedata, &r) ? 1 : -1;
-		}
+        if (Ray_IsActive(&r))
+        {
+            // Calculate any intersection
+            hitresults[ridx] = IntersectSceneAny(&scenedata, &r) ? 1 : -1;
+        }
     }
 }
 
@@ -327,7 +327,7 @@ __kernel void IntersectClosestRCAMD(
     __global BvhNode const* nodes,   // BVH nodes
     __global float3 const* vertices, // Scene positional data
     __global Face const* faces,      // Scene indices
-	__global ShapeData const* shapes,     // Shapes
+    __global ShapeData const* shapes,     // Shapes
     __global ray const* rays,        // Ray workload
     int offset,                // Offset in rays array
     __global int const* numrays,     // Number of rays in the workload
@@ -371,15 +371,15 @@ __kernel void IntersectClosestRCAMD(
             break;
 
         // Fetch ray
-		ray r = rays[ridx];
+        ray r = rays[ridx];
 
-		if (Ray_IsActive(&r))
-		{
-			// Calculate closest hit
-			IntersectSceneClosest(&scenedata, &r, &isect);
-			// Write data back in case of a hit
-			hits[ridx] = isect;
-		}
+        if (Ray_IsActive(&r))
+        {
+            // Calculate closest hit
+            IntersectSceneClosest(&scenedata, &r, &isect);
+            // Write data back in case of a hit
+            hits[ridx] = isect;
+        }
     }
 }
 
@@ -390,7 +390,7 @@ __kernel void IntersectAnyRCAMD(
     __global BvhNode const* nodes,   // BVH nodes
     __global float3 const* vertices, // Scene positional data
     __global Face const* faces,    // Scene indices
-	__global ShapeData const* shapes,     // Shapes
+    __global ShapeData const* shapes,     // Shapes
     __global ray const* rays,        // Ray workload
     int offset,                // Offset in rays array
     __global int const* numrays,     // Number of rays in the workload
@@ -434,11 +434,11 @@ __kernel void IntersectAnyRCAMD(
         // Fetch ray
         ray r = rays[ridx];
 
-		if (Ray_IsActive(&r))
-		{
-			// Calculate any intersection
-			hitresults[ridx] = IntersectSceneAny(&scenedata, &r) ? 1 : -1;
-		}
+        if (Ray_IsActive(&r))
+        {
+            // Calculate any intersection
+            hitresults[ridx] = IntersectSceneAny(&scenedata, &r) ? 1 : -1;
+        }
     }
 }
 
@@ -474,15 +474,15 @@ __global Intersection* hits // Hit datas
         // Fetch ray
         ray r = rays[global_id];
 
-		if (Ray_IsActive(&r))
-		{
-			// Calculate closest hit
-			Intersection isect;
-			IntersectSceneClosest(&scenedata, &r, &isect);
+        if (Ray_IsActive(&r))
+        {
+            // Calculate closest hit
+            Intersection isect;
+            IntersectSceneClosest(&scenedata, &r, &isect);
 
-			// Write data back in case of a hit
-			hits[global_id] = isect;
-		}
+            // Write data back in case of a hit
+            hits[global_id] = isect;
+        }
     }
 }
 
@@ -495,7 +495,7 @@ __global Face const* faces,    // Scene indices
 __global ShapeData const* shapes,     // Shapes
 __global ray const* rays,        // Ray workload
 int offset,                // Offset in rays array
-int numrays,               // Number of rays to process					
+int numrays,               // Number of rays to process                    
 __global int* hitresults  // Hit results
 )
 {
@@ -518,11 +518,11 @@ __global int* hitresults  // Hit results
         // Fetch ray
         ray r = rays[offset + global_id];
 
-		if (Ray_IsActive(&r))
-		{
-			// Calculate any intersection
-			hitresults[offset + global_id] = IntersectSceneAny(&scenedata, &r) ? 1 : -1;
-		}
+        if (Ray_IsActive(&r))
+        {
+            // Calculate any intersection
+            hitresults[offset + global_id] = IntersectSceneAny(&scenedata, &r) ? 1 : -1;
+        }
     }
 }
 
@@ -558,14 +558,14 @@ __global Intersection* hits // Hit datas
         int idx = offset + global_id;
         ray r = rays[idx];
 
-		if (Ray_IsActive(&r))
-		{
-			// Calculate closest hit
-			Intersection isect;
-			IntersectSceneClosest(&scenedata, &r, &isect);
-			// Write data back in case of a hit
-			hits[idx] = isect;
-		}
+        if (Ray_IsActive(&r))
+        {
+            // Calculate closest hit
+            Intersection isect;
+            IntersectSceneClosest(&scenedata, &r, &isect);
+            // Write data back in case of a hit
+            hits[idx] = isect;
+        }
     }
 }
 
@@ -601,10 +601,10 @@ __global int* hitresults   // Hit results
         // Fetch ray
         ray r = rays[offset + global_id];
 
-		if (Ray_IsActive(&r))
-		{
-			// Calculate any intersection
-			hitresults[offset + global_id] = IntersectSceneAny(&scenedata, &r) ? 1 : -1;
-		}
+        if (Ray_IsActive(&r))
+        {
+            // Calculate any intersection
+            hitresults[offset + global_id] = IntersectSceneAny(&scenedata, &r) ? 1 : -1;
+        }
     }
 }

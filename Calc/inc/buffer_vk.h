@@ -27,62 +27,62 @@ THE SOFTWARE.
 
 namespace Calc {
 
-	// Structure for mappedmemory.
-	struct MappedMemory
-	{
-		uint8_t*	data;
-		uint32_t	type;		// one of Calc::MapType
-		size_t		offset;
-		size_t		size;
-	};
+    // Structure for mappedmemory.
+    struct MappedMemory
+    {
+        uint8_t*    data;
+        uint32_t    type;        // one of Calc::MapType
+        size_t        offset;
+        size_t        size;
+    };
 
-	// Class that represent Vulkan implementation of a Buffer
-	class BufferVulkan : public Buffer {
-		friend class DeviceVulkanw;
-	public:
-		BufferVulkan(Anvil::Buffer *inBuffer, bool inCreatedInternally)
-				: Buffer(), m_anvil_buffer(inBuffer)
-				  , m_created_internally(inCreatedInternally)
-				  , m_fence_id(0) {
-			::memset(&m_mapped_memory, 0, sizeof(m_mapped_memory));
-		}
+    // Class that represent Vulkan implementation of a Buffer
+    class BufferVulkan : public Buffer {
+        friend class DeviceVulkanw;
+    public:
+        BufferVulkan(Anvil::Buffer *inBuffer, bool inCreatedInternally)
+                : Buffer(), m_anvil_buffer(inBuffer)
+                  , m_created_internally(inCreatedInternally)
+                  , m_fence_id(0) {
+            ::memset(&m_mapped_memory, 0, sizeof(m_mapped_memory));
+        }
 
-		~BufferVulkan() {
-			m_anvil_buffer->release();
-		}
+        ~BufferVulkan() {
+            m_anvil_buffer->release();
+        }
 
-		std::size_t GetSize() const override {
-			return static_cast< std::size_t >( m_anvil_buffer->get_size());
-		}
+        std::size_t GetSize() const override {
+            return static_cast< std::size_t >( m_anvil_buffer->get_size());
+        }
 
-		Anvil::Buffer *GetAnvilBuffer() const { return m_anvil_buffer; }
+        Anvil::Buffer *GetAnvilBuffer() const { return m_anvil_buffer; }
 
-		// set mapped memory info. the memory is mapped using a proxy allocation. if read, first the content of Vulkan buffer is copied to the proxy allocation. if write, the proxy buffer is filled with data and then copied to Vulkan buffer.
-		void SetMappedMemory(uint8_t *inMappedMemory, uint32_t inMapType,
-		                     size_t inOffset, size_t inSize) {
-			assert((nullptr == m_mapped_memory.data) ||
-			       (nullptr == inMappedMemory));
-			m_mapped_memory.data = inMappedMemory;
-			m_mapped_memory.type = inMapType;
-			m_mapped_memory.size = inSize;
-			m_mapped_memory.offset = inOffset;
-		}
+        // set mapped memory info. the memory is mapped using a proxy allocation. if read, first the content of Vulkan buffer is copied to the proxy allocation. if write, the proxy buffer is filled with data and then copied to Vulkan buffer.
+        void SetMappedMemory(uint8_t *inMappedMemory, uint32_t inMapType,
+                             size_t inOffset, size_t inSize) {
+            assert((nullptr == m_mapped_memory.data) ||
+                   (nullptr == inMappedMemory));
+            m_mapped_memory.data = inMappedMemory;
+            m_mapped_memory.type = inMapType;
+            m_mapped_memory.size = inSize;
+            m_mapped_memory.offset = inOffset;
+        }
 
-		const MappedMemory &GetMappedMemory() const {
-			return m_mapped_memory;
-		}
+        const MappedMemory &GetMappedMemory() const {
+            return m_mapped_memory;
+        }
 
-		// whether a buffer is internally created by RadeonRays Vulkan implementation. It's used when single value is passed to shaders.
-		bool GetIsCreatedInternally() const { return m_created_internally; }
+        // whether a buffer is internally created by RadeonRays Vulkan implementation. It's used when single value is passed to shaders.
+        bool GetIsCreatedInternally() const { return m_created_internally; }
 
-	private:
-		void SetFenceId( uint64_t id ) { m_fence_id = id; }
+    private:
+        void SetFenceId( uint64_t id ) { m_fence_id = id; }
 
-		Anvil::Buffer *m_anvil_buffer;
-		MappedMemory m_mapped_memory;
-		bool m_created_internally;
+        Anvil::Buffer *m_anvil_buffer;
+        MappedMemory m_mapped_memory;
+        bool m_created_internally;
 
-		std::atomic<uint64_t> m_fence_id;
-	};
+        std::atomic<uint64_t> m_fence_id;
+    };
 
 }

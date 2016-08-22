@@ -53,7 +53,7 @@ public:
     size_t   GetMaxWorkGroupSize() const;
     cl_device_type GetType() const;
     cl_device_id GetID() const;
-	cl_uint GetMinAlignSize() const;
+    cl_uint GetMinAlignSize() const;
 
     // ... GetExecutionCapabilties() const;
     std::string const& GetName() const;
@@ -62,8 +62,8 @@ public:
     std::string const& GetProfile() const;
     std::string const& GetExtensions() const;
 
-	//
-	bool		 HasGlInterop() const;
+    //
+    bool         HasGlInterop() const;
 
     // unsigned int GetGlobalMemCacheSize() const;
     // ...
@@ -88,7 +88,7 @@ private:
     cl_ulong                 maxAllocSize_;
     cl_device_local_mem_type localMemType_;
     size_t                   maxWorkGroupSize_;
-	cl_uint					 minAlignSize_;
+    cl_uint                     minAlignSize_;
     
     friend class CLWPlatform;
 };

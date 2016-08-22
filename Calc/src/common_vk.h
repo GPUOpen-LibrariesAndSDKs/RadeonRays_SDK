@@ -23,41 +23,41 @@ THE SOFTWARE.
 
 namespace Calc
 {
-	extern void LogError( const char* in_assertion_text, const char* in_condition, const char* in_file_name, int in_line, const char* in_comment = nullptr );
-	extern void Abort();
+    extern void LogError( const char* in_assertion_text, const char* in_condition, const char* in_file_name, int in_line, const char* in_comment = nullptr );
+    extern void Abort();
 
 #ifdef _DEBUG
-	#define Assert(e)				if(!(e)) { LogError( "Assertion: %s in %s at %i\n", #e, __FILE__, __LINE__ ); Abort(); }
-	#define AssertEx(e, comment)	if(!(e)) { LogError( "Assertion: %s in %s at %i - %s\n", #e, __FILE__, __LINE__, comment ); Abort(); }
+    #define Assert(e)                if(!(e)) { LogError( "Assertion: %s in %s at %i\n", #e, __FILE__, __LINE__ ); Abort(); }
+    #define AssertEx(e, comment)    if(!(e)) { LogError( "Assertion: %s in %s at %i - %s\n", #e, __FILE__, __LINE__, comment ); Abort(); }
 #else
-	#define Assert(e) {} // do not remove brackets!
-	#define AssertEx(e, comment) {} // do not remove brackets!
+    #define Assert(e) {} // do not remove brackets!
+    #define AssertEx(e, comment) {} // do not remove brackets!
 #endif
 
 #define IS_VULKAN_CALL_SUCCESSFULL( result ) ( ( result == VK_SUCCESS ) || ( result == VK_ERROR_VALIDATION_FAILED_EXT ) )
 #define VK_EMPTY_IMPLEMENTATION { AssertEx( false, "Not Implemented" ); }
 
-	template< class T, class S >
-	inline T* Cast( S* in_pointer )
-	{
+    template< class T, class S >
+    inline T* Cast( S* in_pointer )
+    {
 #ifdef _DEBUG
-		T* to_return = dynamic_cast<T*>( in_pointer );
-		Assert( nullptr != to_return );
-		return to_return;
+        T* to_return = dynamic_cast<T*>( in_pointer );
+        Assert( nullptr != to_return );
+        return to_return;
 #else
-		return (T*)in_pointer;
+        return (T*)in_pointer;
 #endif
-	}
+    }
 
-	template< class T, class S >
-	inline T* ConstCast( S const * in_pointer )
-	{
+    template< class T, class S >
+    inline T* ConstCast( S const * in_pointer )
+    {
 #ifdef _DEBUG
-		T const * to_return = dynamic_cast<T const *>( in_pointer );
-		Assert( nullptr != to_return );
-		return const_cast<T*>(to_return);
+        T const * to_return = dynamic_cast<T const *>( in_pointer );
+        Assert( nullptr != to_return );
+        return const_cast<T*>(to_return);
 #else
-		return (T*)in_pointer;
+        return (T*)in_pointer;
 #endif
-	}
+    }
 }

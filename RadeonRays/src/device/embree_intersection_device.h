@@ -29,10 +29,10 @@ THE SOFTWARE.
 
 namespace RadeonRays
 {
-	class Mesh;
-	class Shape;
-	class ShapeImpl;
-	///< The class represents Embree based intersection device.
+    class Mesh;
+    class Shape;
+    class ShapeImpl;
+    ///< The class represents Embree based intersection device.
     ///< It uses embree RTCDevice abstraction to implement intersection algorithm.
     ///<
     class EmbreeIntersectionDevice : public IntersectionDevice

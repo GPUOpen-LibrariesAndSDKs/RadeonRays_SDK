@@ -460,7 +460,7 @@ __kernel void IntersectClosest(
     __global int* shapeids,    // Shape IDs
     __global ray* rays,        // Ray workload
     int offset,                // Offset in rays array
-    int numrays,               // Number of rays to process					
+    int numrays,               // Number of rays to process                    
     __global int* hitresults,  // Hit results
     __global Intersection* hits // Hit datas
     )
@@ -511,7 +511,7 @@ __kernel void IntersectAny(
     __global int* shapeids,    // Shape IDs
     __global ray* rays,        // Ray workload
     int offset,                // Offset in rays array
-    int numrays,               // Number of rays to process					
+    int numrays,               // Number of rays to process                    
     __global int* hitresults   // Hit results
     )
 {
@@ -547,7 +547,7 @@ __kernel void IntersectClosestRC(
     __global ray* rays,        // Ray workload
     __global int* rayindices,
     int offset,                // Offset in rays array
-    __global int* numrays,               // Number of rays to process					
+    __global int* numrays,               // Number of rays to process                    
     __global Intersection* hits // Hit datas
     )
 {

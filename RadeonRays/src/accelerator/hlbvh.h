@@ -77,10 +77,10 @@ namespace RadeonRays
         struct Node;
         
         // GPU data
-		std::unique_ptr<GpuData> m_gpudata;
+        std::unique_ptr<GpuData> m_gpudata;
         
         // Primitive indices
-		std::vector<int> m_prim_indices;
+        std::vector<int> m_prim_indices;
     };
     
     // BVH node
@@ -94,17 +94,17 @@ namespace RadeonRays
     
     struct Hlbvh::GpuData
     {
-		// Device
-		Calc::Device* device;
+        // Device
+        Calc::Device* device;
 
-		// Parallel primitives
-		Calc::Primitives* pp;
+        // Parallel primitives
+        Calc::Primitives* pp;
 
         // GPU program
         Calc::Executable* executable;
-		Calc::Function* morton_code_func;
-		Calc::Function* build_func;
-		Calc::Function* refit_func;
+        Calc::Function* morton_code_func;
+        Calc::Function* build_func;
+        Calc::Function* refit_func;
         
         // Parallel primitives instance
         //CLWParallelPrimitives pp_;
@@ -113,45 +113,45 @@ namespace RadeonRays
         Calc::Buffer* positions;
         
         // Morton codes of the primitive centroids
-		Calc::Buffer* morton_codes;
+        Calc::Buffer* morton_codes;
         // Reorder indices
-		Calc::Buffer* prim_indices;
+        Calc::Buffer* prim_indices;
         
-		Calc::Buffer* sorted_morton_codes;
-		Calc::Buffer* sorted_prim_indices;
+        Calc::Buffer* sorted_morton_codes;
+        Calc::Buffer* sorted_prim_indices;
         
         // Nodes: first N-1 - internal nodes, last N - leafs
-		Calc::Buffer* nodes;
+        Calc::Buffer* nodes;
         
         // Bounds
-		Calc::Buffer* bounds;
-		Calc::Buffer* sorted_bounds;
+        Calc::Buffer* bounds;
+        Calc::Buffer* sorted_bounds;
         
         // Atomic flags
-		Calc::Buffer*  flags;
+        Calc::Buffer*  flags;
 
-		GpuData(Calc::Device* dev)
-			: device(dev)
-		{
-		}
+        GpuData(Calc::Device* dev)
+            : device(dev)
+        {
+        }
 
-		~GpuData()
-		{
-			executable->DeleteFunction(morton_code_func);
-			executable->DeleteFunction(build_func);
-			executable->DeleteFunction(refit_func);
-			device->DeleteExecutable(executable);
-			device->DeletePrimitives(pp);
-			device->DeleteBuffer(positions);
-			device->DeleteBuffer(morton_codes);
-			device->DeleteBuffer(prim_indices);
-			device->DeleteBuffer(sorted_morton_codes);
-			device->DeleteBuffer(sorted_prim_indices);
-			device->DeleteBuffer(nodes);
-			device->DeleteBuffer(bounds);
-			device->DeleteBuffer(sorted_bounds);
-			device->DeleteBuffer(flags);
-		}
+        ~GpuData()
+        {
+            executable->DeleteFunction(morton_code_func);
+            executable->DeleteFunction(build_func);
+            executable->DeleteFunction(refit_func);
+            device->DeleteExecutable(executable);
+            device->DeletePrimitives(pp);
+            device->DeleteBuffer(positions);
+            device->DeleteBuffer(morton_codes);
+            device->DeleteBuffer(prim_indices);
+            device->DeleteBuffer(sorted_morton_codes);
+            device->DeleteBuffer(sorted_prim_indices);
+            device->DeleteBuffer(nodes);
+            device->DeleteBuffer(bounds);
+            device->DeleteBuffer(sorted_bounds);
+            device->DeleteBuffer(flags);
+        }
     };
 }
 

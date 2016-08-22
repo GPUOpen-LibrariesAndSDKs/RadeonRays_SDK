@@ -31,13 +31,13 @@ namespace RadeonRays
     public:
         quaternion (float xx = 0.f, float yy = 0.f, float zz = 0.f, float ww = 1.f) : x(xx), y(yy), z(zz), w(ww) {}
 
-        //explicit			   quaternion( const vector<T,4>& v );
+        //explicit               quaternion( const vector<T,4>& v );
         /// create quaternion from a orthogonal(!) matrix
         /// make sure the matrix is ORTHOGONAL
-        explicit			   quaternion( const matrix& m );
+        explicit               quaternion( const matrix& m );
 
         /// convert quaternion to matrix
-        //void				   to_matrix( matrix<T,4,4>& pM ) const;
+        //void                   to_matrix( matrix<T,4,4>& pM ) const;
         void to_matrix(matrix& m) const;
 
         quaternion      operator -() const { return quaternion(-x, -y, -z, -w); }
@@ -157,9 +157,9 @@ namespace RadeonRays
     inline void quaternion::to_matrix( matrix& m ) const
     {
         float s = 2.f/norm();
-        m.m00 = 1 - s*(y*y + z*z); m.m01 = s * (x*y - w*z);	    m.m02 = s * (x*z + w*y);     m.m03 = 0;
+        m.m00 = 1 - s*(y*y + z*z); m.m01 = s * (x*y - w*z);        m.m02 = s * (x*z + w*y);     m.m03 = 0;
         m.m10 = s * (x*y + w*z);   m.m11 = 1 - s * (x*x + z*z); m.m12 = s * (y*z - w*x);     m.m13 = 0;
-        m.m20 = s * (x*z - w*y);   m.m21 = s * (y*z + w*x);	    m.m22 = 1 - s * (x*x + y*y); m.m23 = 0;
+        m.m20 = s * (x*z - w*y);   m.m21 = s * (y*z + w*x);        m.m22 = 1 - s * (x*x + y*y); m.m23 = 0;
         m.m30 =                    m.m31 =                      m.m32;                       m.m33 = 1;
     }
 }

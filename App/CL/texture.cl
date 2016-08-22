@@ -202,111 +202,111 @@ float Texture_GetValue1f(
 /// Sample 2D texture
 float3 Texture_SampleBump(float2 uv, TEXTURE_ARG_LIST_IDX(texidx))
 {
-	// Get width and height
-	int width = textures[texidx].w;
-	int height = textures[texidx].h;
+    // Get width and height
+    int width = textures[texidx].w;
+    int height = textures[texidx].h;
 
-	// Find the origin of the data in the pool
-	__global char const* mydata = texturedata + textures[texidx].dataoffset;
+    // Find the origin of the data in the pool
+    __global char const* mydata = texturedata + textures[texidx].dataoffset;
 
-	// Handle UV wrap
-	// TODO: need UV mode support
-	uv -= floor(uv);
+    // Handle UV wrap
+    // TODO: need UV mode support
+    uv -= floor(uv);
 
-	// Reverse Y:
-	// it is needed as textures are loaded with Y axis going top to down
-	// and our axis goes from down to top
-	uv.y = 1.f - uv.y;
+    // Reverse Y:
+    // it is needed as textures are loaded with Y axis going top to down
+    // and our axis goes from down to top
+    uv.y = 1.f - uv.y;
 
-	// Calculate integer coordinates
-	int s0 = clamp((int)floor(uv.x * width), 0, width - 1);
-	int t0 = clamp((int)floor(uv.y * height), 0, height - 1);
+    // Calculate integer coordinates
+    int s0 = clamp((int)floor(uv.x * width), 0, width - 1);
+    int t0 = clamp((int)floor(uv.y * height), 0, height - 1);
 
-	switch (textures[texidx].fmt)
-	{
-	case RGBA32:
-	{
-		__global float3 const* mydataf = (__global float3 const*)mydata;
+    switch (textures[texidx].fmt)
+    {
+    case RGBA32:
+    {
+        __global float3 const* mydataf = (__global float3 const*)mydata;
 
-		// Sobel filter
-		const float tex00 = (*(mydataf + width * (t0 - 1) + (s0-1))).x; 
-		const float tex10 = (*(mydataf + width * (t0 - 1) + (s0))).x;
-		const float tex20 = (*(mydataf + width * (t0 - 1) + (s0 + 1))).x; 
+        // Sobel filter
+        const float tex00 = (*(mydataf + width * (t0 - 1) + (s0-1))).x; 
+        const float tex10 = (*(mydataf + width * (t0 - 1) + (s0))).x;
+        const float tex20 = (*(mydataf + width * (t0 - 1) + (s0 + 1))).x; 
 
-		const float tex01 = (*(mydataf + width * (t0) + (s0 - 1))).x; 
-		const float tex21 = (*(mydataf + width * (t0) + (s0 + 1))).x;
+        const float tex01 = (*(mydataf + width * (t0) + (s0 - 1))).x; 
+        const float tex21 = (*(mydataf + width * (t0) + (s0 + 1))).x;
 
-		const float tex02 = (*(mydataf + width * (t0 + 1) + (s0 - 1))).x;
-		const float tex12 = (*(mydataf + width * (t0 + 1) + (s0))).x;
-		const float tex22 = (*(mydataf + width * (t0 + 1) + (s0 + 1))).x;
+        const float tex02 = (*(mydataf + width * (t0 + 1) + (s0 - 1))).x;
+        const float tex12 = (*(mydataf + width * (t0 + 1) + (s0))).x;
+        const float tex22 = (*(mydataf + width * (t0 + 1) + (s0 + 1))).x;
 
-		const float Gx = tex00 - tex20 + 2.0f * tex01 - 2.0f * tex21 + tex02 - tex22;
-		const float Gy = tex00 + 2.0f * tex10 + tex20 - tex02 - 2.0f * tex12 - tex22;
-		const float3 n = make_float3(Gx, Gy, 1.f);
+        const float Gx = tex00 - tex20 + 2.0f * tex01 - 2.0f * tex21 + tex02 - tex22;
+        const float Gy = tex00 + 2.0f * tex10 + tex20 - tex02 - 2.0f * tex12 - tex22;
+        const float3 n = make_float3(Gx, Gy, 1.f);
 
-		return 0.5f * normalize(n) + make_float3(0.5f, 0.5f, 0.5f);
-	}
+        return 0.5f * normalize(n) + make_float3(0.5f, 0.5f, 0.5f);
+    }
 
-	case RGBA16:
-	{
-		__global half const* mydatah = (__global half const*)mydata;
+    case RGBA16:
+    {
+        __global half const* mydatah = (__global half const*)mydata;
 
-		const float tex00 = vload_half4(width * (t0 - 1) + (s0 - 1), mydatah).x;
-		const float tex10 = vload_half4(width * (t0 - 1) + (s0), mydatah).x;
-		const float tex20 = vload_half4(width * (t0 - 1) + (s0 + 1), mydatah).x;
+        const float tex00 = vload_half4(width * (t0 - 1) + (s0 - 1), mydatah).x;
+        const float tex10 = vload_half4(width * (t0 - 1) + (s0), mydatah).x;
+        const float tex20 = vload_half4(width * (t0 - 1) + (s0 + 1), mydatah).x;
 
-		const float tex01 = vload_half4(width * (t0)+(s0 - 1), mydatah).x; 
-		const float tex21 = vload_half4(width * (t0)+(s0 + 1), mydatah).x; 
+        const float tex01 = vload_half4(width * (t0)+(s0 - 1), mydatah).x; 
+        const float tex21 = vload_half4(width * (t0)+(s0 + 1), mydatah).x; 
 
-		const float tex02 = vload_half4(width * (t0 + 1) + (s0 - 1), mydatah).x;
-		const float tex12 = vload_half4(width * (t0 + 1) + (s0), mydatah).x;
-		const float tex22 = vload_half4(width * (t0 + 1) + (s0 + 1), mydatah).x;
+        const float tex02 = vload_half4(width * (t0 + 1) + (s0 - 1), mydatah).x;
+        const float tex12 = vload_half4(width * (t0 + 1) + (s0), mydatah).x;
+        const float tex22 = vload_half4(width * (t0 + 1) + (s0 + 1), mydatah).x;
 
-		const float Gx = tex00 - tex20 + 2.0f * tex01 - 2.0f * tex21 + tex02 - tex22;
-		const float Gy = tex00 + 2.0f * tex10 + tex20 - tex02 - 2.0f * tex12 - tex22;
-		const float3 n = make_float3(Gx, Gy, 1.f);
+        const float Gx = tex00 - tex20 + 2.0f * tex01 - 2.0f * tex21 + tex02 - tex22;
+        const float Gy = tex00 + 2.0f * tex10 + tex20 - tex02 - 2.0f * tex12 - tex22;
+        const float3 n = make_float3(Gx, Gy, 1.f);
 
-		return 0.5f * normalize(n) + make_float3(0.5f, 0.5f, 0.5f);
-	}
+        return 0.5f * normalize(n) + make_float3(0.5f, 0.5f, 0.5f);
+    }
 
-	case RGBA8:
-	{
-		__global uchar4 const* mydatac = (__global uchar4 const*)mydata;
+    case RGBA8:
+    {
+        __global uchar4 const* mydatac = (__global uchar4 const*)mydata;
 
-		const uchar utex00 = (*(mydatac + width * (t0 - 1) + (s0 - 1))).x;
-		const uchar utex10 = (*(mydatac + width * (t0 - 1) + (s0))).x;
-		const uchar utex20 = (*(mydatac + width * (t0 - 1) + (s0 + 1))).x;
+        const uchar utex00 = (*(mydatac + width * (t0 - 1) + (s0 - 1))).x;
+        const uchar utex10 = (*(mydatac + width * (t0 - 1) + (s0))).x;
+        const uchar utex20 = (*(mydatac + width * (t0 - 1) + (s0 + 1))).x;
 
-		const uchar utex01 = (*(mydatac + width * (t0)+(s0 - 1))).x;
-		const uchar utex21 = (*(mydatac + width * (t0)+(s0 + 1))).x;
+        const uchar utex01 = (*(mydatac + width * (t0)+(s0 - 1))).x;
+        const uchar utex21 = (*(mydatac + width * (t0)+(s0 + 1))).x;
 
-		const uchar utex02 = (*(mydatac + width * (t0 + 1) + (s0 - 1))).x;
-		const uchar utex12 = (*(mydatac + width * (t0 + 1) + (s0))).x;
-		const uchar utex22 = (*(mydatac + width * (t0 + 1) + (s0 + 1))).x;
+        const uchar utex02 = (*(mydatac + width * (t0 + 1) + (s0 - 1))).x;
+        const uchar utex12 = (*(mydatac + width * (t0 + 1) + (s0))).x;
+        const uchar utex22 = (*(mydatac + width * (t0 + 1) + (s0 + 1))).x;
 
-		const float tex00 = (float)utex00 / 255.f;
-		const float tex10 = (float)utex10 / 255.f;
-		const float tex20 = (float)utex20 / 255.f;
+        const float tex00 = (float)utex00 / 255.f;
+        const float tex10 = (float)utex10 / 255.f;
+        const float tex20 = (float)utex20 / 255.f;
 
-		const float tex01 = (float)utex01 / 255.f;
-		const float tex21 = (float)utex21 / 255.f;
+        const float tex01 = (float)utex01 / 255.f;
+        const float tex21 = (float)utex21 / 255.f;
 
-		const float tex02 = (float)utex02 / 255.f;
-		const float tex12 = (float)utex12 / 255.f;
-		const float tex22 = (float)utex22 / 255.f;
+        const float tex02 = (float)utex02 / 255.f;
+        const float tex12 = (float)utex12 / 255.f;
+        const float tex22 = (float)utex22 / 255.f;
 
-		const float Gx = tex00 - tex20 + 2.0f * tex01 - 2.0f * tex21 + tex02 - tex22;
-		const float Gy = tex00 + 2.0f * tex10 + tex20 - tex02 - 2.0f * tex12 - tex22;
-		const float3 n = make_float3(Gx, Gy, 1.f);
+        const float Gx = tex00 - tex20 + 2.0f * tex01 - 2.0f * tex21 + tex02 - tex22;
+        const float Gy = tex00 + 2.0f * tex10 + tex20 - tex02 - 2.0f * tex12 - tex22;
+        const float3 n = make_float3(Gx, Gy, 1.f);
 
-		return 0.5f * normalize(n) + make_float3(0.5f, 0.5f, 0.5f);
-	}
+        return 0.5f * normalize(n) + make_float3(0.5f, 0.5f, 0.5f);
+    }
 
-	default:
-	{
-		return make_float3(0.f, 0.f, 0.f);
-	}
-	}
+    default:
+    {
+        return make_float3(0.f, 0.f, 0.f);
+    }
+    }
 }
 
 

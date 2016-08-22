@@ -26,7 +26,7 @@ namespace Anvil { class Device; class CommandPool; }
 
 namespace Calc
 {
-	DeviceVulkan* CreateDeviceFromVulkan(Anvil::Device* device, Anvil::CommandPool* cmd_pool);
+    DeviceVulkan* CreateDeviceFromVulkan(Anvil::Device* device, Anvil::CommandPool* cmd_pool);
     
 }
 

@@ -283,6 +283,6 @@ void CLWContext::Finish(unsigned int idx) const
 
 void CLWContext::Flush(unsigned int idx) const
 {
-	cl_int status = clFlush(commandQueues_[idx]);
-	ThrowIf(status != CL_SUCCESS, status, "clFlush failed");
+    cl_int status = clFlush(commandQueues_[idx]);
+    ThrowIf(status != CL_SUCCESS, status, "clFlush failed");
 }

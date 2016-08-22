@@ -792,72 +792,72 @@ __kernel void AccumulateData(
 }
 
 //__kernel void ApplySelectiveBlur(
-//	__global float4 const* data,
-//	int imgwidth,
-//	int imgheight,
-//	float alpha,
-//	__global float const* k,
-//	__global float4* output_data
-//	)
+//    __global float4 const* data,
+//    int imgwidth,
+//    int imgheight,
+//    float alpha,
+//    __global float const* k,
+//    __global float4* output_data
+//    )
 //{
 //#define FILTER_RADIUS 3
-//	int gidx = get_global_id(0);
-//	int gidy = get_global_id(1);
-//	int gid = gidy * imgwidth + gidx;
-//	int gid1 = gidy * imgwidth + gidx + 1;
-//	int gid2 = gidy * imgwidth + gidx - 1;
-//	int gid3 = (gidy + 1) * imgwidth + gidx;
-//	int gid4 = (gidy - 1) * imgwidth + gidx;
+//    int gidx = get_global_id(0);
+//    int gidy = get_global_id(1);
+//    int gid = gidy * imgwidth + gidx;
+//    int gid1 = gidy * imgwidth + gidx + 1;
+//    int gid2 = gidy * imgwidth + gidx - 1;
+//    int gid3 = (gidy + 1) * imgwidth + gidx;
+//    int gid4 = (gidy - 1) * imgwidth + gidx;
 //
 //
-//	if (gidx < imgwidth && gidy < imgheight)
-//	{
+//    if (gidx < imgwidth && gidy < imgheight)
+//    {
 //
-//		int xstart = max(gidx - FILTER_RADIUS, 0);
-//		int xend = min(gidx + FILTER_RADIUS, imgwidth);
+//        int xstart = max(gidx - FILTER_RADIUS, 0);
+//        int xend = min(gidx + FILTER_RADIUS, imgwidth);
 //
-//		int ystart = max(gidy - FILTER_RADIUS, 0);
-//		int yend = min(gidy + FILTER_RADIUS, imgheight);
+//        int ystart = max(gidy - FILTER_RADIUS, 0);
+//        int yend = min(gidy + FILTER_RADIUS, imgheight);
 //
-//		float3 cv = data[gid].xyz;
-//		float3 d1 = fabs(data[gid1].xyz - cv);
-//		float3 d2 = fabs(data[gid2].xyz - cv);
-//		float3 d3 = fabs(data[gid3].xyz - cv);
-//		float3 d4 = fabs(data[gid4].xyz - cv);
+//        float3 cv = data[gid].xyz;
+//        float3 d1 = fabs(data[gid1].xyz - cv);
+//        float3 d2 = fabs(data[gid2].xyz - cv);
+//        float3 d3 = fabs(data[gid3].xyz - cv);
+//        float3 d4 = fabs(data[gid4].xyz - cv);
 //
 //
-//		/*if (d1.x > alpha ||
-//			d1.y > alpha ||
-//			d1.z > alpha ||
-//			d2.x > alpha ||
-//			d2.y > alpha ||
-//			d2.z > alpha ||
-//			d3.x > alpha ||
-//			d3.y > alpha ||
-//			d3.z > alpha ||
-//			d4.x > alpha ||
-//			d4.y > alpha ||
-//			d4.z > alpha
-//			)
+//        /*if (d1.x > alpha ||
+//            d1.y > alpha ||
+//            d1.z > alpha ||
+//            d2.x > alpha ||
+//            d2.y > alpha ||
+//            d2.z > alpha ||
+//            d3.x > alpha ||
+//            d3.y > alpha ||
+//            d3.z > alpha ||
+//            d4.x > alpha ||
+//            d4.y > alpha ||
+//            d4.z > alpha
+//            )
 //
-//		{
-//			output_data[gid] = data[gid];
-//			return;
-//		}*/
+//        {
+//            output_data[gid] = data[gid];
+//            return;
+//        }*/
 //
-//		float3 v = 0.f;
-//		for (int x = xstart; x <= xend; ++x)
-//			for (int y = ystart; y <= yend; ++y)
-//			{
-//				float3 pv = data[y * imgwidth + x].xyz;
-//				int fx = x - gidx + FILTER_RADIUS;
-//				int fy = y - gidy + FILTER_RADIUS;
-//				v += pv * k[fy * 7 + fx];
-//			}
+//        float3 v = 0.f;
+//        for (int x = xstart; x <= xend; ++x)
+//            for (int y = ystart; y <= yend; ++y)
+//            {
+//                float3 pv = data[y * imgwidth + x].xyz;
+//                int fx = x - gidx + FILTER_RADIUS;
+//                int fy = y - gidy + FILTER_RADIUS;
+//                v += pv * k[fy * 7 + fx];
+//            }
 //
-//		output_data[gid].xyz = v;
-//		output_data[gid].w = data[gid].w;
-//	}
+//        output_data[gid].xyz = v;
+//        output_data[gid].w = data[gid].w;
+//    }
 //#undef FILTER_RADIUS
 //}
 

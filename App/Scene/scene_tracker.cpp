@@ -190,7 +190,7 @@ namespace Baikal
         }
 
         //Volume vol = {1, 0, 0, 0, {0.9f, 0.6f, 0.9f}, {5.1f, 1.8f, 5.1f}, {0.0f, 0.0f, 0.0f}};
-        Scene::Volume vol = { 1, 0, 0, 0,{	1.2f, 0.4f, 1.2f },{ 5.1f, 4.8f, 5.1f },{ 0.0f, 0.0f, 0.0f } };
+        Scene::Volume vol = { 1, 0, 0, 0,{    1.2f, 0.4f, 1.2f },{ 5.1f, 4.8f, 5.1f },{ 0.0f, 0.0f, 0.0f } };
 
         out.volumes = m_context.CreateBuffer<Scene::Volume>(1, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &vol);
 

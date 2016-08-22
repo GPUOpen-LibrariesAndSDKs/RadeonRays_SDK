@@ -43,7 +43,7 @@ public:
     virtual ~CLWKernel(){}
 
     virtual void SetArg(unsigned int idx, ParameterHolder param);
-	virtual void SetArg(unsigned int idx, size_t size, void* ptr);
+    virtual void SetArg(unsigned int idx, size_t size, void* ptr);
 
 private:
     CLWKernel(cl_kernel kernel);
