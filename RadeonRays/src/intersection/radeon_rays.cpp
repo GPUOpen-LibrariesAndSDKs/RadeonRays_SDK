@@ -44,6 +44,7 @@ THE SOFTWARE.
 #ifndef CALC_STATIC_LIBRARY
 
 #ifdef WIN32
+// Windows
 #define NOMINMAX
 #include <Windows.h>
 #define LOADLIBRARY(name) LoadLibrary(name)
@@ -57,7 +58,8 @@ THE SOFTWARE.
 #define LIBNAME "Calc64D.dll"
 #define LONGNAME "../Bin/Debug/x64/##LIBNAME"
 #endif
-#else
+#elif __linux__
+// Linux
 #include <dlfcn.h>
 #define LOADLIBRARY(name) dlopen(name, RTLD_LAZY)
 #define GETFUNC dlsym
@@ -68,6 +70,20 @@ THE SOFTWARE.
 #define LONGNAME "../Bin/Release/x64/##LIBNAME"
 #else
 #define LIBNAME "libCalc64D.so"
+#define LONGNAME "../Bin/Debug/x64/##LIBNAME"
+#endif
+#else
+// MacOS
+#include <dlfcn.h>
+#define LOADLIBRARY(name) dlopen(name, RTLD_LAZY)
+#define GETFUNC dlsym
+#define HANDLE_TYPE void*
+
+#ifndef _DEBUG
+#define LIBNAME "libCalc64.dylib"
+#define LONGNAME "../Bin/Release/x64/##LIBNAME"
+#else
+#define LIBNAME "libCalc64D.dylib"
 #define LONGNAME "../Bin/Debug/x64/##LIBNAME"
 #endif
 #endif
