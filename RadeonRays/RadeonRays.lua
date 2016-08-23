@@ -12,6 +12,7 @@ project "RadeonRays"
     if not _OPTIONS["static_calc"] then
         defines {"CALC_IMPORT_API"};
     else
+	defines {"CALC_STATIC_LIBRARY"}
         links {"CLW"}
     end
 
