@@ -36,8 +36,13 @@ namespace Calc
 {
     class DeviceCl;
     class Buffer;
-
-    CALC_API DeviceCl* CreateDeviceFromOpenCL(cl_context context, cl_device_id device, cl_command_queue queue);
-
-    CALC_API Buffer* CreateBufferFromOpenCL(DeviceCl* device, cl_mem buffer);
 }
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+CALC_API Calc::DeviceCl* CreateDeviceFromOpenCL(cl_context context, cl_device_id device, cl_command_queue queue);
+#ifdef __cplusplus
+}
+#endif

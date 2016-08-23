@@ -7,13 +7,11 @@ project "RadeonRays"
     location "../RadeonRays"
     includedirs { "./include", "../Calc/inc" }
 
-    links {"Calc"}
-
     if not _OPTIONS["static_calc"] then
         defines {"CALC_IMPORT_API"};
     else
 	defines {"CALC_STATIC_LIBRARY"}
-        links {"CLW"}
+        links {"CLW", "Calc"}
     end
 
     defines {"EXPORT_API"}

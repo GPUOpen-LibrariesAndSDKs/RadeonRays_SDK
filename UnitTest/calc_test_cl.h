@@ -46,12 +46,12 @@ class CalcTestkOpenCL : public ::testing::Test
 public:
     virtual void SetUp()
     {
-        m_calc = Calc::CreateCalc(Calc::Platform::kOpenCL, 0);
+        m_calc = CreateCalc(Calc::Platform::kOpenCL, 0);
     }
 
     virtual void TearDown()
     {
-        Calc::DeleteCalc(m_calc);
+        DeleteCalc(m_calc);
     }
 
     Calc::Calc* m_calc;
