@@ -3,6 +3,13 @@ project "Calc"
     if not _OPTIONS["shared_calc"] then
         kind "StaticLib"
         defines {"CALC_STATIC_LIBRARY"}
+
+        if os.is("linux") then
+            buildoptions "-std=c++11"
+            os.execute("rm -rf obj")
+        elseif os.is("macosx") then
+            buildoptions "-std=c++11 -stdlib=libc++"
+        end
     else
         kind "SharedLib"
         defines {"CALC_EXPORT_API"}
@@ -12,7 +19,7 @@ project "Calc"
             buildoptions "-std=c++11 -fPIC"
             os.execute("rm -rf obj")
         elseif os.is("macosx") then
-	    buildoptions "-std=c++11 -stdlib=libc++"
+	        buildoptions "-std=c++11 -stdlib=libc++"
             filter { "kind:SharedLib", "system:macosx" }
             linkoptions { '-Wl,-install_name', '-Wl,@loader_path/%{cfg.linktarget.name}' }
         end
