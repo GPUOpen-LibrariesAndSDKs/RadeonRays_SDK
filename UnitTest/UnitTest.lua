@@ -5,8 +5,8 @@ project "UnitTest"
     links {"Gtest", "RadeonRays", "Calc"}
     files { "**.cpp", "**.h" }
     
-    if not _OPTIONS["static_calc"] then
-        defines {"CALC_IMPORT_API"};
+    if _OPTIONS["shared_calc"] then
+       defines {"CALC_IMPORT_API"};
     else
        defines {"CALC_STATIC_LIBRARY"}
     end

@@ -39,9 +39,9 @@ Calc::Calc* CreateCalc(Calc::Platform inPlatform, int reserved)
     else
 #endif
 #if USE_VULKAN
-        if (inPlatform & Platform::kVulkan)
+        if (inPlatform & Calc::Platform::kVulkan)
         {
-            return new CalcVulkanw();
+            return new Calc::CalcVulkanw();
         }
         else
 #endif // USE_VULKAN
