@@ -1,37 +1,37 @@
 project "RadeonRays"
+
     if( _OPTIONS["static_library"]) then
         kind "StaticLib"
     else
         kind "SharedLib"
     end
+
     location "../RadeonRays"
     includedirs { "./include", "../Calc/inc" }
 
-    links {"Calc"}
-
-    if not _OPTIONS["static_calc"] then
+    if _OPTIONS["shared_calc"] then
         defines {"CALC_IMPORT_API"};
     else
 	defines {"CALC_STATIC_LIBRARY"}
-        links {"CLW"}
+        links {"Calc"}
+	if _OPTIONS["use_opencl"] then
+           links {"CLW"}
+	end
     end
 
     defines {"EXPORT_API"}
 
     files { "../RadeonRays/**.h", "../RadeonRays/**.cpp","../RadeonRays/src/kernels/CL/**.cl", "../RadeonRays/src/kernels/GLSL/**.comp"}
 
-    if not os.is("macosx") then
-        linkoptions {"-Wl,--no-undefined"}
-    elseif os.is("macosx") then
-        filter { "kind:SharedLib", "system:macosx" }
-        linkoptions { '-Wl,-install_name', '-Wl,@loader_path/%{cfg.linktarget.name}' }
-    end
-
     excludes {"../RadeonRays/src/device/embree*"}
     if os.is("macosx") then
         buildoptions "-std=c++11 -stdlib=libc++"
+        filter { "kind:SharedLib", "system:macosx" }
+        linkoptions { '-Wl,-install_name', '-Wl,@loader_path/%{cfg.linktarget.name}' }
+
     elseif os.is("linux") then
         buildoptions "-std=c++11"
+        linkoptions {"-Wl,--no-undefined"}
 
         --get API version from header.
         local handle = io.popen("grep -r RADEONRAYS_API_VERSION include/radeon_rays.h | cut -d \" \" -f 3")
@@ -79,16 +79,6 @@ project "RadeonRays"
                                 )
             print ">> RadeonRays: CL kernels embedded"
         end
-    end
-
-    if _OPTIONS["use_tbb"] then
-        defines {"USE_TBB"}
-        links {"tbb"}
-        includedirs { "../3rdParty/tbb/include" }
-    end
-
-    if _OPTIONS["use_opencl"] then
-        files {"../RadeonRays/**.cl" }
     end
 
     if _OPTIONS["use_embree"] then

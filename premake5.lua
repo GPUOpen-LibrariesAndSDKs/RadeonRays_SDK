@@ -36,11 +36,6 @@ newoption {
 }
 
 newoption {
-    trigger = "submit",
-    description = "Submit RadeonRays SDK."
-}
-
-newoption {
     trigger = "library_only",
     description = "Don't define a solution just add library to calling parent premake solution"
 }
@@ -61,17 +56,33 @@ newoption {
 }
 
 newoption {
-    trigger = "static_calc",
-    description = "Link Calc(compute abstraction layer) statically"
+    trigger = "shared_calc",
+    description = "Link Calc(compute abstraction layer) dynamically"
 }
+
 
 if not _OPTIONS["use_opencl"] and not _OPTIONS["use_vulkan"] and not _OPTIONS["use_embree"] then
     _OPTIONS["use_opencl"] = 1
 end
 
+if _OPTIONS["shared_calc"] and _OPTIONS["use_vulkan"] then
+    print ">>Error: shared_calc option is not yet supported for Vulkan backend"
+    return -1
+end
+
 if _OPTIONS["library_only"] then
     _OPTIONS["no_tests"] = 1
+    print ">> Disabling test for library only build";
 end
+
+if _OPTIONS["shared_calc"] then
+   print ">> Building Calc as a shared library"
+end
+
+if _OPTIONS["use_embree"] then
+   print ">> Embree backend enabled"
+end
+
 
 function build(config)
     if os.is("windows") then
@@ -116,38 +127,6 @@ if _OPTIONS["package"] then
     os.execute("cp -r ./3rdParty/oiio16 ./dist/3rdParty/")
     os.execute("cp -r ./Tools/deploy/LICENSE.txt ./dist")
     os.execute("cp -r ./Tools/deploy/README.md ./dist")
-elseif _OPTIONS["submit"] then
-    if os.is("macosx") then
-        osPremakeFolder = "osx"
-        project = "gmake"
-    elseif os.is("windows") then
-        osPremakeFolder = "win"
-        project = "vs2015"
-    else
-        osPremakeFolder = "linux64"
-        project = "gmake"
-    end
-
-    result = os.execute("echo generate project && " .. "\"./Tools/premake/".. osPremakeFolder .. "/premake5\" " .. project .. " --embed_kernels")
-    assert(result == 0, "failed to generate project.")
-
-    result = build("release")
-    assert(result == 0, "failed to build project.")
-
-    result = os.execute("cd App && \"../Bin/Release/x64/UnitTest64\"")
-    assert(result == 0, "Unit tests failed.")
-    os.execute("echo packaging && " .. "\"./Tools/premake/".. osPremakeFolder .. "/premake5\" " .. " --package")
-    os.execute("cd ../RadeonRays_SDK/ && git clean -dfx && git checkout .")
-    os.execute("cp -r ./dist/* ../RadeonRays_SDK/")
-    os.execute("cd ../RadeonRays_SDK/ && git add .")
-    os.chdir("../RadeonRays_SDK/")
-    result =  os.execute("echo generate project && " .. "\"./premake/".. osPremakeFolder .. "/premake5\" " .. project)
-    assert(result == 0, "failed to generate SDK project.")
-    result = build("release")
-    assert(result == 0, "failed to build SDK.")
-    result = os.execute("git commit -m \"Update SDK\"")
-    result = os.execute("git push origin master")
-
 else
     if not _OPTIONS["library_only"] then
         solution "RadeonRays"
@@ -156,11 +135,14 @@ else
         language "C++"
         flags { "NoMinimalRebuild", "EnableSSE", "EnableSSE2" }
     end
+
     if( _OPTIONS["static_library"]) then
         defines{ "RR_STATIC_LIBRARY=1" }
+	print ">> Building Radeon Rays as a static library";
     end
 
     if _OPTIONS["use_opencl"] then
+        print ">> OpenCL backend enabled"
         -- find and add path to Opencl headers
         dofile ("./OpenCLSearch.lua" )
     end
@@ -193,6 +175,7 @@ else
         defines{"USE_OPENCL=1"}
     end
     if _OPTIONS["use_vulkan"] then
+	print ">> Vulkan backend enabled"
         defines{"USE_VULKAN=1"}
         vulkanPath = ""
         vulkanSDKPath = os.getenv( "VK_SDK_PATH" );

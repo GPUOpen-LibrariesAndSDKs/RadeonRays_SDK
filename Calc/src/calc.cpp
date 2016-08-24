@@ -28,32 +28,29 @@ THE SOFTWARE.
 #include "calc_vkw.h"
 #endif
 
-namespace Calc
+// Create corresponding calc
+Calc::Calc* CreateCalc(Calc::Platform inPlatform, int reserved)
 {
-    // Create corresponding calc
-    Calc* CreateCalc( Platform inPlatform, int reserved )
-    {
 #if USE_OPENCL
-        if ( inPlatform & Platform::kOpenCL )
-        {
-            return new CalcClw();
-        }
-        else
+    if (inPlatform & Calc::Platform::kOpenCL)
+    {
+        return new Calc::CalcClw();
+    }
+    else
 #endif
 #if USE_VULKAN
-        if ( inPlatform & Platform::kVulkan )
+        if (inPlatform & Calc::Platform::kVulkan)
         {
-            return new CalcVulkanw();
+            return new Calc::CalcVulkanw();
         }
         else
 #endif // USE_VULKAN
         {
             return nullptr;
         }
-    }
+}
 
-    void DeleteCalc(Calc* calc)
-    {
-        delete calc;    
-    }
+void DeleteCalc(Calc::Calc* calc)
+{
+    delete calc;
 }

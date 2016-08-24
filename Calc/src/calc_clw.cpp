@@ -29,13 +29,6 @@ THE SOFTWARE.
 
 namespace Calc
 {
-    DeviceCl* CreateDeviceFromOpenCL(cl_context context, cl_device_id device, cl_command_queue queue)
-    {
-        CLWContext clwContext = CLWContext::Create(context, &device, &queue, 1);
-        auto clwDevice = clwContext.GetDevice(0);
-        return new DeviceClw( clwDevice, clwContext );
-    }
-
     CalcClw::CalcClw()
     {
         try
@@ -129,6 +122,13 @@ namespace Calc
         delete device;
     }
 
+}
+
+Calc::DeviceCl* CreateDeviceFromOpenCL(cl_context context, cl_device_id device, cl_command_queue queue)
+{
+    CLWContext clwContext = CLWContext::Create(context, &device, &queue, 1);
+    auto clwDevice = clwContext.GetDevice(0);
+    return new Calc::DeviceClw(clwDevice, clwContext);
 }
 
 #endif //use_opencl

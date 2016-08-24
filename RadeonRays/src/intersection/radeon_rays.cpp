@@ -41,9 +41,76 @@ THE SOFTWARE.
     #include "../device/embree_intersection_device.h"
 #endif //USE_EMBREE
 
+#ifndef CALC_STATIC_LIBRARY
+
+#ifdef WIN32
+// Windows
+#define NOMINMAX
+#include <Windows.h>
+#define LOADLIBRARY(name) LoadLibrary(name)
+#define GETFUNC GetProcAddress
+#define HANDLE_TYPE HMODULE
+
+#ifndef _DEBUG
+#define LIBNAME "Calc64.dll"
+#define LONGNAME "../Bin/Release/x64/##LIBNAME"
+#else
+#define LIBNAME "Calc64D.dll"
+#define LONGNAME "../Bin/Debug/x64/##LIBNAME"
+#endif
+#elif __linux__
+// Linux
+#include <dlfcn.h>
+#define LOADLIBRARY(name) dlopen(name, RTLD_LAZY)
+#define GETFUNC dlsym
+#define HANDLE_TYPE void*
+
+#ifndef _DEBUG
+#define LIBNAME "libCalc64.so"
+#define LONGNAME "../Bin/Release/x64/##LIBNAME"
+#else
+#define LIBNAME "libCalc64D.so"
+#define LONGNAME "../Bin/Debug/x64/##LIBNAME"
+#endif
+#else
+// MacOS
+#include <dlfcn.h>
+#define LOADLIBRARY(name) dlopen(name, RTLD_LAZY)
+#define GETFUNC dlsym
+#define HANDLE_TYPE void*
+
+#ifndef _DEBUG
+#define LIBNAME "libCalc64.dylib"
+#define LONGNAME "../Bin/Release/x64/##LIBNAME"
+#else
+#define LIBNAME "libCalc64D.dylib"
+#define LONGNAME "../Bin/Debug/x64/##LIBNAME"
+#endif
+#endif
+#endif
+
 namespace RadeonRays
 {
     static RadeonRays::DeviceInfo::Platform s_calc_platform = RadeonRays::DeviceInfo::Platform::kAny;
+
+#ifndef CALC_STATIC_LIBRARY
+    static void* GetCalcEntryPoint(Calc::Platform platform, char const* name)
+    {
+        HANDLE_TYPE hdll = LOADLIBRARY(LIBNAME);
+
+        if (!hdll)
+        {
+            hdll = LOADLIBRARY(LONGNAME);
+        }
+
+        if (!hdll)
+        {
+            return nullptr;
+        }
+
+        return GETFUNC(hdll, name);
+    }
+#endif
 
 #define GetCalc_impl(platform)                                                        \
     static Calc::Calc* GetCalc##platform()                                            \
@@ -51,15 +118,37 @@ namespace RadeonRays
         static Calc::Calc* s_calc##platform = nullptr;                                \
         if (!s_calc##platform)                                                        \
         {                                                                            \
-            s_calc##platform = Calc::CreateCalc(Calc::Platform::k##platform, 0);    \
+            s_calc##platform = CreateCalc(Calc::Platform::k##platform, 0);    \
         }                                                                            \
         return s_calc##platform;                                                    \
     }
 
-    GetCalc_impl(OpenCL)
+    //GetCalc_impl(OpenCL)
 
     GetCalc_impl(Vulkan)
 #undef GetCalc_impl
+
+    static Calc::Calc* GetCalcOpenCL()
+    {
+        static Calc::Calc* s_calcOpenCL = nullptr;
+
+        if (!s_calcOpenCL)
+        {
+#ifndef CALC_STATIC_LIBRARY
+            auto pfn_create_calc = GetCalcEntryPoint(Calc::Platform::kOpenCL, "CreateCalc");
+
+            if (pfn_create_calc)
+            {
+                auto create_calc = reinterpret_cast<decltype(CreateCalc)*>(pfn_create_calc);
+                s_calcOpenCL = create_calc(Calc::Platform::kOpenCL, 0);
+            }
+#else
+            s_calcOpenCL = CreateCalc(Calc::Platform::kOpenCL, 0);
+#endif
+        }
+
+        return s_calcOpenCL;
+    }
 
     static Calc::Calc* GetCalc()
     {
@@ -72,6 +161,7 @@ namespace RadeonRays
             if (calc != nullptr) { return calc; }
         }
 #endif
+
 #if USE_VULKAN
         if ( s_calc_platform & DeviceInfo::Platform::kVulkan )
         {
@@ -179,6 +269,7 @@ namespace RadeonRays
     {
         delete api;
     }
+
 #ifdef USE_VULKAN
     RRAPI IntersectionApi* CreateFromVulkan(Anvil::Device* device, Anvil::CommandPool* cmd_pool)
     {
@@ -193,13 +284,35 @@ namespace RadeonRays
         }
     }
 #endif
+
 #ifdef USE_OPENCL
     RRAPI IntersectionApi* CreateFromOpenClContext(cl_context        context, cl_device_id device, cl_command_queue queue)
     {
         auto calc = dynamic_cast<Calc::Calc*>(GetCalcOpenCL());
+
         if (calc)
         {
-            return new IntersectionApiImpl(new CalcIntersectionDeviceCl(calc, Calc::CreateDeviceFromOpenCL(context, device, queue)));
+            Calc::DeviceCl* calc_device = nullptr;
+
+#ifndef CALC_STATIC_LIBRARY
+            auto pfn_create_device_from_cl = GetCalcEntryPoint(Calc::Platform::kOpenCL, "CreateDeviceFromOpenCL");
+
+            if (pfn_create_device_from_cl)
+            {
+                auto create_device_from_cl = reinterpret_cast<decltype(CreateDeviceFromOpenCL)*>(pfn_create_device_from_cl);
+                calc_device = create_device_from_cl(context, device, queue);
+            }
+#else
+            calc_device = CreateDeviceFromOpenCL(context, device, queue);
+#endif
+            if (calc_device)
+            {
+                return new IntersectionApiImpl(new CalcIntersectionDeviceCl(calc, calc_device));
+            }
+            else
+            {
+                return nullptr;
+            }
         }
         else
         {
@@ -207,5 +320,4 @@ namespace RadeonRays
         }
     }
 #endif
-
 }
