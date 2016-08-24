@@ -96,12 +96,6 @@ Available premake options:
  example of usage :
  `./Tools/premake/win/premake5.exe --package`
 
-- `--submit` submit SDK. This option will generate project with `--embed_kernels` and build release version, run unit tests, pack it using script `--package` option, check standalone SDK build and push changes to SDK repo.
-`devenv` should be in `PATH` to have possibility to build solution via command line.
-SDK repo location expected to be `../Radeon Rays_SDK`. checkout & clean -dfx made before adding changes to SDK git. Commit will be pushed to remote named `origin`.  
-example of usage :
-`./Tools/premake/win/premake5.exe --submit`
-
 - `--use_embree` will enable the embree backend. Embree device will be the last one in IntersectionApi device list.
  example of usage :
  `./Tools/premake/win/premake5.exe --use_embree vs2015`
@@ -109,6 +103,8 @@ example of usage :
 - `--use_vulkan` will enable the vulkan backend.
 
 - `--use_opencl` will enable the OpenCL backend. If no other --use_ option is provided, this is the default
+
+- `--shared_calc` will build Calc (Compute Abstraction Layer) as a shared object. This means RadeonRays library does not directly depend on OpenCL and can be used on the systems where OpenCL is not available (with Embree backend). 
 
 ## Run
 
