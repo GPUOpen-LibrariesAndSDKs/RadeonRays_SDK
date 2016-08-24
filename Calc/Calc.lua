@@ -12,14 +12,23 @@ project "Calc"
         elseif os.is("macosx") then
             filter { "kind:SharedLib", "system:macosx" }
             linkoptions { '-Wl,-install_name', '-Wl,@loader_path/%{cfg.linktarget.name}' }
+            if _OPTIONS["use_metal"] then 
+            defines {"USE_METAL"}
+            linkoptions{ "-framework Metal" }
+            files { "../Calc/**.mm"}
+            end
         end
 
     end
 
     location "../Calc"
-    includedirs { ".", "./inc", "../CLW" }
+    includedirs { ".", "./inc" }
     files { "../Calc/**.h", "../Calc/**.cpp"}
-    links {"CLW"}
+
+    if _OPTIONS["use_opencl"] then
+            includedirs { "../CLW" }
+        links {"CLW"}
+    end
 
     if os.is("macosx") then
         buildoptions "-std=c++11 -stdlib=libc++"

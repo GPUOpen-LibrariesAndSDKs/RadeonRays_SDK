@@ -27,8 +27,8 @@ THE SOFTWARE.
 #include "radeon_rays_conformance_test_cl.h"
 //#include "radeon_rays_performance_test_cl.h"
 #include "radeon_rays_test_cl.h"
-
 #endif
+
 #if USE_VULKAN
 #include "calc_test_vk.h"
 #include "radeon_rays_apitest_vk.h"
@@ -39,7 +39,10 @@ THE SOFTWARE.
 #if USE_EMBREE
 #include "radeon_rays_apitest_embree.h"
 #include "radeon_rays_conformance_test_embree.h"
+#endif
 
+#if USE_METAL
+#include "calc_test_metal.h"
 #endif
 
 #include "gtest/gtest.h"

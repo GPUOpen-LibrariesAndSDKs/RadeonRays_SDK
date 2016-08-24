@@ -27,6 +27,9 @@ THE SOFTWARE.
 #include "calc_vk.h"
 #include "calc_vkw.h"
 #endif
+#if USE_METAL
+#include "calc_metal.h"
+#endif
 
 // Create corresponding calc
 Calc::Calc* CreateCalc(Calc::Platform inPlatform, int reserved)
@@ -45,9 +48,16 @@ Calc::Calc* CreateCalc(Calc::Platform inPlatform, int reserved)
         }
         else
 #endif // USE_VULKAN
-        {
-            return nullptr;
-        }
+#ifdef USE_METAL
+            if (inPlatform & Calc::Platform::kMetal)
+            {
+                return new Calc::CalcMetal();
+            }
+            else
+#endif
+            {
+                return nullptr;
+            }
 }
 
 void DeleteCalc(Calc::Calc* calc)

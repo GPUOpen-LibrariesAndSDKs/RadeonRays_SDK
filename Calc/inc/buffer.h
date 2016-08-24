@@ -30,7 +30,7 @@ namespace Calc
     {
     public:
         Buffer() {}
-        virtual ~Buffer(){};
+        virtual ~Buffer(){}
 
         virtual std::size_t GetSize() const = 0;
 

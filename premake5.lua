@@ -31,6 +31,11 @@ newoption {
 }
 
 newoption {
+    trigger = "use_metal",
+    description = "Use Apple(R) Metal for GPU hit testing"
+}
+
+newoption {
     trigger = "package",
     description = "Package the library for a binary release"
 }
@@ -65,7 +70,11 @@ newoption {
     description = "Link Calc(compute abstraction layer) statically"
 }
 
-if not _OPTIONS["use_opencl"] and not _OPTIONS["use_vulkan"] and not _OPTIONS["use_embree"] then
+if not os.is("macosx") then
+    _OPTIONS["use_metal"] = 0
+end
+
+if not _OPTIONS["use_opencl"] and not _OPTIONS["use_vulkan"] and not _OPTIONS["use_embree"] and not _OPTIONS["use_metal"] then
     _OPTIONS["use_opencl"] = 1
 end
 
@@ -166,6 +175,10 @@ else
     end
     -- define common includes
     includedirs { ".","./3rdParty/include" }
+
+    if _OPTIONS["use_metal"] then 
+        defines {"USE_METAL"}
+    end
 
     if not _OPTIONS["no_tests"]  then
         defines{"PRORAY_UNITTEST=1"}
