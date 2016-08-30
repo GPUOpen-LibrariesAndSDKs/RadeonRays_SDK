@@ -11,6 +11,7 @@ project "RadeonRays"
 
     if _OPTIONS["shared_calc"] then
         defines {"CALC_IMPORT_API"};
+	links {"dl"}
     else
 	defines {"CALC_STATIC_LIBRARY"}
         links {"Calc"}
