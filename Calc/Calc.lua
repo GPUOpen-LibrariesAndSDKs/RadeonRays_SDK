@@ -5,7 +5,7 @@ project "Calc"
         defines {"CALC_STATIC_LIBRARY"}
 
         if os.is("linux") then
-            buildoptions "-std=c++11"
+            buildoptions "-std=c++11 -fPIC"
             os.execute("rm -rf obj")
         elseif os.is("macosx") then
             buildoptions "-std=c++11 -stdlib=libc++"

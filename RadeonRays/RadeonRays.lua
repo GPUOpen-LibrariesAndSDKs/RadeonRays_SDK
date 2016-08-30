@@ -30,7 +30,7 @@ project "RadeonRays"
         linkoptions { '-Wl,-install_name', '-Wl,@loader_path/%{cfg.linktarget.name}' }
 
     elseif os.is("linux") then
-        buildoptions "-std=c++11"
+        buildoptions "-std=c++11 -fPIC"
         linkoptions {"-Wl,--no-undefined"}
 
         --get API version from header.
