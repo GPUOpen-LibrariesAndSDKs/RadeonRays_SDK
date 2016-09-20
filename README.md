@@ -53,7 +53,7 @@ If the default behaviour is not what you want, an API call `IntersectionApi::Set
 ### Windows
 - Create Visual Studio 2015 Solution
 
-`./premake/win/premake5.exe vs2015`
+`./Tools/premake/win/premake5.exe vs2015`
 
 ### OSX
 - Install Homebrew
