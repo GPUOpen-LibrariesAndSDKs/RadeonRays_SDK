@@ -276,7 +276,7 @@ namespace Calc
         return nullptr;
     }
 
-    Executable* DeviceVulkanw::CompileExecutable( char const* inFilename, char const** inHeaderNames, int inHeadersNum )
+    Executable* DeviceVulkanw::CompileExecutable( char const* inFilename, char const** inHeaderNames, int inHeadersNum, char const* options)
     {
         return new ExecutableVulkan( m_anvil_device, inFilename, m_use_compute_pipe );
     }

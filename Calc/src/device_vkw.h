@@ -67,7 +67,7 @@ namespace Calc
         Executable* CompileExecutable( std::uint8_t const* binary_code, std::size_t size, char const* options ) override;
         Executable* CompileExecutable( char const* filename,
                                        char const** headernames,
-                                       int numheaders ) override;
+                                       int numheaders, char const* options) override;
 
         void DeleteExecutable( Executable* executable ) override;
 

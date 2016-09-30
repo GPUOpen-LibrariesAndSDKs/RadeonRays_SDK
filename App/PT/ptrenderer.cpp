@@ -115,11 +115,27 @@ namespace Baikal
         // Create parallel primitives
         m_render_data->pp = CLWParallelPrimitives(m_context);
 
+        std::string buildopts;
+
+        buildopts.append(" -cl-mad-enable -cl-fast-relaxed-math -cl-std=CL1.2 -I . ");
+
+        buildopts.append(
+#if defined(__APPLE__)
+            "-D APPLE "
+#elif defined(_WIN32) || defined (WIN32)
+            "-D WIN32 "
+#elif defined(__linux__)
+            "-D __linux__ "
+#else
+            ""
+#endif
+            );
+
         // Load kernels
 #ifndef RR_EMBED_KERNELS
-        m_render_data->program = CLWProgram::CreateFromFile("../App/CL/integrator_pt.cl", m_context);
+        m_render_data->program = CLWProgram::CreateFromFile("../App/CL/integrator_pt.cl", buildopts.c_str(), m_context);
 #else
-        m_render_data->program = CLWProgram::CreateFromSource(cl_app, std::strlen(cl_integrator_pt), context);
+        m_render_data->program = CLWProgram::CreateFromSource(cl_app, std::strlen(cl_integrator_pt), buildopts.c_str(), context);
 #endif
 
         m_render_data->sobolmat = m_context.CreateBuffer<unsigned int>(1024 * 52, CL_MEM_READ_ONLY, &g_SobolMatrices[0]);

@@ -60,6 +60,11 @@ newoption {
     description = "Link Calc(compute abstraction layer) dynamically"
 }
 
+newoption {
+    trigger     = "enable_raymask",
+    description = "Enable ray masking in intersection kernels"
+}
+
 
 if not _OPTIONS["use_opencl"] and not _OPTIONS["use_vulkan"] and not _OPTIONS["use_embree"] then
     _OPTIONS["use_opencl"] = 1

@@ -252,9 +252,9 @@ void CLWContext::InitCL()
                   });
 }
 
-CLWProgram CLWContext::CreateProgram(std::vector<char> const& sourceCode) const
+CLWProgram CLWContext::CreateProgram(std::vector<char> const& sourceCode, char const* buildopts) const
 {
-    return CLWProgram::CreateFromSource(&sourceCode[0], sourceCode.size(), *this);
+    return CLWProgram::CreateFromSource(&sourceCode[0], sourceCode.size(), buildopts, *this);
 }
 
 CLWImage2D CLWContext::CreateImage2DFromGLTexture(cl_GLint texture) const

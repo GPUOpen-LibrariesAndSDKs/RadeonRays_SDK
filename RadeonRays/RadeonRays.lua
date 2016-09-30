@@ -20,6 +20,10 @@ project "RadeonRays"
 	end
     end
 
+    if _OPTIONS["enable_raymask"] then
+        defines {"RR_RAYMASK"}
+    end
+
     defines {"EXPORT_API"}
 
     files { "../RadeonRays/**.h", "../RadeonRays/**.cpp","../RadeonRays/src/kernels/CL/**.cl", "../RadeonRays/src/kernels/GLSL/**.comp"}
