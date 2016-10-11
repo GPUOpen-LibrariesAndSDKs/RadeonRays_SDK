@@ -3,18 +3,22 @@ import sys
 import os
 import re
 
-def printfile(filename, dir):
+visited = set()
 
+def printfile(filename, dir):
+    visited.add(filename)
     fh = open(dir + "/" + filename)
     for line in fh.readlines():
         a = line.strip('\r\n')
         inl = re.search("#include\s*<.*/(.+)>", a)
         if inl:
-            printfile( inl.group(1), dir)
+            if inl.group(1) not in visited:
+                printfile( inl.group(1), dir)
         else:
             print( '"' + a.replace("\\","\\\\").replace("\"", "\\\"") + ' \\n"\\' )
 
 def stringify(filename, dir, varname, typest):
+    visited.clear()
     print( 'static const char g_'+varname+"_"+typest+'[]= \\' )
     printfile(filename, dir)
     print( ';' )

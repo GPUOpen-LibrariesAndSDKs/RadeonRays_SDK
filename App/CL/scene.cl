@@ -22,8 +22,8 @@ THE SOFTWARE.
 #ifndef SCENE_CL
 #define SCENE_CL
 
-#include "../App/CL/utils.cl"
-#include "../App/CL/payload.cl"
+#include <../App/CL/utils.cl>
+#include <../App/CL/payload.cl>
 
 /// Fill DifferentialGeometry structure based on intersection info from RadeonRays
 void FillDifferentialGeometry(// Scene
