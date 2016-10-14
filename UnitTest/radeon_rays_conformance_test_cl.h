@@ -86,6 +86,7 @@ inline void ApiConformanceCL::SetUp()
     //Search for native CPU
     int cpuidx = -1;
     int gpuidx = -1;
+
     for (auto idx = 0U; idx < IntersectionApi::GetDeviceCount(); ++idx)
     {
         DeviceInfo devinfo;
@@ -104,13 +105,16 @@ inline void ApiConformanceCL::SetUp()
 
     // CPU OpenCL on Apple only support 1 thread so disable the tests
 #ifndef __APPLE__
-    apicpu_ = IntersectionApi::Create(cpuidx);
-    ASSERT_NE(apicpu_, nullptr);
+    if (cpuidx != -1)
+    {
+        apicpu_ = IntersectionApi::Create(cpuidx);
+        ASSERT_NE(apicpu_, nullptr);
+    }
 #endif
     apigpu_ = IntersectionApi::Create(gpuidx);
     ASSERT_NE(apigpu_, nullptr);
 
-    // Load obj file 
+    // Load obj file
     std::string res = LoadObj(shapes_, materials_, "../Resources/CornellBox/orig.objm");
 
     // Create meshes within IntersectionApi
@@ -132,7 +136,7 @@ inline void ApiConformanceCL::SetUp()
             &shapes_[i].mesh.indices[0], 0, nullptr, (int)shapes_[i].mesh.indices.size() / 3));
 
         EXPECT_NO_THROW(apigpu_->AttachShape(shape));
-        
+
         test_shapes_.push_back({ &shapes_[i].mesh.positions[0], (int)shapes_[i].mesh.positions.size() / 3,
             &shapes_[i].mesh.indices[0], (int)shapes_[i].mesh.indices.size(), nullptr, (int)shapes_[i].mesh.indices.size() / 3 });
         test_shapes_.back().shape = shape;
@@ -176,6 +180,9 @@ BEGIN CPU TESTS
 
 TEST_F(ApiConformanceCL, CPU_CornellBox_1Ray_ClosestHit_Bruteforce)
 {
+    if (!apicpu_)
+        return;
+
     auto api = apicpu_;
     api->SetOption("acc.type", "bvh");
     api->SetOption("bvh.builder", "sah");
@@ -186,6 +193,9 @@ TEST_F(ApiConformanceCL, CPU_CornellBox_1Ray_ClosestHit_Bruteforce)
 
 TEST_F(ApiConformanceCL, CPU_CornellBox_100RayRandom_ClosestHit_Bruteforce)
 {
+    if (!apicpu_)
+        return;
+
     auto api = apicpu_;
     api->SetOption("acc.type", "bvh");
     api->SetOption("bvh.builder", "sah");
@@ -196,6 +206,9 @@ TEST_F(ApiConformanceCL, CPU_CornellBox_100RayRandom_ClosestHit_Bruteforce)
 
 TEST_F(ApiConformanceCL, CPU_CornellBox_1000RaysRandom_ClosestHit_Bruteforce)
 {
+    if (!apicpu_)
+        return;
+
     auto api = apicpu_;
     api->SetOption("acc.type", "bvh");
     api->SetOption("bvh.builder", "sah");
@@ -206,6 +219,9 @@ TEST_F(ApiConformanceCL, CPU_CornellBox_1000RaysRandom_ClosestHit_Bruteforce)
 
 TEST_F(ApiConformanceCL, CPU_CornellBox_10000RaysRandom_ClosestHit_Bruteforce)
 {
+    if (!apicpu_)
+        return;
+
     auto api = apicpu_;
     api->SetOption("acc.type", "bvh");
     api->SetOption("bvh.builder", "sah");
@@ -217,6 +233,9 @@ TEST_F(ApiConformanceCL, CPU_CornellBox_10000RaysRandom_ClosestHit_Bruteforce)
 
 TEST_F(ApiConformanceCL, CPU_CornellBox_10000RaysRandom_ClosestHit_Force2level_Bruteforce)
 {
+    if (!apicpu_)
+        return;
+
     auto api = apicpu_;
     api->SetOption("acc.type", "bvh");
     api->SetOption("bvh.builder", "sah");
@@ -227,6 +246,9 @@ TEST_F(ApiConformanceCL, CPU_CornellBox_10000RaysRandom_ClosestHit_Force2level_B
 
 TEST_F(ApiConformanceCL, CPU_CornellBox_1000RandomRays_ClosestHit_Bruteforce_FatBvh)
 {
+    if (!apicpu_)
+        return;
+
     auto api = apicpu_;
     api->SetOption("acc.type", "fatbvh");
     api->SetOption("bvh.builder", "sah");
@@ -238,6 +260,9 @@ TEST_F(ApiConformanceCL, CPU_CornellBox_1000RandomRays_ClosestHit_Bruteforce_Fat
 
 TEST_F(ApiConformanceCL, DISABLED_CPU_CornellBox_1000Rays_Brutforce_HlBvh)
 {
+    if (!apicpu_)
+        return;
+
     auto api = apicpu_;
     api->SetOption("acc.type", "hlbvh");
     api->SetOption("bvh.builder", "sah");
@@ -248,6 +273,9 @@ TEST_F(ApiConformanceCL, DISABLED_CPU_CornellBox_1000Rays_Brutforce_HlBvh)
 
 TEST_F(ApiConformanceCL, CPU_CornellBox_1RandomRays_AnyHit_Bruteforce)
 {
+    if (!apicpu_)
+        return;
+
     auto api = apicpu_;
     api->SetOption("acc.type", "bvh");
     api->SetOption("bvh.builder", "sah");
@@ -258,6 +286,9 @@ TEST_F(ApiConformanceCL, CPU_CornellBox_1RandomRays_AnyHit_Bruteforce)
 
 TEST_F(ApiConformanceCL, CPU_CornellBox_1000RandomRays_AnyHit_Bruteforce)
 {
+    if (!apicpu_)
+        return;
+
     auto api = apicpu_;
     api->SetOption("acc.type", "bvh");
     api->SetOption("bvh.builder", "sah");
@@ -268,6 +299,9 @@ TEST_F(ApiConformanceCL, CPU_CornellBox_1000RandomRays_AnyHit_Bruteforce)
 
 TEST_F(ApiConformanceCL, CPU_CornellBox_10000RandomRays_AnyHit_Bruteforce)
 {
+    if (!apicpu_)
+        return;
+
     auto api = apicpu_;
     api->SetOption("acc.type", "bvh");
     api->SetOption("bvh.builder", "sah");
@@ -401,7 +435,7 @@ TEST_F(ApiConformanceCL, DISABLED_CornellBox_10000RaysRandom_ClosestHit_Events_B
     int const kNumRays = 10000;
 
     // Make sure the ray is not on BB boundary
-    // in this case results may differ due to 
+    // in this case results may differ due to
     // different NaNs propagation in BB test
     // TODO: fix this
 
@@ -506,16 +540,16 @@ inline void ApiConformanceCL::ExpectClosestIntersectionOk(const Intersection& ex
 }
 
 template<int kNumRays>
-inline void ApiConformanceCL::ExpectClosestRaysOk(RadeonRays::IntersectionApi* api)const 
+inline void ApiConformanceCL::ExpectClosestRaysOk(RadeonRays::IntersectionApi* api)const
 {
     // Make sure the ray is not on BB boundary
-    // in this case results may differ due to 
+    // in this case results may differ due to
     // different NaNs propagation in BB test
     // TODO: fix this
-    
+
     Intersection isect_brute[kNumRays];
     ray r_brute[kNumRays];
-    
+
     // generate some random vectors
     for (int i = 0; i < kNumRays; ++i)
     {
@@ -573,10 +607,10 @@ inline void ApiConformanceCL::ExpectClosestRaysOk(RadeonRays::IntersectionApi* a
 }
 
 template<int kNumRays>
-inline void ApiConformanceCL::ExpectAnyRaysOk(RadeonRays::IntersectionApi* api) const 
+inline void ApiConformanceCL::ExpectAnyRaysOk(RadeonRays::IntersectionApi* api) const
 {
     // Make sure the ray is not on BB boundary
-    // in this case results may differ due to 
+    // in this case results may differ due to
     // different NaNs propagation in BB test
     // TODO: fix this
 
