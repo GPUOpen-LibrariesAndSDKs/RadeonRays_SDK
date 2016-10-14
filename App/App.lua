@@ -58,12 +58,17 @@ project "App"
             links{"vulkan-1"}
         end
     end
-    -- if _OPTIONS["embed_kernels"] then
-    --      configuration {}
-    --      defines {"FR_EMBED_KERNELS"}
-    --      os.execute("python ../Tools/scripts/stringify.py ./CL/ > ./CL/cache/kernels.h")
---      print ">> App: CL kernels embedded"
---    end
+    if _OPTIONS["embed_kernels"] then
+        configuration {}
+        defines {"RR_EMBED_KERNELS"}
+        os.execute( "python ../Tools/scripts/stringify.py " ..
+                                os.getcwd() .. "/CL/ "  ..
+                                ".cl " ..
+                                "opencl " ..
+                                 "> ./CL/cache/kernels.h"
+                                )
+        print ">> App: CL kernels embedded"
+    end
 
     configuration {"x32", "Debug"}
         targetdir "../Bin/Debug/x86"
