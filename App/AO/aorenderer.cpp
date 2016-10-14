@@ -22,7 +22,6 @@ THE SOFTWARE.
 #include "AO/aorenderer.h"
 #include "CLW/clwoutput.h"
 #include "Scene/scene.h"
-
 #include <numeric>
 #include <chrono>
 #include <cstddef>
@@ -105,9 +104,9 @@ namespace Baikal
 
         // Load kernels
 #ifndef RR_EMBED_KERNELS
-        m_render_data->program = CLWProgram::CreateFromFile("../App/CL/integrator_ao.cl", m_context);
+        m_render_data->program = CLWProgram::CreateFromFile("App/CL/integrator_ao.cl", m_context);
 #else
-        m_render_data->program = CLWProgram::CreateFromSource(cl_app, std::strlen(cl_integrator_ao), context);
+        m_render_data->program = CLWProgram::CreateFromSource(g_integrator_ao_opencl, std::strlen(g_integrator_ao_opencl), context);
 #endif
 
         m_render_data->sobolmat = m_context.CreateBuffer<unsigned int>(1024 * 52, CL_MEM_READ_ONLY, &g_SobolMatrices[0]);
