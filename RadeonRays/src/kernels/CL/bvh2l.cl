@@ -164,14 +164,12 @@ bool IntersectSceneClosest2L(SceneData* scenedata, ray* r, Intersection* isect)
                     topidx = idx;
                     // Get shape descrition struct index
                     int shapeidx = SHAPEIDX(node);
-#ifdef RR_RAY_MASK
                     // Get shape mask
                     int shapemask = scenedata->shapedata[shapeidx].mask;
                     // Drill into 2nd level BVH only if the geometry is not masked vs current ray
                     // otherwise skip the subtree
                     if (Ray_GetMask(r) && shapemask)
                     {
-#endif
                         // Fetch bottom level BVH index
                         idx = scenedata->shapedata[shapeidx].bvhidx;
                         shapeid = scenedata->shapedata[shapeidx].id;
@@ -193,13 +191,11 @@ bool IntersectSceneClosest2L(SceneData* scenedata, ray* r, Intersection* isect)
                         invdir = make_float3(1.f, 1.f, 1.f) / r->d.xyz;
                         // And continue traversal of the bottom level BVH
                         continue;
-#ifdef RR_RAY_MASK
                     }
                     else
                     {
                         idx = -1;
                     }
-#endif
                 }
             }
             // Traverse child nodes otherwise.
@@ -272,14 +268,13 @@ bool IntersectSceneAny2L(SceneData* scenedata, ray* r)
                     topidx = idx;
                     // Get shape descrition struct index
                     int shapeidx = SHAPEIDX(node);
-#ifdef RR_RAY_MASK
+
                     // Get shape mask
                     int shapemask = scenedata->shapedata[shapeidx].mask;
                     // Drill into 2nd level BVH only if the geometry is not masked vs current ray
                     // otherwise skip the subtree
                     if (Ray_GetMask(r) && shapemask)
                     {
-#endif
                         // Fetch bottom level BVH index
                         idx = scenedata->shapedata[shapeidx].bvhidx;
 
@@ -300,14 +295,12 @@ bool IntersectSceneAny2L(SceneData* scenedata, ray* r)
                         invdir = make_float3(1.f, 1.f, 1.f) / r->d.xyz;
                         // And continue traversal of the bottom level BVH
                         continue;
-#ifdef RR_RAY_MASK
                     }
                     else
                     {
                         // Skip the subtree
                         idx = -1;
                     }
-#endif
                 }
             }
             // Traverse child nodes otherwise.

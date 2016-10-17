@@ -244,14 +244,18 @@ TEST_F(ApiBackendOpenCL, Intersection_1Ray)
 }
 
 
+#ifdef RR_RAY_MASK
 // The test creates a single triangle mesh and tests attach/detach functionality
 TEST_F(ApiBackendOpenCL, Intersection_1Ray_Masked)
+#else
+// The test creates a single triangle mesh and tests attach/detach functionality
+TEST_F(ApiBackendOpenCL, DISABLED_Intersection_1Ray_Masked)
+#endif
 {
 
     Shape* mesh = nullptr;
 
     api_->SetOption("acc.type", "bvh");
-    //api_->SetOption("bvh.force2level", 1.f);
 
     // Create mesh
     ASSERT_NO_THROW(mesh = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
@@ -361,6 +365,7 @@ TEST_F(ApiBackendOpenCL, Intersection_1Ray_Masked)
     ASSERT_NO_THROW(api_->DeleteBuffer(isect_flag_buffer));
 
 }
+
 
 // The test creates a single triangle mesh and tests attach/detach functionality
 TEST_F(ApiBackendOpenCL, Intersection_1Ray_Active)

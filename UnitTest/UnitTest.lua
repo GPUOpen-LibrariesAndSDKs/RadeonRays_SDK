@@ -73,6 +73,11 @@ project "UnitTest"
         end
     end
 
+    if _OPTIONS["enable_raymask"] then
+       	configuration {}
+	defines {"RR_RAY_MASK"}
+    end
+
     configuration {"x32", "Debug"}
         targetdir "../Bin/Debug/x86"
     configuration {"x64", "Debug"}
