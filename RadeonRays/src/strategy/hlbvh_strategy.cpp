@@ -109,7 +109,7 @@ namespace RadeonRays
     {
         std::string buildopts =
 #ifdef RR_RAY_MASK
-            "-D RAYMASK"
+            "-D RR_RAY_MASK";
 #else
             "";
 #endif
