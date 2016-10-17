@@ -381,7 +381,38 @@ namespace Calc
     {
         try
         {
-            return new ExecutableClw(CLWProgram::CreateFromSource(source_code, size, m_context));
+            std::string buildopts = options ? options : "";
+
+            buildopts.append(" -cl-mad-enable -cl-fast-relaxed-math -cl-std=CL1.2 -I . ");
+
+            bool isamd = m_device.GetVendor().find("AMD") != std::string::npos ||
+                m_device.GetVendor().find("Advanced Micro Devices") != std::string::npos;
+
+            bool has_mediaops = m_device.GetExtensions().find("cl_amd_media_ops2") != std::string::npos;
+
+            if (isamd)
+            {
+                buildopts.append(" -D AMD ");
+            }
+
+            if (has_mediaops)
+            {
+                buildopts.append(" -D AMD_MEDIA_OPS ");
+            }
+
+            buildopts.append(
+#if defined(__APPLE__)
+                "-D APPLE "
+#elif defined(_WIN32) || defined (WIN32)
+                "-D WIN32 "
+#elif defined(__linux__)
+                "-D __linux__ "
+#else
+                ""
+#endif
+                );
+
+            return new ExecutableClw(CLWProgram::CreateFromSource(source_code, size, buildopts.c_str(), m_context));
         }
         catch (CLWException& e)
         {
@@ -392,12 +423,45 @@ namespace Calc
     
     Executable* DeviceClw::CompileExecutable(char const* filename,
                                              char const** headernames,
-                                             int numheaders)
+                                             int numheaders,
+                                             char const* options
+                                            )
     {
         try
         {
+            std::string buildopts = options ? options : "";
+
+            buildopts.append(" -cl-mad-enable -cl-fast-relaxed-math -cl-std=CL1.2 -I . ");
+
+            bool isamd = m_device.GetVendor().find("AMD") != std::string::npos ||
+                m_device.GetVendor().find("Advanced Micro Devices") != std::string::npos;
+
+            bool has_mediaops = m_device.GetExtensions().find("cl_amd_media_ops2") != std::string::npos;
+
+            if (isamd)
+            {
+                buildopts.append(" -D AMD ");
+            }
+
+            if (has_mediaops)
+            {
+                buildopts.append(" -D AMD_MEDIA_OPS ");
+            }
+
+            buildopts.append(
+#if defined(__APPLE__)
+                "-D APPLE " 
+#elif defined(_WIN32) || defined (WIN32)
+                "-D WIN32 "
+#elif defined(__linux__)
+                "-D __linux__ "
+#else
+                ""
+#endif
+                );
+
             return new ExecutableClw(
-                                     CLWProgram::CreateFromFile(filename, headernames, numheaders, m_context)
+                                     CLWProgram::CreateFromFile(filename, headernames, numheaders, buildopts.c_str(), m_context)
                                      );
         }
         catch (CLWException& e)

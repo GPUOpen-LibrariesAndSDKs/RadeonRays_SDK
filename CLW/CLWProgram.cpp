@@ -56,7 +56,7 @@ static void load_file_contents(std::string const& name, std::vector<char>& conte
     }
 }
 
-CLWProgram CLWProgram::CreateFromSource(char const* sourcecode, size_t sourcesize, CLWContext context)
+CLWProgram CLWProgram::CreateFromSource(char const* sourcecode, size_t sourcesize, char const* buildopts, CLWContext context)
 {
     cl_int status = CL_SUCCESS;
     
@@ -70,7 +70,7 @@ CLWProgram CLWProgram::CreateFromSource(char const* sourcecode, size_t sourcesiz
         deviceIds[i] = context.GetDevice(i);
     }
 
-    char const* buildopts = 
+    char const* buildopts1 = 
 #if defined(__APPLE__)
         "-D APPLE -cl-mad-enable -cl-fast-relaxed-math -cl-std=CL1.2 -I ."
 #elif defined(_WIN32) || defined (WIN32)
@@ -113,6 +113,7 @@ CLWProgram CLWProgram::CreateFromSource(char const* sourcecode,
                                         char const** headernames,
                                         size_t* headersizes,
                                         int numheaders,
+                                        char const* buildopts,
                                         CLWContext context)
 {
     cl_int status = CL_SUCCESS;
@@ -122,19 +123,7 @@ CLWProgram CLWProgram::CreateFromSource(char const* sourcecode,
     {
         deviceIds[i] = context.GetDevice(i);
     }
-    
-    char const* buildopts =
-#if defined(__APPLE__)
-    "-D APPLE -cl-mad-enable -cl-fast-relaxed-math -cl-std=CL1.2 -I ."
-#elif defined(_WIN32) || defined (WIN32)
-    "-D WIN32 -cl-mad-enable -cl-fast-relaxed-math -cl-std=CL1.2 -I."
-#elif defined(__linux__)
-    "-D __linux__ -I."
-#else
-    nullptr
-#endif
-    ;
-    
+
     std::vector<cl_program> headerPrograms(numheaders);
     for (int i=0; i<numheaders; ++i)
     {
@@ -191,16 +180,17 @@ CLWProgram CLWProgram::CreateFromSource(char const* sourcecode,
     return prg;
 }
 
-CLWProgram CLWProgram::CreateFromFile(char const* filename, CLWContext context)
+CLWProgram CLWProgram::CreateFromFile(char const* filename, char const* buildopts, CLWContext context)
 {
     std::vector<char> sourcecode;
     load_file_contents(filename, sourcecode, false);
-    return CreateFromSource(&sourcecode[0], sourcecode.size(), context);
+    return CreateFromSource(&sourcecode[0], sourcecode.size(), buildopts, context);
 }
 
 CLWProgram CLWProgram::CreateFromFile(char const* filename,
                                       char const** headernames,
                                       int numheaders,
+                                      char const* buildopts,
                                       CLWContext context)
 {
     std::vector<char> sourcecode;
@@ -221,11 +211,11 @@ CLWProgram CLWProgram::CreateFromFile(char const* filename,
             headerstrs.push_back(&headers[i][0]);
         }
 
-        return CreateFromSource(&sourcecode[0], sourcecode.size(), &headerstrs[0], headernames, &headerssizes[0], numheaders, context);
+        return CreateFromSource(&sourcecode[0], sourcecode.size(), &headerstrs[0], headernames, &headerssizes[0], numheaders, buildopts, context);
     }
     else
     {
-        return CreateFromSource(&sourcecode[0], sourcecode.size(), context);
+        return CreateFromSource(&sourcecode[0], sourcecode.size(), buildopts, context);
     }
 }
 

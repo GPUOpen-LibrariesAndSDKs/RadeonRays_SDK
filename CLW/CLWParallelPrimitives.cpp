@@ -40,13 +40,13 @@ THE SOFTWARE.
 #define NUM_SCAN_ELEMS_PER_WG (WG_SIZE * NUM_SCAN_ELEMS_PER_WI)
 #define NUM_SEG_SCAN_ELEMS_PER_WG (WG_SIZE * NUM_SEG_SCAN_ELEMS_PER_WI)
 
-CLWParallelPrimitives::CLWParallelPrimitives(CLWContext context)
+CLWParallelPrimitives::CLWParallelPrimitives(CLWContext context, char const* buildopts)
     : context_(context)
 {
 #ifndef RR_EMBED_KERNELS
-    program_ = CLWProgram::CreateFromFile("../CLW/CL/CLW.cl", context_);
+    program_ = CLWProgram::CreateFromFile("../CLW/CL/CLW.cl", buildopts, context_);
 #else
-    program_ = CLWProgram::CreateFromSource(g_CLW_opencl, std::strlen(g_CLW_opencl), context_);
+    program_ = CLWProgram::CreateFromSource(g_CLW_opencl, std::strlen(g_CLW_opencl), buildopts, context_);
 #endif
 }
 

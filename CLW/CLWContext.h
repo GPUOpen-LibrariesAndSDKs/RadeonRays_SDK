@@ -56,7 +56,7 @@ public:
 
     unsigned int                GetDeviceCount() const;
     CLWDevice                   GetDevice(unsigned int idx) const;
-    CLWProgram                  CreateProgram(std::vector<char> const& sourceCode) const;
+    CLWProgram                  CreateProgram(std::vector<char> const& sourceCode, char const* buildopts = nullptr) const;
 
     template <typename T> CLWBuffer<T>  CreateBuffer(size_t elementCount, cl_mem_flags flags) const;
     template <typename T> CLWBuffer<T>  CreateBuffer(size_t elementCount, cl_mem_flags flags ,void* data) const;

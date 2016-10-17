@@ -90,7 +90,7 @@ namespace Calc
         virtual Executable* CompileExecutable(std::uint8_t const* binary_code, std::size_t size, char const*  options) = 0;
         virtual Executable* CompileExecutable(char const* filename,
                                               char const** headernames,
-                                              int numheaders) = 0;
+                                              int numheaders, char const* options) = 0;
 
         virtual void DeleteExecutable(Executable* executable) = 0;
 

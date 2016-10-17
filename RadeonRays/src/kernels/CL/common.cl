@@ -240,6 +240,10 @@ int IntersectTriangleP(ray const* r, float3 v1, float3 v2, float3 v3)
     return 1;
 }
 
+#ifdef AMD_MEDIA_OPS
+#pragma OPENCL EXTENSION cl_amd_media_ops2 : enable
+#endif
+
 // Intersect ray with the axis-aligned box
 int IntersectBox(ray const* r, float3 invdir, bbox box, float maxt)
 {
@@ -249,8 +253,13 @@ int IntersectBox(ray const* r, float3 invdir, bbox box, float maxt)
     const float3 tmax = max(f, n);
     const float3 tmin = min(f, n);
 
+#ifndef AMD_MEDIA_OPS
     const float t1 = min(min(tmax.x, min(tmax.y, tmax.z)), maxt);
     const float t0 = max(max(tmin.x, max(tmin.y, tmin.z)), 0.f);
+#else
+    const float t1 = min(amd_min3(tmax.x, tmax.y, tmax.z), maxt);
+    const float t0 = max(amd_max3(tmin.x, tmin.y, tmin.z), 0.f);
+#endif
 
     return (t1 >= t0) ? 1 : 0;
 }
@@ -263,8 +272,14 @@ float IntersectBoxF(ray const* r, float3 invdir, bbox box, float maxt)
     const float3 tmax = max(f, n);
     const float3 tmin = min(f, n);
 
+
+#ifndef AMD_MEDIA_OPS
     const float t1 = min(min(tmax.x, min(tmax.y, tmax.z)), maxt);
     const float t0 = max(max(tmin.x, max(tmin.y, tmin.z)), 0.f);
+#else
+    const float t1 = min(amd_min3(tmax.x, tmax.y, tmax.z), maxt);
+    const float t0 = max(amd_max3(tmin.x, tmin.y, tmin.z), 0.f);
+#endif
 
     return (t1 >= t0) ? (t0 > 0.f ? t0 : t1) : -1.f;
 }

@@ -268,6 +268,7 @@ bool IntersectSceneAny2L(SceneData* scenedata, ray* r)
                     topidx = idx;
                     // Get shape descrition struct index
                     int shapeidx = SHAPEIDX(node);
+
                     // Get shape mask
                     int shapemask = scenedata->shapedata[shapeidx].mask;
                     // Drill into 2nd level BVH only if the geometry is not masked vs current ray

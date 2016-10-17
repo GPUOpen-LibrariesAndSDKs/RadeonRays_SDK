@@ -117,6 +117,13 @@ namespace RadeonRays
         , m_gpudata(new GpuData(device))
         , m_bvh(nullptr)
     {
+        std::string buildopts =
+#ifdef RR_RAY_MASK
+            "-D RR_RAY_MASK";
+#else
+            "";
+#endif
+
 #ifndef RR_EMBED_KERNELS
         if (device->GetPlatform() == Calc::Platform::kOpenCL)
         {
@@ -124,25 +131,25 @@ namespace RadeonRays
 
             int numheaders = sizeof(headers) / sizeof(char const*);
 
-            m_gpudata->executable = m_device->CompileExecutable("../RadeonRays/src/kernels/CL/fatbvh.cl", headers, numheaders);
+            m_gpudata->executable = m_device->CompileExecutable("../RadeonRays/src/kernels/CL/fatbvh.cl", headers, numheaders, buildopts.c_str());
         } 
         else
         {
             assert(device->GetPlatform() == Calc::Platform::kVulkan);
-            m_gpudata->executable = m_device->CompileExecutable("../RadeonRays/src/kernels/GLSL/fatbvh.comp", nullptr, 0);
+            m_gpudata->executable = m_device->CompileExecutable("../RadeonRays/src/kernels/GLSL/fatbvh.comp", nullptr, 0, buildopts.c_str());
         }
 #else
 #if USE_OPENCL
         if (device->GetPlatform() == Calc::Platform::kOpenCL)
         {
-            m_gpudata->executable = m_device->CompileExecutable(g_fatbvh_opencl, std::strlen(g_fatbvh_opencl), nullptr);
+            m_gpudata->executable = m_device->CompileExecutable(g_fatbvh_opencl, std::strlen(g_fatbvh_opencl), buildopts.c_str());
         }
 #endif
 
 #if USE_VULKAN
         if (m_gpudata->executable == nullptr && device->GetPlatform() == Calc::Platform::kVulkan)
         {
-            m_gpudata->executable = m_device->CompileExecutable(g_fatbvh_vulkan, std::strlen(g_fatbvh_vulkan), nullptr);
+            m_gpudata->executable = m_device->CompileExecutable(g_fatbvh_vulkan, std::strlen(g_fatbvh_vulkan), buildopts.c_str());
         }
 #endif
 

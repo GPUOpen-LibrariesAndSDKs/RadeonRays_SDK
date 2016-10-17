@@ -42,21 +42,24 @@ class CLWContext;
 class CLWProgram : public ReferenceCounter<cl_program, clRetainProgram, clReleaseProgram>
 {
 public:
-    static CLWProgram CreateFromSource(char const* sourcecode, size_t sourcesize, CLWContext context);
+    static CLWProgram CreateFromSource(char const* sourcecode, size_t sourcesize, char const* buildopts, CLWContext context);
     static CLWProgram CreateFromSource(char const* sourcecode,
                                        size_t sourcesize,
                                        char const** headers,
                                        char const** headernames,
                                        size_t* headersizes,
                                        int numheaders,
+                                       char const* buildopts,
                                        CLWContext context);
                                        
     static CLWProgram CreateFromFile(char const* filename,
+                                     char const* buildopts,
                                      CLWContext context);
-    
+
     static CLWProgram CreateFromFile(char const* filename,
                                      char const** headernames,
                                      int numheaders,
+                                     char const* buildopts,
                                      CLWContext context);
 
     CLWProgram() {}
