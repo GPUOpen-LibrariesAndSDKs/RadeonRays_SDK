@@ -3,6 +3,7 @@ project "App"
     location "../App"
     links {"RadeonRays", "CLW", "Calc"}
     files { "../App/**.h", "../App/**.cpp", "../App/**.cl", "../App/**.fsh", "../App/**.vsh" }
+
     includedirs{ "../RadeonRays/include", "../CLW", "." }
 
     if os.is("macosx") then
@@ -15,24 +16,28 @@ project "App"
 
     if os.is("windows") then
         includedirs { "../3rdParty/glew/include", "../3rdParty/freeglut/include", "../3rdParty/oiio/include"  }
-        links {"RadeonRays", "freeglut", "glew"}
+        links {"RadeonRays",}
+        if not _OPTIONS["benchmark"] then
+            links {"freeglut", "glew"}
 
+        end
         configuration {"x32"}
             libdirs { "../3rdParty/glew/lib/x86", "../3rdParty/freeglut/lib/x86", "../3rdParty/embree/lib/x86", "../3rdParty/oiio/lib/x86" }
         configuration {"x64"}
             libdirs { "../3rdParty/glew/lib/x64", "../3rdParty/freeglut/lib/x64", "../3rdParty/embree/lib/x64", "../3rdParty/oiio/lib/x64"}
-
-        configuration {}
-
         configuration {"Debug"}
-          links {"OpenImageIOD"}
+            links {"OpenImageIOD"}
         configuration {"Release"}
-          links {"OpenImageIO"}
+            links {"OpenImageIO"}
+        configuration {}
     end
 
     if os.is("linux") then
         buildoptions "-std=c++11"
-        links {"OpenImageIO", "glut", "GLEW", "GL", "pthread"}
+        links {"OpenImageIO", "pthread",}
+        if not _OPTIONS["benchmark"] then
+            links{"glut", "GLEW", "GL",}
+        end
         os.execute("rm -rf obj");
     end
 
@@ -57,6 +62,14 @@ project "App"
             links {"Anvil"}
             links{"vulkan-1"}
         end
+    end
+
+    if _OPTIONS["benchmark"] then
+        defines{"APP_BENCHMARK"}
+        removefiles{"../App/main.cpp",
+                    "../App/shader_manager.cpp",}
+    else
+        removefiles {"../App/main_benchmark.cpp"}
     end
     -- if _OPTIONS["embed_kernels"] then
     --      configuration {}
