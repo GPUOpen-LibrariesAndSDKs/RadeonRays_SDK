@@ -91,7 +91,8 @@ float g_camera_aperture = 0.f;
 
 
 bool g_recording_enabled = false;
-int g_frame_count = 0;
+int g_frame_count = 200;
+
 ConfigManager::Mode g_mode = ConfigManager::Mode::kUseSingleGpu;
 
 using namespace tinyobj;
@@ -217,7 +218,7 @@ void InitData()
     g_cfgs[g_primary].renderer->Clear(float3(0, 0, 0), *g_outputs[g_primary].output);
 }
 
-void Update()
+Baikal::Renderer::BenchmarkStats Update()
 {
     static auto prevtime = std::chrono::high_resolution_clock::now();
     static auto updatetime = std::chrono::high_resolution_clock::now();
@@ -267,12 +268,7 @@ void Update()
         Baikal::Renderer::BenchmarkStats stats;
         g_cfgs[g_primary].renderer->RunBenchmark(*g_scene.get(), kNumBenchmarkPasses, stats);
 
-        auto numrays = stats.resolution.x * stats.resolution.y;
-        std::cout << "Baikal renderer benchmark\n";
-        std::cout << "Number of primary rays: " << numrays << "\n";
-        std::cout << "Primary rays: " << (float)(numrays / (stats.primary_rays_time_in_ms * 0.001f) * 0.000001f) << "mrays/s ( " << stats.primary_rays_time_in_ms << "ms )\n";
-        std::cout << "Secondary rays: " << (float)(numrays / (stats.secondary_rays_time_in_ms * 0.001f) * 0.000001f) << "mrays/s ( " << stats.secondary_rays_time_in_ms << "ms )\n";
-        std::cout << "Shadow rays: " << (float)(numrays / (stats.shadow_rays_time_in_ms * 0.001f) * 0.000001f) << "mrays/s ( " << stats.shadow_rays_time_in_ms << "ms )\n";
+        return stats;
     }
 }
 
@@ -384,6 +380,9 @@ int main(int argc, char * argv[])
     g_cspeed = cspeed ? (atof(cspeed) > 0) : g_cspeed;
 
 
+    char* frame_count = GetCmdOption(argv, argv + argc, "-fc");
+    g_frame_count = frame_count ? (atoi(frame_count)) : g_frame_count;
+
     char* cfg = GetCmdOption(argv, argv + argc, "-config");
 
     if (cfg)
@@ -419,17 +418,25 @@ int main(int argc, char * argv[])
 
         StartRenderThreads();
 
-        int frames_count = 200;
-        for (int i = 0; i < frames_count; ++i)
-            Update();
-
-        for (int i = 0; i < g_cfgs.size(); ++i)
+        Baikal::Renderer::BenchmarkStats stats = Update();
+        for (int i = 1; i < g_frame_count; ++i)
         {
-            if (i == g_primary)
-                continue;
-
-            g_ctrl[i].stop.store(true);
+            Baikal::Renderer::BenchmarkStats iter_stats = Update();
+            stats.primary_rays_time_in_ms += iter_stats.primary_rays_time_in_ms;
+            stats.secondary_rays_time_in_ms += iter_stats.secondary_rays_time_in_ms;
+            stats.shadow_rays_time_in_ms += iter_stats.shadow_rays_time_in_ms;
         }
+        stats.primary_rays_time_in_ms /= g_frame_count;
+        stats.secondary_rays_time_in_ms /= g_frame_count;
+        stats.shadow_rays_time_in_ms /= g_frame_count;
+
+        auto numrays = stats.resolution.x * stats.resolution.y;
+        std::cout << "Baikal renderer benchmark\n";
+        std::cout << "Iterations: " << g_frame_count << std::endl;
+        std::cout << "Number of primary rays: " << numrays << std::endl;
+        std::cout << "Primary rays: " << (float)(numrays / (stats.primary_rays_time_in_ms * 0.001f) * 0.000001f) << "mrays/s ( " << stats.primary_rays_time_in_ms << "ms )\n";
+        std::cout << "Secondary rays: " << (float)(numrays / (stats.secondary_rays_time_in_ms * 0.001f) * 0.000001f) << "mrays/s ( " << stats.secondary_rays_time_in_ms << "ms )\n";
+        std::cout << "Shadow rays: " << (float)(numrays / (stats.shadow_rays_time_in_ms * 0.001f) * 0.000001f) << "mrays/s ( " << stats.shadow_rays_time_in_ms << "ms )\n";
     }
     catch (std::runtime_error& err)
     {
