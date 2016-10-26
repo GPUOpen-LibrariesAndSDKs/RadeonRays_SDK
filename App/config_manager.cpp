@@ -25,6 +25,8 @@ THE SOFTWARE.
 #include "PT/ptrenderer.h"
 #include "AO/aorenderer.h"
 
+#ifndef APP_BENCHMARK
+
 #ifdef __APPLE__
 #include <OpenCL/OpenCL.h>
 #include <OpenGL/OpenGL.h>
@@ -160,3 +162,59 @@ void ConfigManager::CreateConfigs(Mode mode, bool interop, std::vector<Config>& 
         configs[i].renderer = new Baikal::PtRenderer(configs[i].context, configs[i].devidx, initial_num_bounces);
     }
 }
+
+#else
+void ConfigManager::CreateConfigs(Mode mode, bool interop, std::vector<Config>& configs, int initial_num_bounces)
+{
+    std::vector<CLWPlatform> platforms;
+
+    CLWPlatform::CreateAllPlatforms(platforms);
+
+    if (platforms.size() == 0)
+    {
+        throw std::runtime_error("No OpenCL platforms installed.");
+    }
+
+    configs.clear();
+
+    bool hasprimary = false;
+    for (int i = 0; i < platforms.size(); ++i)
+    {
+        std::vector<CLWDevice> devices;
+        int startidx = (int)configs.size();
+
+        for (int d = 0; d < (int)platforms[i].GetDeviceCount(); ++d)
+        {
+            if ((mode == kUseGpus || mode == kUseSingleGpu) && platforms[i].GetDevice(d).GetType() != CL_DEVICE_TYPE_GPU)
+                continue;
+
+            if ((mode == kUseCpus || mode == kUseSingleCpu) && platforms[i].GetDevice(d).GetType() != CL_DEVICE_TYPE_CPU)
+                continue;
+
+            Config cfg;
+            cfg.caninterop = false;
+            cfg.context = CLWContext::Create(platforms[i].GetDevice(d));
+            cfg.devidx = 0;
+            cfg.type = kSecondary;
+
+            configs.push_back(cfg);
+
+            if (mode == kUseSingleGpu || mode == kUseSingleCpu)
+                break;
+        }
+
+        if (configs.size() == 1 && (mode == kUseSingleGpu || mode == kUseSingleCpu))
+            break;
+    }
+
+    if (!hasprimary)
+    {
+        configs[0].type = kPrimary;
+    }
+
+    for (int i = 0; i < configs.size(); ++i)
+    {
+        configs[i].renderer = new Baikal::PtRenderer(configs[i].context, configs[i].devidx, initial_num_bounces);
+    }
+}
+#endif //APP_BENCHMARK
