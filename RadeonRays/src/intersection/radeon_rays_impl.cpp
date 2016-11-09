@@ -165,6 +165,16 @@ namespace RadeonRays
         return m_device->UnmapBuffer(buffer, ptr, event);
     }
 
+	void IntersectionApiImpl::ResetIDCounter()
+	{
+		nextid_ = 1;
+	}
+
+	bool IntersectionApiImpl::IsWorldEmpty()
+	{
+		return world_.shapes_.size() == 0;
+	}
+
 #ifdef USE_OPENCL
     RRAPI Buffer* CreateFromOpenClBuffer(RadeonRays::IntersectionApi* api, cl_mem buffer)
     {
