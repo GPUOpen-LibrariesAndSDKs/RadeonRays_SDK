@@ -76,6 +76,11 @@ namespace RadeonRays
         // Commit all geometry creations/changes
         void Commit() override;
 
+        //Sets the shape id allocator to its default value (1)
+        void ResetIdCounter() override;
+        //Returns true if no shapes are in the world
+        bool IsWorldEmpty() override;
+
         /******************************************
         Memory management
         ******************************************/
