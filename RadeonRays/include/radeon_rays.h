@@ -242,10 +242,10 @@ namespace RadeonRays
         virtual void DetachAll() = 0;
         // Commit all geometry creations/changes
         virtual void Commit() = 0;
-		//Sets the shape id allocator to its default value (1)
-		virtual void ResetIDCounter() = 0;
-		//Returns true if no shapes are in the world
-		virtual bool IsWorldEmpty() = 0;
+        //Sets the shape id allocator to its default value (1)
+        virtual void ResetIdCounter() = 0;
+        //Returns true if no shapes are in the world
+        virtual bool IsWorldEmpty() = 0;
 
         /******************************************
         Memory management
