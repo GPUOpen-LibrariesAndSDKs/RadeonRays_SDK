@@ -79,6 +79,7 @@ char const* kHelpMessage =
 char const* g_path =
 "../Resources/bmw";
 char const* g_modelname = "i8.obj";
+char const* g_envmapname = "../Resources/Textures/studio015.hdr";
 
 std::unique_ptr<ShaderManager>    g_shader_manager;
 
@@ -362,7 +363,7 @@ void InitData()
     std::cout << "F-Stop: " << 1.f / (g_scene->camera_->GetAperture() * 10.f) << "\n";
     std::cout << "Sensor size: " << g_camera_sensor_size.x * 1000.f << "x" << g_camera_sensor_size.y * 1000.f << "mm\n";
 
-    g_scene->SetEnvironment("../Resources/Textures/studio015.hdr", "", g_envmapmul);
+    g_scene->SetEnvironment(g_envmapname, "", g_envmapmul);
 
 #pragma omp parallel for
     for (int i = 0; i < g_cfgs.size(); ++i)
@@ -767,6 +768,9 @@ int main(int argc, char * argv[])
 
     char* modelname = GetCmdOption(argv, argv + argc, "-f");
     g_modelname = modelname ? modelname : g_modelname;
+
+    char* envmapname = GetCmdOption(argv, argv + argc, "-e");
+    g_envmapname = envmapname ? envmapname : g_envmapname;
 
     char* width = GetCmdOption(argv, argv + argc, "-w");
     g_window_width = width ? atoi(width) : g_window_width;
