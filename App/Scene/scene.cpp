@@ -1089,7 +1089,7 @@ Scene* Scene::LoadFromObj(std::string const& filename, std::string const& basepa
         {
             for (int i = 0; i < texcoords_count; ++i)
             {
-                float2 uv = 0.2f * float2(objshapes[s].mesh.texcoords[2 * i], objshapes[s].mesh.texcoords[2 * i + 1]);
+                float2 uv = float2(objshapes[s].mesh.texcoords[2 * i], objshapes[s].mesh.texcoords[2 * i + 1]);
                 scene->uvs_.push_back(uv);
             }
         }
