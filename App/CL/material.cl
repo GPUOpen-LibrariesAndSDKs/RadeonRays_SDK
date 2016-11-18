@@ -163,8 +163,9 @@ void Material_Select(
 #else
                 float sample = UniformSampler_Sample2D(rng).x;
 #endif
+                float weight = Texture_GetValue1f(mat.ns, dg->uv, TEXTURE_ARGS_IDX(mat.nsmapidx));
 
-                if (sample < mat.ns)
+                if (sample < weight)
                 {
                     // Sample top
                     int idx = mat.brdftopidx;
