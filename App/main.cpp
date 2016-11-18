@@ -821,7 +821,7 @@ int main(int argc, char * argv[])
     g_interop = interop ? (atoi(interop) > 0) : g_interop;
 
     char* cspeed = GetCmdOption(argv, argv + argc, "-cs");
-    g_cspeed = cspeed ? (atof(cspeed) > 0) : g_cspeed;
+    g_cspeed = cspeed ? atof(cspeed) : g_cspeed;
 
 
     char* cfg = GetCmdOption(argv, argv + argc, "-config");
