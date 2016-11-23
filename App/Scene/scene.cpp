@@ -148,138 +148,30 @@ Scene* Scene::LoadFromObj(std::string const& filename, std::string const& basepa
     {
         if (objmaterials[i].name == "carpaint" || objmaterials[i].name == "inside1" || objmaterials[i].name == "CarShellNew")
         {
-            Material diffuse;
+	    Material diffuse;
             diffuse.kx = float3(0.787f, 0.081f, 0.027f);
             diffuse.ni = 1.5f;
             diffuse.ns = 0.3f;
-            diffuse.type = kLambert;
-
-            std::string tex = "rust.jpg";
-            //if (tex)
-            {
-                auto iter = textures.find(tex);
-                if (iter != textures.end())
-                {
-                    diffuse.kxmapidx = iter->second;
-                }
-                else
-                {
-                    Texture texture;
-
-                    // Load texture
-                    LoadTexture(basepath + "/" + tex, texture, scene->texturedata_);
-
-                    // Add texture desc
-                    diffuse.kxmapidx = (int)scene->textures_.size();
-                    scene->textures_.push_back(texture);
-
-                    // Save in the map
-                    textures[tex] = diffuse.kxmapidx;
-                }
-            }
-
+            diffuse.type = kMicrofacetBeckmann;
 
             Material specular;
             specular.kx = float3(0.99f, 0.99f, 0.99f);
             specular.ni = 1.5f;
-            specular.ns = 0.1f;
+            specular.ns = 0.01f;
             specular.type = kMicrofacetBeckmann;
-
-            tex = "rust_bw.jpg";
-            //if (tex)
-            {
-                auto iter = textures.find(tex);
-                if (iter != textures.end())
-                {
-                    diffuse.nmapidx = iter->second;
-                }
-                else
-                {
-                    Texture texture;
-
-                    // Load texture
-                    LoadTexture(basepath + "/" + tex, texture, scene->texturedata_);
-
-                    // Add texture desc
-                    diffuse.nmapidx = (int)scene->textures_.size();
-                    scene->textures_.push_back(texture);
-
-                    // Save in the map
-                    textures[tex] = diffuse.nmapidx;
-                }
-            }
-
-            tex = "metal_rough0001.png";
-            //if (tex)
-            {
-                auto iter = textures.find(tex);
-                if (iter != textures.end())
-                {
-                    specular.kxmapidx = iter->second;
-                }
-                else
-                {
-                    Texture texture;
-
-                    // Load texture
-                    LoadTexture(basepath + "/" + tex, texture, scene->texturedata_);
-
-                    // Add texture desc
-                    specular.kxmapidx = (int)scene->textures_.size();
-                    scene->textures_.push_back(texture);
-
-                    // Save in the map
-                    textures[tex] = specular.kxmapidx;
-                }
-            }
-
-
-            specular.nmapidx = diffuse.nmapidx;
-
-
-
-
-            scene->materials_.push_back(specular);
-            scene->material_names_.push_back(objmaterials[i].name);
 
             scene->materials_.push_back(diffuse);
             scene->material_names_.push_back(objmaterials[i].name);
 
-
-
-
+            scene->materials_.push_back(specular);
+            scene->material_names_.push_back(objmaterials[i].name);
 
             Material layered;
-            //layered.ni = 1.5f;
-            layered.type = kMix;
+            layered.ni = 1.5f;
+            layered.type = kFresnelBlend;
             layered.brdfbaseidx = scene->materials_.size() - 2;
             layered.brdftopidx = scene->materials_.size() - 1;
 
-            tex = "rust_bw.jpg";
-            //if (tex)
-            {
-                auto iter = textures.find(tex);
-                if (iter != textures.end())
-                {
-                    layered.nsmapidx = iter->second;
-                }
-                else
-                {
-                    Texture texture;
-
-                    // Load texture
-                    LoadTexture(basepath + "/" + tex, texture, scene->texturedata_);
-
-                    // Add texture desc
-                    layered.nsmapidx = (int)scene->textures_.size();
-                    scene->textures_.push_back(texture);
-
-                    // Save in the map
-                    textures[tex] = layered.nsmapidx;
-                }
-            }
-
-            
 
             scene->materials_.push_back(layered);
             scene->material_names_.push_back(objmaterials[i].name);
