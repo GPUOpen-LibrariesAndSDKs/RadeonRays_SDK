@@ -166,17 +166,41 @@ namespace Baikal
                 RadeonRays::matrix m;
             };
 
-            // Emissive object
-            struct Emissive
+            enum LightType
             {
-                // Shape index
-                int shapeidx;
-                // Polygon index
-                int primidx;
-                // Material index
-                int m;
+                kPoint = 0x1,
+                kDirectional,
+                kSpot,
+                kArea,
+                kIbl
+            };
 
-                int padding;
+            struct Light
+            {
+                int type;
+
+                union
+                {
+                    // Area light
+                    struct
+                    {
+                        int shapeidx;
+                        int primidx;
+                        int matidx;
+                    };
+
+                    // IBL
+                    struct
+                    {
+                        int tex;
+                        int texdiffuse;
+                        float multiplier;
+                    };
+                };
+
+                RadeonRays::float3 p;
+                RadeonRays::float3 d;
+                RadeonRays::float3 intensity;
             };
 
             struct Volume
@@ -205,7 +229,7 @@ namespace Baikal
             // Shapes: index which points to indices array
             std::vector<Shape> shapes_;
             // Emissive primitive indices
-            std::vector<Emissive> emissives_;
+            std::vector<Light> lights_;
             // Material indices per primitive
             std::vector<int> materialids_;
             // Material descriptions

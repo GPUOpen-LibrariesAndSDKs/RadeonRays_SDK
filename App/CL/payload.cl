@@ -138,6 +138,43 @@ typedef struct _Material
 
 } Material;
 
+enum LightType
+{
+    kPoint = 0x1,
+    kDirectional,
+    kSpot,
+    kArea,
+    kIbl
+};
+
+typedef struct _Light
+{
+    int type;
+
+    union
+    {
+        // Area light
+        struct
+        {
+            int shapeidx;
+            int primidx;
+            int matidx;
+        };
+
+        // IBL
+        struct
+        {
+            int tex;
+            int texdiffuse;
+            float multiplier;
+        };
+    };
+
+    float3 p;
+    float3 d;
+    float3 intensity;
+} Light;
+
 typedef struct _Scene
 {
     // Vertices
@@ -154,14 +191,14 @@ typedef struct _Scene
     __global int const* materialids;
     // Materials
     __global Material const* materials;
-    // Emissive objects
-    __global Emissive const* emissives;
+    // Lights
+    __global Light const* lights;
     // Envmap idx
     int envmapidx;
     // Envmap multiplier
     float envmapmul;
     // Number of emissive objects
-    int numemissives;
+    int num_lights;
 } Scene;
 
 // Hit data

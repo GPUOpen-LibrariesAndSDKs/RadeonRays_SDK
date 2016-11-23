@@ -25,7 +25,7 @@ namespace Baikal
         CLWBuffer<Scene::Shape> shapes;
 
         CLWBuffer<Scene::Material> materials;
-        CLWBuffer<Scene::Emissive> emissives;
+        CLWBuffer<Scene::Light> lights;
         CLWBuffer<int> materialids;
         CLWBuffer<Scene::Volume> volumes;
         CLWBuffer<Scene::Texture> textures;
@@ -33,11 +33,11 @@ namespace Baikal
 
         CLWBuffer<PerspectiveCamera> camera;
 
-        int numemissive;
+        int num_lights;
         int envmapidx;
         float envmapmul;
         CameraType camera_type;
-        
+
         std::vector<RadeonRays::Shape*> isect_shapes;
     };
 }

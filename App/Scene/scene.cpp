@@ -602,7 +602,7 @@ Scene* Scene::LoadFromObj(std::string const& filename, std::string const& basepa
                 }
             }
 
-           
+
                 //auto iter = textures.find("rm.jpg");
                 //if (iter != textures.end())
                 //{
@@ -751,7 +751,7 @@ Scene* Scene::LoadFromObj(std::string const& filename, std::string const& basepa
                     scene->textures_.push_back(texture);
 
                     // Save in the map
-                    textures[objmaterials[i].diffuse_texname] = emissive.nmapidx;
+                    textures[objmaterials[i].diffuse_texname] = emissive.kxmapidx;
                 }
             }
 
@@ -889,7 +889,7 @@ Scene* Scene::LoadFromObj(std::string const& filename, std::string const& basepa
              }*/
 
              // Load normal map
-            
+
 
 
             scene->materials_.push_back(material);
@@ -1005,11 +1005,12 @@ Scene* Scene::LoadFromObj(std::string const& filename, std::string const& basepa
 
             if (scene->materials_[matidx].type == kEmissive)
             {
-                Emissive emissive;
-                emissive.shapeidx = s;
-                emissive.primidx = i;
-                emissive.m = matidx;
-                scene->emissives_.push_back(emissive);
+                Light light;
+                light.type = kArea;
+                light.shapeidx = s;
+                light.primidx = i;
+                light.matidx = matidx;
+                scene->lights_.push_back(light);
             }
         }
 
@@ -1028,7 +1029,7 @@ Scene* Scene::LoadFromObj(std::string const& filename, std::string const& basepa
     std::cout << "Loading complete\n";
     std::cout << "Number of objects: " << scene->shapes_.size() << "\n";
     std::cout << "Number of textures: " << scene->textures_.size() << "\n";
-    std::cout << "Number of emissives: " << scene->emissives_.size() << "\n";
+    std::cout << "Number of emissives: " << scene->lights_.size() << "\n";
 
     return scene;
 }
@@ -1049,11 +1050,11 @@ void Scene::SetEnvironment(std::string const& filename, std::string const& basep
     {
         LoadTexture(filename, texture, texturedata_);
     }
-    
+
     //
     //Ibl* ibl = new Ibl((float3*)(texturedata_[texture.dataoffset].get()), texture.w, texture.h);
     //ibl->Simulate("pdf.png");
-    
+
 
     // Save index
     envidx_ = (int)textures_.size();

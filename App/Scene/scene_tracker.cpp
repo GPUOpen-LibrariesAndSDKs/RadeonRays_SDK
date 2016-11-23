@@ -17,10 +17,10 @@ namespace Baikal
         // Get raw CL data out of CLW context
         cl_device_id id = m_context.GetDevice(devidx).GetID();
         cl_command_queue queue = m_context.GetCommandQueue(devidx);
-        
+
         // Create intersection API
         m_api = CreateFromOpenClContext(m_context, id, queue);
-        
+
         // Do app specific settings
 #ifdef __APPLE__
         // Apple runtime has known issue with stacked traversal
@@ -31,14 +31,14 @@ namespace Baikal
         m_api->SetOption("bvh.builder", "sah");
 #endif
     }
-    
+
     SceneTracker::~SceneTracker()
     {
         //Flush();
         // Delete API
         IntersectionApi::Delete(m_api);
     }
-    
+
     ClwScene& SceneTracker::CompileScene(Scene const& scene) const
     {
         auto iter = m_scene_cache.find(&scene);
@@ -138,9 +138,9 @@ namespace Baikal
         {
             m_api->DeleteShape(s);
         }
-        
+
         out.isect_shapes.clear();
-        
+
         m_vidmem_usage = 0;
 
         // Create static buffers
@@ -176,17 +176,17 @@ namespace Baikal
         BakeTextures(scene, out);
 
         // Emissives
-        if (scene.emissives_.size() > 0)
+        if (scene.lights_.size() > 0)
         {
-            out.emissives = m_context.CreateBuffer<Scene::Emissive>(scene.emissives_.size(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, (void*)&scene.emissives_[0]);
-            out.numemissive = scene.emissives_.size();
-            m_vidmem_usage += scene.emissives_.size() * sizeof(Scene::Emissive);
+            out.lights = m_context.CreateBuffer<Scene::Light>(scene.lights_.size(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, (void*)&scene.lights_[0]);
+            out.num_lights = scene.lights_.size();
+            m_vidmem_usage += scene.lights_.size() * sizeof(Scene::Light);
         }
         else
         {
-            out.emissives = m_context.CreateBuffer<Scene::Emissive>(1, CL_MEM_READ_ONLY);
-            out.numemissive = 0;
-            m_vidmem_usage += sizeof(Scene::Emissive);
+            out.lights = m_context.CreateBuffer<Scene::Light>(1, CL_MEM_READ_ONLY);
+            out.num_lights = 0;
+            m_vidmem_usage += sizeof(Scene::Light);
         }
 
         //Volume vol = {1, 0, 0, 0, {0.9f, 0.6f, 0.9f}, {5.1f, 1.8f, 5.1f}, {0.0f, 0.0f, 0.0f}};
@@ -199,12 +199,12 @@ namespace Baikal
 
         std::cout << "Vidmem usage (data): " << m_vidmem_usage / (1024 * 1024) << "Mb\n";
         std::cout << "Polygon count " << scene.indices_.size() / 3 << "\n";
-        
+
         // Enumerate all shapes in the scene
         for (int i = 0; i < (int)scene.shapes_.size(); ++i)
         {
             Shape* shape = nullptr;
-            
+
             shape = m_api->CreateMesh(
                                       // Vertices starting from the first one
                                       (float*)&scene.vertices_[scene.shapes_[i].startvtx],
@@ -223,33 +223,33 @@ namespace Baikal
                                       );
 
             shape->SetLinearVelocity(scene.shapes_[i].linearvelocity);
-            
+
             shape->SetAngularVelocity(scene.shapes_[i].angularvelocity);
-            
+
             shape->SetTransform(scene.shapes_[i].m, inverse(scene.shapes_[i].m));
-            
+
             shape->SetId(i + 1);
-            
+
             out.isect_shapes.push_back(shape);
         }
     }
-    
+
     void SceneTracker::ReloadIntersector(Scene const& scene, ClwScene& inout) const
     {
         m_api->DetachAll();
-        
+
         for (auto& s : inout.isect_shapes)
         {
             m_api->AttachShape(s);
         }
-        
+
         // Commit to intersector
         auto startime = std::chrono::high_resolution_clock::now();
-        
+
         m_api->Commit();
-        
+
         auto delta = std::chrono::high_resolution_clock::now() - startime;
-        
+
         std::cout << "Commited in " << std::chrono::duration_cast<std::chrono::milliseconds>(delta).count() / 1000.f << "s\n";
     }
 

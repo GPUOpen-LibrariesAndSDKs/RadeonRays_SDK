@@ -76,9 +76,9 @@ __kernel void ShadeVolume(
     // Envmap multiplier
     float envmapmul,
     // Emissives
-    __global Emissive const* emissives,
+    __global Light const* lights,
     // Number of emissive objects
-    int numemissives,
+    int num_lights,
     // RNG seed
     int rngseed,
     // Sampler state
@@ -112,10 +112,10 @@ __kernel void ShadeVolume(
         shapes,
         materialids,
         materials,
-        emissives,
+        lights,
         envmapidx,
         envmapmul,
-        numemissives
+        num_lights
     };
 
     if (globalid < *numhits)
@@ -262,9 +262,9 @@ __kernel void ShadeSurface(
     // Envmap multiplier
     float envmapmul,
     // Emissives
-    __global Emissive const* emissives,
+    __global Light const* lights,
     // Number of emissive objects
-    int numemissives,
+    int num_lights,
     // RNG seed
     int rngseed,
     // Sampler states
@@ -298,10 +298,10 @@ __kernel void ShadeSurface(
         shapes,
         materialids,
         materials,
-        emissives,
+        lights,
         envmapidx,
         envmapmul,
-        numemissives
+        num_lights
     };
 
     // Only applied to active rays after compaction
@@ -444,7 +444,7 @@ __kernel void ShadeSurface(
         float bxdfweight = 1.f;
         float lightweight = 1.f;
 
-        int lightidx = numemissives > 0 ? Scene_SampleLight(&scene, sample0.y, &selection_pdf) : -1;
+        int lightidx = num_lights > 0 ? Scene_SampleLight(&scene, sample0.y, &selection_pdf) : -1;
 
         float3 throughput = Path_GetThroughput(path);
 
@@ -750,7 +750,7 @@ __kernel void ShadeBackground(
     int envmapidx,
     float envmapmul,
     //
-    int numemissives,
+    int num_lights,
     __global Path const* paths,
     __global Volume const* volumes,
     // Output values

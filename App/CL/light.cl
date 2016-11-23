@@ -26,29 +26,7 @@ THE SOFTWARE.
 #include <../App/CL/payload.cl>
 #include <../App/CL/random.cl>
 #include <../App/CL/texture.cl>
-#include <../App/CL/light.cl>
 
-
-enum LightType
-{
-    kPoint = 0x1,
-    kDirectional,
-    kSpot,
-    kArea,
-    kIbl
-};
-
-typedef struct _Light
-{
-    int type;
-    int extra0;
-    int extra1;
-    int extra2;
-
-    float3 p;
-    float3 d;
-    float3 intensity;
-} Light;
 
 int IntersectTriangle(ray const* r, float3 v1, float3 v2, float3 v3, float* a, float* b)
 {
@@ -78,7 +56,8 @@ int IntersectTriangle(ray const* r, float3 v1, float3 v2, float3 v3, float* a, f
  Environment light
  */
 /// Get intensity for a given direction
-float3 EnvironmentLight_GetLe(
+float3 EnvironmentLight_GetLe(// Light
+                              Light const* light,
                               // Scene
                               Scene const* scene,
                               // Geometry
@@ -96,7 +75,9 @@ float3 EnvironmentLight_GetLe(
 }
 
 /// Sample direction to the light
-float3 EnvironmentLight_Sample(// Scene
+float3 EnvironmentLight_Sample(// Light
+                               Light const* light,
+                               // Scene
                                Scene const* scene,
                                // Geometry
                                DifferentialGeometry const* dg,
@@ -123,7 +104,10 @@ float3 EnvironmentLight_Sample(// Scene
 }
 
 /// Get PDF for a given direction
-float EnvironmentLight_GetPdf(// Scene
+float EnvironmentLight_GetPdf(
+                              // Light
+                              Light const* light,
+                              // Scene
                               Scene const* scene,
                               // Geometry
                               DifferentialGeometry const* dg,
@@ -142,7 +126,7 @@ float EnvironmentLight_GetPdf(// Scene
  */
 // Get intensity for a given direction
 float3 AreaLight_GetLe(// Emissive object
-                       Emissive const* light,
+                       Light const* light,
                        // Scene
                        Scene const* scene,
                        // Geometry
@@ -220,7 +204,7 @@ float3 AreaLight_GetLe(// Emissive object
 
 /// Sample direction to the light
 float3 AreaLight_Sample(// Emissive object
-                        Emissive const* light,
+                        Light const* light,
                         // Scene
                         Scene const* scene,
                         // Geometry
@@ -300,7 +284,7 @@ float3 AreaLight_Sample(// Emissive object
 
 /// Get PDF for a given direction
 float AreaLight_GetPdf(// Emissive object
-                       Emissive const* light,
+                       Light const* light,
                        // Scene
                        Scene const* scene,
                        // Geometry
@@ -379,16 +363,17 @@ float3 Light_GetLe(// Light index
                    TEXTURE_ARG_LIST
                    )
 {
-    int numemissives = scene->numemissives;
-    if (idx == numemissives)
+    Light light = scene->lights[idx];
+
+    switch(light.type)
     {
-        return EnvironmentLight_GetLe(scene, dg, wo, TEXTURE_ARGS);
+        case kArea:
+            return EnvironmentLight_GetLe(&light, scene, dg, wo, TEXTURE_ARGS);
+        case kIbl:
+            return AreaLight_GetLe(&light, scene, dg, wo, TEXTURE_ARGS);
     }
-    else
-    {
-        Emissive emissive = scene->emissives[idx];
-        return AreaLight_GetLe(&emissive, scene, dg, wo, TEXTURE_ARGS);
-    }
+
+    return make_float3(0.f, 0.f, 0.f);
 }
 
 /// Sample direction to the light
@@ -407,16 +392,18 @@ float3 Light_Sample(// Light index
                     // PDF
                     float* pdf)
 {
-    int numemissives = scene->numemissives;
-    if (idx == numemissives)
+    Light light = scene->lights[idx];
+
+    switch(light.type)
     {
-        return EnvironmentLight_Sample(scene, dg, TEXTURE_ARGS, sample, wo, pdf);
+        case kArea:
+            return EnvironmentLight_Sample(&light, scene, dg, TEXTURE_ARGS, sample, wo, pdf);
+        case kIbl:
+            return AreaLight_Sample(&light, scene, dg, TEXTURE_ARGS, sample, wo, pdf);
     }
-    else
-    {
-        Emissive emissive = scene->emissives[idx];
-        return AreaLight_Sample(&emissive, scene, dg, TEXTURE_ARGS, sample, wo, pdf);
-    }
+
+    *pdf = 0.f;
+    return make_float3(0.f, 0.f, 0.f);
 }
 
 /// Get PDF for a given direction
@@ -432,16 +419,17 @@ float Light_GetPdf(// Light index
                    TEXTURE_ARG_LIST
                    )
 {
-    int numemissives = scene->numemissives;
-    if (idx == numemissives)
+    Light light = scene->lights[idx];
+
+    switch(light.type)
     {
-        return EnvironmentLight_GetPdf(scene, dg, wo, TEXTURE_ARGS);
+        case kArea:
+            return EnvironmentLight_GetPdf(&light, scene, dg, wo, TEXTURE_ARGS);
+        case kIbl:
+            return AreaLight_GetPdf(&light, scene, dg, wo, TEXTURE_ARGS);
     }
-    else
-    {
-        Emissive emissive = scene->emissives[idx];
-        return AreaLight_GetPdf(&emissive, scene, dg, wo, TEXTURE_ARGS);
-    }
+
+    return 0.f;
 }
 
 #endif // LIGHT_CLnv
