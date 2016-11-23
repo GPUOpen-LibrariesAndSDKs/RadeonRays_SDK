@@ -115,7 +115,7 @@ float4 quaternion_conjugate(float4 q)
 float4 quaternion_inverse(float4 q)
 {
     float sqnorm = q.x*q.x + q.y*q.y + q.z*q.z + q.w*q.w;
-    
+
     /// Check if it is singular
     if (sqnorm != 0.f)
     {
@@ -137,7 +137,7 @@ float3 rotate_vector(float3 v, float4 q)
 }
 
 /// Linearly interpolate between two values
-float3 lerp(float3 a, float3 b, float w)
+float4 lerp(float4 a, float4 b, float w)
 {
     return a + w*(b-a);
 }
@@ -156,7 +156,7 @@ void CartesianToSpherical ( float3 cart, float* r, float* phi, float* theta )
 float3 GetOrthoVector(float3 n)
 {
     float3 p;
-    
+
     if (fabs(n.z) > 0.f) {
         float k = sqrt(n.y*n.y + n.z*n.z);
         p.x = 0; p.y = -n.z/k; p.z = n.y/k;
