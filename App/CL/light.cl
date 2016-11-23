@@ -28,6 +28,28 @@ THE SOFTWARE.
 #include <../App/CL/texture.cl>
 #include <../App/CL/light.cl>
 
+
+enum LightType
+{
+    kPoint = 0x1,
+    kDirectional,
+    kSpot,
+    kArea,
+    kIbl
+};
+
+typedef struct _Light
+{
+    int type;
+    int extra0;
+    int extra1;
+    int extra2;
+
+    float3 p;
+    float3 d;
+    float3 intensity;
+} Light;
+
 int IntersectTriangle(ray const* r, float3 v1, float3 v2, float3 v3, float* a, float* b)
 {
     const float3 e1 = v2 - v1;
@@ -69,7 +91,7 @@ float3 EnvironmentLight_GetLe(
 {
     // Sample envmap
     *wo *= 100000.f;
-    // 
+    //
     return scene->envmapmul * Texture_SampleEnvMap(normalize(*wo), TEXTURE_ARGS_IDX(scene->envmapidx));
 }
 
@@ -92,10 +114,10 @@ float3 EnvironmentLight_Sample(// Scene
 
     // Generate direction
     *wo = 100000.f * d;
-    
+
     // Envmap PDF
     *pdf = fabs(dot(dg->n, normalize(d))) / PI;
-    
+
     // Sample envmap
     return scene->envmapmul * Texture_SampleEnvMap(d, TEXTURE_ARGS_IDX(scene->envmapidx));
 }
@@ -161,7 +183,7 @@ float3 AreaLight_GetLe(// Emissive object
     float2 uv1 = scene->uvs[shape.startvtx + i1];
     float2 uv2 = scene->uvs[shape.startvtx + i2];
 
-    
+
     // Intersect ray against this area light
     float a, b;
     if (IntersectTriangle(&r, v0, v1, v2, &a, &b))
@@ -214,7 +236,7 @@ float3 AreaLight_Sample(// Emissive object
 {
     int shapeidx = light->shapeidx;
     int primidx = light->primidx;
-   
+
     // Extract shape data
     Shape shape = scene->shapes[shapeidx];
 
@@ -259,9 +281,9 @@ float3 AreaLight_Sample(// Emissive object
     Material mat = scene->materials[matidx];
 
     const float3 ke = Texture_GetValue3f(mat.kx.xyz, tx, TEXTURE_ARGS_IDX(mat.kxmapidx));
- 
+
     float3 v = -normalize(*wo);
-    
+
     float ndotv = dot(n, v);
 
     if (ndotv > 0.f)

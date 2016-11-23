@@ -179,11 +179,9 @@ typedef struct _DifferentialGeometry
     float3 dpdu;
     float3 dpdv;
     float  area;
-    // Material 
+    // Material
     Material mat;
 } DifferentialGeometry;
-
-
 
 typedef enum
 {
