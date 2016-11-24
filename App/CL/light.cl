@@ -139,6 +139,7 @@ float3 AreaLight_GetLe(// Emissive object
 {
     ray r;
     r.o.xyz = dg->p + normalize(*wo) * 0.01f;
+    r.o.w = 100000.f;
     r.d.xyz = *wo;
 
     int shapeidx = light->shapeidx;
@@ -193,12 +194,12 @@ float3 AreaLight_GetLe(// Emissive object
         }
         else
         {
-            return 0.f;
+            return 1.f;
         }
     }
     else
     {
-        return 0.f;
+        return 1.f;
     }
 }
 
@@ -367,9 +368,9 @@ float3 Light_GetLe(// Light index
 
     switch(light.type)
     {
-        case kArea:
-            return EnvironmentLight_GetLe(&light, scene, dg, wo, TEXTURE_ARGS);
         case kIbl:
+            return EnvironmentLight_GetLe(&light, scene, dg, wo, TEXTURE_ARGS);
+        case kArea:
             return AreaLight_GetLe(&light, scene, dg, wo, TEXTURE_ARGS);
     }
 
@@ -396,9 +397,9 @@ float3 Light_Sample(// Light index
 
     switch(light.type)
     {
-        case kArea:
-            return EnvironmentLight_Sample(&light, scene, dg, TEXTURE_ARGS, sample, wo, pdf);
         case kIbl:
+            return EnvironmentLight_Sample(&light, scene, dg, TEXTURE_ARGS, sample, wo, pdf);
+        case kArea:
             return AreaLight_Sample(&light, scene, dg, TEXTURE_ARGS, sample, wo, pdf);
     }
 
@@ -423,13 +424,21 @@ float Light_GetPdf(// Light index
 
     switch(light.type)
     {
-        case kArea:
-            return EnvironmentLight_GetPdf(&light, scene, dg, wo, TEXTURE_ARGS);
         case kIbl:
+            return EnvironmentLight_GetPdf(&light, scene, dg, wo, TEXTURE_ARGS);
+        case kArea:
             return AreaLight_GetPdf(&light, scene, dg, wo, TEXTURE_ARGS);
     }
 
     return 0.f;
+}
+
+/// Check if the light is singular
+bool Light_IsSingular(__global Light const* light)
+{
+    return light->type == kPoint ||
+        light->type == kSpot ||
+        light->type == kDirectional;
 }
 
 #endif // LIGHT_CLnv

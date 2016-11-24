@@ -284,7 +284,8 @@ __kernel void ShadeSurface(
     // Indirect rays
     __global ray* indirectrays,
     // Radiance
-    __global float3* output
+    __global float3* output,
+    __global int* numshadowrays
 )
 {
     int globalid = get_global_id(0);
@@ -307,6 +308,9 @@ __kernel void ShadeSurface(
     // Only applied to active rays after compaction
     if (globalid < *numhits)
     {
+        if (globalid == 0)
+            *numshadowrays = *numhits * 2;
+
         // Fetch index
         int hitidx = hitindices[globalid];
         int pixelidx = pixelindices[globalid];
@@ -343,6 +347,10 @@ __kernel void ShadeSurface(
         sample3.y = SobolSampler_Sample1D(sampler->seq, GetSampleDim(bounce, kIndirectV), sampler->s0, sobolmat);
 
         float sample4 = SobolSampler_Sample1D(sampler->seq, GetSampleDim(bounce, kRR), sampler->s0, sobolmat);
+
+        float2 sample5;
+        sample5.x = SobolSampler_Sample1D(sampler->seq, GetSampleDim(bounce, kIndirectU), sampler->s0, sobolmat);
+        sample5.y = SobolSampler_Sample1D(sampler->seq, GetSampleDim(bounce, kIndirectV), sampler->s0, sobolmat);
 #else
         // Prepare RNG
         Rng rng;
@@ -351,6 +359,7 @@ __kernel void ShadeSurface(
         float2 sample1 = UniformSampler_Sample2D(&rng);
         float2 sample2 = UniformSampler_Sample2D(&rng);
         float2 sample3 = UniformSampler_Sample2D(&rng);
+        float2 sample5 = UniformSampler_Sample2D(&rng);
         float  sample4 = UniformSampler_Sample2D(&rng).x;
 #endif
 
@@ -388,7 +397,7 @@ __kernel void ShadeSurface(
         // Terminate if emissive
         if (Bxdf_IsEmissive(&diffgeo))
         {
-            if (ndotwi > 0.f)
+            if (bounce == 0 && ndotwi > 0.f)
             {
                 // There can be two cases: first we hit after specular vertex or primary ray
                 // where MIS can't be applied. In this case we simply pass radiance as is
@@ -396,15 +405,17 @@ __kernel void ShadeSurface(
                 {
                     // In this case we hit after an application of MIS process at previous step.
                     // That means BRDF weight has been already applied.
-                    output[pixelidx] += Path_GetThroughput(path) * Emissive_GetLe(&diffgeo, TEXTURE_ARGS);
+                    output[pixelidx] += Emissive_GetLe(&diffgeo, TEXTURE_ARGS);
                 }
             }
 
             Path_Kill(path);
-            Ray_SetInactive(shadowrays + globalid);
+            Ray_SetInactive(shadowrays + 2 * globalid);
+            Ray_SetInactive(shadowrays + 2 * globalid + 1);
             Ray_SetInactive(indirectrays + globalid);
 
-            lightsamples[globalid] = 0.f;
+            lightsamples[2 * globalid] = 0.f;
+            lightsamples[2 * globalid + 1] = 0.f;
             return;
         }
 
@@ -443,64 +454,140 @@ __kernel void ShadeSurface(
         float3 wo;
         float bxdfweight = 1.f;
         float lightweight = 1.f;
-
-        int lightidx = num_lights > 0 ? Scene_SampleLight(&scene, sample0.y, &selection_pdf) : -1;
-
         float3 throughput = Path_GetThroughput(path);
 
-        // Sample bxdf
-        float3 bxdf = Bxdf_Sample(&diffgeo, wi, TEXTURE_ARGS, sample2, &bxdfwo, &bxdfpdf);
+        // Sample light
+        int light_idx = Scene_SampleLight(&scene, sample0.y, &selection_pdf);
+        bool light_singular = Light_IsSingular(scene.lights + light_idx);
+        bool bxdf_singular = Bxdf_IsSingular(&diffgeo);
 
-        // If we have light to sample we can hopefully do mis
-        if (lightidx > -1)
+        if (light_singular && bxdf_singular)
+        {
+            Path_Kill(path);
+            Ray_SetInactive(shadowrays + 2 * globalid);
+            Ray_SetInactive(indirectrays + 2 * globalid);
+            Ray_SetInactive(shadowrays + 2 * globalid + 1);
+            Ray_SetInactive(indirectrays + 2 * globalid + 1);
+
+            lightsamples[2 * globalid] = 0.f;
+            lightsamples[2 * globalid + 1] = 0.f;
+            return;
+        }
+
+        /*if (!bxdf_singular)
         {
             // Sample light
-            float3 le = Light_Sample(lightidx, &scene, &diffgeo, TEXTURE_ARGS, sample1, &lightwo, &lightpdf);
+            float3 le = Light_Sample(light_idx, &scene, &diffgeo, TEXTURE_ARGS, sample1, &lightwo, &lightpdf);
             lightbxdfpdf = Bxdf_GetPdf(&diffgeo, wi, normalize(lightwo), TEXTURE_ARGS);
             lightweight = BalanceHeuristic(1, lightpdf, 1, lightbxdfpdf);
 
-            // Sample BxDF
-            bxdflightpdf = Light_GetPdf(lightidx, &scene, &diffgeo, bxdfwo, TEXTURE_ARGS);
-            bxdfweight = BalanceHeuristic(1, bxdfpdf, 1, bxdflightpdf);
-
             // Apply MIS to account for both
-            if (NON_BLACK(le) && lightpdf > 0.0f && !Bxdf_IsSingular(&diffgeo))
+            if (NON_BLACK(le) && lightpdf > 0.0f)
             {
                 wo = lightwo;
                 float ndotwo = fabs(dot(diffgeo.n, normalize(wo)));
                 radiance = le * Bxdf_Evaluate(&diffgeo, wi, normalize(wo), TEXTURE_ARGS) * throughput * ndotwo * lightweight / lightpdf / selection_pdf;
+
+                if (NON_BLACK(radiance))
+                {
+                    // Generate shadow ray
+                    float shadow_ray_length = (1.f - 2.f * CRAZY_LOW_DISTANCE) * length(wo);
+                    float3 shadow_ray_dir = normalize(wo);
+                    float3 shadow_ray_o = diffgeo.p + CRAZY_LOW_DISTANCE * s * diffgeo.n;
+                    int shadow_ray_mask = Bxdf_IsSingular(&diffgeo) ? 0xFFFFFFFF : 0x0000FFFF;
+
+                    Ray_Init(shadowrays + 2 * globalid, shadow_ray_o, shadow_ray_dir, shadow_ray_length, 0.f, shadow_ray_mask);
+
+                    // Apply the volume to shadow ray if needed
+                    int volidx = Path_GetVolumeIdx(path);
+                    if (volidx != -1)
+                    {
+                        radiance *= Volume_Transmittance(&volumes[volidx], &shadowrays[2 * globalid], shadow_ray_length);
+                        radiance += Volume_Emission(&volumes[volidx], &shadowrays[2 * globalid], shadow_ray_length) * throughput;
+                    }
+
+                    // And write the light sample
+                    lightsamples[2 * globalid] = REASONABLE_RADIANCE(radiance);
+                }
+                else
+                {
+                    // Otherwise save some intersector cycles
+                    Ray_SetInactive(shadowrays + 2 * globalid);
+                    lightsamples[2 * globalid] = 0;
+                }
+            }
+            else
+            {
+                // Otherwise save some intersector cycles
+                Ray_SetInactive(shadowrays + 2 * globalid);
+                lightsamples[2 * globalid] = 0;
             }
         }
+        else
+        {*/
+            // Otherwise save some intersector cycles
+            Ray_SetInactive(shadowrays + 2 * globalid);
+            lightsamples[2 * globalid] = 0;
+        //}
 
-        // If we have some light here generate a shadow ray
-        if (NON_BLACK(radiance))
+        if (1/*!light_singular*/)
         {
-            // Generate shadow ray
-            float shadow_ray_length = (1.f - 2.f * CRAZY_LOW_DISTANCE) * length(wo);
-            float3 shadow_ray_dir = normalize(wo);
-            float3 shadow_ray_o = diffgeo.p + CRAZY_LOW_DISTANCE * s * diffgeo.n;
-            int shadow_ray_mask = Bxdf_IsSingular(&diffgeo) ? 0xFFFFFFFF : 0x0000FFFF;
+            // Sample bxdf
+            float3 bxdf = Bxdf_Sample(&diffgeo, wi, TEXTURE_ARGS, sample2, &bxdfwo, &bxdfpdf);
+            bxdfwo *= CRAZY_HIGH_DISTANCE;
 
-            Ray_Init(shadowrays + globalid, shadow_ray_o, shadow_ray_dir, shadow_ray_length, 0.f, shadow_ray_mask);
+            bxdflightpdf = Light_GetPdf(light_idx, &scene, &diffgeo, bxdfwo, TEXTURE_ARGS);
+            bxdfweight = BalanceHeuristic(1, bxdfpdf, 1, bxdflightpdf);
 
-            // Apply the volume to shadow ray if needed
-            int volidx = Path_GetVolumeIdx(path);
-            if (volidx != -1)
+            // Apply MIS to account for both
+            if (NON_BLACK(bxdf) && bxdfpdf > 0.0f)
             {
-                radiance *= Volume_Transmittance(&volumes[volidx], &shadowrays[globalid], shadow_ray_length);
-                radiance += Volume_Emission(&volumes[volidx], &shadowrays[globalid], shadow_ray_length) * throughput;
-            }
+                wo = bxdfwo;
+                float ndotwo = fabs(dot(diffgeo.n, normalize(wo)));
+                radiance = Light_GetLe(light_idx, &scene, &diffgeo, &wo, TEXTURE_ARGS) * bxdf * throughput * ndotwo * bxdfweight / bxdfpdf / selection_pdf;
 
-            // And write the light sample
-            lightsamples[globalid] = REASONABLE_RADIANCE(radiance);
+                if (NON_BLACK(radiance))
+                {
+                    // Generate shadow ray
+                    float shadow_ray_length = CRAZY_HIGH_DISTANCE;
+                    float3 shadow_ray_dir = normalize(wo);
+                    float3 shadow_ray_o = diffgeo.p + CRAZY_LOW_DISTANCE * s * diffgeo.n;
+                    int shadow_ray_mask = Bxdf_IsSingular(&diffgeo) ? 0xFFFFFFFF : 0x0000FFFF;
+
+                    Ray_Init(shadowrays + 2 * globalid + 1, shadow_ray_o, shadow_ray_dir, shadow_ray_length, 0.f, shadow_ray_mask);
+
+                    // Apply the volume to shadow ray if needed
+                    int volidx = Path_GetVolumeIdx(path);
+                    if (volidx != -1)
+                    {
+                        radiance *= Volume_Transmittance(&volumes[volidx], &shadowrays[2 * globalid + 1], shadow_ray_length);
+                        radiance += Volume_Emission(&volumes[volidx], &shadowrays[2 * globalid + 1], shadow_ray_length) * throughput;
+                    }
+
+                    // And write the light sample
+                    lightsamples[2 * globalid + 1] = REASONABLE_RADIANCE(radiance);
+                }
+                else
+                {
+                    // Otherwise save some intersector cycles
+                    Ray_SetInactive(shadowrays + 2 * globalid + 1);
+                    lightsamples[2 * globalid + 1] = 0;
+                }
+            }
+            else
+            {
+                // Otherwise save some intersector cycles
+                Ray_SetInactive(shadowrays + 2 * globalid + 1);
+                lightsamples[2 * globalid + 1] = 0;
+            }
         }
         else
         {
             // Otherwise save some intersector cycles
-            Ray_SetInactive(shadowrays + globalid);
-            lightsamples[globalid] = 0;
+            Ray_SetInactive(shadowrays + 2 * globalid + 1);
+            lightsamples[2 * globalid + 1] = 0;
         }
-
+       
         // Apply Russian roulette
         float q = max(min(0.5f,
             // Luminance
@@ -514,13 +601,9 @@ __kernel void ShadeSurface(
             Path_MulThroughput(path, 1.f / q);
         }
 
-        if (Bxdf_IsSingular(&diffgeo))
-        {
-            bxdfweight = 1.f;
-        }
-
+        float3 bxdf = Bxdf_Sample(&diffgeo, wi, TEXTURE_ARGS, sample5, &bxdfwo, &bxdfpdf);
         bxdfwo = normalize(bxdfwo);
-        float3 t = bxdf * fabs(dot(diffgeo.n, bxdfwo)) * bxdfweight;
+        float3 t = bxdf * fabs(dot(diffgeo.n, bxdfwo));
 
         // Only continue if we have non-zero throughput & pdf
         if (NON_BLACK(t) && bxdfpdf > 0.f && !rr_stop)
@@ -626,10 +709,16 @@ __kernel void GatherLightSamples(
         // Start collecting samples
         {
             // If shadow ray didn't hit anything and reached skydome
-            if (shadowhits[globalid] == -1)
+            if (shadowhits[2 * globalid] == -1)
             {
                 // Add its contribution to radiance accumulator
-                radiance += lightsamples[globalid];
+                radiance += lightsamples[2 * globalid];
+            }
+
+            if (shadowhits[2 * globalid + 1] == -1)
+            {
+                // Add its contribution to radiance accumulator
+                radiance += lightsamples[2 * globalid + 1];
             }
         }
 

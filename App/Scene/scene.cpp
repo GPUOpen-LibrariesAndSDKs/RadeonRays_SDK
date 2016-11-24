@@ -764,8 +764,8 @@ Scene* Scene::LoadFromObj(std::string const& filename, std::string const& basepa
         else if (objmaterials[i].name == "HeadLightAngelEye")
         {
             Material emissive;
-            emissive.kx = 50.f * float3(0.53f, 0.7f, 0.95f);
-            emissive.type = kEmissive;
+            emissive.kx = float3(0.53f, 0.7f, 0.95f);
+            emissive.type = kLambert;
 
             if (!objmaterials[i].diffuse_texname.empty())
             {
@@ -799,8 +799,8 @@ Scene* Scene::LoadFromObj(std::string const& filename, std::string const& basepa
         else if (objmaterials[i].name == "HeadLightGlass")
         {
             Material emissive;
-            emissive.kx = 50.f * float3(0.64f, 0.723f, 0.8f);
-            emissive.type = kEmissive;
+            emissive.kx = float3(0.64f, 0.723f, 0.8f);
+            emissive.type = kLambert;
 
             if (!objmaterials[i].diffuse_texname.empty())
             {
@@ -933,7 +933,7 @@ Scene* Scene::LoadFromObj(std::string const& filename, std::string const& basepa
                 scene->material_names_.push_back(objmaterials[i].name);
 
                 Material layered;
-                layered.ni = 1.33f;// objmaterials[i].ior;
+                layered.ni = 1.9f;// objmaterials[i].ior;
                 layered.type = kFresnelBlend;
                 layered.brdftopidx = scene->materials_.size() - 1;
                 layered.brdfbaseidx = scene->materials_.size() - 2;
