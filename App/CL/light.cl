@@ -28,7 +28,7 @@ THE SOFTWARE.
 #include <../App/CL/texture.cl>
 
 
-int IntersectTriangle(ray const* r, float3 v1, float3 v2, float3 v3, float* a, float* b)
+bool IntersectTriangle(ray const* r, float3 v1, float3 v2, float3 v3, float* a, float* b)
 {
     const float3 e1 = v2 - v1;
     const float3 e2 = v3 - v1;
@@ -40,15 +40,15 @@ int IntersectTriangle(ray const* r, float3 v1, float3 v2, float3 v3, float* a, f
     const float  b2 = dot(r->d.xyz, s2) * invd;
     const float temp = dot(e2, s2) * invd;
 
-    if (b1 < 0.f || b1 > 1.f || b2 < 0.f || b1 + b2 > 1.f || temp < 0.f || temp > r->o.w)
+    if (b1 < 0.f || b1 > 1.f || b2 < 0.f || b1 + b2 > 1.f)
     {
-        return 0;
+        return false;
     }
     else
     {
         *a = b1;
         *b = b2;
-        return 1;
+        return true;
     }
 }
 
@@ -138,9 +138,8 @@ float3 AreaLight_GetLe(// Emissive object
                        )
 {
     ray r;
-    r.o.xyz = dg->p + normalize(*wo) * 0.01f;
-    r.o.w = 100000.f;
-    r.d.xyz = *wo;
+    r.o.xyz = dg->p;
+    r.d.xyz = normalize(*wo);
 
     int shapeidx = light->shapeidx;
     int primidx = light->primidx;
@@ -170,6 +169,7 @@ float3 AreaLight_GetLe(// Emissive object
 
 
     // Intersect ray against this area light
+
     float a, b;
     if (IntersectTriangle(&r, v0, v1, v2, &a, &b))
     {
@@ -179,27 +179,18 @@ float3 AreaLight_GetLe(// Emissive object
 
         float3 d = p - dg->p;
         float  ld = length(d);
+        *wo = p - dg->p;
 
         int matidx = scene->materialids[shape.startidx / 3 + primidx];
         Material mat = scene->materials[matidx];
 
         const float3 ke = Texture_GetValue3f(mat.kx.xyz, tx, TEXTURE_ARGS_IDX(mat.kxmapidx));
         float ndotv = dot(n, -(normalize(d)));
-
-        if (ndotv > 0.f)
-        {
-            *wo = d;
-            float denom = ld * ld;
-            return  denom > 0.f ? ke * ndotv / denom : 0.f;
-        }
-        else
-        {
-            return 1.f;
-        }
+        return  ke;
     }
     else
     {
-        return 1.f;
+        return 0.f;
     }
 }
 
@@ -297,7 +288,7 @@ float AreaLight_GetPdf(// Emissive object
                        )
 {
     ray r;
-    r.o.xyz = dg->p + normalize(wo) * 0.001f;
+    r.o.xyz = dg->p;
     r.d.xyz = wo;
 
     int shapeidx = light->shapeidx;

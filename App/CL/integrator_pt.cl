@@ -474,7 +474,7 @@ __kernel void ShadeSurface(
             return;
         }
 
-        /*if (!bxdf_singular)
+        if (!bxdf_singular)
         {
             // Sample light
             float3 le = Light_Sample(light_idx, &scene, &diffgeo, TEXTURE_ARGS, sample1, &lightwo, &lightpdf);
@@ -524,18 +524,16 @@ __kernel void ShadeSurface(
             }
         }
         else
-        {*/
+        {
             // Otherwise save some intersector cycles
             Ray_SetInactive(shadowrays + 2 * globalid);
             lightsamples[2 * globalid] = 0;
-        //}
+        }
 
-        if (1/*!light_singular*/)
+        if (!light_singular)
         {
             // Sample bxdf
             float3 bxdf = Bxdf_Sample(&diffgeo, wi, TEXTURE_ARGS, sample2, &bxdfwo, &bxdfpdf);
-            bxdfwo *= CRAZY_HIGH_DISTANCE;
-
             bxdflightpdf = Light_GetPdf(light_idx, &scene, &diffgeo, bxdfwo, TEXTURE_ARGS);
             bxdfweight = BalanceHeuristic(1, bxdfpdf, 1, bxdflightpdf);
 
@@ -544,15 +542,17 @@ __kernel void ShadeSurface(
             {
                 wo = bxdfwo;
                 float ndotwo = fabs(dot(diffgeo.n, normalize(wo)));
-                radiance = Light_GetLe(light_idx, &scene, &diffgeo, &wo, TEXTURE_ARGS) * bxdf * throughput * ndotwo * bxdfweight / bxdfpdf / selection_pdf;
+                float3 le = Light_GetLe(light_idx, &scene, &diffgeo, &wo, TEXTURE_ARGS);
+                radiance =  le * bxdf * throughput * ndotwo * bxdfweight / bxdfpdf / selection_pdf;
 
                 if (NON_BLACK(radiance))
                 {
                     // Generate shadow ray
-                    float shadow_ray_length = CRAZY_HIGH_DISTANCE;
+                    float shadow_ray_length = (1.f - 2.f * CRAZY_LOW_DISTANCE) * length(wo);
                     float3 shadow_ray_dir = normalize(wo);
                     float3 shadow_ray_o = diffgeo.p + CRAZY_LOW_DISTANCE * s * diffgeo.n;
                     int shadow_ray_mask = Bxdf_IsSingular(&diffgeo) ? 0xFFFFFFFF : 0x0000FFFF;
+
 
                     Ray_Init(shadowrays + 2 * globalid + 1, shadow_ray_o, shadow_ray_dir, shadow_ray_length, 0.f, shadow_ray_mask);
 
@@ -575,8 +575,8 @@ __kernel void ShadeSurface(
                 }
             }
             else
-            {
                 // Otherwise save some intersector cycles
+                {
                 Ray_SetInactive(shadowrays + 2 * globalid + 1);
                 lightsamples[2 * globalid + 1] = 0;
             }
@@ -587,7 +587,7 @@ __kernel void ShadeSurface(
             Ray_SetInactive(shadowrays + 2 * globalid + 1);
             lightsamples[2 * globalid + 1] = 0;
         }
-       
+
         // Apply Russian roulette
         float q = max(min(0.5f,
             // Luminance
