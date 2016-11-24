@@ -390,13 +390,21 @@ __kernel void ShadeSurface(
         {
             if (ndotwi > 0.f)
             {
-                // There can be two cases: first we hit after specular vertex or primary ray
-                // where MIS can't be applied. In this case we simply pass radiance as is
-                // because we were using BRDF based estimator at previous step
+                float weight = 1.f;
+
+                if (bounce > 0)
+                {
+                    float2 extra = Ray_GetExtra(&rays[hitidx]);
+                    float ld = isect.uvwt.w;
+                    float denom = extra.y * diffgeo.area;
+                    float bxdflightpdf = denom > 0.f ? (ld * ld / denom) : 0.f;
+                    weight = BalanceHeuristic(1, extra.x, 1, bxdflightpdf);
+                }
+                
                 {
                     // In this case we hit after an application of MIS process at previous step.
                     // That means BRDF weight has been already applied.
-                    output[pixelidx] += Path_GetThroughput(path) * Emissive_GetLe(&diffgeo, TEXTURE_ARGS);
+                    output[pixelidx] += Path_GetThroughput(path) * Emissive_GetLe(&diffgeo, TEXTURE_ARGS) * weight;
                 }
             }
 
@@ -460,15 +468,16 @@ __kernel void ShadeSurface(
             lightweight = BalanceHeuristic(1, lightpdf, 1, lightbxdfpdf);
 
             // Sample BxDF
-            bxdflightpdf = Light_GetPdf(lightidx, &scene, &diffgeo, bxdfwo, TEXTURE_ARGS);
-            bxdfweight = BalanceHeuristic(1, bxdfpdf, 1, bxdflightpdf);
+            //bxdflightpdf = Light_GetPdf(lightidx, &scene, &diffgeo, bxdfwo, TEXTURE_ARGS);
+            //bxdfweight = BalanceHeuristic(1, bxdfpdf, 1, bxdflightpdf);
 
             // Apply MIS to account for both
             if (NON_BLACK(le) && lightpdf > 0.0f && !Bxdf_IsSingular(&diffgeo))
             {
                 wo = lightwo;
                 float ndotwo = fabs(dot(diffgeo.n, normalize(wo)));
-                radiance = le * Bxdf_Evaluate(&diffgeo, wi, normalize(wo), TEXTURE_ARGS) * throughput * ndotwo * lightweight / lightpdf / selection_pdf;
+                radiance = le * Bxdf_Evaluate(&diffgeo, wi, normalize(wo), TEXTURE_ARGS) * throughput *
+                    ndotwo * lightweight / lightpdf / selection_pdf;
             }
         }
 
@@ -520,7 +529,7 @@ __kernel void ShadeSurface(
         }
 
         bxdfwo = normalize(bxdfwo);
-        float3 t = bxdf * fabs(dot(diffgeo.n, bxdfwo)) * bxdfweight;
+        float3 t = bxdf * fabs(dot(diffgeo.n, bxdfwo));
 
         // Only continue if we have non-zero throughput & pdf
         if (NON_BLACK(t) && bxdfpdf > 0.f && !rr_stop)
@@ -533,6 +542,7 @@ __kernel void ShadeSurface(
             float3 indirect_ray_o = diffgeo.p + CRAZY_LOW_DISTANCE * s * diffgeo.n;
 
             Ray_Init(indirectrays + globalid, indirect_ray_o, indirect_ray_dir, CRAZY_HIGH_DISTANCE, 0.f, 0xFFFFFFFF);
+            Ray_SetExtra(indirectrays + globalid, make_float2(bxdfpdf, fabs(dot(diffgeo.n, bxdfwo))));
         }
         else
         {

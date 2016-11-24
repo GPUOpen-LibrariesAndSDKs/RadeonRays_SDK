@@ -33,7 +33,7 @@ typedef struct _ray
     float4 d;
     /// x - ray mask, y - activity flag
     int2 extra;
-    int2 padding;
+    float2 padding;
 } ray;
 
 /// Intersection data returned by RadeonRays
@@ -179,7 +179,7 @@ typedef struct _DifferentialGeometry
     float3 dpdu;
     float3 dpdv;
     float  area;
-    // Material 
+    // Material
     Material mat;
 } DifferentialGeometry;
 
@@ -235,6 +235,16 @@ void Ray_SetInactive(__global ray* r)
     r->extra.y = 0;
 }
 
+void Ray_SetExtra(__global ray* r, float2 extra)
+{
+    r->padding = extra;
+}
+
+float2 Ray_GetExtra(__global ray const* r)
+{
+    return r->padding;
+}
+
 void Ray_Init(__global ray* r, float3 o, float3 d, float maxt, float time, int mask)
 {
     // TODO: Check if it generates MTBUF_XYZW write
@@ -245,5 +255,7 @@ void Ray_Init(__global ray* r, float3 o, float3 d, float maxt, float time, int m
     r->extra.x = mask;
     r->extra.y = 0xFFFFFFFF;
 }
+
+
 
 #endif // PAYLOAD_CL
