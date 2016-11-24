@@ -392,7 +392,7 @@ __kernel void ShadeSurface(
             {
                 float weight = 1.f;
 
-                if (bounce > 0)
+                if (bounce > 0 && !Path_IsSpecular(path))
                 {
                     float2 extra = Ray_GetExtra(&rays[hitidx]);
                     float ld = isect.uvwt.w;
@@ -525,7 +525,7 @@ __kernel void ShadeSurface(
 
         if (Bxdf_IsSingular(&diffgeo))
         {
-            bxdfweight = 1.f;
+            Path_SetSpecularFlag(path);
         }
 
         bxdfwo = normalize(bxdfwo);
