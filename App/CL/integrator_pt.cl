@@ -397,7 +397,7 @@ __kernel void ShadeSurface(
                     float2 extra = Ray_GetExtra(&rays[hitidx]);
                     float ld = isect.uvwt.w;
                     float denom = extra.y * diffgeo.area;
-                    float bxdflightpdf = denom > 0.f ? (ld * ld / denom) : 0.f;
+                    float bxdflightpdf = denom > 0.f ? (ld * ld / denom / numemissives) : 0.f;
                     weight = BalanceHeuristic(1, extra.x, 1, bxdflightpdf);
                 }
                 
