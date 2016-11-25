@@ -200,6 +200,10 @@ namespace Baikal
         std::cout << "Vidmem usage (data): " << m_vidmem_usage / (1024 * 1024) << "Mb\n";
         std::cout << "Polygon count " << scene.indices_.size() / 3 << "\n";
 
+        std::cout << "Number of objects: " << scene.shapes_.size() << "\n";
+        std::cout << "Number of textures: " << scene.textures_.size() << "\n";
+        std::cout << "Number of lights: " << scene.lights_.size() << "\n";
+
         // Enumerate all shapes in the scene
         for (int i = 0; i < (int)scene.shapes_.size(); ++i)
         {

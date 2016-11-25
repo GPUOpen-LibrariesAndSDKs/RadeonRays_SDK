@@ -134,6 +134,7 @@ __kernel void PerspectiveCamera_GeneratePaths(
         // Set ray max
         myray->extra.x = 0xFFFFFFFF;
         myray->extra.y = 0xFFFFFFFF;
+        Ray_SetExtra(myray, 1.f);
 
 #ifndef NO_PATH_DATA
         mypath->throughput = make_float3(1.f, 1.f, 1.f);

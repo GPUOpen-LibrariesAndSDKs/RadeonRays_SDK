@@ -77,7 +77,6 @@ namespace Baikal
         CLWBuffer<QmcSampler> samplers;
         CLWBuffer<unsigned int> sobolmat;
         CLWBuffer<int> hitcount;
-        CLWBuffer<int> shadowraycount;
 
         CLWProgram program;
         CLWParallelPrimitives pp;
@@ -89,7 +88,6 @@ namespace Baikal
         Buffer* fr_hits;
         Buffer* fr_intersections;
         Buffer* fr_hitcount;
-        Buffer* fr_shadowraycount;
 
         RenderData()
             : fr_shadowrays(nullptr)
@@ -209,7 +207,7 @@ namespace Baikal
 
             if (pass > 0 && clwscene.envmapidx > -1)
             {
-                //ShadeBackground(clwscene, pass);
+                ShadeBackground(clwscene, pass);
             }
 
             // Convert intersections to predicates
@@ -236,7 +234,7 @@ namespace Baikal
                 ShadeMiss(clwscene, pass);
 
             // Intersect shadow rays
-            api->QueryOcclusion(m_render_data->fr_shadowrays, m_render_data->fr_shadowraycount, 2 * maxrays, m_render_data->fr_shadowhits, nullptr, nullptr);
+            api->QueryOcclusion(m_render_data->fr_shadowrays, m_render_data->fr_hitcount, maxrays, m_render_data->fr_shadowhits, nullptr, nullptr);
             //e->Wait();
             //m_api->DeleteEvent(e);
 
@@ -305,7 +303,6 @@ namespace Baikal
         m_vidmemws += output.width() * output.height() * sizeof(int);
 
         m_render_data->hitcount = m_context.CreateBuffer<int>(1, CL_MEM_READ_WRITE);
-        m_render_data->shadowraycount = m_context.CreateBuffer<int>(1, CL_MEM_READ_WRITE);
 
         auto api = m_scene_tracker.GetIntersectionApi();
 
@@ -325,7 +322,6 @@ namespace Baikal
         m_render_data->fr_shadowhits = CreateFromOpenClBuffer(api, m_render_data->shadowhits);
         m_render_data->fr_intersections = CreateFromOpenClBuffer(api, m_render_data->intersections);
         m_render_data->fr_hitcount = CreateFromOpenClBuffer(api, m_render_data->hitcount);
-        m_render_data->fr_shadowraycount = CreateFromOpenClBuffer(api, m_render_data->shadowraycount);
 
         std::cout << "Vidmem usage (working set): " << m_vidmemws / (1024 * 1024) << "Mb\n";
     }
@@ -393,7 +389,6 @@ namespace Baikal
         shadekernel.SetArg(argc++, m_render_data->paths);
         shadekernel.SetArg(argc++, m_render_data->rays[(pass + 1) & 0x1]);
         shadekernel.SetArg(argc++, m_output->data());
-        shadekernel.SetArg(argc++, m_render_data->shadowraycount);
 
         // Run shading kernel
         {
