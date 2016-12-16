@@ -46,6 +46,8 @@ namespace Baikal
         void AddDirectionalLight(RadeonRays::float3 const& d, RadeonRays::float3 const& e);
         
         void AddPointLight(RadeonRays::float3 const& p, RadeonRays::float3 const& e);
+        
+        void AddSpotLight(RadeonRays::float3 const& p, RadeonRays::float3 const& d, RadeonRays::float3 const& e, float ia, float oa);
 
         enum DirtyFlags
         {
@@ -199,6 +201,14 @@ namespace Baikal
                         int tex;
                         int texdiffuse;
                         float multiplier;
+                    };
+                    
+                    // Spot
+                    struct
+                    {
+                        float ia;
+                        float oa;
+                        float f;
                     };
                 };
 

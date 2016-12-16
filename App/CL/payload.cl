@@ -87,8 +87,6 @@ typedef struct _Emissive
 } Emissive;
 
 
-
-
 typedef enum _PathFlags
 {
     kNone = 0x0,
@@ -168,6 +166,15 @@ typedef struct _Light
             int tex;
             int texdiffuse;
             float multiplier;
+        };
+        
+        
+        // Spot
+        struct
+        {
+            float ia;
+            float oa;
+            float f;
         };
     };
 

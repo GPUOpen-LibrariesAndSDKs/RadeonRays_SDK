@@ -919,7 +919,7 @@ Scene* Scene::LoadFromObj(std::string const& filename, std::string const& basepa
             matmap[i] = scene->materials_.size() - 1;
             continue;
         }
-        else if (objmaterials[i].name == "light" || objmaterials[i].name == "Emit1" || objmaterials[i].name == "Light3" || objmaterials[i].name == "dayLight_portal")
+        else if (objmaterials[i].name == "light1" || objmaterials[i].name == "Emit1" || objmaterials[i].name == "Light3" || objmaterials[i].name == "dayLight_portal")
         {
             Material emissive;
             emissive.kx = 10.f * float3(0.8f, 0.8f, 0.8f);
@@ -1261,7 +1261,7 @@ void Scene::AddDirectionalLight(RadeonRays::float3 const& d, RadeonRays::float3 
 {
     Light light;
     light.type = kDirectional;
-    light.d = d;
+    light.d = normalize(d);
     light.intensity = e;
     lights_.push_back(light);
 }
@@ -1272,6 +1272,18 @@ void Scene::AddPointLight(RadeonRays::float3 const& p, RadeonRays::float3 const&
     light.type = kPoint;
     light.p = p;
     light.intensity = e;
+    lights_.push_back(light);
+}
+    
+void Scene::AddSpotLight(RadeonRays::float3 const& p, RadeonRays::float3 const& d, RadeonRays::float3 const& e, float ia, float oa)
+{
+    Light light;
+    light.type = kSpot;
+    light.p = p;
+    light.d = normalize(d);
+    light.intensity = e;
+    light.ia = ia;
+    light.oa = oa;
     lights_.push_back(light);
 }
     
