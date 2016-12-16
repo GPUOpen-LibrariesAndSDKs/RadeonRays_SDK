@@ -111,10 +111,6 @@ namespace Baikal
         , m_scene_tracker(context, devidx)
         , m_num_bounces(num_bounces)
     {
-
-        // Create parallel primitives
-        m_render_data->pp = CLWParallelPrimitives(m_context);
-
         std::string buildopts;
 
         buildopts.append(" -cl-mad-enable -cl-fast-relaxed-math -cl-std=CL1.2 -I . ");
@@ -130,6 +126,9 @@ namespace Baikal
             ""
 #endif
             );
+        
+        // Create parallel primitives
+        m_render_data->pp = CLWParallelPrimitives(m_context, buildopts.c_str());
 
         // Load kernels
 #ifndef RR_EMBED_KERNELS

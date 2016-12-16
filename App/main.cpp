@@ -77,8 +77,8 @@ using namespace RadeonRays;
 char const* kHelpMessage =
 "App [-p path_to_models][-f model_name][-b][-r][-ns number_of_shadow_rays][-ao ao_radius][-w window_width][-h window_height][-nb number_of_indirect_bounces]";
 char const* g_path =
-"../Resources/bmw";
-char const* g_modelname = "i8.obj";
+"../Resources/CornellBox";
+char const* g_modelname = "orig.objm";
 char const* g_envmapname = "../Resources/Textures/studio015.hdr";
 
 std::unique_ptr<ShaderManager>    g_shader_manager;
@@ -364,6 +364,7 @@ void InitData()
     std::cout << "Sensor size: " << g_camera_sensor_size.x * 1000.f << "x" << g_camera_sensor_size.y * 1000.f << "mm\n";
 
     //g_scene->SetEnvironment(g_envmapname, "", g_envmapmul);
+    g_scene->AddDirectionalLight(RadeonRays::float3(-0.3f, -1.f, -0.4f), RadeonRays::float3(1.f, 1.f, 1.f));
 
 #pragma omp parallel for
     for (int i = 0; i < g_cfgs.size(); ++i)
@@ -516,10 +517,6 @@ void OnKeyUp(int key, int x, int y)
 void Update()
 {
     static auto prevtime = std::chrono::high_resolution_clock::now();
-    static auto updatetime = std::chrono::high_resolution_clock::now();
-
-    static int numbnc = 1;
-    static int framesperbnc = 2;
     auto time = std::chrono::high_resolution_clock::now();
     auto dt = std::chrono::duration_cast<std::chrono::duration<double>>(time - prevtime);
     prevtime = time;
@@ -535,16 +532,16 @@ void Update()
 
     if (std::abs(camroty) > 0.001f)
     {
-        g_scene->camera_->Tilt(camroty);
-        //g_scene->camera_->ArcballRotateVertically(float3(0, 0, 0), camroty);
+        //g_scene->camera_->Tilt(camroty);
+        g_scene->camera_->ArcballRotateVertically(float3(0, 0, 0), camroty);
         update = true;
     }
 
     if (std::abs(camrotx) > 0.001f)
     {
 
-        g_scene->camera_->Rotate(camrotx);
-        //g_scene->camera_->ArcballRotateHorizontally(float3(0, 0, 0), camrotx);
+        //g_scene->camera_->Rotate(camrotx);
+        g_scene->camera_->ArcballRotateHorizontally(float3(0, 0, 0), camrotx);
         update = true;
     }
 

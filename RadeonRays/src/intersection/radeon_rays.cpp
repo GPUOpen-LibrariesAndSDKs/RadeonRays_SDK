@@ -219,7 +219,6 @@ namespace RadeonRays
     {
 
         auto* calc = GetCalc();
-        std::uint32_t result = 0;
 
         if (IsDeviceIndexEmbree(devidx))
         {

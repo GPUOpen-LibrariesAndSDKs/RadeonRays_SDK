@@ -59,7 +59,6 @@ void ConfigManager::CreateConfigs(Mode mode, bool interop, std::vector<Config>& 
     for (int i = 0; i < platforms.size(); ++i)
     {
         std::vector<CLWDevice> devices;
-        int startidx = (int)configs.size();
 
         for (int d = 0; d < (int)platforms[i].GetDeviceCount(); ++d)
         {

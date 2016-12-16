@@ -919,7 +919,7 @@ Scene* Scene::LoadFromObj(std::string const& filename, std::string const& basepa
             matmap[i] = scene->materials_.size() - 1;
             continue;
         }
-        else if (objmaterials[i].name == "light1" || objmaterials[i].name == "Emit1" || objmaterials[i].name == "Light3" || objmaterials[i].name == "dayLight_portal")
+        else if (objmaterials[i].name == "light" || objmaterials[i].name == "Emit1" || objmaterials[i].name == "Light3" || objmaterials[i].name == "dayLight_portal")
         {
             Material emissive;
             emissive.kx = 10.f * float3(0.8f, 0.8f, 0.8f);
