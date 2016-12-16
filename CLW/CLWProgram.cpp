@@ -70,17 +70,7 @@ CLWProgram CLWProgram::CreateFromSource(char const* sourcecode, size_t sourcesiz
         deviceIds[i] = context.GetDevice(i);
     }
 
-    char const* buildopts1 = 
-#if defined(__APPLE__)
-        "-D APPLE -cl-mad-enable -cl-fast-relaxed-math -cl-std=CL1.2 -I ."
-#elif defined(_WIN32) || defined (WIN32)
-        "-D WIN32 -cl-mad-enable -cl-std=CL1.2 -I."
-#elif defined(__linux__)
-        "-D __linux__ -I."
-#else
-        nullptr
-#endif
-        ;
+
 
     status = clBuildProgram(program, context.GetDeviceCount(), &deviceIds[0], buildopts, nullptr, nullptr);
 

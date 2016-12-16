@@ -44,6 +44,8 @@ namespace Baikal
         void SetBackground(std::string const& filename, std::string const& basepath = "");
 
         void AddDirectionalLight(RadeonRays::float3 const& d, RadeonRays::float3 const& e);
+        
+        void AddPointLight(RadeonRays::float3 const& p, RadeonRays::float3 const& e);
 
         enum DirtyFlags
         {

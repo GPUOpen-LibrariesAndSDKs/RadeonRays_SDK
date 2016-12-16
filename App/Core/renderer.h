@@ -19,6 +19,13 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
+
+/**
+ \file renderer.h
+ \author Dmitry Kozlov
+ \version 1.0
+ \brief Contains declaration of Baikal::Renderer class, core interface representing representing the renderer.
+ */
 #pragma once
 
 #include "math/float3.h"
@@ -30,43 +37,80 @@ namespace Baikal
     class Output;
     class Scene;
 
-    ///< Renderer interface
+    /**
+     \brief Interface for the renderer.
+     
+     Renderer implemenation is taking the scene and producing its image into an output surface.
+     */
     class Renderer
     {
     public:
         Renderer() = default;
-        // Destructor
         virtual ~Renderer() = default;
-        // Create output
+        
+        /**
+         \brief Create output of a given size.
+         
+         \param w Output surface width
+         \param h Output surface height
+         */
         virtual Output* CreateOutput(std::uint32_t w, std::uint32_t h) const = 0;
-        // Delete output
+        
+        /**
+         \brief Delete given output.
+         
+         \param output The output to delete
+         */
         virtual void DeleteOutput(Output* output) const = 0;
-        // Clear output
+        
+        /**
+         \brief Clear output surface using given value.
+         
+         \param val Value to clear to
+         \param output Output to clear
+         */
         virtual void Clear(RadeonRays::float3 const& val, Output& output) const = 0;
-        // Do necessary precalculation and initialization
-        // TODO: is it really necessary? can be async? progress reporting?
+        
+        /**
+         \brief Do necessary scene dependent computations and caching.
+         
+         \param scene The scene to process
+         */
         virtual void Preprocess(Scene const& scene) = 0;
-        // Render single iteration
+        
+        /**
+         \brief Render single iteration.
+         
+         \param scene Scene to render
+         */
         virtual void Render(Scene const& scene) = 0;
-        // Set output
+        
+        /**
+         \brief Set the output for rendering.
+         
+         \param output The output to render into.
+         */
         virtual void SetOutput(Output* output) = 0;
 
-
+        
+        /**
+            Forbidden stuff.
+         */
+        Renderer(Renderer const&) = delete;
+        Renderer& operator = (Renderer const&) = delete;
+        
+        
+        // Temporary functionality
         struct BenchmarkStats
         {
             std::uint32_t num_passes;
-
+            
             RadeonRays::int2 resolution;
             float primary_rays_time_in_ms;
             float secondary_rays_time_in_ms;
             float shadow_rays_time_in_ms;
         };
-
-        // Run render benchmark
+        
         virtual void RunBenchmark(Scene const& scene, std::uint32_t num_passes, BenchmarkStats& stats) {}
-
-        // Does not make sense to copy it
-        Renderer(Renderer const&) = delete;
-        Renderer& operator = (Renderer const&) = delete;
     };
 }

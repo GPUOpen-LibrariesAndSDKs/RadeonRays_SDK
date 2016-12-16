@@ -272,13 +272,13 @@ namespace Baikal
         m_render_data->intersections = m_context.CreateBuffer<Intersection>(output.width() * output.height(), CL_MEM_READ_WRITE);
         m_vidmemws += output.width() * output.height() * sizeof(Intersection);
 
-        m_render_data->shadowrays = m_context.CreateBuffer<ray>(2 * output.width() * output.height() * kMaxLightSamples, CL_MEM_READ_WRITE);
+        m_render_data->shadowrays = m_context.CreateBuffer<ray>(output.width() * output.height() * kMaxLightSamples, CL_MEM_READ_WRITE);
         m_vidmemws += output.width() * output.height() * sizeof(ray)* kMaxLightSamples;
 
-        m_render_data->shadowhits = m_context.CreateBuffer<int>(2 * output.width() * output.height() * kMaxLightSamples, CL_MEM_READ_WRITE);
+        m_render_data->shadowhits = m_context.CreateBuffer<int>(output.width() * output.height() * kMaxLightSamples, CL_MEM_READ_WRITE);
         m_vidmemws += output.width() * output.height() * sizeof(int)* kMaxLightSamples;
 
-        m_render_data->lightsamples = m_context.CreateBuffer<float3>(2 * output.width() * output.height() * kMaxLightSamples, CL_MEM_READ_WRITE);
+        m_render_data->lightsamples = m_context.CreateBuffer<float3>(output.width() * output.height() * kMaxLightSamples, CL_MEM_READ_WRITE);
         m_vidmemws += output.width() * output.height() * sizeof(float3)* kMaxLightSamples;
 
         m_render_data->paths = m_context.CreateBuffer<PathState>(output.width() * output.height(), CL_MEM_READ_WRITE);

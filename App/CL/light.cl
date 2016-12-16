@@ -392,6 +392,63 @@ float DirectionalLight_GetPdf(// Emissive object
     return 0.f;
 }
 
+/*
+ Point light
+ */
+// Get intensity for a given direction
+float3 PointLight_GetLe(// Emissive object
+                              Light const* light,
+                              // Scene
+                              Scene const* scene,
+                              // Geometry
+                              DifferentialGeometry const* dg,
+                              // Direction to light source
+                              float3* wo,
+                              // Textures
+                              TEXTURE_ARG_LIST
+                              )
+{
+    return 0.f;
+}
+
+/// Sample direction to the light
+float3 PointLight_Sample(// Emissive object
+                               Light const* light,
+                               // Scene
+                               Scene const* scene,
+                               // Geometry
+                               DifferentialGeometry const* dg,
+                               // Textures
+                               TEXTURE_ARG_LIST,
+                               // Sample
+                               float2 sample,
+                               // Direction to light source
+                               float3* wo,
+                               // PDF
+                               float* pdf)
+{
+    *wo = light->p - dg->p;
+    *pdf = 1.f;
+    return light->intensity;
+}
+
+/// Get PDF for a given direction
+float PointLight_GetPdf(// Emissive object
+                              Light const* light,
+                              // Scene
+                              Scene const* scene,
+                              // Geometry
+                              DifferentialGeometry const* dg,
+                              // Direction to light source
+                              float3 wo,
+                              // Textures
+                              TEXTURE_ARG_LIST
+                              )
+{
+    return 0.f;
+}
+
+
 
 
 /*
@@ -421,6 +478,8 @@ float3 Light_GetLe(// Light index
             return AreaLight_GetLe(&light, scene, dg, wo, TEXTURE_ARGS);
         case kDirectional:
             return DirectionalLight_GetLe(&light, scene, dg, wo, TEXTURE_ARGS);
+        case kPoint:
+            return PointLight_GetLe(&light, scene, dg, wo, TEXTURE_ARGS);
     }
 
     return make_float3(0.f, 0.f, 0.f);
@@ -452,6 +511,8 @@ float3 Light_Sample(// Light index
             return AreaLight_Sample(&light, scene, dg, TEXTURE_ARGS, sample, wo, pdf);
         case kDirectional:
             return DirectionalLight_Sample(&light, scene, dg, TEXTURE_ARGS, sample, wo, pdf);
+        case kPoint:
+            return PointLight_Sample(&light, scene, dg, TEXTURE_ARGS, sample, wo, pdf);
     }
 
     *pdf = 0.f;
@@ -481,6 +542,8 @@ float Light_GetPdf(// Light index
             return AreaLight_GetPdf(&light, scene, dg, wo, TEXTURE_ARGS);
         case kDirectional:
             return DirectionalLight_GetPdf(&light, scene, dg, wo, TEXTURE_ARGS);
+        case kPoint:
+            return PointLight_GetPdf(&light, scene, dg, wo, TEXTURE_ARGS);
     }
 
     return 0.f;

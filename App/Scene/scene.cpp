@@ -1265,7 +1265,16 @@ void Scene::AddDirectionalLight(RadeonRays::float3 const& d, RadeonRays::float3 
     light.intensity = e;
     lights_.push_back(light);
 }
-
+    
+void Scene::AddPointLight(RadeonRays::float3 const& p, RadeonRays::float3 const& e)
+{
+    Light light;
+    light.type = kPoint;
+    light.p = p;
+    light.intensity = e;
+    lights_.push_back(light);
+}
+    
 void Scene::SetEnvironment(std::string const& filename, std::string const& basepath, float envmapmul)
 {
     // Save multiplier

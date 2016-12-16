@@ -87,14 +87,14 @@ GLuint g_vertex_buffer;
 GLuint g_index_buffer;
 GLuint g_texture;
 
-int g_window_width = 800;
-int g_window_height = 600;
+int g_window_width = 512;
+int g_window_height = 512;
 int g_num_shadow_rays = 1;
 int g_num_ao_rays = 1;
 int g_ao_enabled = false;
 int g_progressive = false;
 int g_num_bounces = 5;
-int g_num_samples = -1;
+int g_num_samples = 256;
 int g_samplecount = 0;
 float g_ao_radius = 1.f;
 float g_envmapmul = 1.f;
@@ -365,6 +365,7 @@ void InitData()
 
     //g_scene->SetEnvironment(g_envmapname, "", g_envmapmul);
     g_scene->AddDirectionalLight(RadeonRays::float3(-0.3f, -1.f, -0.4f), RadeonRays::float3(1.f, 1.f, 1.f));
+    g_scene->AddPointLight(RadeonRays::float3(0.5f, 1.5f, 0.0f), RadeonRays::float3(1.f, 0.6f, 1.f));
 
 #pragma omp parallel for
     for (int i = 0; i < g_cfgs.size(); ++i)
