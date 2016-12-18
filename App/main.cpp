@@ -94,9 +94,9 @@ int g_num_ao_rays = 1;
 int g_ao_enabled = false;
 int g_progressive = false;
 int g_num_bounces = 5;
-int g_num_samples = 256;
+int g_num_samples = -1;
 int g_samplecount = 0;
-float g_ao_radius = 1.f;
+float g_ao_radius = 1.f; 
 float g_envmapmul = 1.f;
 float g_cspeed = 100.25f;
 
@@ -363,9 +363,9 @@ void InitData()
     std::cout << "F-Stop: " << 1.f / (g_scene->camera_->GetAperture() * 10.f) << "\n";
     std::cout << "Sensor size: " << g_camera_sensor_size.x * 1000.f << "x" << g_camera_sensor_size.y * 1000.f << "mm\n";
 
-    //g_scene->SetEnvironment(g_envmapname, "", g_envmapmul);
-    //g_scene->AddDirectionalLight(RadeonRays::float3(-0.3f, -1.f, -0.4f), 2.f * RadeonRays::float3(1.f, 1.f, 1.f));
-    //g_scene->AddPointLight(RadeonRays::float3(0.5f, 1.5f, 0.0f), RadeonRays::float3(1.f, 0.9f, 0.6f));
+    g_scene->SetEnvironment(g_envmapname, "", g_envmapmul);
+    g_scene->AddDirectionalLight(RadeonRays::float3(-0.3f, -1.f, -0.4f), 2.f * RadeonRays::float3(1.f, 1.f, 1.f));
+    g_scene->AddPointLight(RadeonRays::float3(-0.5f, 1.7f, 0.0f), RadeonRays::float3(1.f, 0.9f, 0.6f));
     g_scene->AddSpotLight(RadeonRays::float3(0.5f, 1.5f, 0.0f), RadeonRays::float3(-0.5f, -1.0f, 0.1f), RadeonRays::float3(1.f, 0.9f, 0.6f),
                            std::cos(M_PI_4/2), std::cos(M_PI_4));
 #pragma omp parallel for
