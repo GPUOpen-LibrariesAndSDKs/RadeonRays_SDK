@@ -48,7 +48,7 @@ public:
     static CLWBuffer<T> Create(cl_context context, cl_mem_flags flags, size_t elementCount, void* data);
     static CLWBuffer<T> CreateFromClBuffer(cl_mem buffer);
 
-    CLWBuffer(){}
+    CLWBuffer() : elementCount_(0){}
     virtual ~CLWBuffer();
     
     size_t GetElementCount() const { return elementCount_; }

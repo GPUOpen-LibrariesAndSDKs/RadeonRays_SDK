@@ -20,6 +20,12 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
+
+//#define SOBOL
+#define MULTISCATTER
+
+#include <../App/CL/ray.cl>
+#include <../App/CL/isect.cl>
 #include <../App/CL/utils.cl>
 #include <../App/CL/random.cl>
 #include <../App/CL/payload.cl>
@@ -40,6 +46,7 @@ THE SOFTWARE.
 #define CRAZY_LOW_DISTANCE 0.001f
 #define REASONABLE_RADIANCE(x) (clamp((x), 0.f, CRAZY_HIGH_RADIANCE))
 #define NON_BLACK(x) (length(x) > 0.f)
+
 
 // This kernel only handles scattered paths.
 // It applies direct illumination and generates
@@ -474,8 +481,7 @@ __kernel void ShadeSurface(
             {
                 wo = lightwo;
                 float ndotwo = fabs(dot(diffgeo.n, normalize(wo)));
-                radiance = le * Bxdf_Evaluate(&diffgeo, wi, normalize(wo), TEXTURE_ARGS) * throughput *
-                    ndotwo * lightweight / lightpdf / selection_pdf;
+                radiance = le * Bxdf_Evaluate(&diffgeo, wi, normalize(wo), TEXTURE_ARGS) * throughput * ndotwo * lightweight / lightpdf / selection_pdf;
             }
         }
 
@@ -584,8 +590,8 @@ __kernel void ShadeMiss(
             // Multiply by throughput
             int volidx = paths[pixelidx].volume;
 
-            if (volidx == -1)
-                output[pixelidx].xyz += Texture_SampleEnvMap(rays[globalid].d.xyz, TEXTURE_ARGS_IDX(envmapidx));
+            if (volidx == -1);
+                //output[pixelidx].xyz += Texture_SampleEnvMap(rays[globalid].d.xyz, TEXTURE_ARGS_IDX(envmapidx));
             else
             {
                 output[pixelidx].xyz += Texture_SampleEnvMap(rays[globalid].d.xyz, TEXTURE_ARGS_IDX(envmapidx)) *
@@ -776,8 +782,8 @@ __kernel void ShadeBackground(
         // In case of a miss
         if (isects[globalid].shapeid < 0 && Path_IsAlive(path))
         {
-            float3 t = Path_GetThroughput(path);
-            output[pixelidx].xyz += REASONABLE_RADIANCE(envmapmul * Texture_SampleEnvMap(rays[globalid].d.xyz, TEXTURE_ARGS_IDX(envmapidx)) * t);
+            //float3 t = Path_GetThroughput(path);
+            //output[pixelidx].xyz += REASONABLE_RADIANCE(envmapmul * Texture_SampleEnvMap(rays[globalid].d.xyz, TEXTURE_ARGS_IDX(envmapidx)) * t);
         }
     }
 }

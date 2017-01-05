@@ -21,35 +21,29 @@ THE SOFTWARE.
 ********************************************************************/
 #ifndef PAYLOAD_CL
 #define PAYLOAD_CL
-//#define SOBOL
-#define MULTISCATTER
 
-/// Ray descriptor
-typedef struct _ray
-{
-    /// xyz - origin, w - max range
-    float4 o;
-    /// xyz - direction, w - time
-    float4 d;
-    /// x - ray mask, y - activity flag
-    int2 extra;
-    float2 padding;
-} ray;
-
-/// Intersection data returned by RadeonRays
-typedef struct _Intersection
-{
-    // id of a shape
-    int shapeid;
-    // Primitive index
-    int primid;
-    // Padding elements
-    int padding0;
-    int padding1;
-
-    // uv - hit barycentrics, w - ray distance
-    float4 uvwt;
-} Intersection;
+/// Camera descriptor
+///
+typedef struct _Camera
+    {
+        // Camera coordinate frame
+        float3 forward;
+        float3 right;
+        float3 up;
+        float3 p;
+        
+        // Image plane width & height in current units
+        float2 dim;
+        
+        // Near and far Z
+        float2 zcap;
+        // Focal lenght
+        float focal_length;
+        // Camera aspect ratio
+        float aspect;
+        float focus_distance;
+        float aperture;
+    } Camera;
 
 // Shape description
 typedef struct _Shape
@@ -73,27 +67,25 @@ typedef struct _Shape
     float4 m3;
 } Shape;
 
-// Emissive object
-typedef struct _Emissive
-{
-    // Shape index
-    int shapeidx;
-    // Polygon index
-    int primidx;
-    // Material index
-    int m;
-    //
-    int padding;
-} Emissive;
 
-
-typedef enum _PathFlags
+enum Bxdf
 {
-    kNone = 0x0,
-    kKilled = 0x1,
-    kScattered = 0x2,
-    kSpecularBounce = 0x4
-} PathFlags;
+    kZero,
+    kLambert,
+    kIdealReflect,
+    kIdealRefract,
+    kMicrofacetBlinn,
+    kMicrofacetBeckmann,
+    kMicrofacetGGX,
+    kLayered,
+    kFresnelBlend,
+    kMix,
+    kEmissive,
+    kPassthrough,
+    kTranslucent,
+    kMicrofacetRefractionGGX,
+    kMicrofacetRefractionBeckmann
+};
 
 // Material description
 typedef struct _Material
@@ -131,9 +123,13 @@ typedef struct _Material
         float fresnel;
     };
 
-    int type;
+    union
+    {
+        int type;
+        int num_materials;
+    };
+    
     int twosided;
-
 } Material;
 
 
@@ -183,31 +179,62 @@ typedef struct _Light
     float3 intensity;
 } Light;
 
-typedef struct _Scene
+typedef enum
+    {
+        kEmpty,
+        kHomogeneous,
+        kHeterogeneous
+    } VolumeType;
+
+typedef enum
+    {
+        kUniform,
+        kRayleigh,
+        kMieMurky,
+        kMieHazy,
+        kHG // this one requires one extra coeff
+    } PhaseFunction;
+
+typedef struct _Volume
+    {
+        VolumeType type;
+        PhaseFunction phase_func;
+        
+        // Id of volume data if present
+        int data;
+        int extra;
+        
+        // Absorbtion
+        float3 sigma_a;
+        // Scattering
+        float3 sigma_s;
+        // Emission
+        float3 sigma_e;
+    } Volume;
+
+/// Supported formats
+enum TextureFormat
 {
-    // Vertices
-    __global float3 const* vertices;
-    // Normals
-    __global float3 const* normals;
-    // UVs
-    __global float2 const* uvs;
-    // Indices
-    __global int const* indices;
-    // Shapes
-    __global Shape const* shapes;
-    // Material IDs
-    __global int const* materialids;
-    // Materials
-    __global Material const* materials;
-    // Emissive objects
-    __global Light const* lights;
-    // Envmap idx
-    int envmapidx;
-    // Envmap multiplier
-    float envmapmul;
-    // Number of emissive objects
-    int num_lights;
-} Scene;
+    UNKNOWN,
+    RGBA8,
+    RGBA16,
+    RGBA32
+};
+
+/// Texture description
+typedef
+    struct _Texture
+    {
+        // Width, height and depth
+        int w;
+        int h;
+        int d;
+        // Offset in texture data array
+        int dataoffset;
+        // Format
+        int fmt;
+        int extra;
+    } Texture;
 
 // Hit data
 typedef struct _DifferentialGeometry
@@ -230,76 +257,10 @@ typedef struct _DifferentialGeometry
 
 
 
-typedef enum
-{
-    kPixelX = 0,
-    kPixelY = 1,
-    kLensX = 2,
-    kLensY = 3,
-    kPathBase = 4,
-    kBrdf = 0,
-    kLight = 1,
-    kLightU = 2,
-    kLightV = 3,
-    kBrdfU = 4,
-    kBrdfV = 5,
-    kIndirectU = 6,
-    kIndirectV = 7,
-    kRR = 8,
-    kVolume = 9,
-    kVolumeLight = 10,
-    kVolumeLightU = 11,
-    kVolumeLightV = 12,
-    kMaterial = 13,
-#ifdef MULTISCATTER
-    kVolumeIndirectU = 14,
-    kVolumeIndirectV = 15,
-    kNumPerBounce = 16,
-#else
-    kNumPerBounce = 14
-#endif
-}  SampleDim;
 
-int GetSampleDim(int pass, SampleDim dim)
-{
-    return kPathBase + pass * kNumPerBounce + dim;
-}
 
-float Intersection_GetDistance(__global Intersection const* isect)
-{
-    return isect->uvwt.w;
-}
 
-float2 Intersection_GetBarycentrics(__global Intersection const* isect)
-{
-    return isect->uvwt.xy;
-}
 
-void Ray_SetInactive(__global ray* r)
-{
-    r->extra.y = 0;
-}
-
-void Ray_SetExtra(__global ray* r, float2 extra)
-{
-    r->padding = extra;
-}
-
-float2 Ray_GetExtra(__global ray const* r)
-{
-    return r->padding;
-}
-
-void Ray_Init(__global ray* r, float3 o, float3 d, float maxt, float time, int mask)
-{
-    // TODO: Check if it generates MTBUF_XYZW write
-    r->o.xyz = o;
-    r->d.xyz = d;
-    r->o.w = maxt;
-    r->d.w = time;
-    r->extra.x = mask;
-    r->extra.y = 0xFFFFFFFF;
-}
 
 
 

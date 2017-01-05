@@ -25,6 +25,40 @@ THE SOFTWARE.
 #include <../App/CL/utils.cl>
 #include <../App/CL/random.cl>
 
+typedef enum
+    {
+        kPixelX = 0,
+        kPixelY = 1,
+        kLensX = 2,
+        kLensY = 3,
+        kPathBase = 4,
+        kBrdf = 0,
+        kLight = 1,
+        kLightU = 2,
+        kLightV = 3,
+        kBrdfU = 4,
+        kBrdfV = 5,
+        kIndirectU = 6,
+        kIndirectV = 7,
+        kRR = 8,
+        kVolume = 9,
+        kVolumeLight = 10,
+        kVolumeLightU = 11,
+        kVolumeLightV = 12,
+        kMaterial = 13,
+#ifdef MULTISCATTER
+        kVolumeIndirectU = 14,
+        kVolumeIndirectV = 15,
+        kNumPerBounce = 16,
+#else
+        kNumPerBounce = 14
+#endif
+    }  SampleDim;
+
+int GetSampleDim(int pass, SampleDim dim)
+{
+    return kPathBase + pass * kNumPerBounce + dim;
+}
 
 /// Sample hemisphere with cos weight
 float3 Sample_MapToHemisphere(

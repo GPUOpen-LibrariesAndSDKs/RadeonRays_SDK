@@ -33,6 +33,14 @@ typedef struct _Path
     int extra1;
 } Path;
 
+typedef enum _PathFlags
+{
+    kNone = 0x0,
+    kKilled = 0x1,
+    kScattered = 0x2,
+    kSpecularBounce = 0x4
+} PathFlags;
+
 bool Path_IsScattered(__global Path const* path)
 {
     return path->flags & kScattered;
@@ -68,7 +76,6 @@ void Path_SetSpecularFlag(__global Path* path)
 {
     path->flags |= kSpecularBounce;
 }
-
 
 void Path_Restart(__global Path* path)
 {

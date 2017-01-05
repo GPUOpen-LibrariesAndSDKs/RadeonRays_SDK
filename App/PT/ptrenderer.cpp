@@ -21,7 +21,8 @@ THE SOFTWARE.
 ********************************************************************/
 #include "PT/ptrenderer.h"
 #include "CLW/clwoutput.h"
-#include "Scene/scene.h"
+#include "Scene/scene1.h"
+#include "Scene/Collector/collector.h"
 
 #include <numeric>
 #include <chrono>
@@ -88,6 +89,9 @@ namespace Baikal
         Buffer* fr_hits;
         Buffer* fr_intersections;
         Buffer* fr_hitcount;
+        
+        Collector mat_collector;
+        Collector tex_collector;
 
         RenderData()
             : fr_shadowrays(nullptr)
@@ -165,15 +169,15 @@ namespace Baikal
         m_num_bounces = num_bounces;
     }
 
-    void PtRenderer::Preprocess(Scene const& scene)
+    void PtRenderer::Preprocess(Scene1 const& scene)
     {
     }
 
     // Render the scene into the output
-    void PtRenderer::Render(Scene const& scene)
+    void PtRenderer::Render(Scene1 const& scene)
     {
         auto api = m_scene_tracker.GetIntersectionApi();
-        auto& clwscene = m_scene_tracker.CompileScene(scene);
+        auto& clwscene = m_scene_tracker.CompileScene(scene, m_render_data->mat_collector, m_render_data->tex_collector);
 
         // Check output
         assert(m_output);
@@ -600,13 +604,13 @@ namespace Baikal
 
     }
 
-    void PtRenderer::RunBenchmark(Scene const& scene, std::uint32_t num_passes, BenchmarkStats& stats)
+    void PtRenderer::RunBenchmark(Scene1 const& scene, std::uint32_t num_passes, BenchmarkStats& stats)
     {
         stats.num_passes = num_passes;
         stats.resolution = int2(m_output->width(), m_output->height());
 
         auto api = m_scene_tracker.GetIntersectionApi();
-        auto& clwscene = m_scene_tracker.CompileScene(scene);
+        auto& clwscene = m_scene_tracker.CompileScene(scene, m_render_data->mat_collector, m_render_data->tex_collector);
 
         // Check output
         assert(m_output);

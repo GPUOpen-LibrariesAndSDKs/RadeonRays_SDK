@@ -27,38 +27,7 @@ THE SOFTWARE.
 
 #define FAKE_SHAPE_SENTINEL 0xFFFFFF
 
-typedef enum
-{
-    kEmpty,
-    kHomogeneous,
-    kHeterogeneous
-} VolumeType;
 
-typedef enum
-{
-    kUniform,
-    kRayleigh,
-    kMieMurky,
-    kMieHazy,
-    kHG // this one requires one extra coeff
-} PhaseFunction;
-
-typedef struct _Volume
-{
-    VolumeType type;
-    PhaseFunction phase_func;
-    
-    // Id of volume data if present 
-    int data;
-    int extra;
-
-    // Absorbtion
-    float3 sigma_a;
-    // Scattering
-    float3 sigma_s;
-    // Emission
-    float3 sigma_e;
-} Volume;
 
 
 // The following functions are taken from PBRT

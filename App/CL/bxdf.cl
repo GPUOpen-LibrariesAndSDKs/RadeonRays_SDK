@@ -30,24 +30,7 @@ THE SOFTWARE.
 #define DENOM_EPS 0.0f
 #define ROUGHNESS_EPS 0.0001f
 
-enum Bxdf
-{
-    kZero,
-    kLambert,
-    kIdealReflect,
-    kIdealRefract,
-    kMicrofacetBlinn,
-    kMicrofacetBeckmann,
-    kMicrofacetGGX,
-    kLayered,
-    kFresnelBlend,
-    kMix,
-    kEmissive,
-    kPassthrough,
-    kTranslucent,
-    kMicrofacetRefractionGGX,
-    kMicrofacetRefractionBeckmann
-};
+
 
 enum BxdfFlags
 {

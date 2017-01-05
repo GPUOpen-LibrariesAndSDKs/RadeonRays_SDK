@@ -50,9 +50,9 @@ namespace Baikal
         // Clear output
         void Clear(RadeonRays::float3 const& val, Output& output) const override;
         // Do necessary precalculation and initialization
-        void Preprocess(Scene const& scene) override;
+        void Preprocess(Scene1 const& scene) override;
         // Render the scene into the output
-        void Render(Scene const& scene) override;
+        void Render(Scene1 const& scene) override;
         // Set output
         void SetOutput(Output* output) override;
         // Set number of light bounces
@@ -63,7 +63,7 @@ namespace Baikal
         CLWKernel GetAccumulateKernel();
 
         // Run render benchmark
-        void RunBenchmark(Scene const& scene, std::uint32_t num_passes, BenchmarkStats& stats) override;
+        void RunBenchmark(Scene1 const& scene, std::uint32_t num_passes, BenchmarkStats& stats) override;
 
     protected:
         // Resize output-dependent buffers

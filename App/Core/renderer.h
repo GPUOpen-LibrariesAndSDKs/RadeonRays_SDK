@@ -35,7 +35,7 @@ THE SOFTWARE.
 namespace Baikal
 {
     class Output;
-    class Scene;
+    class Scene1;
 
     /**
      \brief Interface for the renderer.
@@ -76,14 +76,14 @@ namespace Baikal
          
          \param scene The scene to process
          */
-        virtual void Preprocess(Scene const& scene) = 0;
+        virtual void Preprocess(Scene1 const& scene) = 0;
         
         /**
          \brief Render single iteration.
          
          \param scene Scene to render
          */
-        virtual void Render(Scene const& scene) = 0;
+        virtual void Render(Scene1 const& scene) = 0;
         
         /**
          \brief Set the output for rendering.
@@ -111,6 +111,6 @@ namespace Baikal
             float shadow_rays_time_in_ms;
         };
         
-        virtual void RunBenchmark(Scene const& scene, std::uint32_t num_passes, BenchmarkStats& stats) {}
+        virtual void RunBenchmark(Scene1 const& scene, std::uint32_t num_passes, BenchmarkStats& stats) {}
     };
 }

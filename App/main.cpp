@@ -63,13 +63,17 @@ THE SOFTWARE.
 #include "math/mathutils.h"
 
 #include "tiny_obj_loader.h"
-#include "perspective_camera.h"
+#include "Scene/camera.h"
 #include "shader_manager.h"
-#include "Scene/scene.h"
+#include "Scene/scene1.h"
 #include "PT/ptrenderer.h"
 #include "AO/aorenderer.h"
 #include "CLW/clwoutput.h"
 #include "config_manager.h"
+#include "Scene/scene1.h"
+#include "Scene/Loaders/scene_loader.h"
+
+Baikal::Scene1 scene;
 
 using namespace RadeonRays;
 
@@ -82,6 +86,7 @@ char const* g_modelname = "orig.objm";
 char const* g_envmapname = "../Resources/Textures/studio015.hdr";
 
 std::unique_ptr<ShaderManager>    g_shader_manager;
+std::unique_ptr<Baikal::PerspectiveCamera> g_camera;
 
 GLuint g_vertex_buffer;
 GLuint g_index_buffer;
@@ -144,7 +149,7 @@ std::vector<std::thread> g_renderthreads;
 int g_primary = -1;
 
 
-std::unique_ptr<Baikal::Scene> g_scene;
+std::unique_ptr<Baikal::Scene1> g_scene;
 
 
 static bool     g_is_left_pressed = false;
@@ -340,34 +345,32 @@ void InitData()
     basepath += "/";
     std::string filename = basepath + g_modelname;
 
-    g_scene.reset(Baikal::Scene::LoadFromObj(filename, basepath));
+    g_scene.reset(Baikal::LoadFromObj(filename, basepath));
 
-    g_scene->camera_.reset(new PerspectiveCamera(
-        g_camera_pos
-        , g_camera_at
-        , g_camera_up));
+    g_camera.reset(new Baikal::PerspectiveCamera(
+                                             g_camera_pos
+                                             , g_camera_at
+                                             , g_camera_up));
+    
+    g_scene->SetCamera(g_camera.get());
 
     // Adjust sensor size based on current aspect ratio
     float aspect = (float)g_window_width / g_window_height;
     g_camera_sensor_size.y = g_camera_sensor_size.x / aspect;
 
-    g_scene->camera_->SetSensorSize(g_camera_sensor_size);
-    g_scene->camera_->SetDepthRange(g_camera_zcap);
-    g_scene->camera_->SetFocalLength(g_camera_focal_length);
-    g_scene->camera_->SetFocusDistance(g_camera_focus_distance);
-    g_scene->camera_->SetAperture(g_camera_aperture);
+    g_camera->SetSensorSize(g_camera_sensor_size);
+    g_camera->SetDepthRange(g_camera_zcap);
+    g_camera->SetFocalLength(g_camera_focal_length);
+    g_camera->SetFocusDistance(g_camera_focus_distance);
+    g_camera->SetAperture(g_camera_aperture);
 
-    std::cout << "Camera type: " << (g_scene->camera_->GetAperture() > 0.f ? "Physical" : "Pinhole") << "\n";
-    std::cout << "Lens focal length: " << g_scene->camera_->GetFocalLength() * 1000.f << "mm\n";
-    std::cout << "Lens focus distance: " << g_scene->camera_->GetFocusDistance() << "m\n";
-    std::cout << "F-Stop: " << 1.f / (g_scene->camera_->GetAperture() * 10.f) << "\n";
+    std::cout << "Camera type: " << (g_camera->GetAperture() > 0.f ? "Physical" : "Pinhole") << "\n";
+    std::cout << "Lens focal length: " << g_camera->GetFocalLength() * 1000.f << "mm\n";
+    std::cout << "Lens focus distance: " << g_camera->GetFocusDistance() << "m\n";
+    std::cout << "F-Stop: " << 1.f / (g_camera->GetAperture() * 10.f) << "\n";
     std::cout << "Sensor size: " << g_camera_sensor_size.x * 1000.f << "x" << g_camera_sensor_size.y * 1000.f << "mm\n";
 
-    g_scene->SetEnvironment(g_envmapname, "", g_envmapmul);
-    g_scene->AddDirectionalLight(RadeonRays::float3(-0.3f, -1.f, -0.4f), 2.f * RadeonRays::float3(1.f, 1.f, 1.f));
-    g_scene->AddPointLight(RadeonRays::float3(-0.5f, 1.7f, 0.0f), RadeonRays::float3(1.f, 0.9f, 0.6f));
-    g_scene->AddSpotLight(RadeonRays::float3(0.5f, 1.5f, 0.0f), RadeonRays::float3(-0.5f, -1.0f, 0.1f), RadeonRays::float3(1.f, 0.9f, 0.6f),
-                           std::cos(M_PI_4/2), std::cos(M_PI_4));
+    
 #pragma omp parallel for
     for (int i = 0; i < g_cfgs.size(); ++i)
     {
@@ -535,7 +538,7 @@ void Update()
     if (std::abs(camroty) > 0.001f)
     {
         //g_scene->camera_->Tilt(camroty);
-        g_scene->camera_->ArcballRotateVertically(float3(0, 0, 0), camroty);
+        g_camera->ArcballRotateVertically(float3(0, 0, 0), camroty);
         update = true;
     }
 
@@ -543,50 +546,50 @@ void Update()
     {
 
         //g_scene->camera_->Rotate(camrotx);
-        g_scene->camera_->ArcballRotateHorizontally(float3(0, 0, 0), camrotx);
+        g_camera->ArcballRotateHorizontally(float3(0, 0, 0), camrotx);
         update = true;
     }
 
     const float kMovementSpeed = g_cspeed;
     if (g_is_fwd_pressed)
     {
-        g_scene->camera_->MoveForward((float)dt.count() * kMovementSpeed);
+        g_camera->MoveForward((float)dt.count() * kMovementSpeed);
         update = true;
     }
 
     if (g_is_back_pressed)
     {
-        g_scene->camera_->MoveForward(-(float)dt.count() * kMovementSpeed);
+        g_camera->MoveForward(-(float)dt.count() * kMovementSpeed);
         update = true;
     }
 
     if (g_is_right_pressed)
     {
-        g_scene->camera_->MoveRight((float)dt.count() * kMovementSpeed);
+        g_camera->MoveRight((float)dt.count() * kMovementSpeed);
         update = true;
     }
 
     if (g_is_left_pressed)
     {
-        g_scene->camera_->MoveRight(-(float)dt.count() * kMovementSpeed);
+        g_camera->MoveRight(-(float)dt.count() * kMovementSpeed);
         update = true;
     }
 
     if (g_is_home_pressed)
     {
-        g_scene->camera_->MoveUp((float)dt.count() * kMovementSpeed);
+        g_camera->MoveUp((float)dt.count() * kMovementSpeed);
         update = true;
     }
 
     if (g_is_end_pressed)
     {
-        g_scene->camera_->MoveUp(-(float)dt.count() * kMovementSpeed);
+        g_camera->MoveUp(-(float)dt.count() * kMovementSpeed);
         update = true;
     }
 
     if (update)
     {
-        g_scene->set_dirty(Baikal::Scene::kCamera);
+        g_scene->SetDirtyFlag(Baikal::Scene1::kCamera);
 
         if (g_num_samples > -1)
         {
