@@ -60,18 +60,11 @@ namespace Baikal
         // Destructor
         virtual ~SceneTracker();
 
-        /**
-         \brief Given a scene this method produces (or loads from cache) corresponding GPU representation.
-         
-         \param scene CPU scene.
-         \param mat_collector Material collector helping to track materials.
-         \param tex_collector Texture collector helping to track textures.
-         */
+        // Given a scene this method produces (or loads from cache) corresponding GPU representation.
         virtual ClwScene& CompileScene(Scene1 const& scene, Collector& mat_collector, Collector& tex_collector) const;
         
-        /**
-         \brief Get underlying intersection API.
-         */
+
+        // Get underlying intersection API.
         RadeonRays::IntersectionApi* GetIntersectionApi() { return  m_api; }
 
     protected:

@@ -393,8 +393,8 @@ namespace Baikal
             shapes[num_shapes_written] = shape;
             ++num_shapes_written;
             
-            std::fill(matids + num_matids_written, matids + num_matids_written + mesh_num_indices / 3,
-                      mat_collector.GetItemIndex(mesh->GetMaterial()));
+            auto matidx = mat_collector.GetItemIndex(mesh->GetMaterial());
+            std::fill(matids + num_matids_written, matids + num_matids_written + mesh_num_indices / 3, matidx);
             
             num_matids_written += mesh_num_indices / 3;
         }
@@ -874,7 +874,7 @@ namespace Baikal
             case ClwScene::kIbl:
             {
                 // TODO: support this
-                clw_light->multiplier = 1.f;
+                clw_light->multiplier = static_cast<ImageBasedLight const*>(light)->GetMultiplier();
                 auto tex = static_cast<ImageBasedLight const*>(light)->GetTexture();
                 clw_light->tex = tex_collector.GetItemIndex(tex);
                 clw_light->texdiffuse = clw_light->tex;

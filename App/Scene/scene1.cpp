@@ -9,14 +9,15 @@
 
 namespace Baikal
 {
+    // Data structures for shapes and lights
     using ShapeList = std::vector<Shape const*>;
     using LightList = std::vector<Light const*>;
     
+    // Internal data
     struct Scene1::SceneImpl
     {
         ShapeList m_shapes;
         LightList m_lights;
-        
         Camera const* m_camera;
         
         DirtyFlags m_dirty_flags;
@@ -63,8 +64,10 @@ namespace Baikal
     {
         assert(light);
         
+        // Check if the light is already in the scene
         LightList::const_iterator citer =  std::find(m_impl->m_lights.cbegin(), m_impl->m_lights.cend(), light);
         
+        // And insert only if not
         if (citer == m_impl->m_lights.cend())
         {
             m_impl->m_lights.push_back(light);
@@ -75,8 +78,10 @@ namespace Baikal
     
     void Scene1::DetachLight(Light const* light)
     {
+        // Check if the light is in the scene
         LightList::const_iterator citer =  std::find(m_impl->m_lights.cbegin(), m_impl->m_lights.cend(), light);
         
+        // And remove it if yes
         if (citer != m_impl->m_lights.cend())
         {
             m_impl->m_lights.erase(citer);
@@ -99,8 +104,10 @@ namespace Baikal
     {
         assert(shape);
         
+        // Check if the shape is already in the scene
         ShapeList::const_iterator citer =  std::find(m_impl->m_shapes.cbegin(), m_impl->m_shapes.cend(), shape);
         
+        // And attach it if not
         if (citer == m_impl->m_shapes.cend())
         {
             m_impl->m_shapes.push_back(shape);
@@ -113,8 +120,10 @@ namespace Baikal
     {
         assert(shape);
         
+        // Check if the shape is in the scene
         ShapeList::const_iterator citer =  std::find(m_impl->m_shapes.cbegin(), m_impl->m_shapes.cend(), shape);
         
+        // And detach if yes
         if (citer != m_impl->m_shapes.cend())
         {
             m_impl->m_shapes.erase(citer);

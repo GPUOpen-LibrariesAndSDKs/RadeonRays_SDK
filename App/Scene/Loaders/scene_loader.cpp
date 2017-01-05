@@ -26,127 +26,14 @@ namespace Baikal
         // Allocate scene
         Scene1* scene(new Scene1);
         
-        // Texture map
-        std::map<std::string, int> textures;
-        std::map<int, int> matmap;
-        
         // Enumerate and translate materials
-        /*for (int i = 0; i < (int)objmaterials.size(); ++i)
+        std::vector<Material*> materials(objmaterials.size());
+        for (int i = 0; i < (int)objmaterials.size(); ++i)
         {
-            Material material;
-                
-                material.kx = float3(objmaterials[i].diffuse[0], objmaterials[i].diffuse[1], objmaterials[i].diffuse[2]);
-                material.ni = objmaterials[i].ior;
-                material.type = kLambert;
-                material.fresnel = 0.f;
-                
-                // Load diffuse texture if needed
-                if (!objmaterials[i].diffuse_texname.empty())
-                {
-                    auto iter = textures.find(objmaterials[i].diffuse_texname);
-                    if (iter != textures.end())
-                    {
-                        material.kxmapidx = iter->second;
-                    }
-                    else
-                    {
-                        Texture texture;
-                        
-                        // Load texture
-                        LoadTexture(basepath + "/" + objmaterials[i].diffuse_texname, texture, scene->texturedata_);
-                        
-                        // Add texture desc
-                        material.kxmapidx = (int)scene->textures_.size();
-                        scene->textures_.push_back(texture);
-                        
-                        // Save in the map
-                        textures[objmaterials[i].diffuse_texname] = material.kxmapidx;
-                    }
-                }
-                
-                // Load specular texture
-                if (!objmaterials[i].specular_texname.empty())
-                 {
-                 auto iter = textures.find(objmaterials[i].specular_texname);
-                 if (iter != textures.end())
-                 {
-                 material.ksmapidx = iter->second;
-                 }
-                 else
-                 {
-                 Texture texture;
-                 // Load texture
-                 LoadTexture(basepath + "/" + objmaterials[i].specular_texname, texture, scene->texturedata_);
-                 // Add texture desc
-                 material.ksmapidx = (int)scene->textures_.size();
-                 scene->textures_.push_back(texture);
-                 // Save in the map
-                 textures[objmaterials[i].specular_texname] = material.ksmapidx;
-                 }
-                 }
-                
-                // Load normal map
-                
-                
-                
-                scene->materials_.push_back(material);
-                scene->material_names_.push_back(objmaterials[i].name);
-                
-                float3 spec = float3(0.5f, 0.5f, 0.5f);// float3(objmaterials[i].specular[0], objmaterials[i].specular[1], objmaterials[i].specular[2]);
-                if (spec.sqnorm() > 0.f)
-                {
-                    Material specular;
-                    specular.kx = spec;
-                    specular.ni = 1.33f;//objmaterials[i].ior;
-                    specular.ns = 0.05f;//1.f - objmaterials[i].shininess;
-                    specular.type = kMicrofacetGGX;
-                    specular.nmapidx = -1;// scene->materials_.back().nmapidx;
-                    specular.fresnel = 1.f;
-                    
-                    if (!objmaterials[i].normal_texname.empty())
-                    {
-                        auto iter = textures.find(objmaterials[i].normal_texname);
-                        if (iter != textures.end())
-                        {
-                            specular.nmapidx = iter->second;
-                        }
-                        else
-                        {
-                            Texture texture;
-                            
-                            // Load texture
-                            LoadTexture(basepath + "/" + objmaterials[i].normal_texname, texture, scene->texturedata_);
-                            
-                            // Add texture desc
-                            specular.nmapidx = (int)scene->textures_.size();
-                            scene->textures_.push_back(texture);
-                            
-                            // Save in the map
-                            textures[objmaterials[i].normal_texname] = specular.nmapidx;
-                        }
-                    }
-                    
-                    scene->materials_.push_back(specular);
-                    scene->material_names_.push_back(objmaterials[i].name);
-                    
-                    Material layered;
-                    layered.ni = 1.9f;// objmaterials[i].ior;
-                    layered.type = kFresnelBlend;
-                    layered.brdftopidx = scene->materials_.size() - 1;
-                    layered.brdfbaseidx = scene->materials_.size() - 2;
-                    layered.fresnel = 1.f;
-                    layered.twosided = 1;
-                    
-                    scene->materials_.push_back(layered);
-                    scene->material_names_.push_back(objmaterials[i].name);
-                }
-                
-                matmap[i] = scene->materials_.size() - 1;
-            }
-        }*/
-        
-        Material* fakemat = new SingleBxdf(SingleBxdf::BxdfType::kLambert);
-        fakemat->SetTwoSided(false);
+            materials[i] = new SingleBxdf(SingleBxdf::BxdfType::kLambert);
+            materials[i]->SetInputValue("albedo", RadeonRays::float3(objmaterials[i].diffuse[0], objmaterials[i].diffuse[1], objmaterials[i].diffuse[2]));
+            materials[i]->SetTwoSided(false);
+        }
         
         // Enumerate all shapes in the scene
         for (int s = 0; s < (int)objshapes.size(); ++s)
@@ -174,7 +61,8 @@ namespace Baikal
             auto num_indices = objshapes[s].mesh.indices.size();
             mesh->SetIndices(reinterpret_cast<std::uint32_t const*>(&objshapes[s].mesh.indices[0]), num_indices);
             
-            mesh->SetMaterial(fakemat);
+            auto idx = objshapes[s].mesh.material_ids[0];
+            mesh->SetMaterial(materials[idx]);
             scene->AttachShape(mesh);
         }
         

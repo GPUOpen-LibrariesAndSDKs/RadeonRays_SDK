@@ -48,8 +48,8 @@ namespace Baikal
     {
     public:
         
+        // Dirty flags are used to perform partial buffer updates to save traffic
         using DirtyFlags = std::uint32_t;
-        
         enum
         {
             kNone,
@@ -68,19 +68,21 @@ namespace Baikal
         void AttachLight(Light const* light);
         void DetachLight(Light const* light);
         
-        // TODO: make it iterable
+        // Get the number of lights in the scene
         std::size_t GetNumLights() const;
+        // Get light iterator
         Iterator* CreateLightIterator() const;
         
         // Add or remove shapes
         void AttachShape(Shape const* shape);
         void DetachShape(Shape const* shape);
         
-        // TODO: make it iterable
+        // Get number of shapes in the scene
         std::size_t GetNumShapes() const;
+        // Get shape iterator
         Iterator* CreateShapeIterator() const;
         
-        // Set camera
+        // Set and get camera
         void SetCamera(Camera const* camera);
         Camera const* GetCamera() const;
         

@@ -48,7 +48,7 @@ namespace Baikal
     {
     public:
         // Constructor
-        Light() = default;
+        Light();
         // Destructor
         virtual ~Light() = 0;
         
@@ -63,11 +63,11 @@ namespace Baikal
         virtual RadeonRays::float3 GetDirection() const;
         virtual void SetDirection(RadeonRays::float3 const& d);
         
-        // Set and get direction
+        // Set and get emitted radiance (differential)
         virtual RadeonRays::float3 GetEmittedRadiance() const;
         virtual void SetEmittedRadiance(RadeonRays::float3 const& e);
         
-        // Iterate all textures used by the light
+        // Iterator for all the textures used by the light
         virtual Iterator* CreateTextureIterator() const;
         
         // Forbidden stuff
@@ -75,10 +75,23 @@ namespace Baikal
         Light& operator = (Light const&) = delete;
         
     private:
+        // Position
         RadeonRays::float3 m_p;
+        // Direction
         RadeonRays::float3 m_d;
+        // Emmited radiance
         RadeonRays::float3 m_e;
     };
+    
+    inline Light::Light()
+    : m_d(0.f, -1.f, 0.f)
+    , m_e(1.f, 1.f, 1.f)
+    {
+    }
+    
+    inline Light::~Light()
+    {
+    }
     
     /**
      \brief Simple point light source.
@@ -108,14 +121,21 @@ namespace Baikal
     class SpotLight: public Light
     {
     public:
+        SpotLight();
         // Get and set inner and outer falloff angles: they are set as cosines of angles between light direction
         // and cone opening.
         virtual void SetConeShape(RadeonRays::float2 angles);
         virtual RadeonRays::float2 GetConeShape() const;
         
     private:
+        // Opening angles (x - inner, y - outer)
         RadeonRays::float2 m_angles;
     };
+    
+    inline SpotLight::SpotLight()
+    : m_angles(0.25f, 0.5f)
+    {
+    }
     
     /**
      \brief Image-based distant light source.
@@ -125,33 +145,46 @@ namespace Baikal
     class ImageBasedLight: public Light
     {
     public:
+        ImageBasedLight();
         // Get and set illuminant texture
         virtual void SetTexture(Texture const* texture);
         virtual Texture const* GetTexture() const;
         
+        // Get and set multiplier.
+        // Multiplier is used to adjust emissive power.
+        virtual float GetMultiplier() const;
+        virtual void SetMultiplier(float m);
+        
     private:
+        // Illuminant texture
         Texture const* m_texture;
+        // Emissive multiplier
+        float m_multiplier;
     };
     
     // Area light
     class AreaLight: public Light
     {
     public:
+        AreaLight(Shape const* shape, std::size_t idx);
         // Get parent shape
         virtual Shape const* GetShape() const;
         // Get parent prim idx
         virtual std::size_t GetPrimitiveIdx() const;
         
     private:
+        // Parent shape
         Shape const* m_shape;
+        // Parent primitive index
         std::size_t m_prim_idx;
     };
 
-    inline Light::~Light()
+    inline AreaLight::AreaLight(Shape const* shape, std::size_t idx)
+    : m_shape(shape)
+    , m_prim_idx(idx)
     {
-        
     }
-    
+
     inline RadeonRays::float3 Light::GetPosition() const
     {
         return m_p;
@@ -216,4 +249,21 @@ namespace Baikal
     {
         return m_shape;
     }
+    
+    inline ImageBasedLight::ImageBasedLight()
+    : m_texture(nullptr)
+    , m_multiplier(1.f)
+    {
+    }
+    
+    inline float ImageBasedLight::GetMultiplier() const
+    {
+        return m_multiplier;
+    }
+    
+    inline void ImageBasedLight::SetMultiplier(float m)
+    {
+        m_multiplier = m;
+    }
+
 }
