@@ -578,7 +578,7 @@ namespace Baikal
         m_context.UnmapBuffer(0, out.textures, textures);
         
         // Recreate material buffer if it needs resize
-        if (tex_data_buffer_size < out.texturedata.GetElementCount())
+        if (tex_data_buffer_size > out.texturedata.GetElementCount())
         {
             // Create material buffer
             out.texturedata = m_context.CreateBuffer<char>(tex_data_buffer_size, CL_MEM_READ_ONLY);
@@ -936,7 +936,7 @@ namespace Baikal
                 auto ibl = dynamic_cast<ImageBasedLight const*>(light_iter->ItemAs<Light const>());
                 if (ibl)
                 {
-                    out.envmapmul = 1.f;
+                    out.envmapmul = ibl->GetMultiplier();
                     out.envmapidx = tex_collector.GetItemIndex(ibl->GetTexture());
                 }
             }

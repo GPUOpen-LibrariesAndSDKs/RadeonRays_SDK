@@ -53,23 +53,74 @@ namespace Baikal
             kRgba32
         };
         
-        Texture() = default;
-        virtual ~Texture() = 0;
+        // Constructor
+        // Note, that texture takes ownership of data array
+        Texture(char const* data, RadeonRays::int2 size, Format format);
+        // Destructor (the data is destroyed as well)
+        virtual ~Texture();
         
-        virtual RadeonRays::int2 GetSize() const = 0;
-        virtual char const* GetData() const = 0;
-        virtual Format GetFormat() const = 0;
-        virtual std::size_t GetSizeInBytes() const = 0;
+        // Get texture dimensions
+        virtual RadeonRays::int2 GetSize() const;
+        // Get texture raw data
+        virtual char const* GetData() const;
+        // Get texture format
+        virtual Format GetFormat() const;
+        // Get data size in bytes
+        virtual std::size_t GetSizeInBytes() const;
         
         Texture(Texture const&) = delete;
         Texture& operator = (Texture const&) = delete;
         
     private:
-        
+        std::unique_ptr<char const[]> m_data;
+        RadeonRays::int2 m_size;
+        Format m_format;
     };
+    
+    inline Texture::Texture(char const* data, RadeonRays::int2 size, Format format)
+    : m_data(data)
+    , m_size(size)
+    , m_format(format)
+    {
+    }
     
     inline Texture::~Texture()
     {
+    }
+    
+    inline RadeonRays::int2 Texture::GetSize() const
+    {
+        return m_size;
+    }
+    
+    inline char const* Texture::GetData() const
+    {
+        return m_data.get();
+    }
+    
+    inline Texture::Format Texture::GetFormat() const
+    {
+        return m_format;
+    }
+    
+    inline std::size_t Texture::GetSizeInBytes() const
+    {
+        std::uint32_t component_size = 1;
         
+        switch (m_format) {
+            case Format::kRgba8:
+                component_size = 1;
+                break;
+            case Format::kRgba16:
+                component_size = 2;
+                break;
+            case Format::kRgba32:
+                component_size = 4;
+                break;
+            default:
+                break;
+        }
+        
+        return 4 * component_size * m_size.x * m_size.y;
     }
 }

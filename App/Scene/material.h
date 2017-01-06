@@ -128,7 +128,6 @@ namespace Baikal
     private:
 
         class InputIterator;
-        template <typename T> class InputDependencyIterator;
     
         using InputMap = std::map<std::string, Input>;
         // Input map

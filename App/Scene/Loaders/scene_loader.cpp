@@ -1,8 +1,10 @@
 #include "scene_loader.h"
+#include "image_io.h"
 #include "../scene1.h"
 #include "../shape.h"
 #include "../material.h"
 #include "../light.h"
+
 
 #include "tiny_obj_loader.h"
 
@@ -11,6 +13,8 @@ namespace Baikal
     Scene1* LoadFromObj(std::string const& filename, std::string const& basepath)
     {
         using namespace tinyobj;
+        
+        auto image_io(CreateImageIo());
         
         // Loader data
         std::vector<shape_t> objshapes;
@@ -31,7 +35,17 @@ namespace Baikal
         for (int i = 0; i < (int)objmaterials.size(); ++i)
         {
             materials[i] = new SingleBxdf(SingleBxdf::BxdfType::kLambert);
-            materials[i]->SetInputValue("albedo", RadeonRays::float3(objmaterials[i].diffuse[0], objmaterials[i].diffuse[1], objmaterials[i].diffuse[2]));
+            
+            if (!objmaterials[i].diffuse_texname.empty())
+            {
+                auto texture = image_io->LoadImage(basepath + "/" + objmaterials[i].diffuse_texname);
+                materials[i]->SetInputValue("albedo", texture);
+            }
+            else
+            {
+                materials[i]->SetInputValue("albedo", RadeonRays::float3(objmaterials[i].diffuse[0], objmaterials[i].diffuse[1], objmaterials[i].diffuse[2]));
+            }
+            
             materials[i]->SetTwoSided(false);
         }
         
@@ -66,14 +80,18 @@ namespace Baikal
             scene->AttachShape(mesh);
         }
         
-        //ImageBasedLight* light = new ImageBasedLight();
-        //g_scene->SetEnvironment(g_envmapname, "", g_envmapmul);
+        Texture* ibl_texture = image_io->LoadImage("../Resources/Textures/studio015.hdr");
+        ImageBasedLight* ibl = new ImageBasedLight();
+        ibl->SetTexture(ibl_texture);
+        ibl->SetMultiplier(1.f);
         
-        PointLight* light = new PointLight();
-        light->SetPosition(RadeonRays::float3(-0.3f, 1.5f, 2.f));
+        DirectionalLight* light = new DirectionalLight();
+        light->SetDirection(RadeonRays::float3(-0.3f, -1.f, -0.4f));
         light->SetEmittedRadiance(2.f * RadeonRays::float3(1.f, 1.f, 1.f));
         
         scene->AttachLight(light);
+        scene->AttachLight(ibl);
+        
         return scene;
     }
 }

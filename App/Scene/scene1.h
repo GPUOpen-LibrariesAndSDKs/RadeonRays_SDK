@@ -93,6 +93,8 @@ namespace Baikal
         // Clear all flags
         void ClearDirtyFlags() const;
         
+        //TODO: add scene validation method
+        
         // Forbidden stuff
         Scene1(Scene1 const&) = delete;
         Scene1& operator = (Scene1 const&) = delete;

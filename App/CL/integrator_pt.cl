@@ -590,8 +590,8 @@ __kernel void ShadeMiss(
             // Multiply by throughput
             int volidx = paths[pixelidx].volume;
 
-            if (volidx == -1);
-                //output[pixelidx].xyz += Texture_SampleEnvMap(rays[globalid].d.xyz, TEXTURE_ARGS_IDX(envmapidx));
+            if (volidx == -1)
+                output[pixelidx].xyz += Texture_SampleEnvMap(rays[globalid].d.xyz, TEXTURE_ARGS_IDX(envmapidx));
             else
             {
                 output[pixelidx].xyz += Texture_SampleEnvMap(rays[globalid].d.xyz, TEXTURE_ARGS_IDX(envmapidx)) *

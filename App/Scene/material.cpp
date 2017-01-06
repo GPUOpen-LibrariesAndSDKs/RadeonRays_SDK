@@ -46,46 +46,7 @@ namespace Baikal
         InputMap::const_iterator m_cur;
     };
     
-    template <typename T> class Material::InputDependencyIterator : public Iterator
-    {
-    public:
-        InputDependencyIterator(T&& container) :
-        m_container(std::move(container))
-        {
-            m_begin = m_container.cbegin();
-            m_end = m_container.cend();
-            Reset();
-        }
-        
-        bool IsValid() const override
-        {
-            return m_cur != m_end;
-        }
-        
-        // Advance by 1
-        void Next() override
-        {
-            ++m_cur;
-        }
-        
-        // Get underlying item
-        void const* Item() const override
-        {
-            return *m_cur;
-        }
-        
-        // Set to starting iterator
-        void Reset() override
-        {
-            m_cur = m_begin;
-        }
-        
-    private:
-        T m_container;
-        typename T::const_iterator m_begin;
-        typename T::const_iterator m_end;
-        typename T::const_iterator m_cur;
-    };
+   
     
     
     Material::Material()
@@ -142,8 +103,7 @@ namespace Baikal
                       }
                       );
         
-        return new InputDependencyIterator<std::set<Material const*>>(std::move(materials));
-        
+        return new ContainerIterator<std::set<Material const*>>(std::move(materials));
     }
     
     // Iterator of textures (plugged as inputs)
@@ -162,7 +122,7 @@ namespace Baikal
                       }
                       );
         
-        return new InputDependencyIterator<std::set<Texture const*>>(std::move(textures));
+        return new ContainerIterator<std::set<Texture const*>>(std::move(textures));
     }
     
     // Iterator of inputs

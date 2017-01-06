@@ -32,6 +32,7 @@
 #include "math/float2.h"
 #include <memory>
 #include <string>
+#include <set>
 
 #include "iterator.h"
 
@@ -155,6 +156,9 @@ namespace Baikal
         virtual float GetMultiplier() const;
         virtual void SetMultiplier(float m);
         
+        // Iterator for all the textures used by the light
+        Iterator* CreateTextureIterator() const override;
+        
     private:
         // Illuminant texture
         Texture const* m_texture;
@@ -202,7 +206,7 @@ namespace Baikal
     
     inline void Light::SetDirection(RadeonRays::float3 const& d)
     {
-        m_d = d;
+        m_d = normalize(d);
     }
     
     inline Iterator* Light::CreateTextureIterator() const
@@ -265,5 +269,16 @@ namespace Baikal
     {
         m_multiplier = m;
     }
-
+    
+    inline Iterator* ImageBasedLight::CreateTextureIterator() const
+    {
+        std::set<Texture const*> result;
+        
+        if (m_texture)
+        {
+            result.insert(m_texture);
+        }
+        
+        return new ContainerIterator<std::set<Texture const*>>(std::move(result));
+    }
 }
