@@ -34,6 +34,8 @@
 #include <memory>
 #include <string>
 
+#include "scene_object.h"
+
 namespace Baikal
 {
     class Material;
@@ -43,7 +45,7 @@ namespace Baikal
      
      Texture is used to host CPU memory for image data.
      */
-    class Texture
+    class Texture : public SceneObject
     {
     public:
         enum class Format
@@ -67,10 +69,7 @@ namespace Baikal
         virtual Format GetFormat() const;
         // Get data size in bytes
         virtual std::size_t GetSizeInBytes() const;
-        
-        Texture(Texture const&) = delete;
-        Texture& operator = (Texture const&) = delete;
-        
+    
     private:
         std::unique_ptr<char const[]> m_data;
         RadeonRays::int2 m_size;

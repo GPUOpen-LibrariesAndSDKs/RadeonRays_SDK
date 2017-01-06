@@ -31,17 +31,15 @@
 #include "math/float3.h"
 #include "math/float2.h"
 
+#include "scene_object.h"
+
 namespace Baikal
 {
-    class Camera
+    class Camera : public SceneObject
     {
     public:
         Camera() = default;
         virtual ~Camera() = default;
-        
-        // Forbidden stuff
-        Camera(Camera const&) = delete;
-        Camera& operator = (Camera const&) = delete;
     };
     
     class PerspectiveCamera : public Camera

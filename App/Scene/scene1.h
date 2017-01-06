@@ -37,6 +37,7 @@ namespace Baikal
     class Volume;
     class Camera;
     class Iterator;
+    class SceneObject;
     
     /**
      \brief Scene class.
@@ -93,7 +94,12 @@ namespace Baikal
         // Clear all flags
         void ClearDirtyFlags() const;
         
-        //TODO: add scene validation method
+        // Check if the scene is ready for rendering
+        bool IsValid() const;
+        
+        // Autorelase objects are deleted when scene is destroyed
+        void AttachAutoreleaseObject(SceneObject const* object);
+        void DetachAutoreleaseObject(SceneObject const* object);
         
         // Forbidden stuff
         Scene1(Scene1 const&) = delete;

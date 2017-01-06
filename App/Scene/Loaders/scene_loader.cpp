@@ -4,6 +4,8 @@
 #include "../shape.h"
 #include "../material.h"
 #include "../light.h"
+#include "../texture.h"
+#include "../scene_object.h"
 
 
 #include "tiny_obj_loader.h"
@@ -40,6 +42,7 @@ namespace Baikal
             {
                 auto texture = image_io->LoadImage(basepath + "/" + objmaterials[i].diffuse_texname);
                 materials[i]->SetInputValue("albedo", texture);
+                scene->AttachAutoreleaseObject(texture);
             }
             else
             {
@@ -47,6 +50,8 @@ namespace Baikal
             }
             
             materials[i]->SetTwoSided(false);
+            
+            scene->AttachAutoreleaseObject(materials[i]);
         }
         
         // Enumerate all shapes in the scene
@@ -78,16 +83,23 @@ namespace Baikal
             auto idx = objshapes[s].mesh.material_ids[0];
             mesh->SetMaterial(materials[idx]);
             scene->AttachShape(mesh);
+            
+            scene->AttachAutoreleaseObject(mesh);
         }
         
         Texture* ibl_texture = image_io->LoadImage("../Resources/Textures/studio015.hdr");
+        scene->AttachAutoreleaseObject(ibl_texture);
+        
         ImageBasedLight* ibl = new ImageBasedLight();
         ibl->SetTexture(ibl_texture);
         ibl->SetMultiplier(1.f);
+        scene->AttachAutoreleaseObject(ibl);
+        
         
         DirectionalLight* light = new DirectionalLight();
         light->SetDirection(RadeonRays::float3(-0.3f, -1.f, -0.4f));
         light->SetEmittedRadiance(2.f * RadeonRays::float3(1.f, 1.f, 1.f));
+        scene->AttachAutoreleaseObject(light);
         
         scene->AttachLight(light);
         scene->AttachLight(ibl);

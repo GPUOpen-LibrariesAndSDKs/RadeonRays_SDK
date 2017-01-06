@@ -33,6 +33,8 @@
 #include <memory>
 #include <string>
 
+#include "scene_object.h"
+
 namespace Baikal
 {
     class Material;
@@ -42,7 +44,7 @@ namespace Baikal
      
      High-level interface all shape classes need to implement.
      */
-    class Shape
+    class Shape : public SceneObject
     {
     public:
         // Constructor

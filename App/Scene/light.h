@@ -36,6 +36,8 @@
 
 #include "iterator.h"
 
+#include "scene_object.h"
+
 namespace Baikal
 {
     class Texture;
@@ -45,7 +47,7 @@ namespace Baikal
      
      High-level interface all light classes need to implement.
      */
-    class Light
+    class Light : public SceneObject
     {
     public:
         // Constructor
@@ -70,10 +72,6 @@ namespace Baikal
         
         // Iterator for all the textures used by the light
         virtual Iterator* CreateTextureIterator() const;
-        
-        // Forbidden stuff
-        Light(Light const&) = delete;
-        Light& operator = (Light const&) = delete;
         
     private:
         // Position

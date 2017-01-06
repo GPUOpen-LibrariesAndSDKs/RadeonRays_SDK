@@ -6,12 +6,14 @@
 #include <vector>
 #include <list>
 #include <cassert>
+#include <set>
 
 namespace Baikal
 {
     // Data structures for shapes and lights
     using ShapeList = std::vector<Shape const*>;
     using LightList = std::vector<Light const*>;
+    using AutoreleasePool = std::set<SceneObject const*>;
     
     // Internal data
     struct Scene1::SceneImpl
@@ -21,6 +23,8 @@ namespace Baikal
         Camera const* m_camera;
         
         DirtyFlags m_dirty_flags;
+        
+        AutoreleasePool m_autorelease_pool;
     };
     
     Scene1::Scene1()
@@ -32,6 +36,10 @@ namespace Baikal
     
     Scene1::~Scene1()
     {
+        for(auto& i : m_impl->m_autorelease_pool)
+        {
+            delete i;
+        }
     }
     
     Scene1::DirtyFlags Scene1::GetDirtyFlags() const
@@ -137,8 +145,43 @@ namespace Baikal
         return m_impl->m_shapes.size();
     }
     
+    void Scene1::AttachAutoreleaseObject(SceneObject const* object)
+    {
+        assert(object);
+        
+        // Check if the light is already in the scene
+        AutoreleasePool::const_iterator citer =  std::find(m_impl->m_autorelease_pool.cbegin(), m_impl->m_autorelease_pool.cend(), object);
+        
+        // And insert only if not
+        if (citer == m_impl->m_autorelease_pool.cend())
+        {
+            m_impl->m_autorelease_pool.insert(object);
+        }
+    }
+    
+    void Scene1::DetachAutoreleaseObject(SceneObject const* object)
+    {
+        assert(object);
+        
+        // Check if the light is already in the scene
+        AutoreleasePool::const_iterator citer =  std::find(m_impl->m_autorelease_pool.cbegin(), m_impl->m_autorelease_pool.cend(), object);
+        
+        // And insert only if not
+        if (citer != m_impl->m_autorelease_pool.cend())
+        {
+            m_impl->m_autorelease_pool.erase(citer);
+        }
+    }
+    
     Iterator* Scene1::CreateLightIterator() const
     {
         return new IteratorImpl<LightList::const_iterator>(m_impl->m_lights.begin(), m_impl->m_lights.end());
+    }
+    
+    bool Scene1::IsValid() const
+    {
+        return GetCamera() &&
+        GetNumLights() > 0 &&
+        GetNumShapes() > 0;
     }
 }

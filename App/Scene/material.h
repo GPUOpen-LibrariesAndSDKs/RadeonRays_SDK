@@ -35,6 +35,8 @@
 
 #include "math/float3.h"
 
+#include "scene_object.h"
+
 namespace Baikal
 {
     class Iterator;
@@ -45,7 +47,7 @@ namespace Baikal
      
      \details Base class for all CPU side material supported by the renderer.
      */
-    class Material
+    class Material : public SceneObject
     {
     public:
         // Material input type
