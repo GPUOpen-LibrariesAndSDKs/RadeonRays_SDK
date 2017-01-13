@@ -263,17 +263,20 @@ namespace Baikal
         {
             // Evaluate data size
             size_t datasize = 0;
+            int alignment = 16;
             for (auto iter = scene.textures_.cbegin(); iter != scene.textures_.cend(); ++iter)
             {
+                if (datasize % alignment != 0)
+                    datasize += alignment - datasize % alignment;
                 datasize += iter->size;
             }
-
             // Texture descriptors
             out.textures = m_context.CreateBuffer<Scene::Texture>(scene.textures_.size(), CL_MEM_READ_ONLY);
             m_vidmem_usage += scene.textures_.size() * sizeof(Scene::Texture);
 
             // Texture data
             out.texturedata = m_context.CreateBuffer<char>(datasize, CL_MEM_READ_ONLY);
+            m_vidmem_usage += datasize;
 
             // Map both buffers
             Scene::Texture* mappeddesc = nullptr;
@@ -297,7 +300,6 @@ namespace Baikal
 
                 // Write data into the buffer
                 memcpy(mappeddata, scene.texturedata_[texture.dataoffset].get(), texture.size);
-                m_vidmem_usage += texture.size;
 
                 // Adjust offset in the texture
                 texture.dataoffset = current_offset;
@@ -313,6 +315,14 @@ namespace Baikal
 
                 // Adjust descriptor pointer
                 ++mappeddesc;
+
+                //alignment
+                uintptr_t shift = alignment - (uintptr_t)mappeddata % alignment;
+                if (shift != alignment)
+                {
+                    mappeddata += shift;
+                    current_offset += shift;
+                }
             }
 
             m_context.UnmapBuffer(0, out.textures, mappeddesc_orig).Wait();
