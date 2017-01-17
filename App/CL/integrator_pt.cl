@@ -782,8 +782,8 @@ __kernel void ShadeBackground(
         // In case of a miss
         if (isects[globalid].shapeid < 0 && Path_IsAlive(path))
         {
-            //float3 t = Path_GetThroughput(path);
-            //output[pixelidx].xyz += REASONABLE_RADIANCE(envmapmul * Texture_SampleEnvMap(rays[globalid].d.xyz, TEXTURE_ARGS_IDX(envmapidx)) * t);
+            float3 t = Path_GetThroughput(path);
+            output[pixelidx].xyz += REASONABLE_RADIANCE(envmapmul * Texture_SampleEnvMap(rays[globalid].d.xyz, TEXTURE_ARGS_IDX(envmapidx)) * t);
         }
     }
 }

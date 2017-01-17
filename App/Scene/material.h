@@ -116,11 +116,6 @@ namespace Baikal
         // Set two-sidedness
         virtual void SetTwoSided(bool twosided);
         
-        // Check if material state has changed
-        virtual bool IsDirty() const;
-        // Set dirty state
-        virtual void SetDirty(bool dirty) const;
-        
     protected:
         // Register specific input
         void RegisterInput(std::string const& name, std::string const& desc, std::set<InputType>&& supported_types);
@@ -134,8 +129,6 @@ namespace Baikal
         using InputMap = std::map<std::string, Input>;
         // Input map
         InputMap m_inputs;
-        // Dirty flag
-        mutable bool m_dirty;
         // Sidedness flag
         bool m_twosided;
     };

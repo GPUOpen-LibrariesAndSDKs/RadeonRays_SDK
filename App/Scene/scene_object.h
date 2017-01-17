@@ -33,14 +33,40 @@ namespace Baikal
     class SceneObject
     {
     public:
-        SceneObject() = default;
+        // Constructor
+        SceneObject();
+        // Destructor
         virtual ~SceneObject() = 0;
+        
+        // Check if the object has been changed since last reset
+        virtual bool IsDirty() const;
+        // Set dirty flag
+        virtual void SetDirty(bool dirty) const;
         
         SceneObject(SceneObject const&) = delete;
         SceneObject& operator = (SceneObject const&) = delete;
+        
+    private:
+        mutable bool m_dirty;
+        
     };
+    
+    inline SceneObject::SceneObject()
+    : m_dirty(false)
+    {
+    }
     
     inline SceneObject::~SceneObject()
     {
+    }
+    
+    inline bool SceneObject::IsDirty() const
+    {
+        return m_dirty;
+    }
+    
+    inline void SceneObject::SetDirty(bool dirty) const
+    {
+        m_dirty = dirty;
     }
 }

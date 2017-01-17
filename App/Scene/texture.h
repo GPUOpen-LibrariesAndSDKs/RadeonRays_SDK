@@ -56,7 +56,7 @@ namespace Baikal
         };
         
         // Constructor
-        // Note, that texture takes ownership of data array
+        // Note, that texture takes ownership of its data array
         Texture(char const* data, RadeonRays::int2 size, Format format);
         // Destructor (the data is destroyed as well)
         virtual ~Texture();
@@ -69,10 +69,17 @@ namespace Baikal
         virtual Format GetFormat() const;
         // Get data size in bytes
         virtual std::size_t GetSizeInBytes() const;
+        
+        // Disallow copying
+        Texture(Texture const&) = delete;
+        Texture& operator = (Texture const&) = delete;
     
     private:
+        // Image data
         std::unique_ptr<char const[]> m_data;
+        // Image dimensions
         RadeonRays::int2 m_size;
+        // Format
         Format m_format;
     };
     

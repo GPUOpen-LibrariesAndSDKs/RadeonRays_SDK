@@ -34,17 +34,29 @@ namespace Baikal
 {
     class Texture;
     
+    /**
+     \brief Interface for image loading and writing
+     
+     ImageIO is responsible for texture loading from disk and keeping track of image reuse.
+     */
     class ImageIo
     {
     public:
+        // Create default image IO
+        static ImageIo* CreateImageIo();
+        
+        // Constructor
         ImageIo() = default;
+        // Destructor
         ~ImageIo() = default;
         
+        // Load texture from file
         virtual Texture* LoadImage(std::string const& filename) const = 0;
         
+        // Disallow copying
         ImageIo(ImageIo const&) = delete;
         ImageIo& operator = (ImageIo const&) = delete;
     };
     
-    ImageIo* CreateImageIo();
+
 }

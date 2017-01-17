@@ -745,6 +745,17 @@ namespace Baikal
                     clw_material->ni = 1.f;
                 }
                 
+                value = material->GetInputValue("roughness");
+                
+                if (value.type == Material::InputType::kFloat4)
+                {
+                    clw_material->ns = value.float_value.x;
+                }
+                else
+                {
+                    clw_material->ns = 0.99f;
+                }
+                
                 break;
             }
              

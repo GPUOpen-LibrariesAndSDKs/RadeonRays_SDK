@@ -21,7 +21,7 @@
  ********************************************************************/
 
 /**
- \file scene_loader.h
+ \file scene_io.h
  \author Dmitry Kozlov
  \version 1.0
  \brief Contains a class representing material
@@ -34,5 +34,22 @@ namespace Baikal
 {
     class Scene1;
     
-    Scene1* LoadFromObj(std::string const& filename, std::string const& basepath);
+    class SceneIo
+    {
+    public:
+        static SceneIo* CreateSceneIoObj();
+        static SceneIo* CreateSceneIoTest();
+        
+        SceneIo() = default;
+        virtual ~SceneIo() = 0;
+        
+        virtual Scene1* LoadScene(std::string const& filename, std::string const& basepath) const = 0;
+        
+        SceneIo(SceneIo const&) = delete;
+        SceneIo& operator = (SceneIo const&) = delete;
+    };
+    
+    inline SceneIo::~SceneIo()
+    {
+    }
 }

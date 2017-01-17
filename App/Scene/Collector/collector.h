@@ -57,7 +57,6 @@ namespace Baikal
     class Collector
     {
     public:
-        
         using ExpandFunc = std::function<std::set<void const*>(void const*)>;
         using ChangedFunc = std::function<bool(void const*)>;
         using FinalizeFunc = std::function<void(void const*)>;

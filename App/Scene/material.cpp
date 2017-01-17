@@ -50,8 +50,7 @@ namespace Baikal
     
     
     Material::Material()
-    : m_dirty(true)
-    , m_twosided(false)
+    : m_twosided(false)
     {
     }
     
@@ -235,16 +234,6 @@ namespace Baikal
         SetDirty(true);
     }
     
-    bool Material::IsDirty() const
-    {
-        return m_dirty;
-    }
-    
-    void Material::SetDirty(bool dirty) const
-    {
-        m_dirty = dirty;
-    }
-    
     SingleBxdf::SingleBxdf(BxdfType type)
     : m_type(type)
     {
@@ -252,6 +241,7 @@ namespace Baikal
         RegisterInput("normal", "Normal map", {InputType::kTexture});
         RegisterInput("ior", "Index of refraction", {InputType::kFloat4});
         RegisterInput("fresnel", "Fresnel flag", {InputType::kFloat4});
+        RegisterInput("roughness", "Roughness", {InputType::kFloat4});
         
         SetInputValue("albedo", RadeonRays::float4(0.7f, 0.7f, 0.7f, 1.f));
     }

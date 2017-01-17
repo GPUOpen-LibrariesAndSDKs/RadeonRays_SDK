@@ -71,16 +71,17 @@ namespace Baikal
     class EmptyIterator : public Iterator
     {
     public:
+        // Constructor
         EmptyIterator() = default;
-        
+        // Destructor
         ~EmptyIterator() = default;
-        
+        // EmptyIterator is never valid
         bool IsValid() const override { return false; }
-        
+        // Nothing to go to
         void Next() override {}
-        
+        // Dereferencing always returns nullptr
         void const* Item() const override { return nullptr; }
-        
+        // Nothing to reset
         void Reset() override {}
     };
     
@@ -141,6 +142,7 @@ namespace Baikal
             Reset();
         }
         
+        // Check if we reached end
         bool IsValid() const override
         {
             return m_cur != m_end;

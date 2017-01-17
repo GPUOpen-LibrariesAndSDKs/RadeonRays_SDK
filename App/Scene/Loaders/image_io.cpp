@@ -85,7 +85,7 @@ namespace Baikal
         return new Texture(texturedata, RadeonRays::int2(spec.width, spec.height), fmt);
     }
     
-    ImageIo* CreateImageIo()
+    ImageIo* ImageIo::CreateImageIo()
     {
         return new Oiio();
     }

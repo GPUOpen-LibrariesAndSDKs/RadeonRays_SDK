@@ -71,7 +71,7 @@ THE SOFTWARE.
 #include "CLW/clwoutput.h"
 #include "config_manager.h"
 #include "Scene/scene1.h"
-#include "Scene/Loaders/scene_loader.h"
+#include "Scene/Loaders/scene_io.h"
 
 Baikal::Scene1 scene;
 
@@ -81,8 +81,8 @@ using namespace RadeonRays;
 char const* kHelpMessage =
 "App [-p path_to_models][-f model_name][-b][-r][-ns number_of_shadow_rays][-ao ao_radius][-w window_width][-h window_height][-nb number_of_indirect_bounces]";
 char const* g_path =
-"../Resources/CornellBox";
-char const* g_modelname = "orig.objm";
+"../Resources/be";
+char const* g_modelname = "Energia-Buran.obj";
 char const* g_envmapname = "../Resources/Textures/studio015.hdr";
 
 std::unique_ptr<ShaderManager>    g_shader_manager;
@@ -114,7 +114,6 @@ float2 g_camera_zcap = float2(0.0f, 100000.f);
 float g_camera_focal_length = 0.035f; // 35mm lens
 float g_camera_focus_distance = 0.f;
 float g_camera_aperture = 0.f;
-
 
 bool g_recording_enabled = false;
 int g_frame_count = 0;
@@ -345,7 +344,10 @@ void InitData()
     basepath += "/";
     std::string filename = basepath + g_modelname;
 
-    g_scene.reset(Baikal::LoadFromObj(filename, basepath));
+    {
+        std::unique_ptr<Baikal::SceneIo> scene_io(Baikal::SceneIo::CreateSceneIoTest());
+        g_scene.reset(scene_io->LoadScene(/*filename*/"sphere+ibl", basepath));
+    }
 
     g_camera.reset(new Baikal::PerspectiveCamera(
                                              g_camera_pos
