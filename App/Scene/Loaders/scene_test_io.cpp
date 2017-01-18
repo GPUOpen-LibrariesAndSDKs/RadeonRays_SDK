@@ -280,6 +280,53 @@ namespace Baikal
             scene->AttachAutoreleaseObject(mix);
             
         }
+        else if (filename == "sphere+plane+ibl")
+        {
+            auto mesh = CreateSphere(64, 32, 2.f, float3(0.f, 2.2f, 0.f));
+            scene->AttachShape(mesh);
+            scene->AttachAutoreleaseObject(mesh);
+            
+            SingleBxdf* green = new SingleBxdf(SingleBxdf::BxdfType::kLambert);
+            green->SetInputValue("albedo", 2.f * float4(0.1f, 0.2f, 0.1f, 1.f));
+            
+            SingleBxdf* spec = new SingleBxdf(SingleBxdf::BxdfType::kMicrofacetGGX);
+            spec->SetInputValue("albedo", float4(0.9f, 0.9f, 0.9f, 1.f));
+            spec->SetInputValue("roughness", float4(0.02f, 0.02f, 0.02f, 1.f));
+            
+            MultiBxdf* mix = new MultiBxdf(MultiBxdf::Type::kFresnelBlend);
+            mix->SetInputValue("base_material", green);
+            mix->SetInputValue("top_material", spec);
+            mix->SetInputValue("ior", float4(3.33f, 3.33f, 3.33f, 3.33f));
+            
+            mesh->SetMaterial(mix);
+            
+            Mesh* floor = CreateQuad(
+                                     {
+                                         RadeonRays::float3(-8, 0, -8),
+                                         RadeonRays::float3(8, 0, -8),
+                                         RadeonRays::float3(8, 0, 8),
+                                         RadeonRays::float3(-8, 0, 8),
+                                     }
+                                     , false);
+            scene->AttachShape(floor);
+            scene->AttachAutoreleaseObject(floor);
+            
+            floor->SetMaterial(green);
+            
+            Texture* ibl_texture = image_io->LoadImage("../Resources/Textures/studio015.hdr");
+            scene->AttachAutoreleaseObject(ibl_texture);
+            
+            ImageBasedLight* ibl = new ImageBasedLight();
+            ibl->SetTexture(ibl_texture);
+            ibl->SetMultiplier(1.f);
+            scene->AttachLight(ibl);
+            scene->AttachAutoreleaseObject(ibl);
+            
+            scene->AttachAutoreleaseObject(green);
+            scene->AttachAutoreleaseObject(spec);
+            scene->AttachAutoreleaseObject(mix);
+            
+        }
         
         return scene;
     }

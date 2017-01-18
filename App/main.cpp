@@ -346,7 +346,7 @@ void InitData()
 
     {
         std::unique_ptr<Baikal::SceneIo> scene_io(Baikal::SceneIo::CreateSceneIoTest());
-        g_scene.reset(scene_io->LoadScene("sphere+plane+area", basepath));
+        g_scene.reset(scene_io->LoadScene("sphere+plane+ibl", basepath));
     }
 
     g_camera.reset(new Baikal::PerspectiveCamera(
