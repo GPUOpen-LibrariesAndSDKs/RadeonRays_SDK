@@ -24,7 +24,7 @@
  \file scene_io.h
  \author Dmitry Kozlov
  \version 1.0
- \brief Contains a class representing material
+ \brief Contains an interface for scene loading
  */
 #pragma once
 
@@ -34,17 +34,28 @@ namespace Baikal
 {
     class Scene1;
     
+    /**
+     \brief Interface for scene loading
+     
+     SceneIO implementation is responsible for translation of various scene formats into Baikal.
+     */
     class SceneIo
     {
     public:
+        // Create OBJ scene loader
         static SceneIo* CreateSceneIoObj();
+        // Create test scene loader
         static SceneIo* CreateSceneIoTest();
         
+        // Constructor
         SceneIo() = default;
+        // Destructor
         virtual ~SceneIo() = 0;
         
+        // Load the scene from file using resourse base path
         virtual Scene1* LoadScene(std::string const& filename, std::string const& basepath) const = 0;
         
+        // Disallow copying
         SceneIo(SceneIo const&) = delete;
         SceneIo& operator = (SceneIo const&) = delete;
     };
