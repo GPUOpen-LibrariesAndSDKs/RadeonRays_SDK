@@ -21,10 +21,10 @@
  ********************************************************************/
 
 /**
- \file scene_object.h
+ \file material_io.h
  \author Dmitry Kozlov
  \version 1.0
- \brief Contains base interface for scene graph objects
+ \brief Contains an interface for material input & output
  */
 #pragma once
 
@@ -32,58 +32,33 @@
 
 namespace Baikal
 {
-    class SceneObject
+    class Scene1;
+    
+    /**
+     \brief Interface for material loading and writing
+     
+     MaterialIO is responsible for material loading from disk.
+     */
+    class MaterialIo
     {
     public:
+        // Create XML based material IO
+        static MaterialIo* CreateMaterialIoXML();
+        
         // Constructor
-        SceneObject();
+        MaterialIo() = default;
         // Destructor
-        virtual ~SceneObject() = 0;
+        virtual ~MaterialIo() = 0;
         
-        // Check if the object has been changed since last reset
-        virtual bool IsDirty() const;
-        // Set dirty flag
-        virtual void SetDirty(bool dirty) const;
+        // Save materials from scene into a file
+        virtual void SaveMaterials(std::string const& filename, Scene1 const& scene) = 0;
         
-        // Set & get name
-        virtual void SetName(std::string const& name);
-        virtual std::string GetName() const;
-        
-        SceneObject(SceneObject const&) = delete;
-        SceneObject& operator = (SceneObject const&) = delete;
-        
-    private:
-        mutable bool m_dirty;
-        
-        std::string m_name;
+        // Disallow copying
+        MaterialIo(MaterialIo const&) = delete;
+        MaterialIo& operator = (MaterialIo const&) = delete;
     };
     
-    inline SceneObject::SceneObject()
-    : m_dirty(false)
+    inline MaterialIo::~MaterialIo()
     {
-    }
-    
-    inline SceneObject::~SceneObject()
-    {
-    }
-    
-    inline bool SceneObject::IsDirty() const
-    {
-        return m_dirty;
-    }
-    
-    inline void SceneObject::SetDirty(bool dirty) const
-    {
-        m_dirty = dirty;
-    }
-    
-    inline std::string SceneObject::GetName() const
-    {
-        return m_name;
-    }
-    
-    inline void SceneObject::SetName(std::string const& name)
-    {
-        m_name = name;
     }
 }

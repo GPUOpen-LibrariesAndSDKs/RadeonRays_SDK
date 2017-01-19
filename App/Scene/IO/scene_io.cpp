@@ -55,30 +55,93 @@ namespace Baikal
         }
         else
         {
-            // Otherwise create lambert
-            material = new SingleBxdf(SingleBxdf::BxdfType::kLambert);
-
-            // Set albedo
-            if (!mat.diffuse_texname.empty())
+            auto s = RadeonRays::float3(mat.specular[0], mat.specular[1], mat.specular[2]);
+            
+            if (s.sqnorm() > 0 || !mat.specular_texname.empty())
             {
-                auto texture = image_io.LoadImage(basepath + "/" + mat.diffuse_texname);
-                material->SetInputValue("albedo", texture);
-                scene.AttachAutoreleaseObject(texture);
+                // Otherwise create lambert
+                material = new MultiBxdf(MultiBxdf::Type::kFresnelBlend);
+                material->SetInputValue("ior", RadeonRays::float4(1.5f, 1.5f, 1.5f, 1.5f));
+                
+                Material* diffuse = new SingleBxdf(SingleBxdf::BxdfType::kLambert);
+                Material* specular = new SingleBxdf(SingleBxdf::BxdfType::kMicrofacetGGX);
+                
+                specular->SetInputValue("roughness", 0.01f);
+                
+                // Set albedo
+                if (!mat.diffuse_texname.empty())
+                {
+                    auto texture = image_io.LoadImage(basepath + "/" + mat.diffuse_texname);
+                    diffuse->SetInputValue("albedo", texture);
+                    scene.AttachAutoreleaseObject(texture);
+                }
+                else
+                {
+                    diffuse->SetInputValue("albedo", RadeonRays::float3(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]));
+                }
+                
+                // Set albedo
+                if (!mat.specular_texname.empty())
+                {
+                    auto texture = image_io.LoadImage(basepath + "/" + mat.specular_texname);
+                    specular->SetInputValue("albedo", texture);
+                    scene.AttachAutoreleaseObject(texture);
+                }
+                else
+                {
+                    specular->SetInputValue("albedo", s);
+                }
+                
+                // Set normal
+                if (!mat.normal_texname.empty())
+                {
+                    auto texture = image_io.LoadImage(basepath + "/" + mat.normal_texname);
+                    diffuse->SetInputValue("normal", texture);
+                    specular->SetInputValue("normal", texture);
+                    scene.AttachAutoreleaseObject(texture);
+                }
+                
+                diffuse->SetName(mat.name + "-diffuse");
+                specular->SetName(mat.name + "-specular");
+                
+                material->SetInputValue("base_material", diffuse);
+                material->SetInputValue("top_material", specular);
+                
+                scene.AttachAutoreleaseObject(diffuse);
+                scene.AttachAutoreleaseObject(specular);
             }
             else
             {
-                material->SetInputValue("albedo", RadeonRays::float3(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]));
-            }
-
-            // Set normal
-            if (!mat.normal_texname.empty())
-            {
-                auto texture = image_io.LoadImage(basepath + "/" + mat.normal_texname);
-                material->SetInputValue("normal", texture);
-                scene.AttachAutoreleaseObject(texture);
+                // Otherwise create lambert
+                Material* diffuse = new SingleBxdf(SingleBxdf::BxdfType::kLambert);
+    
+                // Set albedo
+                if (!mat.diffuse_texname.empty())
+                {
+                    auto texture = image_io.LoadImage(basepath + "/" + mat.diffuse_texname);
+                    diffuse->SetInputValue("albedo", texture);
+                    scene.AttachAutoreleaseObject(texture);
+                }
+                else
+                {
+                    diffuse->SetInputValue("albedo", RadeonRays::float3(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]));
+                }
+                
+                // Set normal
+                if (!mat.normal_texname.empty())
+                {
+                    auto texture = image_io.LoadImage(basepath + "/" + mat.normal_texname);
+                    diffuse->SetInputValue("normal", texture);
+                    scene.AttachAutoreleaseObject(texture);
+                }
+                
+                material = diffuse;
             }
         }
-
+        
+        // Set material name
+        material->SetName(mat.name);
+        
         // Disable normal flip
         material->SetTwoSided(false);
         scene.AttachAutoreleaseObject(material);

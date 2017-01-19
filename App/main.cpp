@@ -71,7 +71,8 @@ THE SOFTWARE.
 #include "CLW/clwoutput.h"
 #include "config_manager.h"
 #include "Scene/scene1.h"
-#include "Scene/Loaders/scene_io.h"
+#include "Scene/IO/scene_io.h"
+#include "Scene/IO/material_io.h"
 
 Baikal::Scene1 scene;
 
@@ -345,8 +346,11 @@ void InitData()
     std::string filename = basepath + g_modelname;
 
     {
-        std::unique_ptr<Baikal::SceneIo> scene_io(Baikal::SceneIo::CreateSceneIoTest());
-        g_scene.reset(scene_io->LoadScene("sphere+plane+ibl", basepath));
+        std::unique_ptr<Baikal::SceneIo> scene_io(Baikal::SceneIo::CreateSceneIoObj());
+        g_scene.reset(scene_io->LoadScene(filename, basepath));
+        
+        //std::unique_ptr<Baikal::MaterialIo> material_io(Baikal::MaterialIo::CreateMaterialIoXML());
+        //material_io->SaveMaterials("materials.xml", *g_scene);
     }
 
     g_camera.reset(new Baikal::PerspectiveCamera(

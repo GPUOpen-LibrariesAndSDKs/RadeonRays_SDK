@@ -9,6 +9,7 @@ namespace Baikal
     {
     public:
         Texture* LoadImage(std::string const& filename) const override;
+        void SaveImage(std::string const& filename, Texture const* texture) const override;
     };
     
     static Texture::Format GetTextureForemat(OIIO_NAMESPACE::ImageSpec const& spec)
@@ -17,10 +18,22 @@ namespace Baikal
         
         if (spec.format.basetype == TypeDesc::UINT8)
             return Texture::Format::kRgba8;
-        if (spec.format.basetype == TypeDesc::HALF)
+        else if (spec.format.basetype == TypeDesc::HALF)
             return Texture::Format::kRgba16;
         else
             return Texture::Format::kRgba32;
+    }
+    
+    static OIIO_NAMESPACE::TypeDesc GetTextureForemat(Texture::Format fmt)
+    {
+        OIIO_NAMESPACE_USING
+        
+        if (fmt == Texture::Format::kRgba8)
+            return  TypeDesc::UINT8;
+        else if (fmt == Texture::Format::kRgba16)
+            return TypeDesc::HALF;
+        else
+            return TypeDesc::FLOAT;
     }
     
     Texture* Oiio::LoadImage(const std::string &filename) const
@@ -86,6 +99,30 @@ namespace Baikal
 
         //
         return tex;
+    }
+    
+    void Oiio::SaveImage(std::string const& filename, Texture const* texture) const
+    {
+        OIIO_NAMESPACE_USING;
+        
+        ImageOutput* out = ImageOutput::create(filename);
+        
+        if (!out)
+        {
+            throw std::runtime_error("Can't create image file on disk");
+        }
+        
+        auto dim = texture->GetSize();
+        auto fmt = GetTextureForemat(texture->GetFormat());
+        
+        ImageSpec spec(dim.x, dim.y, 4, fmt);
+        
+        out->open(filename, spec);
+        
+        out->write_image(fmt, texture->GetData());
+
+        out->close();
+        
     }
     
     ImageIo* ImageIo::CreateImageIo()

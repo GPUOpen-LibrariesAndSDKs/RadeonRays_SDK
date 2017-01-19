@@ -268,6 +268,7 @@ namespace Baikal
         RegisterInput("base_material", "Base material", {InputType::kMaterial});
         RegisterInput("top_material", "Top material", {InputType::kMaterial});
         RegisterInput("ior", "Index of refraction", {InputType::kFloat4});
+        RegisterInput("weight", "Blend weight", {InputType::kFloat4});
     }
     
     MultiBxdf::Type MultiBxdf::GetType() const

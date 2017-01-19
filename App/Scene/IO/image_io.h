@@ -52,6 +52,7 @@ namespace Baikal
         
         // Load texture from file
         virtual Texture* LoadImage(std::string const& filename) const = 0;
+        virtual void SaveImage(std::string const& filename, Texture const* texture) const = 0;
         
         // Disallow copying
         ImageIo(ImageIo const&) = delete;
