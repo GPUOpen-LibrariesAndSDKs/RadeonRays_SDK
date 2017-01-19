@@ -77,12 +77,15 @@ namespace Baikal
             // Close handle
             input->close();
         }
-        
+
+        // Return new texture
+        auto tex =  new Texture(texturedata, RadeonRays::int2(spec.width, spec.height), fmt);
+
         // Cleanup
         delete input;
-        
-        // Return new texture
-        return new Texture(texturedata, RadeonRays::int2(spec.width, spec.height), fmt);
+
+        //
+        return tex;
     }
     
     ImageIo* ImageIo::CreateImageIo()

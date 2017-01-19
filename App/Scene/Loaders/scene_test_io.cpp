@@ -8,6 +8,9 @@
 
 #include <vector>
 
+#define _USE_MATH_DEFINES
+#include <math.h>
+
 namespace Baikal
 {
     // Create fake test IO
@@ -39,18 +42,18 @@ namespace Baikal
         
         auto t = 0U;
         for(auto j = 1U; j < lat - 1; j++)
-            for(auto i = 0; i < lon; i++)
+            for(auto i = 0U; i < lon; i++)
             {
-                float theta = float(j) / (lat - 1) * M_PI;
-                float phi   = float(i) / (lon - 1 ) * M_PI * 2;
+                float theta = float(j) / (lat - 1) * (float)M_PI;
+                float phi   = float(i) / (lon - 1 ) * (float)M_PI * 2;
                 vertices[t].x =  r * sinf(theta) * cosf(phi) + c.x;
                 vertices[t].y =  r * cosf(theta) + c.y;
                 vertices[t].z = r * -sinf(theta) * sinf(phi) + c.z;
                 normals[t].x = sinf(theta) * cosf(phi);
                 normals[t].y = cosf(theta);
                 normals[t].z = -sinf(theta) * sinf(phi);
-                uvs[t].x = phi / (2 * M_PI);
-                uvs[t].y = theta / (M_PI);
+                uvs[t].x = phi / (2 * (float)M_PI);
+                uvs[t].y = theta / ((float)M_PI);
                 ++t;
             }
         

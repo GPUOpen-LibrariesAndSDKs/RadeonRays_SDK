@@ -154,7 +154,7 @@ namespace Baikal
                                   {
                                       textures.emplace(tex_iter->ItemAs<Texture const>());
                                   }
-                                  
+
                                   // Return resulting set
                                   return textures;
                               });
@@ -247,7 +247,7 @@ namespace Baikal
                 if (dirty & Scene1::kLights || lights_changed)
                 {
                     UpdateLights(scene, mat_collector, tex_collector, out);
-                    
+
                     // Drop dirty flags for lights
                     for (light_iter->Reset(); light_iter->IsValid(); light_iter->Next())
                     {
@@ -680,7 +680,7 @@ namespace Baikal
         }
 
         // Unmap material buffer
-        m_context.UnmapBuffer(0, out.textures, textures);
+        m_context.UnmapBuffer(0, out.texturedata, data);
 
     }
     
