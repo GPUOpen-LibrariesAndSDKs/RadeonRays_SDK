@@ -195,6 +195,7 @@ namespace Baikal
     inline void Light::SetPosition(RadeonRays::float3 const& p)
     {
         m_p = p;
+        SetDirty(true);
     }
     
     inline RadeonRays::float3 Light::GetDirection() const
@@ -205,6 +206,7 @@ namespace Baikal
     inline void Light::SetDirection(RadeonRays::float3 const& d)
     {
         m_d = normalize(d);
+        SetDirty(true);
     }
     
     inline Iterator* Light::CreateTextureIterator() const
@@ -220,11 +222,13 @@ namespace Baikal
     inline void Light::SetEmittedRadiance(RadeonRays::float3 const& e)
     {
         m_e = e;
+        SetDirty(true);
     }
     
     inline void SpotLight::SetConeShape(RadeonRays::float2 angles)
     {
         m_angles = angles;
+        SetDirty(true);
     }
     
     inline RadeonRays::float2 SpotLight::GetConeShape() const
@@ -235,6 +239,7 @@ namespace Baikal
     inline void ImageBasedLight::SetTexture(Texture const* texture)
     {
         m_texture = texture;
+        SetDirty(true);
     }
     
     inline Texture const* ImageBasedLight::GetTexture() const
@@ -266,6 +271,7 @@ namespace Baikal
     inline void ImageBasedLight::SetMultiplier(float m)
     {
         m_multiplier = m;
+        SetDirty(true);
     }
     
     inline Iterator* ImageBasedLight::CreateTextureIterator() const

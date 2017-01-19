@@ -112,7 +112,7 @@ float3 g_camera_up = float3(0.f, 1.f, 0.f);
 float2 g_camera_sensor_size = float2(0.036f, 0.024f);  // default full frame sensor 36x24 mm
 float2 g_camera_zcap = float2(0.0f, 100000.f);
 float g_camera_focal_length = 0.035f; // 35mm lens
-float g_camera_focus_distance = 0.f;
+float g_camera_focus_distance = 1.f;
 float g_camera_aperture = 0.f;
 
 bool g_recording_enabled = false;
@@ -450,9 +450,6 @@ void OnKey(int key, int x, int y)
     case GLUT_KEY_END:
         g_is_end_pressed = true;
         break;
-    case GLUT_KEY_F1:
-        g_mouse_delta = float2(0, 0);
-        break;
     case GLUT_KEY_F3:
         g_benchmark = true;
         break;
@@ -518,6 +515,138 @@ void OnKeyUp(int key, int x, int y)
     }
     default:
         break;
+    }
+}
+
+void OnLetterKey(unsigned char key, int x, int y)
+{
+    switch(key)
+    {
+        case 'w':
+        {
+            float focal_length = g_camera->GetFocalLength();
+            focal_length += 0.001f;
+            g_camera->SetFocalLength(focal_length);
+            
+            for (int i = 0; i < g_cfgs.size(); ++i)
+            {
+                g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
+            }
+            
+            break;
+        }
+    
+        case 's':
+        {
+            float focal_length = g_camera->GetFocalLength();
+            
+            if (focal_length > 0.f)
+            {
+                focal_length -= 0.001f;
+                g_camera->SetFocalLength(focal_length);
+            
+                for (int i = 0; i < g_cfgs.size(); ++i)
+                {
+                    g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
+                }
+            }
+            
+            break;
+        }
+            
+        case 'q':
+        {
+
+            float aperture = g_camera->GetAperture();
+            
+            if (aperture == 0.f)
+            {
+                g_camera->SetAperture(0.025f);
+            }
+            else
+            {
+                g_camera->SetAperture(0.0f);
+            }
+            
+            for (int i = 0; i < g_cfgs.size(); ++i)
+            {
+                g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
+            }
+            
+            break;
+        }
+            
+        case 'd':
+        {
+            float aperture = g_camera->GetAperture();
+            
+            if (aperture > 0.f)
+            {
+                aperture -= 0.001f;
+                g_camera->SetAperture(aperture);
+                
+                for (int i = 0; i < g_cfgs.size(); ++i)
+                {
+                    g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
+                }
+            }
+            
+            break;
+        }
+            
+        case 'a':
+        {
+            float aperture = g_camera->GetAperture();
+            
+            if (aperture < 0.2f)
+            {
+                aperture += 0.001f;
+                g_camera->SetAperture(aperture);
+                
+                for (int i = 0; i < g_cfgs.size(); ++i)
+                {
+                    g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
+                }
+            }
+            
+            break;
+        }
+            
+        case 'z':
+        {
+            float focus_dist = g_camera->GetFocusDistance();
+            
+            if (focus_dist > 0.f)
+            {
+                focus_dist -= 0.1f;
+                g_camera->SetFocusDistance(focus_dist);
+                
+                for (int i = 0; i < g_cfgs.size(); ++i)
+                {
+                    g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
+                }
+            }
+            
+            break;
+        }
+            
+        case 'x':
+        {
+            float focus_dist = g_camera->GetFocusDistance();
+            
+            focus_dist += 0.1f;
+            g_camera->SetFocusDistance(focus_dist);
+            
+            for (int i = 0; i < g_cfgs.size(); ++i)
+            {
+                g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
+            }
+            
+            break;
+        }
+
+        default:
+            break;
     }
 }
 
@@ -591,8 +720,6 @@ void Update()
 
     if (update)
     {
-        g_scene->SetDirtyFlag(Baikal::Scene1::kCamera);
-
         if (g_num_samples > -1)
         {
             g_samplecount = 0;
@@ -882,6 +1009,7 @@ int main(int argc, char * argv[])
 
         glutSpecialFunc(OnKey);
         glutSpecialUpFunc(OnKeyUp);
+        glutKeyboardFunc(OnLetterKey);
         glutMouseFunc(OnMouseButton);
         glutMotionFunc(OnMouseMove);
         glutIdleFunc(Update);

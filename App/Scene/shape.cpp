@@ -22,6 +22,8 @@ namespace Baikal
         std::copy(indices, indices + num_indices, m_indices.get());
         
         m_num_indices = num_indices;
+        
+        SetDirty(true);
     }
     
     std::size_t Mesh::GetNumIndices() const
@@ -45,6 +47,8 @@ namespace Baikal
         std::copy(vertices, vertices + num_vertices, m_vertices.get());
         
         m_num_vertices = num_vertices;
+        
+        SetDirty(true);
     }
     
     void Mesh::SetVertices(float const* vertices, std::size_t num_vertices)
@@ -64,6 +68,8 @@ namespace Baikal
         }
         
         m_num_vertices = num_vertices;
+        
+        SetDirty(true);
     }
     
     std::size_t Mesh::GetNumVertices() const
@@ -87,6 +93,8 @@ namespace Baikal
         std::copy(normals, normals + num_normals, m_normals.get());
         
         m_num_normals = num_normals;
+        
+        SetDirty(true);
     }
     
     void Mesh::SetNormals(float const* normals, std::size_t num_normals)
@@ -106,6 +114,8 @@ namespace Baikal
         }
         
         m_num_normals = num_normals;
+        
+        SetDirty(true);
     }
     
     std::size_t Mesh::GetNumNormals() const
@@ -129,6 +139,8 @@ namespace Baikal
         std::copy(uvs, uvs + num_uvs, m_uvs.get());
         
         m_num_uvs = num_uvs;
+        
+        SetDirty(true);
     }
     
     void Mesh::SetUVs(float const* uvs, std::size_t num_uvs)
@@ -146,6 +158,8 @@ namespace Baikal
         }
         
         m_num_uvs = num_uvs;
+        
+        SetDirty(true);
     }
     
     std::size_t Mesh::GetNumUVs() const

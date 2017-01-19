@@ -129,16 +129,19 @@ namespace Baikal
     inline void PerspectiveCamera::SetFocusDistance(float distance)
     {
         m_focus_distance = distance;
+        SetDirty(true);
     }
     
     inline void PerspectiveCamera::SetFocalLength(float length)
     {
         m_focal_length = length;
+        SetDirty(true);
     }
     
     inline void PerspectiveCamera::SetAperture(float aperture)
     {
         m_aperture = aperture;
+        SetDirty(true);
     }
     
     inline float PerspectiveCamera::GetFocusDistance() const
@@ -164,10 +167,13 @@ namespace Baikal
     inline void PerspectiveCamera::SetSensorSize(RadeonRays::float2 const& size)
     {
         m_dim = size;
+        SetDirty(true);
     }
+    
     inline void PerspectiveCamera::SetDepthRange(RadeonRays::float2 const& range)
     {
         m_zcap = range;
+        SetDirty(true);
     }
     
     inline RadeonRays::float2 PerspectiveCamera::GetDepthRange() const

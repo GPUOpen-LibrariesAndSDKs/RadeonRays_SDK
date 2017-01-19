@@ -179,8 +179,10 @@ namespace Baikal
             // Set scene as current
             m_current_scene = &scene;
             
+            // Drop all dirty flags for the scene
             scene.ClearDirtyFlags();
             
+            // Drop dirty flags for materials
             mat_collector.Finalize([](void const* item)
                                    {
                                        auto material = reinterpret_cast<Material const*>(item);
@@ -195,27 +197,103 @@ namespace Baikal
             // Exctract cached scene entry
             auto& out = iter->second;
             auto dirty = scene.GetDirtyFlags();
+            
+            // Check if we have valid camera
+            auto camera = scene.GetCamera();
+            
+            if (!camera)
+            {
+                throw std::runtime_error("No camera in the scene");
+            }
+            
+            // Check if camera parameters have been changed
+            auto camera_changed = camera->IsDirty();
 
             // Update camera if needed
-            if (dirty & Scene1::kCamera)
+            if (dirty & Scene1::kCamera || camera_changed)
             {
                 UpdateCamera(scene, mat_collector, tex_collector, out);
+                
+                // Drop camera dirty flag
+                camera->SetDirty(false);
             }
             
-            // Update lights if needed
-            if (dirty & Scene1::kLights)
             {
-                UpdateLights(scene, mat_collector, tex_collector, out);
+                // Check if we have lights in the scene
+                std::unique_ptr<Iterator> light_iter(scene.CreateLightIterator());
+                
+                if (!light_iter->IsValid())
+                {
+                    throw std::runtime_error("No lights in the scene");
+                }
+                
+                
+                // Check if light parameters have been changed
+                bool lights_changed = false;
+                
+                for (;light_iter->IsValid(); light_iter->Next())
+                {
+                    auto light = light_iter->ItemAs<Light const>();
+                    
+                    if (light->IsDirty())
+                    {
+                        lights_changed = true;
+                        break;
+                    }
+                }
+                
+                
+                // Update lights if needed
+                if (dirty & Scene1::kLights || lights_changed)
+                {
+                    UpdateLights(scene, mat_collector, tex_collector, out);
+                    
+                    // Drop dirty flags for lights
+                    for (light_iter->Reset(); light_iter->IsValid(); light_iter->Next())
+                    {
+                        auto light = light_iter->ItemAs<Light const>();
+                        
+                        light->SetDirty(false);
+                    }
+                }
             }
             
-            // Update shapes if needed
-            if (dirty & Scene1::kShapes)
             {
-                UpdateShapes(scene, mat_collector, tex_collector, out);
-            }
-            else if (dirty & Scene1::kShapeTransforms)
-            {
-                // TODO: this is not yet supported in the renderer
+                // Check if we have shapes in the scene
+                std::unique_ptr<Iterator> shape_iter(scene.CreateShapeIterator());
+                
+                if (!shape_iter->IsValid())
+                {
+                    throw std::runtime_error("No shapes in the scene");
+                }
+                
+                // Check if shape parameters have been changed
+                bool shapes_changed = false;
+                
+                for (;shape_iter->IsValid(); shape_iter->Next())
+                {
+                    auto shape = shape_iter->ItemAs<Shape const>();
+                    
+                    if (shape->IsDirty())
+                    {
+                        shapes_changed = true;
+                        break;
+                    }
+                }
+                
+                // Update shapes if needed
+                if (dirty & Scene1::kShapes || shapes_changed)
+                {
+                    UpdateShapes(scene, mat_collector, tex_collector, out);
+                    
+                    // Drop shape dirty flags
+                    for (;shape_iter->IsValid(); shape_iter->Next())
+                    {
+                        auto shape = shape_iter->ItemAs<Shape const>();
+                        
+                        shape->SetDirty(false);
+                    }
+                }
             }
             
             // If materials need an update, do it.
@@ -293,7 +371,6 @@ namespace Baikal
         
         // Unmap camera buffer
         m_context.UnmapBuffer(0, out.camera, data);
-        
     }
 
     void SceneTracker::UpdateShapes(Scene1 const& scene, Collector& mat_collector, Collector& tex_collector, ClwScene& out) const

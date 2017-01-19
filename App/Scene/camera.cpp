@@ -50,6 +50,7 @@ namespace Baikal
     void PerspectiveCamera::Rotate(float angle)
     {
         Rotate(float3(0.f, 1.f, 0.f), angle);
+        SetDirty(true);
     }
     
     void PerspectiveCamera::Rotate(float3 v, float angle)
@@ -76,30 +77,35 @@ namespace Baikal
         m_up = normalize(float3(cam_matrix.m00, cam_matrix.m01, cam_matrix.m02));
         m_right = normalize(float3(cam_matrix.m10, cam_matrix.m11, cam_matrix.m12));
         m_forward = normalize(float3(cam_matrix.m20, cam_matrix.m21, cam_matrix.m22));
+        SetDirty(true);
     }
     
     // Tilt camera
     void PerspectiveCamera::Tilt(float angle)
     {
         Rotate(m_right, angle);
+        SetDirty(true);
     }
     
     // Move along camera Z direction
     void PerspectiveCamera::MoveForward(float distance)
     {
         m_p += distance * m_forward;
+        SetDirty(true);
     }
     
     // Move along camera X direction
     void PerspectiveCamera::MoveRight(float distance)
     {
         m_p += distance * m_right;
+        SetDirty(true);
     }
     
     // Move along camera Y direction
     void PerspectiveCamera::MoveUp(float distance)
     {
         m_p += distance * m_up;
+        SetDirty(true);
     }
     
     RadeonRays::float3 PerspectiveCamera::GetForwardVector() const
@@ -155,6 +161,7 @@ namespace Baikal
         dir = rotate_vector(dir, rotation_quaternion(float3(0.f, 1.f, 0.f), angle));
         
         m_p = c - dir;
+        SetDirty(true);
     }
     
     void PerspectiveCamera::ArcballRotateVertically(float3 c, float angle)
@@ -184,5 +191,6 @@ namespace Baikal
         dir = rotate_vector(dir, rotation_quaternion(m_right, angle));
         
         m_p = c - dir;
+        SetDirty(true);
     }
 }
