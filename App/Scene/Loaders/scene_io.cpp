@@ -18,13 +18,74 @@ namespace Baikal
     public:
         // Load scene from file
         Scene1* LoadScene(std::string const& filename, std::string const& basepath) const override;
+    private:
+        Material const* TranslateMaterial(ImageIo const& image_io, tinyobj::material_t const& mat, std::string const& basepath, Scene1& scene) const;
+
     };
     
     SceneIo* SceneIo::CreateSceneIoObj()
     {
         return new SceneIoObj();
     }
-    
+
+
+    Material const* SceneIoObj::TranslateMaterial(ImageIo const& image_io, tinyobj::material_t const& mat, std::string const& basepath, Scene1& scene) const
+    {
+        RadeonRays::float3 emission(mat.emission[0], mat.emission[1], mat.emission[2]);
+
+        Material* material = nullptr;
+
+        // Check if this is emissive
+        if (emission.sqnorm() > 0)
+        {
+            // If yes create emissive brdf
+            material = new SingleBxdf(SingleBxdf::BxdfType::kEmissive);
+
+            // Set albedo
+            if (!mat.diffuse_texname.empty())
+            {
+                auto texture = image_io.LoadImage(basepath + "/" + mat.diffuse_texname);
+                material->SetInputValue("albedo", texture);
+                scene.AttachAutoreleaseObject(texture);
+            }
+            else
+            {
+                material->SetInputValue("albedo", emission);
+            }
+        }
+        else
+        {
+            // Otherwise create lambert
+            material = new SingleBxdf(SingleBxdf::BxdfType::kLambert);
+
+            // Set albedo
+            if (!mat.diffuse_texname.empty())
+            {
+                auto texture = image_io.LoadImage(basepath + "/" + mat.diffuse_texname);
+                material->SetInputValue("albedo", texture);
+                scene.AttachAutoreleaseObject(texture);
+            }
+            else
+            {
+                material->SetInputValue("albedo", RadeonRays::float3(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]));
+            }
+
+            // Set normal
+            if (!mat.normal_texname.empty())
+            {
+                auto texture = image_io.LoadImage(basepath + "/" + mat.normal_texname);
+                material->SetInputValue("normal", texture);
+                scene.AttachAutoreleaseObject(texture);
+            }
+        }
+
+        // Disable normal flip
+        material->SetTwoSided(false);
+        scene.AttachAutoreleaseObject(material);
+
+        return material;
+    }
+
     Scene1* SceneIoObj::LoadScene(std::string const& filename, std::string const& basepath) const
     {
         using namespace tinyobj;
@@ -47,56 +108,18 @@ namespace Baikal
         
         // Enumerate and translate materials
         // Keep track of emissive subset
-        std::set<Material*> emissives;
-        std::vector<Material*> materials(objmaterials.size());
+        std::set<Material const*> emissives;
+        std::vector<Material const*> materials(objmaterials.size());
         for (int i = 0; i < (int)objmaterials.size(); ++i)
         {
-            RadeonRays::float3 emission(objmaterials[i].emission[0], objmaterials[i].emission[1], objmaterials[i].emission[2]);
-            
-            // Check if this is emissive
-            if (emission.sqnorm() > 0)
+            // Translate material
+            materials[i] = TranslateMaterial(*image_io, objmaterials[i], basepath, *scene);
+
+            // Add to emissive subset if needed
+            if (materials[i]->HasEmission())
             {
-                // If yes create emissive brdf
-                materials[i] = new SingleBxdf(SingleBxdf::BxdfType::kEmissive);
-                
-                // Set albedo
-                if (!objmaterials[i].diffuse_texname.empty())
-                {
-                    auto texture = image_io->LoadImage(basepath + "/" + objmaterials[i].diffuse_texname);
-                    materials[i]->SetInputValue("albedo", texture);
-                    scene->AttachAutoreleaseObject(texture);
-                }
-                else
-                {
-                    materials[i]->SetInputValue("albedo", emission);
-                }
-                
-                // Insert into emissive set
                 emissives.insert(materials[i]);
             }
-            else
-            {
-                // Otherwise create lambert
-                materials[i] = new SingleBxdf(SingleBxdf::BxdfType::kLambert);
-            
-                // Set albedo
-                if (!objmaterials[i].diffuse_texname.empty())
-                {
-                    auto texture = image_io->LoadImage(basepath + "/" + objmaterials[i].diffuse_texname);
-                    materials[i]->SetInputValue("albedo", texture);
-                    scene->AttachAutoreleaseObject(texture);
-                }
-                else
-                {
-                    materials[i]->SetInputValue("albedo", RadeonRays::float3(objmaterials[i].diffuse[0], objmaterials[i].diffuse[1], objmaterials[i].diffuse[2]));
-                }
-            }
-            
-            // Disable normal flip
-            materials[i]->SetTwoSided(false);
-            
-            // Put into the pool of autoreleased objects
-            scene->AttachAutoreleaseObject(materials[i]);
         }
         
         // Enumerate all shapes in the scene

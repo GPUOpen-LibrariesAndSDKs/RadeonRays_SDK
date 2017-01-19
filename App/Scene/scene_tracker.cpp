@@ -681,7 +681,6 @@ namespace Baikal
 
         // Unmap material buffer
         m_context.UnmapBuffer(0, out.texturedata, data);
-
     }
     
     // Convert Material:: types to ClwScene:: types

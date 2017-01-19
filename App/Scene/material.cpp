@@ -256,6 +256,11 @@ namespace Baikal
         m_type = type;
         SetDirty(true);
     }
+
+    bool SingleBxdf::HasEmission() const
+    {
+        return m_type == BxdfType::kEmissive;
+    }
     
     MultiBxdf::MultiBxdf(Type type)
     : m_type(type)
@@ -275,4 +280,19 @@ namespace Baikal
         m_type = type;
         SetDirty(true);
     }
+
+    bool MultiBxdf::HasEmission() const
+    {
+        InputValue base = GetInputValue("base_material");
+        InputValue top = GetInputValue("base_material");
+
+        if (base.mat_value && base.mat_value->HasEmission())
+            return true;
+        if (top.mat_value && top.mat_value->HasEmission())
+            return true;
+
+        return false;
+    }
+
+
 }

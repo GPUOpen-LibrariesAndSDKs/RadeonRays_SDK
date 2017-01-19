@@ -41,7 +41,7 @@ namespace Baikal
 {
     class Iterator;
     class Texture;
-    
+
     /**
      \brief High level material interface
      
@@ -57,7 +57,7 @@ namespace Baikal
             kTexture,
             kMaterial
         };
-        
+
         // Input description
         struct InputInfo
         {
@@ -68,7 +68,7 @@ namespace Baikal
             // Set of supported types
             std::set<InputType> supported_types;
         };
-        
+
         // Input value description
         struct InputValue
         {
@@ -83,60 +83,68 @@ namespace Baikal
                 Material const* mat_value;
             };
         };
-        
+
         // Full input state
         struct Input
         {
             InputInfo info;
             InputValue value;
         };
-        
+
         // Constructor
         Material();
         // Destructor
         virtual ~Material() = 0;
-        
+
         // Iterator of dependent materials (plugged as inputs)
         virtual Iterator* CreateMaterialIterator() const;
         // Iterator of textures (plugged as inputs)
         virtual Iterator* CreateTextureIterator() const;
         // Iterator of inputs
         virtual Iterator* CreateInputIterator() const;
-        
+
         // Set input value
         // If specific data type is not supported throws std::runtime_error
         virtual void SetInputValue(std::string const& name, RadeonRays::float4 const& value);
         virtual void SetInputValue(std::string const& name, Texture const* texture);
         virtual void SetInputValue(std::string const& name, Material const* material);
-        
+
         virtual InputValue GetInputValue(std::string const& name) const;
-        
+
         // Check if material is two-sided (normal direction does not matter and can be reversed)
         virtual bool IsTwoSided() const;
         // Set two-sidedness
         virtual void SetTwoSided(bool twosided);
-        
+
+        // Check if material has emissive components
+        virtual bool HasEmission() const;
+
     protected:
         // Register specific input
         void RegisterInput(std::string const& name, std::string const& desc, std::set<InputType>&& supported_types);
         // Wipe out all the inputs
         void ClearInputs();
-    
+
     private:
 
         class InputIterator;
-    
+
         using InputMap = std::map<std::string, Input>;
         // Input map
         InputMap m_inputs;
         // Sidedness flag
         bool m_twosided;
     };
-    
+
     inline Material::~Material()
     {
     }
-    
+
+    inline bool Material::HasEmission() const
+    {
+        return false;
+    }
+
     class SingleBxdf : public Material
     {
     public:
@@ -155,12 +163,15 @@ namespace Baikal
             kMicrofacetRefractionGGX,
             kMicrofacetRefractionBeckmann
         };
-        
+
         SingleBxdf(BxdfType type);
-        
+
         virtual BxdfType GetBxdfType() const;
         virtual void SetBxdfType(BxdfType type);
-        
+
+        // Check if material has emissive components
+        bool HasEmission() const override;
+
     private:
         BxdfType m_type;
     };
@@ -174,11 +185,14 @@ namespace Baikal
             kFresnelBlend,
             kMix
         };
-        
+
         MultiBxdf(Type type);
-        
+
         virtual Type GetType() const;
         virtual void SetType(Type type);
+
+        // Check if material has emissive components
+        bool HasEmission() const override;
     
     private:
         Type m_type;
