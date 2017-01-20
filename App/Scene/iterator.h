@@ -50,7 +50,7 @@ namespace Baikal
         
         // Retrieve underlying object
         virtual void const* Item() const = 0;
-        
+
         // Sets the iterator into its initial state (beginning of the sequence)
         virtual void Reset() = 0;
         

@@ -55,7 +55,7 @@ namespace Baikal
         }
         else
         {
-            auto s = RadeonRays::float3(mat.specular[0], mat.specular[1], mat.specular[2]);
+            auto s = RadeonRays::float3(1.f, 1.f, 1.f);// RadeonRays::float3(mat.specular[0], mat.specular[1], mat.specular[2]);
             
             if (s.sqnorm() > 0 || !mat.specular_texname.empty())
             {
@@ -143,7 +143,7 @@ namespace Baikal
         material->SetName(mat.name);
         
         // Disable normal flip
-        material->SetTwoSided(false);
+        material->SetTwoSided(true);
         scene.AttachAutoreleaseObject(material);
 
         return material;
@@ -240,15 +240,14 @@ namespace Baikal
         }
         
         // TODO: temporary code, add IBL
-        Texture* ibl_texture = image_io->LoadImage("../Resources/Textures/studio015.hdr");
+        Texture* ibl_texture = image_io->LoadImage("../Resources/Textures/space.jpg");
         scene->AttachAutoreleaseObject(ibl_texture);
         
         ImageBasedLight* ibl = new ImageBasedLight();
         ibl->SetTexture(ibl_texture);
         ibl->SetMultiplier(1.f);
         scene->AttachAutoreleaseObject(ibl);
-        
-        
+
         // TODO: temporary code to add directional light
         DirectionalLight* light = new DirectionalLight();
         light->SetDirection(RadeonRays::float3(-0.3f, -1.f, -0.4f));

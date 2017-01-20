@@ -29,14 +29,16 @@
 #pragma once
 
 #include <string>
+#include <map>
 
 namespace Baikal
 {
     class Scene1;
-    
+    class Iterator;
+
     /**
      \brief Interface for material loading and writing
-     
+
      MaterialIO is responsible for material loading from disk.
      */
     class MaterialIo
@@ -44,20 +46,34 @@ namespace Baikal
     public:
         // Create XML based material IO
         static MaterialIo* CreateMaterialIoXML();
-        
+
+        using MaterialMap = std::map<std::string, std::string>;
+
         // Constructor
         MaterialIo() = default;
         // Destructor
         virtual ~MaterialIo() = 0;
-        
+
         // Save materials from scene into a file
-        virtual void SaveMaterials(std::string const& filename, Scene1 const& scene) = 0;
-        
+        virtual void SaveMaterials(std::string const& filename, Iterator& iterator) = 0;
+
+        // Load materials from disk
+        virtual Iterator* LoadMaterials(std::string const& filename) = 0;
+
+        // Helper method: save all materials in the scene
+        void SaveMaterialsFromScene(std::string const& filename, Scene1 const& scene);
+
+        // Helper methos: Replace scene materials using name mapping
+        void ReplaceSceneMaterials(Scene1& scene, Iterator& iterator, MaterialMap const& mapping);
+
+        // Load material mapping from disk
+        MaterialMap LoadMaterialMapping(std::string const& filename);
+
         // Disallow copying
         MaterialIo(MaterialIo const&) = delete;
         MaterialIo& operator = (MaterialIo const&) = delete;
     };
-    
+
     inline MaterialIo::~MaterialIo()
     {
     }

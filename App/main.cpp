@@ -349,8 +349,10 @@ void InitData()
         std::unique_ptr<Baikal::SceneIo> scene_io(Baikal::SceneIo::CreateSceneIoObj());
         g_scene.reset(scene_io->LoadScene(filename, basepath));
         
-        //std::unique_ptr<Baikal::MaterialIo> material_io(Baikal::MaterialIo::CreateMaterialIoXML());
-        //material_io->SaveMaterials("materials.xml", *g_scene);
+        std::unique_ptr<Baikal::MaterialIo> material_io(Baikal::MaterialIo::CreateMaterialIoXML());
+        auto mats = material_io->LoadMaterials("materials.xml");
+        auto mapping = material_io->LoadMaterialMapping("mapping.xml");
+        material_io->ReplaceSceneMaterials(*g_scene, *mats, mapping);
     }
 
     g_camera.reset(new Baikal::PerspectiveCamera(
@@ -672,16 +674,16 @@ void Update()
 
     if (std::abs(camroty) > 0.001f)
     {
-        //g_scene->camera_->Tilt(camroty);
-        g_camera->ArcballRotateVertically(float3(0, 0, 0), camroty);
+        g_camera->Tilt(camroty);
+        //g_camera->ArcballRotateVertically(float3(0, 0, 0), camroty);
         update = true;
     }
 
     if (std::abs(camrotx) > 0.001f)
     {
 
-        //g_scene->camera_->Rotate(camrotx);
-        g_camera->ArcballRotateHorizontally(float3(0, 0, 0), camrotx);
+        g_camera->Rotate(camrotx);
+        //g_camera->ArcballRotateHorizontally(float3(0, 0, 0), camrotx);
         update = true;
     }
 
