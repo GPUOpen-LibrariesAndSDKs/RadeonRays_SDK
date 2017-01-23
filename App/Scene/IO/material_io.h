@@ -63,6 +63,9 @@ namespace Baikal
         // Helper method: save all materials in the scene
         void SaveMaterialsFromScene(std::string const& filename, Scene1 const& scene);
 
+        // Create identity mapping
+        void SaveIdentityMapping(std::string const& filename, Scene1 const& scene);
+
         // Helper methos: Replace scene materials using name mapping
         void ReplaceSceneMaterials(Scene1& scene, Iterator& iterator, MaterialMap const& mapping);
 

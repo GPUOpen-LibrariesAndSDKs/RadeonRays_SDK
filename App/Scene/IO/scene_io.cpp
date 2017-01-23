@@ -55,7 +55,7 @@ namespace Baikal
         }
         else
         {
-            auto s = RadeonRays::float3(1.f, 1.f, 1.f);// RadeonRays::float3(mat.specular[0], mat.specular[1], mat.specular[2]);
+            auto s = RadeonRays::float3(mat.specular[0], mat.specular[1], mat.specular[2]);
             
             if (s.sqnorm() > 0 || !mat.specular_texname.empty())
             {
@@ -208,6 +208,7 @@ namespace Baikal
             else
             {
                 std::vector<RadeonRays::float2> zero(num_vertices);
+                std::fill(zero.begin(), zero.end(), RadeonRays::float2(0, 0));
                 mesh->SetUVs(&zero[0], num_vertices);
             }
             
@@ -240,7 +241,7 @@ namespace Baikal
         }
         
         // TODO: temporary code, add IBL
-        Texture* ibl_texture = image_io->LoadImage("../Resources/Textures/space.jpg");
+        Texture* ibl_texture = image_io->LoadImage("../Resources/Textures/parking.hdr");
         scene->AttachAutoreleaseObject(ibl_texture);
         
         ImageBasedLight* ibl = new ImageBasedLight();
@@ -249,14 +250,14 @@ namespace Baikal
         scene->AttachAutoreleaseObject(ibl);
 
         // TODO: temporary code to add directional light
-        DirectionalLight* light = new DirectionalLight();
+        /*DirectionalLight* light = new DirectionalLight();
         light->SetDirection(RadeonRays::float3(-0.3f, -1.f, -0.4f));
         light->SetEmittedRadiance(2.f * RadeonRays::float3(1.f, 1.f, 1.f));
         scene->AttachAutoreleaseObject(light);
-        
-        scene->AttachLight(light);
+
+        scene->AttachLight(light);*/
         scene->AttachLight(ibl);
-        
+
         return scene;
     }
 }

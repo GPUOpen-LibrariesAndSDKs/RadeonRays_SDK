@@ -407,14 +407,14 @@ namespace Baikal
         out.indices = m_context.CreateBuffer<int>(num_indices, CL_MEM_READ_ONLY);
         out.shapes = m_context.CreateBuffer<ClwScene::Shape>(scene.GetNumShapes(), CL_MEM_READ_ONLY);
         out.materialids = m_context.CreateBuffer<int>(num_indices / 3, CL_MEM_READ_ONLY);
-        
+
         float3* vertices = nullptr;
         float3* normals = nullptr;
         float2* uvs = nullptr;
         int* indices = nullptr;
         int* matids = nullptr;
         ClwScene::Shape* shapes = nullptr;
-        
+
         // Map arrays and prepare to write data
         m_context.MapBuffer(0, out.vertices, CL_MAP_WRITE, &vertices);
         m_context.MapBuffer(0, out.normals, CL_MAP_WRITE, &normals);
@@ -441,7 +441,7 @@ namespace Baikal
             
             auto mesh_index_array = mesh->GetIndices();
             auto mesh_num_indices = mesh->GetNumIndices();
-            
+
             // Prepare shape descriptor
             ClwScene::Shape shape;
             shape.numprims = static_cast<int>(mesh_num_indices / 3);
@@ -454,34 +454,34 @@ namespace Baikal
             shape.m3 = float4(0.0f, 0.f, 0.f, 1.f);
             shape.linearvelocity = float3(0.0f, 0.f, 0.f);
             shape.angularvelocity = float3(0.f, 0.f, 0.f, 1.f);
-            
+
             std::copy(mesh_vertex_array, mesh_vertex_array + mesh_num_vertices, vertices + num_vertices_written);
             num_vertices_written += mesh_num_vertices;
-            
+
             std::copy(mesh_normal_array, mesh_normal_array + mesh_num_normals, normals + num_normals_written);
             num_normals_written += mesh_num_normals;
-            
+
             std::copy(mesh_uv_array, mesh_uv_array + mesh_num_uvs, uvs + num_uvs_written);
             num_uvs_written += mesh_num_uvs;
-            
+
             std::copy(mesh_index_array, mesh_index_array + mesh_num_indices, indices + num_indices_written);
             num_indices_written += mesh_num_indices;
-            
+
             shapes[num_shapes_written] = shape;
             ++num_shapes_written;
-            
+
             auto matidx = mat_collector.GetItemIndex(mesh->GetMaterial());
             std::fill(matids + num_matids_written, matids + num_matids_written + mesh_num_indices / 3, matidx);
-            
+
             num_matids_written += mesh_num_indices / 3;
         }
-        
+
         m_context.UnmapBuffer(0, out.vertices, vertices);
         m_context.UnmapBuffer(0, out.normals, normals);
         m_context.UnmapBuffer(0, out.uvs, uvs);
         m_context.UnmapBuffer(0, out.indices, indices);
         m_context.UnmapBuffer(0, out.materialids, matids);
-        m_context.UnmapBuffer(0, out.shapes, shapes);
+        m_context.UnmapBuffer(0, out.shapes, shapes).Wait();
     }
 
     void SceneTracker::UpdateMaterials(Scene1 const& scene, Collector& mat_collector, Collector& tex_collector, ClwScene& out) const

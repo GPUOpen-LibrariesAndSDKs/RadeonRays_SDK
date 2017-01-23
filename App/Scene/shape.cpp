@@ -91,9 +91,9 @@ namespace Baikal
         m_normals.reset(new RadeonRays::float3[num_normals]);
         
         std::copy(normals, normals + num_normals, m_normals.get());
-        
+
         m_num_normals = num_normals;
-        
+
         SetDirty(true);
     }
     

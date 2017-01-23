@@ -50,6 +50,7 @@ THE SOFTWARE.
 #include <thread>
 #include <atomic>
 #include <mutex>
+#include <fstream>
 
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -104,7 +105,7 @@ int g_num_samples = -1;
 int g_samplecount = 0;
 float g_ao_radius = 1.f; 
 float g_envmapmul = 1.f;
-float g_cspeed = 100.25f;
+float g_cspeed = 10.25f;
 
 float3 g_camera_pos = float3(0.f, 1.f, 4.f);
 float3 g_camera_at = float3(0.f, 1.f, 0.f);
@@ -346,13 +347,33 @@ void InitData()
     std::string filename = basepath + g_modelname;
 
     {
+        // Load OBJ scene
         std::unique_ptr<Baikal::SceneIo> scene_io(Baikal::SceneIo::CreateSceneIoObj());
         g_scene.reset(scene_io->LoadScene(filename, basepath));
-        
+
+        // Enable this to generate new materal mapping for a model
+#if 0
         std::unique_ptr<Baikal::MaterialIo> material_io(Baikal::MaterialIo::CreateMaterialIoXML());
-        auto mats = material_io->LoadMaterials("materials.xml");
-        auto mapping = material_io->LoadMaterialMapping("mapping.xml");
-        material_io->ReplaceSceneMaterials(*g_scene, *mats, mapping);
+        material_io->SaveMaterialsFromScene(basepath + "materials.xml", *g_scene);
+        material_io->SaveIdentityMapping(basepath + "mapping.xml", *g_scene);
+#endif
+
+        // Check it we have material remapping
+        std::ifstream in_materials(basepath + "materials.xml");
+        std::ifstream in_mapping(basepath + "mapping.xml");
+
+        if (in_materials && in_mapping)
+        {
+            in_materials.close();
+            in_mapping.close();
+
+            std::unique_ptr<Baikal::MaterialIo> material_io(Baikal::MaterialIo::CreateMaterialIoXML());
+
+            auto mats = material_io->LoadMaterials(basepath + "materials.xml");
+            auto mapping = material_io->LoadMaterialMapping(basepath + "mapping.xml");
+
+            material_io->ReplaceSceneMaterials(*g_scene, *mats, mapping);
+        }
     }
 
     g_camera.reset(new Baikal::PerspectiveCamera(

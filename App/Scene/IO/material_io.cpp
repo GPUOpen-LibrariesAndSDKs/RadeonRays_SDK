@@ -58,6 +58,7 @@ namespace Baikal
         };
 
         std::set<ResolveRequest> m_resolve_requests;
+        std::string m_base_path;
     };
     
     MaterialIo* MaterialIo::CreateMaterialIoXML()
@@ -159,7 +160,7 @@ namespace Baikal
                 std::ostringstream oss;
                 oss << (std::uint64_t)value.tex_value << ".jpg";
 
-                io.SaveImage(oss.str(), value.tex_value);
+                io.SaveImage(m_base_path + oss.str(), value.tex_value);
 
                 m_tex2name[value.tex_value] = oss.str();
 
@@ -262,6 +263,13 @@ namespace Baikal
 
     void MaterialIoXML::SaveMaterials(std::string const& filename, Iterator& mat_iter)
     {
+        auto slash = filename.find_last_of('/');
+        if (slash == std::string::npos) slash = filename.find_last_of('\\');
+        if (slash != std::string::npos)
+            m_base_path.assign(filename.cbegin(), filename.cbegin() + slash + 1);
+        else
+            m_base_path.clear();
+
         XMLDocument doc;
         XMLPrinter printer;
 
@@ -312,7 +320,7 @@ namespace Baikal
             }
             else
             {
-                auto texture = io.LoadImage(filename);
+                auto texture = io.LoadImage(m_base_path + filename);
                 material->SetInputValue(name, texture);
                 m_name2tex[name] = texture;
             }
@@ -391,6 +399,13 @@ namespace Baikal
         m_id2mat.clear();
         m_name2tex.clear();
         m_resolve_requests.clear();
+
+        auto slash = filename.find_last_of('/');
+        if (slash == std::string::npos) slash = filename.find_last_of('\\');
+        if (slash != std::string::npos)
+            m_base_path.assign(filename.cbegin(), filename.cbegin() + slash + 1);
+        else
+            m_base_path.clear();
 
         XMLDocument doc;
         doc.LoadFile(filename.c_str());
@@ -517,5 +532,33 @@ namespace Baikal
         }
 
         return map;
+    }
+
+    void MaterialIo::SaveIdentityMapping(std::string const& filename, Scene1 const& scene)
+    {
+        XMLDocument doc;
+        XMLPrinter printer;
+
+        std::unique_ptr<Iterator> shape_iter(scene.CreateShapeIterator());
+        std::set<Material const*> serialized_mats;
+
+        for (; shape_iter->IsValid(); shape_iter->Next())
+        {
+            auto material = shape_iter->ItemAs<Shape const>()->GetMaterial();
+
+            if (serialized_mats.find(material) == serialized_mats.cend())
+            {
+                auto name = material->GetName();
+                printer.OpenElement("Mapping");
+                printer.PushAttribute("from", name.c_str());
+                printer.PushAttribute("to", name.c_str());
+                printer.CloseElement();
+                serialized_mats.emplace(material);
+            }
+        }
+
+        doc.Parse(printer.CStr());
+
+        doc.SaveFile(filename.c_str());
     }
 }
