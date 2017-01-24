@@ -70,7 +70,7 @@ float FresnelDielectric(float etai, float etat, float ndotwi, float ndotwt)
  // Distribution fucntion
 float MicrofacetDistribution_Beckmann_D(float roughness, float3 m, float3 n)
 {
-    float ndotm = dot(m, n);
+    float ndotm = fabs(dot(m, n));
 
     if (ndotm <= 0.f)
         return 0.f;
@@ -99,7 +99,7 @@ float MicrofacetDistribution_Beckmann_GetPdf(
 {
     // We need to convert pdf(wh)->pdf(wo)
     float3 m = normalize(wi + wo);
-    float wodotm = dot(wo, m);
+    float wodotm = fabs(dot(wo, m));
 
     if (wodotm <= 0.f)
         return 0.f;
@@ -146,7 +146,7 @@ void MicrofacetDistribution_Beckmann_Sample(// Roughness
     float3 wh = normalize(dg->dpdu * sintheta * cosphi + dg->dpdv * sintheta * sinphi + dg->n * costheta);
 
     // Reflect wi around wh
-    *wo = -wi + 2.f*dot(wi, wh) * wh;
+    *wo = -wi + 2.f*fabs(dot(wi, wh)) * wh;
 
     // Calc pdf
     *pdf = MicrofacetDistribution_Beckmann_GetPdf(roughness, dg, wi, *wo, TEXTURE_ARGS);
@@ -223,8 +223,8 @@ float3 MicrofacetBeckmann_Evaluate(
 
 
     // Incident and reflected zenith angles
-    float costhetao = dot(dg->n, wo);
-    float costhetai = dot(dg->n, wi);
+    float costhetao = fabs(dot(dg->n, wo));
+    float costhetai = fabs(dot(dg->n, wi));
 
     // Calc halfway vector
     float3 wh = normalize(wi + wo);
@@ -268,13 +268,7 @@ float3 MicrofacetBeckmann_Sample(
     float* pdf
     )
 {
-    float ndotwi = dot(dg->n, wi);
-
-    if (ndotwi <= 0.f)
-    {
-        *pdf = 0.f;
-        return 0.f;
-    }
+    float ndotwi = fabs(dot(dg->n, wi));
 
     const float roughness = Texture_GetValue1f(dg->mat.ns, dg->uv, TEXTURE_ARGS_IDX(dg->mat.nsmapidx));
     MicrofacetDistribution_Beckmann_Sample(roughness, dg, wi, TEXTURE_ARGS, sample, wo, pdf);
@@ -427,8 +421,8 @@ float3 MicrofacetGGX_Evaluate(
     const float roughness = Texture_GetValue1f(dg->mat.ns, dg->uv, TEXTURE_ARGS_IDX(dg->mat.nsmapidx));
 
     // Incident and reflected zenith angles
-    float costhetao = dot(dg->n, wo);
-    float costhetai = dot(dg->n, wi);
+    float costhetao = fabs(dot(dg->n, wo));
+    float costhetai = fabs(dot(dg->n, wi));
 
     // Calc halfway vector
     float3 wh = normalize(wi + wo);
@@ -510,9 +504,9 @@ float MicrofacetDistribution_Blinn_GetPdf(// Shininess
     // We need to convert pdf(wh)->pdf(wo)
     float3 wh = normalize(wi + wo);
     // costheta
-    float ndotwh = dot(dg->n, wh);
+    float ndotwh = fabs(dot(dg->n, wh));
     // See Humphreys and Pharr for derivation
-    float denom = (2.f * PI * 4.f * dot(wo, wh));
+    float denom = (2.f * PI * 4.f * fabs(dot(wo, wh)));
     return denom > DENOM_EPS ? ((shininess + 1.f) * native_powr(ndotwh, shininess)) / denom : 0.f;
 }
 
@@ -550,7 +544,7 @@ void MicrofacetDistribution_Blinn_Sample(// Shininess param
     float3 wh = normalize(dg->dpdu * sintheta * cosphi + dg->dpdv * sintheta * sinphi + dg->n * costheta);
 
     // Reflect wi around wh
-    *wo = -wi + 2.f*dot(wi, wh) * wh;
+    *wo = -wi + 2.f*fabs(dot(wi, wh)) * wh;
 
     // Calc pdf
     *pdf = MicrofacetDistribution_Blinn_GetPdf(shininess, dg, wi, *wo, TEXTURE_ARGS);
@@ -585,8 +579,8 @@ float3 MicrofacetBlinn_Evaluate(
     const float shininess = dg->mat.ns;
 
     // Incident and reflected zenith angles
-    float costhetao = dot(dg->n, wo);
-    float costhetai = dot(dg->n, wi);
+    float costhetao = fabs(dot(dg->n, wo));
+    float costhetai = fabs(dot(dg->n, wi));
 
     // Calc halfway vector
     float3 wh = normalize(wi + wo);
@@ -631,12 +625,6 @@ float3 MicrofacetBlinn_Sample(
     float* pdf
     )
 {
-    if (dot(dg->n, wi) <= 0.f)
-    {
-        *pdf = 0.f;
-        return 0.f;
-    }
-
     const float shininess = dg->mat.ns;
     MicrofacetDistribution_Blinn_Sample(shininess, dg, wi, TEXTURE_ARGS, sample, wo, pdf);
     return MicrofacetBlinn_Evaluate(dg, wi, *wo, TEXTURE_ARGS);
@@ -828,7 +816,7 @@ float3 IdealReflect_Sample(
     const float3 ks = Texture_GetValue3f(dg->mat.kx.xyz, dg->uv, TEXTURE_ARGS_IDX(dg->mat.kxmapidx));
     const float eta = dg->mat.ni;
 
-    float ndotwi = dot(dg->n, wi);
+    float ndotwi = fabs(dot(dg->n, wi));
 
     // Mirror reflect wi
     *wo = normalize(2.f * ndotwi * dg->n - wi);

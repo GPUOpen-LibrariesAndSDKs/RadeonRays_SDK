@@ -96,6 +96,11 @@ void FillDifferentialGeometry(// Scene
     diffgeo->n = normalize(transform_vector((1.f - uv.x - uv.y) * n0 + uv.x * n1 + uv.y * n2, shape.m0, shape.m1, shape.m2, shape.m3));
     diffgeo->p = transform_point((1.f - uv.x - uv.y) * v0 + uv.x * v1 + uv.y * v2, shape.m0, shape.m1, shape.m2, shape.m3);
     diffgeo->uv = (1.f - uv.x - uv.y) * uv0 + uv.x * uv1 + uv.y * uv2;
+
+    diffgeo->ng = normalize(cross(v1 - v0, v2 - v0));
+
+    if (dot(diffgeo->ng, diffgeo->n) < 0.f)
+        diffgeo->ng = -diffgeo->ng;
     
     // Get material at shading point
     int matidx = scene->materialids[shape.startidx / 3 + primid];
@@ -113,7 +118,7 @@ void FillDifferentialGeometry(// Scene
     
     float det = du1 * dv2 - dv1 * du2;
     
-    if (0 && det != 0.f)
+    if (det != 0.f)
     {
         float invdet = 1.f / det;
         diffgeo->dpdu = normalize( (dv2 * dp1 - dv1 * dp2) * invdet );
@@ -121,18 +126,14 @@ void FillDifferentialGeometry(// Scene
     }
     else
     {
-        diffgeo->dpdu = normalize(GetOrthoVector(diffgeo->n));
-        diffgeo->dpdv = normalize(cross(diffgeo->n, diffgeo->dpdu));
+        diffgeo->dpdu = normalize(GetOrthoVector(diffgeo->ng));
+        diffgeo->dpdv = normalize(cross(diffgeo->ng, diffgeo->dpdu));
     }
-    
-    diffgeo->ng = normalize(cross(diffgeo->dpdv, diffgeo->dpdu));
 
-    //if (dot(diffgeo->ng, diffgeo->n) < 0.f)
-        //diffgeo->ng = -diffgeo->ng;
 
     // Fix all to be orthogonal
-    //diffgeo->dpdv = normalize(cross(diffgeo->ng, diffgeo->dpdu));
-    //diffgeo->dpdu = normalize(cross(diffgeo->dpdv, diffgeo->ng));
+    diffgeo->dpdv = normalize(cross(diffgeo->n, diffgeo->dpdu));
+    diffgeo->dpdu = normalize(cross(diffgeo->dpdv, diffgeo->n));
 
     float3 p0 = transform_point(v0, shape.m0, shape.m1, shape.m2, shape.m3);
     float3 p1 = transform_point(v1, shape.m0, shape.m1, shape.m2, shape.m3);

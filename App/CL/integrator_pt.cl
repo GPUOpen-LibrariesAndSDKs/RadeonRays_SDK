@@ -366,9 +366,10 @@ __kernel void ShadeSurface(
         FillDifferentialGeometry(&scene, &isect, &diffgeo);
 
         // Check if we are hitting from the inside
-        float ndotwi = dot(diffgeo.n, wi);
+
+        float backfacing = dot(diffgeo.ng, wi) < 0.f;
         int twosided = diffgeo.mat.twosided;
-        if (twosided && ndotwi < 0.f)
+        if (twosided && backfacing)
         {
             // Reverse normal and tangents in this case
             // but not for BTDFs, since BTDFs rely
@@ -378,6 +379,8 @@ __kernel void ShadeSurface(
             diffgeo.dpdu = -diffgeo.dpdu;
             diffgeo.dpdv = -diffgeo.dpdv;
         }
+
+        float ndotwi = dot(diffgeo.n, wi);
 
         // Select BxDF
         Material_Select(
@@ -390,12 +393,10 @@ __kernel void ShadeSurface(
             &diffgeo
         );
 
-        ndotwi = dot(diffgeo.n, wi);
-
         // Terminate if emissive
         if (Bxdf_IsEmissive(&diffgeo))
         {
-            if (ndotwi > 0.f)
+            if (!backfacing)
             {
                 float weight = 1.f;
 
@@ -426,16 +427,18 @@ __kernel void ShadeSurface(
 
 
         float s = Bxdf_IsBtdf(&diffgeo) ? (-sign(ndotwi)) : 1.f;
-        if (!twosided && ndotwi < 0.f && !Bxdf_IsBtdf(&diffgeo))
+        if (!twosided && backfacing && !Bxdf_IsBtdf(&diffgeo))
         {
-            // Reverse normal and tangents in this case
-            // but not for BTDFs, since BTDFs rely
-            // on normal direction in order to arrange
-            // indices of refraction
+             //Reverse normal and tangents in this case
+             //but not for BTDFs, since BTDFs rely
+             //on normal direction in order to arrange
+             //indices of refraction
             diffgeo.n = -diffgeo.n;
             diffgeo.dpdu = -diffgeo.dpdu;
             diffgeo.dpdv = -diffgeo.dpdv;
         }
+
+
 
         // TODO: this is test code, need to
         // maintain proper volume stack here
