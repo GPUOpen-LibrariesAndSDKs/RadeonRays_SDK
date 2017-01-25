@@ -52,7 +52,7 @@ typedef struct _Scene
     } Scene;
 
 /// Fill DifferentialGeometry structure based on intersection info from RadeonRays
-void FillDifferentialGeometry(// Scene
+void DifferentialGeometry_Fill(// Scene
                               Scene const* scene,
                               // RadeonRays intersection
                               Intersection const* isect,
@@ -107,7 +107,6 @@ void FillDifferentialGeometry(// Scene
     diffgeo->mat = scene->materials[matidx];
 
     /// From PBRT book
-    /// Construct tangent basis on the fly and apply normal map
     float du1 = uv0.x - uv2.x;
     float du2 = uv1.x - uv2.x;
     float dv1 = uv0.y - uv2.y;
@@ -118,7 +117,7 @@ void FillDifferentialGeometry(// Scene
     
     float det = du1 * dv2 - dv1 * du2;
     
-    if (det != 0.f)
+    if (0 && det != 0.f)
     {
         float invdet = 1.f / det;
         diffgeo->dpdu = normalize( (dv2 * dp1 - dv1 * dp2) * invdet );
@@ -126,25 +125,42 @@ void FillDifferentialGeometry(// Scene
     }
     else
     {
-        diffgeo->dpdu = normalize(GetOrthoVector(diffgeo->ng));
-        diffgeo->dpdv = normalize(cross(diffgeo->ng, diffgeo->dpdu));
+        diffgeo->dpdu = normalize(GetOrthoVector(diffgeo->n));
+        diffgeo->dpdv = normalize(cross(diffgeo->n, diffgeo->dpdu));
     }
+    
 
 
     // Fix all to be orthogonal
-    diffgeo->dpdv = normalize(cross(diffgeo->n, diffgeo->dpdu));
-    diffgeo->dpdu = normalize(cross(diffgeo->dpdv, diffgeo->n));
+    //diffgeo->dpdv = normalize(cross(diffgeo->ng, diffgeo->dpdu));
+    //diffgeo->dpdu = normalize(cross(diffgeo->dpdv, diffgeo->ng));
 
     float3 p0 = transform_point(v0, shape.m0, shape.m1, shape.m2, shape.m3);
     float3 p1 = transform_point(v1, shape.m0, shape.m1, shape.m2, shape.m3);
     float3 p2 = transform_point(v2, shape.m0, shape.m1, shape.m2, shape.m3);
 
     diffgeo->area = 0.5f * length(cross(p2 - p0, p2 - p1));
-    
-    // Apply transform & linear motion blur
-    //v += (linearvelocity * time);
-    // MT^-1 should be used if scale is present
-    //n = rotate_vector(n, angularvelocity);
+}
+
+void DifferentialGeometry_CalculateTangentTransforms(DifferentialGeometry* diffgeo)
+{
+    diffgeo->world_to_tangent = matrix_from_rows3(
+        diffgeo->dpdu,
+        diffgeo->n,
+        diffgeo->dpdv);
+
+    diffgeo->world_to_tangent.m0.w = -dot(diffgeo->dpdu, diffgeo->p);
+    diffgeo->world_to_tangent.m1.w = -dot(diffgeo->n, diffgeo->p);
+    diffgeo->world_to_tangent.m2.w = -dot(diffgeo->dpdv, diffgeo->p);
+
+    diffgeo->tangent_to_world = matrix_from_cols3(
+        diffgeo->world_to_tangent.m0.xyz,
+        diffgeo->world_to_tangent.m1.xyz,
+        diffgeo->world_to_tangent.m2.xyz);
+
+    diffgeo->tangent_to_world.m0.w = diffgeo->p.x;
+    diffgeo->tangent_to_world.m1.w = diffgeo->p.y;
+    diffgeo->tangent_to_world.m2.w = diffgeo->p.z;
 }
 
 int Scene_SampleLight(Scene const* scene, float sample, float* pdf)

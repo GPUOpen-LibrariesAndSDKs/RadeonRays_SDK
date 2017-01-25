@@ -154,7 +154,6 @@ namespace Baikal
             kLambert,
             kIdealReflect,
             kIdealRefract,
-            kMicrofacetBlinn,
             kMicrofacetBeckmann,
             kMicrofacetGGX,
             kEmissive,

@@ -68,9 +68,9 @@ float FresnelDielectric(float etai, float etat, float ndotwi, float ndotwt)
  */
 
  // Distribution fucntion
-float MicrofacetDistribution_Beckmann_D(float roughness, float3 m, float3 n)
+float MicrofacetDistribution_Beckmann_D(float roughness, float3 m)
 {
-    float ndotm = fabs(dot(m, n));
+    float ndotm = fabs(m.y);
 
     if (ndotm <= 0.f)
         return 0.f;
@@ -105,7 +105,7 @@ float MicrofacetDistribution_Beckmann_GetPdf(
         return 0.f;
 
     //
-    float mpdf = MicrofacetDistribution_Beckmann_D(roughness, m, dg->n) * fabs(dot(dg->n, m));
+    float mpdf = MicrofacetDistribution_Beckmann_D(roughness, m) * fabs(m.y);
     // See Humphreys and Pharr for derivation
 
     return mpdf / (4.f * wodotm);
@@ -143,7 +143,7 @@ void MicrofacetDistribution_Beckmann_Sample(// Roughness
     float sinphi = native_sqrt(1.f - clamp(cosphi * cosphi, 0.f, 1.f));
 
     // Calculate wh
-    float3 wh = normalize(dg->dpdu * sintheta * cosphi + dg->dpdv * sintheta * sinphi + dg->n * costheta);
+    float3 wh = make_float3(sintheta * cosphi, costheta, sintheta * sinphi);
 
     // Reflect wi around wh
     *wo = -wi + 2.f*fabs(dot(wi, wh)) * wh;
@@ -180,12 +180,12 @@ void MicrofacetDistribution_Beckmann_SampleNormal(// Roughness
     float sinphi = native_sqrt(1.f - clamp(cosphi * cosphi, 0.f, 1.f));
 
     // Reflect wi around wh
-    *wh = normalize(dg->dpdu * sintheta * cosphi + dg->dpdv * sintheta * sinphi + dg->n * costheta);
+    *wh = make_float3(sintheta * cosphi, costheta, sintheta * sinphi);
 }
 
-float MicrofacetDistribution_Beckmann_G1(float roughness, float3 v, float3 m, float3 n)
+float MicrofacetDistribution_Beckmann_G1(float roughness, float3 v, float3 m)
 {
-    float ndotv = fabs(dot(n, v));
+    float ndotv = fabs(v.y);
     float mdotv = fabs(dot(m, v));
 
     float sinnv = native_sqrt(1.f - clamp(ndotv * ndotv, 0.f, 1.f));
@@ -200,9 +200,9 @@ float MicrofacetDistribution_Beckmann_G1(float roughness, float3 v, float3 m, fl
 }
 
 // Shadowing function also depends on microfacet distribution
-float MicrofacetDistribution_Beckmann_G(float roughness, float3 wi, float3 wo, float3 wh, float3 n)
+float MicrofacetDistribution_Beckmann_G(float roughness, float3 wi, float3 wo, float3 wh)
 {
-    return MicrofacetDistribution_Beckmann_G1(roughness, wi, wh, n) * MicrofacetDistribution_Beckmann_G1(roughness, wo, wh, n);
+    return MicrofacetDistribution_Beckmann_G1(roughness, wi, wh) * MicrofacetDistribution_Beckmann_G1(roughness, wo, wh);
 }
 
 
@@ -223,8 +223,8 @@ float3 MicrofacetBeckmann_Evaluate(
 
 
     // Incident and reflected zenith angles
-    float costhetao = fabs(dot(dg->n, wo));
-    float costhetai = fabs(dot(dg->n, wi));
+    float costhetao = fabs(wo.y);
+    float costhetai = fabs(wi.y);
 
     // Calc halfway vector
     float3 wh = normalize(wi + wo);
@@ -234,7 +234,7 @@ float3 MicrofacetBeckmann_Evaluate(
     float denom = 4.f * costhetao * costhetai;
 
     // F(eta) * D * G * ks / (4 * cosa * cosi)
-    return denom > DENOM_EPS ? F * ks * MicrofacetDistribution_Beckmann_G(roughness, wi, wo, wh, dg->n) * MicrofacetDistribution_Beckmann_D(roughness, wh, dg->n) / denom : 0.f;
+    return denom > DENOM_EPS ? F * ks * MicrofacetDistribution_Beckmann_G(roughness, wi, wo, wh) * MicrofacetDistribution_Beckmann_D(roughness, wh) / denom : 0.f;
 }
 
 
@@ -268,21 +268,20 @@ float3 MicrofacetBeckmann_Sample(
     float* pdf
     )
 {
-    float ndotwi = fabs(dot(dg->n, wi));
+    float ndotwi = fabs(wi.y);
 
     const float roughness = Texture_GetValue1f(dg->mat.ns, dg->uv, TEXTURE_ARGS_IDX(dg->mat.nsmapidx));
     MicrofacetDistribution_Beckmann_Sample(roughness, dg, wi, TEXTURE_ARGS, sample, wo, pdf);
     return MicrofacetBeckmann_Evaluate(dg, wi, *wo, TEXTURE_ARGS);
 }
 
-
 /*
  Microfacet GGX
  */
  // Distribution fucntion
-float MicrofacetDistribution_GGX_D(float roughness, float3 m, float3 n)
+float MicrofacetDistribution_GGX_D(float roughness, float3 m)
 {
-    float ndotm = fabs(dot(m, n));
+    float ndotm = fabs(m.y);
     float ndotm2 = ndotm * ndotm;
     float sinmn = native_sqrt(1.f - clamp(ndotm * ndotm, 0.f, 1.f));
     float tanmn = ndotm > DENOM_EPS ? sinmn / ndotm : 0.f;
@@ -307,7 +306,7 @@ float MicrofacetDistribution_GGX_GetPdf(
     TEXTURE_ARG_LIST
     )
 {
-    float mpdf = MicrofacetDistribution_GGX_D(roughness, m, dg->n) * fabs(dot(dg->n, m));
+    float mpdf = MicrofacetDistribution_GGX_D(roughness, m) * fabs(m.y);
     // See Humphreys and Pharr for derivation
     float denom = (4.f * fabs(dot(wo, m)));
 
@@ -347,7 +346,7 @@ void MicrofacetDistribution_GGX_Sample(
     float sinphi = native_sqrt(1.f - clamp(cosphi * cosphi, 0.f, 1.f));
 
     // Calculate wh
-    float3 wh = normalize(dg->dpdu * sintheta * cosphi + dg->dpdv * sintheta * sinphi + dg->n * costheta);
+    float3 wh = make_float3(sintheta * cosphi, costheta, sintheta * sinphi);
 
     // Reflect wi around wh
     *wo = -wi + 2.f*fabs(dot(wi, wh)) * wh;
@@ -385,13 +384,13 @@ void MicrofacetDistribution_GGX_SampleNormal(
     float sinphi = native_sqrt(1.f - clamp(cosphi * cosphi, 0.f, 1.f));
 
     // Calculate wh
-    *wh = normalize(dg->dpdu * sintheta * cosphi + dg->dpdv * sintheta * sinphi + dg->n * costheta);
+    *wh = make_float3(sintheta * cosphi, costheta, sintheta * sinphi);
 }
 
 //
-float MicrofacetDistribution_GGX_G1(float roughness, float3 v, float3 m, float3 n)
+float MicrofacetDistribution_GGX_G1(float roughness, float3 v, float3 m)
 {
-    float ndotv = fabs(dot(n, v));
+    float ndotv = fabs(v.y);
     float mdotv = fabs(dot(m, v));
 
     float sinnv = native_sqrt(1.f - clamp(ndotv * ndotv, 0.f, 1.f));
@@ -401,9 +400,9 @@ float MicrofacetDistribution_GGX_G1(float roughness, float3 v, float3 m, float3 
 }
 
 // Shadowing function also depends on microfacet distribution
-float MicrofacetDistribution_GGX_G(float roughness, float3 wi, float3 wo, float3 wh, float3 n)
+float MicrofacetDistribution_GGX_G(float roughness, float3 wi, float3 wo, float3 wh)
 {
-    return MicrofacetDistribution_GGX_G1(roughness, wi, wh, n) * MicrofacetDistribution_GGX_G1(roughness, wo, wh, n);
+    return MicrofacetDistribution_GGX_G1(roughness, wi, wh) * MicrofacetDistribution_GGX_G1(roughness, wo, wh);
 }
 
 float3 MicrofacetGGX_Evaluate(
@@ -421,8 +420,8 @@ float3 MicrofacetGGX_Evaluate(
     const float roughness = Texture_GetValue1f(dg->mat.ns, dg->uv, TEXTURE_ARGS_IDX(dg->mat.nsmapidx));
 
     // Incident and reflected zenith angles
-    float costhetao = fabs(dot(dg->n, wo));
-    float costhetai = fabs(dot(dg->n, wi));
+    float costhetao = fabs(wo.y);
+    float costhetai = fabs(wi.y);
 
     // Calc halfway vector
     float3 wh = normalize(wi + wo);
@@ -432,7 +431,7 @@ float3 MicrofacetGGX_Evaluate(
     float denom = (4.f * costhetao * costhetai);
 
     // F(eta) * D * G * ks / (4 * cosa * cosi)
-    return denom > 0.f ? F * ks * MicrofacetDistribution_GGX_G(roughness, wi, wo, wh, dg->n) * MicrofacetDistribution_GGX_D(roughness, wh, dg->n) / denom : 0.f;
+    return denom > 0.f ? F * ks * MicrofacetDistribution_GGX_G(roughness, wi, wo, wh) * MicrofacetDistribution_GGX_D(roughness, wh) / denom : 0.f;
 }
 
 
@@ -478,159 +477,6 @@ float3 MicrofacetGGX_Sample(
 
 
 /*
- Microfacet Blinn
- */
-
- // Distribution fucntion
-float MicrofacetDistribution_Blinn_D(float shininess, float3 w, float3 n)
-{
-    float ndotw = fabs(dot(n, w));
-    return (1.f / (2 * PI)) * (shininess + 2) * native_powr(ndotw, shininess);
-}
-
-// PDF of the given direction
-float MicrofacetDistribution_Blinn_GetPdf(// Shininess
-    float shininess,
-    // Geometry
-    DifferentialGeometry const* dg,
-    // Incoming direction
-    float3 wi,
-    // Outgoing direction
-    float3 wo,
-    // Texture args
-    TEXTURE_ARG_LIST
-    )
-{
-    // We need to convert pdf(wh)->pdf(wo)
-    float3 wh = normalize(wi + wo);
-    // costheta
-    float ndotwh = fabs(dot(dg->n, wh));
-    // See Humphreys and Pharr for derivation
-    float denom = (2.f * PI * 4.f * fabs(dot(wo, wh)));
-    return denom > DENOM_EPS ? ((shininess + 1.f) * native_powr(ndotwh, shininess)) / denom : 0.f;
-}
-
-
-// Sample the distribution
-void MicrofacetDistribution_Blinn_Sample(// Shininess param
-    float shininess,
-    // Geometry
-    DifferentialGeometry const* dg,
-    // Incoming direction
-    float3 wi,
-    // Texture args
-    TEXTURE_ARG_LIST,
-    // Sample
-    float2 sample,
-    // Outgoing  direction
-    float3* wo,
-    // PDF at wo
-    float* pdf
-    )
-{
-    //
-    float r1 = sample.x;
-    float r2 = sample.y;
-
-    // Sample halfway vector first, then reflect wi around that
-    float costheta = native_powr(r1, 1.f / (shininess + 1.f));
-    float sintheta = native_sqrt(1.f - costheta * costheta);
-
-    // phi = 2*PI*ksi2
-    float cosphi = native_cos(2.f*PI*r2);
-    float sinphi = native_sqrt(1.f - cosphi * cosphi);
-
-    // Calculate wh
-    float3 wh = normalize(dg->dpdu * sintheta * cosphi + dg->dpdv * sintheta * sinphi + dg->n * costheta);
-
-    // Reflect wi around wh
-    *wo = -wi + 2.f*fabs(dot(wi, wh)) * wh;
-
-    // Calc pdf
-    *pdf = MicrofacetDistribution_Blinn_GetPdf(shininess, dg, wi, *wo, TEXTURE_ARGS);
-}
-
-
-// Shadowing function also depends on microfacet distribution
-float MicrofacetDistribution_Blinn_G(float3 wi, float3 wo, float3 wh, float3 n)
-{
-    float ndotwh = fabs(dot(n, wh));
-    float ndotwo = fabs(dot(n, wo));
-    float ndotwi = fabs(dot(n, wi));
-    float wodotwh = fabs(dot(wo, wh));
-
-    return min(1.f, min(2.f * ndotwh * ndotwo / wodotwh, 2.f * ndotwh * ndotwi / wodotwh));
-}
-
-/// Lambert BRDF evaluation
-float3 MicrofacetBlinn_Evaluate(
-    // Geometry
-    DifferentialGeometry const* dg,
-    // Incoming direction
-    float3 wi,
-    // Outgoing direction
-    float3 wo,
-    // Texture args
-    TEXTURE_ARG_LIST
-    )
-{
-    const float3 ks = Texture_GetValue3f(dg->mat.kx.xyz, dg->uv, TEXTURE_ARGS_IDX(dg->mat.kxmapidx));
-    const float eta = dg->mat.ni;
-    const float shininess = dg->mat.ns;
-
-    // Incident and reflected zenith angles
-    float costhetao = fabs(dot(dg->n, wo));
-    float costhetai = fabs(dot(dg->n, wi));
-
-    // Calc halfway vector
-    float3 wh = normalize(wi + wo);
-
-    float F = dg->mat.fresnel;
-
-    float denom = (4.f * costhetao * costhetai);
-
-    // F(eta) * D * G * ks / (4 * cosa * cosi)
-    return denom > DENOM_EPS ? F * ks * MicrofacetDistribution_Blinn_G(wi, wo, wh, dg->n) * MicrofacetDistribution_Blinn_D(shininess, wh, dg->n) / denom : 0.f;
-}
-
-/// Lambert BRDF PDF
-float MicrofacetBlinn_GetPdf(
-    // Geometry
-    DifferentialGeometry const* dg,
-    // Incoming direction
-    float3 wi,
-    // Outgoing direction
-    float3 wo,
-    // Texture args
-    TEXTURE_ARG_LIST
-    )
-{
-    const float shininess = dg->mat.ns;
-    return MicrofacetDistribution_Blinn_GetPdf(shininess, dg, wi, wo, TEXTURE_ARGS);
-}
-
-/// Lambert BRDF sampling
-float3 MicrofacetBlinn_Sample(
-    // Geometry
-    DifferentialGeometry const* dg,
-    // Incoming direction
-    float3 wi,
-    // Texture args
-    TEXTURE_ARG_LIST,
-    // Sample
-    float2 sample,
-    // Outgoing  direction
-    float3* wo,
-    // PDF at wo
-    float* pdf
-    )
-{
-    const float shininess = dg->mat.ns;
-    MicrofacetDistribution_Blinn_Sample(shininess, dg, wi, TEXTURE_ARGS, sample, wo, pdf);
-    return MicrofacetBlinn_Evaluate(dg, wi, *wo, TEXTURE_ARGS);
-}
-
-/*
  Lambert BRDF
  */
  /// Lambert BRDF evaluation
@@ -664,7 +510,7 @@ float Lambert_GetPdf(
     TEXTURE_ARG_LIST
     )
 {
-    return fabs(dot(dg->n, wo)) / PI;
+    return fabs(wo.y) / PI;
 }
 
 /// Lambert BRDF sampling
@@ -685,11 +531,11 @@ float3 Lambert_Sample(
 {
     const float3 kd = Texture_GetValue3f(dg->mat.kx.xyz, dg->uv, TEXTURE_ARGS_IDX(dg->mat.kxmapidx));
 
-    *wo = Sample_MapToHemisphere(sample, dg->n, 1.f);
+    *wo = Sample_MapToHemisphere(sample, make_float3(0.f, 1.f, 0.f) , 1.f);
 
     float F = dg->mat.fresnel;
 
-    *pdf = fabs(dot(dg->n, *wo)) / PI;
+    *pdf = fabs(wo->y) / PI;
 
     return F * kd / PI;
 }
@@ -729,13 +575,13 @@ float3 Translucent_Sample(
 {
     const float3 kd = Texture_GetValue3f(dg->mat.kx.xyz, dg->uv, TEXTURE_ARGS_IDX(dg->mat.kxmapidx));
 
-    float ndotwi = dot(dg->n, wi);
+    float ndotwi = wi.y;
 
-    float3 n = ndotwi > DENOM_EPS ? -dg->n : dg->n;
+    float3 n = ndotwi > DENOM_EPS ? make_float3(0.f, -1.f, 0.f) : make_float3(0.f, 1.f, 0.f);
 
     *wo = normalize(Sample_MapToHemisphere(sample, n, 1.f));
 
-    *pdf = fabs(dot(n, *wo)) / PI;
+    *pdf = fabs(wo->y) / PI;
 
     return kd / PI;
 }
@@ -754,8 +600,8 @@ float3 Translucent_Evaluate(
 {
     const float3 kd = Texture_GetValue3f(dg->mat.kx.xyz, dg->uv, TEXTURE_ARGS_IDX(dg->mat.kxmapidx));
 
-    float ndotwi = dot(dg->n, wi);
-    float ndotwo = dot(dg->n, wo);
+    float ndotwi = wi.y;
+    float ndotwo = wo.y;
 
     if (ndotwi * ndotwo > 0.f)
         return 0.f;
@@ -775,8 +621,8 @@ float Translucent_GetPdf(
     TEXTURE_ARG_LIST
     )
 {
-    float ndotwi = dot(dg->n, wi);
-    float ndotwo = dot(dg->n, wo);
+    float ndotwi = wi.y;
+    float ndotwo = wo.y;
 
     if (ndotwi * ndotwo > 0)
         return 0.f;
@@ -816,10 +662,8 @@ float3 IdealReflect_Sample(
     const float3 ks = Texture_GetValue3f(dg->mat.kx.xyz, dg->uv, TEXTURE_ARGS_IDX(dg->mat.kxmapidx));
     const float eta = dg->mat.ni;
 
-    float ndotwi = fabs(dot(dg->n, wi));
-
     // Mirror reflect wi
-    *wo = normalize(2.f * ndotwi * dg->n - wi);
+    *wo = normalize(make_float3(-wi.x, wi.y, -wi.z));
 
     // PDF is infinite at that point, but deltas are going to cancel out while evaluating
     // so set it to 1.f
@@ -827,7 +671,7 @@ float3 IdealReflect_Sample(
 
     float F = dg->mat.fresnel;
 
-    float coswo = fabs(dot(dg->n, *wo));
+    float coswo = fabs(wo->y);
 
     // Return reflectance value
     return coswo > DENOM_EPS ? (F * ks * (1.f / coswo)) : 0.f;
@@ -884,10 +728,9 @@ float3 IdealRefract_Sample(
 
     float etai = 1.f;
     float etat = dg->mat.ni;
-    float cosi = dot(dg->n, wi);
+    float cosi = wi.y;
 
     bool entering = cosi > 0.f;
-    float3 n = dg->n;
 
     // Revert normal and eta if needed
     if (!entering)
@@ -895,13 +738,10 @@ float3 IdealRefract_Sample(
         float tmp = etai;
         etai = etat;
         etat = tmp;
-        n = -dg->n;
-        cosi = -cosi;
     }
 
     float eta = etai / etat;
     float sini2 = 1.f - cosi * cosi;
-
     float sint2 = eta * eta * sini2;
 
     if (sint2 >= 1.f)
@@ -915,16 +755,12 @@ float3 IdealRefract_Sample(
     // Transmitted ray
     float F = dg->mat.fresnel;
 
-    *wo = normalize(-n * cost + normalize(n * cosi - wi) * native_sqrt(max(sint2, 0.f)));
+    *wo = normalize(make_float3(eta * -wi.x, entering ? -cost : cost, eta * -wi.z));
 
-    // PDF is infinite at that point, but deltas are going to cancel out while evaluating
-    // so set it to 1.f
     *pdf = 1.f;
 
-    return cost > 0.0001f ? F * (((etai * etai) / (etat * etat)) * ks / cost) : 0.f;
+    return cost > DENOM_EPS ? (F * eta * eta * ks / cost) : 0.f;
 }
-
-
 
 
 float3 MicrofacetRefractionGGX_Evaluate(
@@ -941,8 +777,8 @@ float3 MicrofacetRefractionGGX_Evaluate(
     const float3 ks = Texture_GetValue3f(dg->mat.kx.xyz, dg->uv, TEXTURE_ARGS_IDX(dg->mat.kxmapidx));
     const float roughness = max(Texture_GetValue1f(dg->mat.ns, dg->uv, TEXTURE_ARGS_IDX(dg->mat.nsmapidx)), ROUGHNESS_EPS);
 
-    float ndotwi = dot(dg->n, wi);
-    float ndotwo = dot(dg->n, wo);
+    float ndotwi = wi.y;
+    float ndotwo = wo.y;
 
     if (ndotwi * ndotwo >= 0.f)
     {
@@ -973,7 +809,7 @@ float3 MicrofacetRefractionGGX_Evaluate(
     denom *= (fabs(ndotwi) * fabs(ndotwo));
 
     return denom > DENOM_EPS ? (F * ks * (widotwh * wodotwh)  * (etat)* (etat)*
-        MicrofacetDistribution_GGX_G(roughness, wi, wo, wh, dg->n) * MicrofacetDistribution_GGX_D(roughness, wh, dg->n) / denom) : 0.f;
+        MicrofacetDistribution_GGX_G(roughness, wi, wo, wh) * MicrofacetDistribution_GGX_D(roughness, wh) / denom) : 0.f;
 }
 
 
@@ -990,8 +826,8 @@ float MicrofacetRefractionGGX_GetPdf(
     )
 {
     const float roughness = max(Texture_GetValue1f(dg->mat.ns, dg->uv, TEXTURE_ARGS_IDX(dg->mat.nsmapidx)), ROUGHNESS_EPS);
-    float ndotwi = dot(dg->n, wi);
-    float ndotwo = dot(dg->n, wo);
+    float ndotwi = wi.y;
+    float ndotwo = wo.y;
 
     float etai = 1.f;
     float etat = dg->mat.ni;
@@ -1016,7 +852,7 @@ float MicrofacetRefractionGGX_GetPdf(
 
     float wodotwh = fabs(dot(wo, wh));
 
-    float whpdf = MicrofacetDistribution_GGX_D(roughness, wh, dg->n) * fabs(dot(wh, dg->n));
+    float whpdf = MicrofacetDistribution_GGX_D(roughness, wh) * fabs(wh.y);
 
     float whwo = wodotwh * etat * etat;
 
@@ -1043,7 +879,7 @@ float3 MicrofacetRefractionGGX_Sample(
     const float3 ks = Texture_GetValue3f(dg->mat.kx.xyz, dg->uv, TEXTURE_ARGS_IDX(dg->mat.kxmapidx));
     const float roughness = max(Texture_GetValue1f(dg->mat.ns, dg->uv, TEXTURE_ARGS_IDX(dg->mat.nsmapidx)), ROUGHNESS_EPS);
 
-    float ndotwi = dot(dg->n, wi);
+    float ndotwi = wi.y;
 
     if (ndotwi == 0.f)
     {
@@ -1101,8 +937,8 @@ float3 MicrofacetRefractionBeckmann_Evaluate(
     const float3 ks = Texture_GetValue3f(dg->mat.kx.xyz, dg->uv, TEXTURE_ARGS_IDX(dg->mat.kxmapidx));
     const float roughness = max(Texture_GetValue1f(dg->mat.ns, dg->uv, TEXTURE_ARGS_IDX(dg->mat.nsmapidx)), ROUGHNESS_EPS);
 
-    float ndotwi = dot(dg->n, wi);
-    float ndotwo = dot(dg->n, wo);
+    float ndotwi = wi.y;
+    float ndotwo = wo.y;
 
     float etai = 1.f;
     float etat = dg->mat.ni;
@@ -1128,7 +964,7 @@ float3 MicrofacetRefractionBeckmann_Evaluate(
     denom *= (fabs(ndotwi) * fabs(ndotwo));
 
     return denom > DENOM_EPS ? (F * ks * (widotwh * wodotwh)  * (etat)* (etat)*
-        MicrofacetDistribution_Beckmann_G(roughness, wi, wo, wh, dg->n) * MicrofacetDistribution_Beckmann_D(roughness, wh, dg->n) / denom) : 0.f;
+        MicrofacetDistribution_Beckmann_G(roughness, wi, wo, wh) * MicrofacetDistribution_Beckmann_D(roughness, wh) / denom) : 0.f;
 }
 
 
@@ -1145,8 +981,8 @@ float MicrofacetRefractionBeckmann_GetPdf(
     )
 {
     const float roughness = Texture_GetValue1f(dg->mat.ns, dg->uv, TEXTURE_ARGS_IDX(dg->mat.nsmapidx));
-    float ndotwi = dot(dg->n, wi);
-    float ndotwo = dot(dg->n, wo);
+    float ndotwi = wi.y;
+    float ndotwo = wo.y;
 
     float etai = 1.f;
     float etat = dg->mat.ni;
@@ -1166,7 +1002,7 @@ float MicrofacetRefractionBeckmann_GetPdf(
 
     float wodotwh = fabs(dot(wo, wh));
 
-    float whpdf = MicrofacetDistribution_Beckmann_D(roughness, wh, dg->n) * fabs(dot(wh, dg->n));
+    float whpdf = MicrofacetDistribution_Beckmann_D(roughness, wh) * fabs(wh.y);
 
     float whwo = wodotwh * etat * etat;
 
@@ -1193,7 +1029,7 @@ float3 MicrofacetRefractionBeckmann_Sample(
     const float3 ks = Texture_GetValue3f(dg->mat.kx.xyz, dg->uv, TEXTURE_ARGS_IDX(dg->mat.kxmapidx));
     const float roughness = Texture_GetValue1f(dg->mat.ns, dg->uv, TEXTURE_ARGS_IDX(dg->mat.nsmapidx));
 
-    float ndotwi = dot(dg->n, wi);
+    float ndotwi = wi.y;
 
     float etai = 1.f;
     float etat = dg->mat.ni;
@@ -1246,7 +1082,7 @@ float3 Passthrough_Sample(
 {
 
     *wo = -wi;
-    float coswo = fabs(dot(dg->n, *wo));
+    float coswo = fabs(wo->y);
 
     // PDF is infinite at that point, but deltas are going to cancel out while evaluating
     // so set it to 1.f
@@ -1270,27 +1106,29 @@ float3 Bxdf_Evaluate(
     TEXTURE_ARG_LIST
     )
 {
+    // Transform vectors into tangent space
+    float3 wi_t = matrix_mul_vector3(dg->world_to_tangent, wi);
+    float3 wo_t = matrix_mul_vector3(dg->world_to_tangent, wo);
+
     int mattype = dg->mat.type;
     switch (mattype)
     {
     case kLambert:
-        return Lambert_Evaluate(dg, wi, wo, TEXTURE_ARGS);
-    case kMicrofacetBlinn:
-        return MicrofacetBlinn_Evaluate(dg, wi, wo, TEXTURE_ARGS);
+        return Lambert_Evaluate(dg, wi_t, wo_t, TEXTURE_ARGS);
     case kMicrofacetGGX:
-        return MicrofacetGGX_Evaluate(dg, wi, wo, TEXTURE_ARGS);
+        return MicrofacetGGX_Evaluate(dg, wi_t, wo_t, TEXTURE_ARGS);
     case kMicrofacetBeckmann:
-        return MicrofacetBeckmann_Evaluate(dg, wi, wo, TEXTURE_ARGS);
+        return MicrofacetBeckmann_Evaluate(dg, wi_t, wo_t, TEXTURE_ARGS);
     case kIdealReflect:
-        return IdealReflect_Evaluate(dg, wi, wo, TEXTURE_ARGS);
+        return IdealReflect_Evaluate(dg, wi_t, wo_t, TEXTURE_ARGS);
     case kIdealRefract:
-        return IdealRefract_Evaluate(dg, wi, wo, TEXTURE_ARGS);
+        return IdealRefract_Evaluate(dg, wi_t, wo_t, TEXTURE_ARGS);
     case kTranslucent:
-        return Translucent_Evaluate(dg, wi, wo, TEXTURE_ARGS);
+        return Translucent_Evaluate(dg, wi_t, wo_t, TEXTURE_ARGS);
     case kMicrofacetRefractionGGX:
-        return MicrofacetRefractionGGX_Evaluate(dg, wi, wo, TEXTURE_ARGS);
+        return MicrofacetRefractionGGX_Evaluate(dg, wi_t, wo_t, TEXTURE_ARGS);
     case kMicrofacetRefractionBeckmann:
-        return MicrofacetRefractionBeckmann_Evaluate(dg, wi, wo, TEXTURE_ARGS);
+        return MicrofacetRefractionBeckmann_Evaluate(dg, wi_t, wo_t, TEXTURE_ARGS);
     }
 
     return 0.f;
@@ -1311,33 +1149,50 @@ float3 Bxdf_Sample(
     float* pdf
     )
 {
+    // Transform vectors into tangent space
+    float3 wi_t = matrix_mul_vector3(dg->world_to_tangent, wi);
+    float3 wo_t;
+
+    float3 res = 0.f;
+
     int mattype = dg->mat.type;
     switch (mattype)
     {
     case kLambert:
-        return Lambert_Sample(dg, wi, TEXTURE_ARGS, sample, wo, pdf);
-    case kMicrofacetBlinn:
-        return MicrofacetBlinn_Sample(dg, wi, TEXTURE_ARGS, sample, wo, pdf);
+        res = Lambert_Sample(dg, wi_t, TEXTURE_ARGS, sample, &wo_t, pdf);
+        break;
     case kMicrofacetGGX:
-        return MicrofacetGGX_Sample(dg, wi, TEXTURE_ARGS, sample, wo, pdf);
+        res = MicrofacetGGX_Sample(dg, wi_t, TEXTURE_ARGS, sample, &wo_t, pdf);
+        break;
     case kMicrofacetBeckmann:
-        return MicrofacetBeckmann_Sample(dg, wi, TEXTURE_ARGS, sample, wo, pdf);
+        res = MicrofacetBeckmann_Sample(dg, wi_t, TEXTURE_ARGS, sample, &wo_t, pdf);
+        break;
     case kIdealReflect:
-        return IdealReflect_Sample(dg, wi, TEXTURE_ARGS, sample, wo, pdf);
+        res = IdealReflect_Sample(dg, wi_t, TEXTURE_ARGS, sample, &wo_t, pdf);
+        break;
     case kIdealRefract:
-        return IdealRefract_Sample(dg, wi, TEXTURE_ARGS, sample, wo, pdf);
+        res = IdealRefract_Sample(dg, wi_t, TEXTURE_ARGS, sample, &wo_t, pdf);
+        break;
     case kTranslucent:
-        return Translucent_Sample(dg, wi, TEXTURE_ARGS, sample, wo, pdf);
+        res = Translucent_Sample(dg, wi_t, TEXTURE_ARGS, sample, &wo_t, pdf);
+        break;
     case kPassthrough:
-        return Passthrough_Sample(dg, wi, TEXTURE_ARGS, sample, wo, pdf);
+        res = Passthrough_Sample(dg, wi_t, TEXTURE_ARGS, sample, &wo_t, pdf);
+        break;
     case kMicrofacetRefractionGGX:
-        return MicrofacetRefractionGGX_Sample(dg, wi, TEXTURE_ARGS, sample, wo, pdf);
+        res = MicrofacetRefractionGGX_Sample(dg, wi_t, TEXTURE_ARGS, sample, &wo_t, pdf);
+        break;
     case kMicrofacetRefractionBeckmann:
-        return MicrofacetRefractionBeckmann_Sample(dg, wi, TEXTURE_ARGS, sample, wo, pdf);
+        res = MicrofacetRefractionBeckmann_Sample(dg, wi_t, TEXTURE_ARGS, sample, &wo_t, pdf);
+        break;
+    default:
+        *pdf = 0.f;
+        break;
     }
 
-    *pdf = 0.f;
-    return make_float3(0.f, 0.f, 0.f);
+    *wo = matrix_mul_vector3(dg->tangent_to_world, wo_t);
+
+    return res;
 }
 
 float Bxdf_GetPdf(
@@ -1351,29 +1206,31 @@ float Bxdf_GetPdf(
     TEXTURE_ARG_LIST
     )
 {
+    // Transform vectors into tangent space
+    float3 wi_t = matrix_mul_vector3(dg->world_to_tangent, wi);
+    float3 wo_t = matrix_mul_vector3(dg->world_to_tangent, wo);
+
     int mattype = dg->mat.type;
     switch (mattype)
     {
     case kLambert:
-        return Lambert_GetPdf(dg, wi, wo, TEXTURE_ARGS);
-    case kMicrofacetBlinn:
-        return MicrofacetBlinn_GetPdf(dg, wi, wo, TEXTURE_ARGS);
+        return Lambert_GetPdf(dg, wi_t, wo_t, TEXTURE_ARGS);
     case kMicrofacetGGX:
-        return MicrofacetGGX_GetPdf(dg, wi, wo, TEXTURE_ARGS);
+        return MicrofacetGGX_GetPdf(dg, wi_t, wo_t, TEXTURE_ARGS);
     case kMicrofacetBeckmann:
-        return MicrofacetBeckmann_GetPdf(dg, wi, wo, TEXTURE_ARGS);
+        return MicrofacetBeckmann_GetPdf(dg, wi_t, wo_t, TEXTURE_ARGS);
     case kIdealReflect:
-        return IdealReflect_GetPdf(dg, wi, wo, TEXTURE_ARGS);
+        return IdealReflect_GetPdf(dg, wi_t, wo_t, TEXTURE_ARGS);
     case kIdealRefract:
-        return IdealRefract_GetPdf(dg, wi, wo, TEXTURE_ARGS);
+        return IdealRefract_GetPdf(dg, wi_t, wo_t, TEXTURE_ARGS);
     case kTranslucent:
-        return Translucent_GetPdf(dg, wi, wo, TEXTURE_ARGS);
+        return Translucent_GetPdf(dg, wi_t, wo_t, TEXTURE_ARGS);
     case kPassthrough:
         return 0.f;
     case kMicrofacetRefractionGGX:
-        return MicrofacetRefractionGGX_GetPdf(dg, wi, wo, TEXTURE_ARGS);
+        return MicrofacetRefractionGGX_GetPdf(dg, wi_t, wo_t, TEXTURE_ARGS);
     case kMicrofacetRefractionBeckmann:
-        return MicrofacetRefractionBeckmann_GetPdf(dg, wi, wo, TEXTURE_ARGS);
+        return MicrofacetRefractionBeckmann_GetPdf(dg, wi_t, wo_t, TEXTURE_ARGS);
     }
 
     return 0.f;

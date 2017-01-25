@@ -24,13 +24,7 @@ THE SOFTWARE.
 
 #define PI 3.14159265358979323846f
 
-// 2D distribution function
-typedef struct __Distribution2D
-{
-    int w;
-    int h;
-    __global float const* data;
-} Distribution2D;
+#include <../App/CL/payload.cl>
 
 #ifndef APPLE
 /// These functions are defined on OSX already
@@ -69,6 +63,87 @@ int2 make_int2(int x, int y)
     return res;
 }
 #endif
+
+float matrix_get(matrix m, int i, int j)
+{
+    return m.m[i * 4 + j];
+}
+
+matrix matrix_from_cols(float4 c0, float4 c1, float4 c2, float4 c3)
+{
+    matrix m;
+    m.m0 = make_float4(c0.x, c1.x, c2.x, c3.x);
+    m.m1 = make_float4(c0.y, c1.y, c2.y, c3.y);
+    m.m2 = make_float4(c0.z, c1.z, c2.z, c3.z);
+    m.m3 = make_float4(c0.w, c1.w, c2.w, c3.w);
+    return m;
+}
+
+matrix matrix_from_rows(float4 c0, float4 c1, float4 c2, float4 c3)
+{
+    matrix m;
+    m.m0 = c0;
+    m.m1 = c1;
+    m.m2 = c2;
+    m.m3 = c3;
+    return m;
+}
+
+matrix matrix_from_rows3(float3 c0, float3 c1, float3 c2)
+{
+    matrix m;
+    m.m0.xyz = c0; m.m0.w = 0;
+    m.m1.xyz = c1; m.m1.w = 0;
+    m.m2.xyz = c2; m.m2.w = 0;
+    m.m3 = make_float4(0.f, 0.f, 0.f, 1.f);
+    return m;
+}
+
+matrix matrix_from_cols3(float3 c0, float3 c1, float3 c2)
+{
+    matrix m;
+    m.m0 = make_float4(c0.x, c1.x, c2.x, 0.f);
+    m.m1 = make_float4(c0.y, c1.y, c2.y, 0.f);
+    m.m2 = make_float4(c0.z, c1.z, c2.z, 0.f);
+    m.m3 = make_float4(0.f, 0.f, 0.f, 1.f);
+    return m;
+}
+
+matrix matrix_transpose(matrix m)
+{
+    return matrix_from_cols(m.m0, m.m1, m.m2, m.m3);
+}
+
+float4 matrix_mul_vector4(matrix m, float4 v)
+{
+    float4 res;
+    res.x = dot(m.m0, v);
+    res.y = dot(m.m1, v);
+    res.z = dot(m.m2, v);
+    res.w = dot(m.m3, v);
+    return res;
+}
+
+float3 matrix_mul_vector3(matrix m, float3 v)
+{
+    float3 res;
+    res.x = dot(m.m0.xyz, v);
+    res.y = dot(m.m1.xyz, v);
+    res.z = dot(m.m2.xyz, v);
+    return res;
+}
+
+float3 matrix_mul_point3(matrix m, float3 v)
+{
+    float3 res;
+    res.x = dot(m.m0.xyz, v) + m.m0.w;
+    res.y = dot(m.m1.xyz, v) + m.m1.w;
+    res.z = dot(m.m2.xyz, v) + m.m2.w;
+    return res;
+}
+
+
+
 
 
 /// Transform point with transformation matrix.
@@ -167,16 +242,6 @@ float3 GetOrthoVector(float3 n)
     }
 
     return normalize(p);
-}
-
-float2 Distribution2D_Sample(Distribution2D const* dist, float2 sample, float* pdf)
-{
-    return make_float2(0.f, 0.f);
-}
-
-float Distribution2D_GetPdf(Distribution2D const* dist, float2 sample)
-{
-    return 0.f;
 }
 
 uint upper_power_of_two(uint v)

@@ -241,9 +241,10 @@ namespace Baikal
         RegisterInput("normal", "Normal map", {InputType::kTexture});
         RegisterInput("ior", "Index of refraction", {InputType::kFloat4});
         RegisterInput("fresnel", "Fresnel flag", {InputType::kFloat4});
-        RegisterInput("roughness", "Roughness", {InputType::kFloat4});
+        RegisterInput("roughness", "Roughness", {InputType::kFloat4, InputType::kTexture});
         
         SetInputValue("albedo", RadeonRays::float4(0.7f, 0.7f, 0.7f, 1.f));
+        SetInputValue("normal", static_cast<Texture const*>(nullptr));
     }
     
     SingleBxdf::BxdfType SingleBxdf::GetBxdfType() const
@@ -268,7 +269,7 @@ namespace Baikal
         RegisterInput("base_material", "Base material", {InputType::kMaterial});
         RegisterInput("top_material", "Top material", {InputType::kMaterial});
         RegisterInput("ior", "Index of refraction", {InputType::kFloat4});
-        RegisterInput("weight", "Blend weight", {InputType::kFloat4});
+        RegisterInput("weight", "Blend weight", {InputType::kFloat4, InputType::kTexture});
     }
     
     MultiBxdf::Type MultiBxdf::GetType() const

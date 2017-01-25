@@ -74,7 +74,6 @@ enum Bxdf
     kLambert,
     kIdealReflect,
     kIdealRefract,
-    kMicrofacetBlinn,
     kMicrofacetBeckmann,
     kMicrofacetGGX,
     kLayered,
@@ -236,6 +235,22 @@ typedef
         int extra;
     } Texture;
 
+typedef struct __matrix
+{
+    union
+    {
+        struct
+        {
+            float4 m0;
+            float4 m1;
+            float4 m2;
+            float4 m3;
+        };
+
+        float m[16];
+    };
+} matrix;
+
 // Hit data
 typedef struct _DifferentialGeometry
 {
@@ -251,6 +266,10 @@ typedef struct _DifferentialGeometry
     float3 dpdu;
     float3 dpdv;
     float  area;
+
+    matrix world_to_tangent;
+    matrix tangent_to_world;
+
     // Material
     Material mat;
 } DifferentialGeometry;

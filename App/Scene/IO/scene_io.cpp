@@ -57,7 +57,7 @@ namespace Baikal
         {
             auto s = RadeonRays::float3(mat.specular[0], mat.specular[1], mat.specular[2]);
             
-            if (s.sqnorm() > 0 || !mat.specular_texname.empty())
+            if ((s.sqnorm() > 0 || !mat.specular_texname.empty()))
             {
                 // Otherwise create lambert
                 material = new MultiBxdf(MultiBxdf::Type::kFresnelBlend);

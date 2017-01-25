@@ -546,10 +546,10 @@ namespace Baikal
         UpdateTextures(scene, mat_collector, tex_collector, out);
         
     
-        //Volume vol = {1, 0, 0, 0, {0.9f, 0.6f, 0.9f}, {5.1f, 1.8f, 5.1f}, {0.0f, 0.0f, 0.0f}};
+        //Volume vol = 
         
         // Temporary code
-        ClwScene::Volume vol;// = { 1, 0, 0, 0, {1.2f, 0.4f, 1.2f },{ 5.1f, 4.8f, 5.1f },{ 0.0f, 0.0f, 0.0f } };
+        ClwScene::Volume vol = {(ClwScene::VolumeType)1, (ClwScene::PhaseFunction)0, 0, 0, {0.09f, 0.09f, 0.09f}, {0.1f, 0.1f, 0.1f}, {0.0f, 0.0f, 0.0f}};
 
         out.volumes = m_context.CreateBuffer<ClwScene::Volume>(1, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &vol);
 
@@ -700,7 +700,6 @@ namespace Baikal
                 case SingleBxdf::BxdfType::kIdealRefract: return ClwScene::Bxdf::kIdealRefract;
                 case SingleBxdf::BxdfType::kMicrofacetGGX: return ClwScene::Bxdf::kMicrofacetGGX;
                 case SingleBxdf::BxdfType::kMicrofacetBeckmann: return ClwScene::Bxdf::kMicrofacetBeckmann;
-                case SingleBxdf::BxdfType::kMicrofacetBlinn: return ClwScene::Bxdf::kMicrofacetBlinn;
                 case SingleBxdf::BxdfType::kMicrofacetRefractionGGX: return ClwScene::Bxdf::kMicrofacetRefractionGGX;
                 case SingleBxdf::BxdfType::kMicrofacetRefractionBeckmann: return ClwScene::Bxdf::kMicrofacetRefractionBeckmann;
             }
@@ -737,7 +736,6 @@ namespace Baikal
                 break;
                
             // We need to convert roughness for the following materials
-            case ClwScene::Bxdf::kMicrofacetBlinn:
             case ClwScene::Bxdf::kMicrofacetGGX:
             case ClwScene::Bxdf::kMicrofacetBeckmann:
             case ClwScene::Bxdf::kMicrofacetRefractionGGX:

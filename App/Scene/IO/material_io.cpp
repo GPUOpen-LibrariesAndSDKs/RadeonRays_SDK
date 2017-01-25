@@ -85,8 +85,6 @@ namespace Baikal
             return "ideal_reflect";
         case Baikal::SingleBxdf::BxdfType::kIdealRefract:
             return "ideal_refract";;
-        case Baikal::SingleBxdf::BxdfType::kMicrofacetBlinn:
-            return "microfacet_blinn";
         case Baikal::SingleBxdf::BxdfType::kMicrofacetBeckmann:
             return "microfacet_beckmann";
         case Baikal::SingleBxdf::BxdfType::kMicrofacetGGX:
@@ -114,7 +112,6 @@ namespace Baikal
             { "lambert" , Baikal::SingleBxdf::BxdfType::kLambert },
             { "ideal_reflect" , Baikal::SingleBxdf::BxdfType::kIdealReflect },
             { "ideal_refract" , Baikal::SingleBxdf::BxdfType::kIdealRefract },
-            { "microfacet_blinn" , Baikal::SingleBxdf::BxdfType::kMicrofacetBlinn },
             { "microfacet_beckmann" , Baikal::SingleBxdf::BxdfType::kMicrofacetBeckmann },
             { "microfacet_ggx" , Baikal::SingleBxdf::BxdfType::kMicrofacetGGX },
             { "emissive" , Baikal::SingleBxdf::BxdfType::kEmissive },
@@ -218,7 +215,6 @@ namespace Baikal
 
             if (type == SingleBxdf::BxdfType::kMicrofacetGGX ||
                 type == SingleBxdf::BxdfType::kMicrofacetBeckmann ||
-                type == SingleBxdf::BxdfType::kMicrofacetBlinn ||
                 type == SingleBxdf::BxdfType::kMicrofacetRefractionGGX ||
                 type == SingleBxdf::BxdfType::kMicrofacetRefractionBeckmann)
             {

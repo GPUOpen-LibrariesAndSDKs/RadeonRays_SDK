@@ -363,7 +363,7 @@ __kernel void ShadeSurface(
 
         // Fill surface data
         DifferentialGeometry diffgeo;
-        FillDifferentialGeometry(&scene, &isect, &diffgeo);
+        DifferentialGeometry_Fill(&scene, &isect, &diffgeo);
 
         // Check if we are hitting from the inside
 
@@ -444,13 +444,15 @@ __kernel void ShadeSurface(
         // maintain proper volume stack here
         //if (Bxdf_IsBtdf(&diffgeo))
         //{
-            // If we entering set the volume
-            //path->volume = ndotwi > 0.f ? 0 : -1;
+        //    // If we entering set the volume
+        //    path->volume = !backfacing ? 0 : -1;
         //}
 
         // Check if we need to apply normal map
         //ApplyNormalMap(&diffgeo, TEXTURE_ARGS);
-        ApplyBumpMap(&diffgeo, TEXTURE_ARGS);
+        DifferentialGeometry_ApplyBumpMap(&diffgeo, TEXTURE_ARGS);
+        DifferentialGeometry_CalculateTangentTransforms(&diffgeo);
+
         float lightpdf = 0.f;
         float bxdflightpdf = 0.f;
         float bxdfpdf = 0.f;
