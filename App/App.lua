@@ -7,8 +7,8 @@ project "App"
     includedirs{ "../RadeonRays/include", "../CLW", "." }
 
     if os.is("macosx") then
-        includedirs {"../3rdparty/oiio16/include"}
-        libdirs {"../3rdparty/oiio16/lib/x64", "/usr/local/lib"}
+        sysincludedirs {"/usr/local/include"}
+        libdirs {"/usr/local/lib"}
         linkoptions{ "-framework OpenGL", "-framework GLUT" }
         buildoptions "-std=c++11 -stdlib=libc++"
         links {"OpenImageIO"}
