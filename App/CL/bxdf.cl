@@ -31,7 +31,6 @@ THE SOFTWARE.
 #define ROUGHNESS_EPS 0.0001f
 
 
-
 enum BxdfFlags
 {
     kReflection = (1 << 0),
