@@ -22,12 +22,13 @@ THE SOFTWARE.
 #ifndef MATERIAL_CL
 #define MATERIAL_CL
 
+#define CMJ 1
+
 #include <../App/CL/utils.cl>
 #include <../App/CL/random.cl>
 #include <../App/CL/texture.cl>
 #include <../App/CL/payload.cl>
 #include <../App/CL/bxdf.cl>
-//#define SOBOL
 
 void Material_Select(
     // Scene data

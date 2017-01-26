@@ -43,7 +43,7 @@ THE SOFTWARE.
 #define CRAZY_LOW_THROUGHPUT 0.0f
 #define CRAZY_HIGH_RADIANCE 3.f
 #define CRAZY_HIGH_DISTANCE 1000000.f
-#define CRAZY_LOW_DISTANCE 0.01f
+#define CRAZY_LOW_DISTANCE 0.001f
 #define REASONABLE_RADIANCE(x) (clamp((x), 0.f, CRAZY_HIGH_RADIANCE))
 #define NON_BLACK(x) (length(x) > 0.f)
 
@@ -237,7 +237,7 @@ __kernel void ShadeVolume(
     }
 }
 
-#define CMJ_DIM 16
+#define CMJ_DIM 4
 
 // Handle ray-surface interaction possibly generating path continuation.
 // This is only applied to non-scattered paths.
@@ -317,6 +317,9 @@ __kernel void ShadeSurface(
         num_lights
     };
 
+    // Pass defines current current light selection and current material selection
+    int pass = frame / (CMJ_DIM * CMJ_DIM);
+
     // Only applied to active rays after compaction
     if (globalid < *numhits)
     {
@@ -369,18 +372,17 @@ __kernel void ShadeSurface(
         Rng rng;
         InitRng(rngseed + (globalid << 2) * 157 + 13, &rng);
 
-        int pass = frame / (CMJ_DIM * CMJ_DIM);
-        int subsample0 = permute(frame % (CMJ_DIM * CMJ_DIM), CMJ_DIM * CMJ_DIM, (pass + pixelidx + bounce) * 0xc517e953);
-        int subsample1 = permute(frame % (CMJ_DIM * CMJ_DIM), CMJ_DIM * CMJ_DIM, (pass + pixelidx + bounce + 1) * 0xc517e953);
-        int subsample2 = permute(frame % (CMJ_DIM * CMJ_DIM), CMJ_DIM * CMJ_DIM, (pass + pixelidx + bounce + 2) * 0xc517e953);
-        int subsample3 = permute(frame % (CMJ_DIM * CMJ_DIM), CMJ_DIM * CMJ_DIM, (pass + pixelidx + bounce + 3) * 0xc517e953);
-        int subsample4 = permute(frame % (CMJ_DIM * CMJ_DIM), CMJ_DIM * CMJ_DIM, (pass + pixelidx + bounce + 4) * 0xc517e953);
+        int pattern0 = permute(pixelidx, (1024 * 1024), pass * 1024 * 1024 * 20 * 5 + bounce * 1024 * 1024 * 5 + pixelidx);
+        int pattern1 = permute(pixelidx, (1024 * 1024), pass * 1024 * 1024 * 20 * 5 + bounce * 1024 * 1024 * 5 + pixelidx + 1);
+        int pattern2 = permute(pixelidx, (1024 * 1024), pass * 1024 * 1024 * 20 * 5 + bounce * 1024 * 1024 * 5 + pixelidx + 2);
+        int pattern3 = permute(pixelidx, (1024 * 1024), pass * 1024 * 1024 * 20 * 5 + bounce * 1024 * 1024 * 5 + pixelidx + 3);
+        int pattern4 = permute(pixelidx, (1024 * 1024), pass * 1024 * 1024 * 20 * 5 + bounce * 1024 * 1024 * 5 + pixelidx + 4);
 
-        int pattern0 = (pass + bounce + pixelidx) % 13331;
-        int pattern1 = (pass + bounce + pixelidx + 1) % 13331;
-        int pattern2 = (pass + bounce + pixelidx + 2) % 13331;
-        int pattern3 = (pass + bounce + pixelidx + 3) % 13331;
-        int pattern4 = (pass + bounce + pixelidx + 4) % 13331;
+        int subsample0 = permute(frame % (CMJ_DIM * CMJ_DIM), CMJ_DIM * CMJ_DIM, pattern4 * pixelidx * 0xc117d953);
+        int subsample1 = permute(frame % (CMJ_DIM * CMJ_DIM), CMJ_DIM * CMJ_DIM, pattern3 * pixelidx * 0xc117d953);
+        int subsample2 = permute(frame % (CMJ_DIM * CMJ_DIM), CMJ_DIM * CMJ_DIM, pattern2 * pixelidx * 0xc117d953);
+        int subsample3 = permute(frame % (CMJ_DIM * CMJ_DIM), CMJ_DIM * CMJ_DIM, pattern1 * pixelidx * 0xc117d953);
+        int subsample4 = permute(frame % (CMJ_DIM * CMJ_DIM), CMJ_DIM * CMJ_DIM, pattern0 * pixelidx * 0xc117d953);
 
         float2 sample0 = cmj(subsample0, CMJ_DIM, pattern0);
         float2 sample1 = cmj(subsample1, CMJ_DIM, pattern1);
@@ -495,7 +497,8 @@ __kernel void ShadeSurface(
         float bxdfweight = 1.f;
         float lightweight = 1.f;
 
-        int light_idx = num_lights > 0 ? Scene_SampleLight(&scene, sample0.y, &selection_pdf) : -1;
+        int light_idx = pass % num_lights;
+        selection_pdf = 1.f / num_lights;
 
         float3 throughput = Path_GetThroughput(path);
 

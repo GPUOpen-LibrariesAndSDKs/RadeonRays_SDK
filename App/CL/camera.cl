@@ -28,9 +28,8 @@ THE SOFTWARE.
 #include <../App/CL/utils.cl>
 #include <../App/CL/path.cl>
 
-//#define SOBOL
-
-
+#define CMJ 1
+#define CMJ_DIM 4
 
 
 /// Ray generation kernel for perspective camera.
@@ -49,7 +48,8 @@ __kernel void PerspectiveCamera_GeneratePaths(
                              __global ray* rays,
                              __global SobolSampler* samplers,
                              __global uint const* sobolmat,
-                             int reset
+                             int reset,
+                             int frame
 #ifndef NO_PATH_DATA
                              ,__global Path* paths
 #endif
@@ -73,7 +73,7 @@ __kernel void PerspectiveCamera_GeneratePaths(
         Rng rng;
         InitRng(randseed +  globalid.x * 157 + 10433 * globalid.y, &rng);
 
-#ifdef SOBOL
+#if SOBOL == 1
         __global SobolSampler* sampler = samplers + globalid.y * imgwidth + globalid.x;
 
         if (reset)
@@ -89,8 +89,14 @@ __kernel void PerspectiveCamera_GeneratePaths(
         float2 sample0;
         sample0.x = SobolSampler_Sample1D(sampler->seq, kPixelX, sampler->s0, sobolmat);
         sample0.y = SobolSampler_Sample1D(sampler->seq, kPixelY, sampler->s0, sobolmat);
-#else
+#elif RANDOM == 1
         float2 sample0 = UniformSampler_Sample2D(&rng);
+#elif CMJ == 1
+        // Pass defines current current light selection and current material selection
+        int pass = frame / (CMJ_DIM * CMJ_DIM);
+        int pattern0 = permute(globalid.y * imgwidth + globalid.x, (1024 * 1024), pass * 0xc13719e1);
+        int subsample0 = permute(frame % (CMJ_DIM * CMJ_DIM), CMJ_DIM * CMJ_DIM, pattern0 * 0xc517e953);
+        float2 sample0 = cmj(subsample0, CMJ_DIM, pattern0);
 #endif
 
         // Calculate [0..1] image plane sample

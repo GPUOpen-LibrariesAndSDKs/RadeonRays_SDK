@@ -351,7 +351,8 @@ namespace Baikal
         genkernel.SetArg(5, m_render_data->samplers);
         genkernel.SetArg(6, m_render_data->sobolmat);
         genkernel.SetArg(7, m_resetsampler);
-        genkernel.SetArg(8, m_render_data->paths);
+        genkernel.SetArg(8, m_framecnt);
+        genkernel.SetArg(9, m_render_data->paths);
         m_resetsampler = 0;
 
         // Run generation kernel

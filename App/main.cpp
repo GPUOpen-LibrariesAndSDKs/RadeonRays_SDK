@@ -107,7 +107,7 @@ float g_ao_radius = 1.f;
 float g_envmapmul = 1.f;
 float g_cspeed = 10.25f;
 
-float3 g_camera_pos = float3(0.f, 4.f, 12.f);
+float3 g_camera_pos = float3(0.f, 4.f, 14.f);
 float3 g_camera_at = float3(0.f, 1.f, 0.f);
 float3 g_camera_up = float3(0.f, 1.f, 0.f);
 
