@@ -368,18 +368,13 @@ __kernel void ShadeSurface(
 #elif (CMJ == 1)
         Rng rng;
         InitRng(rngseed + (globalid << 2) * 157 + 13, &rng);
-        float2 sample0 = UniformSampler_Sample2D(&rng);
-        float2 sample1 = UniformSampler_Sample2D(&rng);
-        float2 sample2 = UniformSampler_Sample2D(&rng);
-        float2 sample3 = UniformSampler_Sample2D(&rng);
-        float  sample4 = UniformSampler_Sample2D(&rng).x;
 
         int pass = frame / (CMJ_DIM * CMJ_DIM);
-        int subsample0 = permute(frame % (CMJ_DIM * CMJ_DIM), CMJ_DIM * CMJ_DIM, (pixelidx + bounce) * 0xc517e953);
-        int subsample1 = permute(frame % (CMJ_DIM * CMJ_DIM), CMJ_DIM * CMJ_DIM, (pixelidx + bounce + 1) * 0xc517e953);
-        int subsample2 = permute(frame % (CMJ_DIM * CMJ_DIM), CMJ_DIM * CMJ_DIM, (pixelidx + bounce + 2) * 0xc517e953);
-        int subsample3 = permute(frame % (CMJ_DIM * CMJ_DIM), CMJ_DIM * CMJ_DIM, (pixelidx + bounce + 3) * 0xc517e953);
-        int subsample4 = permute(frame % (CMJ_DIM * CMJ_DIM), CMJ_DIM * CMJ_DIM, (pixelidx + bounce + 4) * 0xc517e953);
+        int subsample0 = permute(frame % (CMJ_DIM * CMJ_DIM), CMJ_DIM * CMJ_DIM, (pass + pixelidx + bounce) * 0xc517e953);
+        int subsample1 = permute(frame % (CMJ_DIM * CMJ_DIM), CMJ_DIM * CMJ_DIM, (pass + pixelidx + bounce + 1) * 0xc517e953);
+        int subsample2 = permute(frame % (CMJ_DIM * CMJ_DIM), CMJ_DIM * CMJ_DIM, (pass + pixelidx + bounce + 2) * 0xc517e953);
+        int subsample3 = permute(frame % (CMJ_DIM * CMJ_DIM), CMJ_DIM * CMJ_DIM, (pass + pixelidx + bounce + 3) * 0xc517e953);
+        int subsample4 = permute(frame % (CMJ_DIM * CMJ_DIM), CMJ_DIM * CMJ_DIM, (pass + pixelidx + bounce + 4) * 0xc517e953);
 
         int pattern0 = (pass + bounce + pixelidx) % 13331;
         int pattern1 = (pass + bounce + pixelidx + 1) % 13331;
@@ -387,11 +382,11 @@ __kernel void ShadeSurface(
         int pattern3 = (pass + bounce + pixelidx + 3) % 13331;
         int pattern4 = (pass + bounce + pixelidx + 4) % 13331;
 
-        sample0 = cmj(subsample0, CMJ_DIM, pattern0);
-        sample1 = cmj(subsample1, CMJ_DIM, pattern1);
-        sample2 = cmj(subsample2, CMJ_DIM, pattern2);
-        sample3 = cmj(subsample3, CMJ_DIM, pattern2);
-        sample4 = cmj(subsample4, CMJ_DIM, pattern2).x;
+        float2 sample0 = cmj(subsample0, CMJ_DIM, pattern0);
+        float2 sample1 = cmj(subsample1, CMJ_DIM, pattern1);
+        float2 sample2 = cmj(subsample2, CMJ_DIM, pattern2);
+        float2 sample3 = cmj(subsample3, CMJ_DIM, pattern3);
+        float sample4 = cmj(subsample4, CMJ_DIM, pattern4).x;
 #else
 
 #endif
