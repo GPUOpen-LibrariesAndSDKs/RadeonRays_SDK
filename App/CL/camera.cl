@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include <../App/CL/utils.cl>
 #include <../App/CL/path.cl>
 
+//#define SOBOL
 
 
 

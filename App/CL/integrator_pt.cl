@@ -43,9 +43,11 @@ THE SOFTWARE.
 #define CRAZY_LOW_THROUGHPUT 0.0f
 #define CRAZY_HIGH_RADIANCE 3.f
 #define CRAZY_HIGH_DISTANCE 1000000.f
-#define CRAZY_LOW_DISTANCE 0.001f
+#define CRAZY_LOW_DISTANCE 0.01f
 #define REASONABLE_RADIANCE(x) (clamp((x), 0.f, CRAZY_HIGH_RADIANCE))
 #define NON_BLACK(x) (length(x) > 0.f)
+
+#define CMJ 1
 
 
 // This kernel only handles scattered paths.
@@ -235,6 +237,8 @@ __kernel void ShadeVolume(
     }
 }
 
+#define CMJ_DIM 16
+
 // Handle ray-surface interaction possibly generating path continuation.
 // This is only applied to non-scattered paths.
 __kernel void ShadeSurface(
@@ -280,6 +284,8 @@ __kernel void ShadeSurface(
     __global uint const* sobolmat,
     // Current bounce
     int bounce,
+    // Frame
+    int frame,
     // Volume data
     __global Volume const* volumes,
     // Shadow rays
@@ -329,7 +335,7 @@ __kernel void ShadeSurface(
 
         // Fetch incoming ray direction
         float3 wi = -normalize(rays[hitidx].d.xyz);
-#ifdef SOBOL
+#if (SOBOL == 1)
         // Sample light
         __global SobolSampler* sampler = samplers + pixelidx;
 
@@ -350,7 +356,7 @@ __kernel void ShadeSurface(
         sample3.y = SobolSampler_Sample1D(sampler->seq, GetSampleDim(bounce, kIndirectV), sampler->s0, sobolmat);
 
         float sample4 = SobolSampler_Sample1D(sampler->seq, GetSampleDim(bounce, kRR), sampler->s0, sobolmat);
-#else
+#elif (RANDOM == 1)
         // Prepare RNG
         Rng rng;
         InitRng(rngseed + (globalid << 2) * 157 + 13, &rng);
@@ -359,6 +365,35 @@ __kernel void ShadeSurface(
         float2 sample2 = UniformSampler_Sample2D(&rng);
         float2 sample3 = UniformSampler_Sample2D(&rng);
         float  sample4 = UniformSampler_Sample2D(&rng).x;
+#elif (CMJ == 1)
+        Rng rng;
+        InitRng(rngseed + (globalid << 2) * 157 + 13, &rng);
+        float2 sample0 = UniformSampler_Sample2D(&rng);
+        float2 sample1 = UniformSampler_Sample2D(&rng);
+        float2 sample2 = UniformSampler_Sample2D(&rng);
+        float2 sample3 = UniformSampler_Sample2D(&rng);
+        float  sample4 = UniformSampler_Sample2D(&rng).x;
+
+        int pass = frame / (CMJ_DIM * CMJ_DIM);
+        int subsample0 = permute(frame % (CMJ_DIM * CMJ_DIM), CMJ_DIM * CMJ_DIM, (pixelidx + bounce) * 0xc517e953);
+        int subsample1 = permute(frame % (CMJ_DIM * CMJ_DIM), CMJ_DIM * CMJ_DIM, (pixelidx + bounce + 1) * 0xc517e953);
+        int subsample2 = permute(frame % (CMJ_DIM * CMJ_DIM), CMJ_DIM * CMJ_DIM, (pixelidx + bounce + 2) * 0xc517e953);
+        int subsample3 = permute(frame % (CMJ_DIM * CMJ_DIM), CMJ_DIM * CMJ_DIM, (pixelidx + bounce + 3) * 0xc517e953);
+        int subsample4 = permute(frame % (CMJ_DIM * CMJ_DIM), CMJ_DIM * CMJ_DIM, (pixelidx + bounce + 4) * 0xc517e953);
+
+        int pattern0 = (pass + bounce + pixelidx) % 13331;
+        int pattern1 = (pass + bounce + pixelidx + 1) % 13331;
+        int pattern2 = (pass + bounce + pixelidx + 2) % 13331;
+        int pattern3 = (pass + bounce + pixelidx + 3) % 13331;
+        int pattern4 = (pass + bounce + pixelidx + 4) % 13331;
+
+        sample0 = cmj(subsample0, CMJ_DIM, pattern0);
+        sample1 = cmj(subsample1, CMJ_DIM, pattern1);
+        sample2 = cmj(subsample2, CMJ_DIM, pattern2);
+        sample3 = cmj(subsample3, CMJ_DIM, pattern2);
+        sample4 = cmj(subsample4, CMJ_DIM, pattern2).x;
+#else
+
 #endif
 
         // Fill surface data

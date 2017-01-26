@@ -113,6 +113,7 @@ namespace Baikal
 
     private:
         int m_num_bounces;
+        int m_framecnt;
     };
 
 }

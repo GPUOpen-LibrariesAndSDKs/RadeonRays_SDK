@@ -970,15 +970,14 @@ namespace Baikal
             {
                 // TODO: optimize this linear search
                 auto shape = static_cast<AreaLight const*>(light)->GetShape();
-                
-                std::size_t idx = -1;
-                
+
+                std::size_t idx = 0;
                 for (auto iter = scene.CreateShapeIterator(); iter->IsValid(); iter->Next(), ++idx)
                 {
                     if (iter->ItemAs<Shape const>() == shape)
                         break;
                 }
-                
+
                 clw_light->shapeidx = static_cast<int>(idx);
                 clw_light->primidx = static_cast<int>(static_cast<AreaLight const*>(light)->GetPrimitiveIdx());
                 break;

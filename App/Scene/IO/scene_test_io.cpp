@@ -65,7 +65,7 @@ namespace Baikal
         normals[t].x=0; normals[t].y = -1; normals[t].z = 0;
         uvs[t].x=1; uvs[t].y = 1;
         ++t;
-        
+
         t = 0U;
         for(auto j = 0U; j < lat - 3; j++)
             for(auto i = 0U; i < lon - 1; i++)
@@ -223,24 +223,15 @@ namespace Baikal
         }
         else if (filename == "sphere+plane+area")
         {
-            auto mesh = CreateSphere(64, 32, 2.f, float3(0.f, 2.2f, 0.f));
+            auto mesh = CreateSphere(64, 32, 2.f, float3(0.f, 2.5f, 0.f));
             scene->AttachShape(mesh);
             scene->AttachAutoreleaseObject(mesh);
-            
-            SingleBxdf* green = new SingleBxdf(SingleBxdf::BxdfType::kLambert);
-            green->SetInputValue("albedo", 2.f * float4(0.1f, 0.2f, 0.1f, 1.f));
-            
-            SingleBxdf* spec = new SingleBxdf(SingleBxdf::BxdfType::kMicrofacetGGX);
-            spec->SetInputValue("albedo", float4(0.9f, 0.9f, 0.9f, 1.f));
-            spec->SetInputValue("roughness", float4(0.002f, 0.002f, 0.002f, 1.f));
-            
-            MultiBxdf* mix = new MultiBxdf(MultiBxdf::Type::kFresnelBlend);
-            mix->SetInputValue("base_material", green);
-            mix->SetInputValue("top_material", spec);
-            mix->SetInputValue("ior", float4(1.33f, 1.33f, 1.33f, 1.33f));
-            
-            mesh->SetMaterial(mix);
-            
+
+            SingleBxdf* grey = new SingleBxdf(SingleBxdf::BxdfType::kLambert);
+            grey->SetInputValue("albedo", float4(0.7f, 0.7f, 0.7f, 1.f));
+            grey->SetTwoSided(true);
+
+
             Mesh* floor = CreateQuad(
                                     {
                                         RadeonRays::float3(-8, 0, -8),
@@ -252,10 +243,11 @@ namespace Baikal
             scene->AttachShape(floor);
             scene->AttachAutoreleaseObject(floor);
             
-            floor->SetMaterial(green);
-            
+            floor->SetMaterial(grey);
+            mesh->SetMaterial(grey);
+
             SingleBxdf* emissive = new SingleBxdf(SingleBxdf::BxdfType::kEmissive);
-            emissive->SetInputValue("albedo", 5.f * float4(3.1f, 3.f, 2.8f, 1.f));
+            emissive->SetInputValue("albedo", 2.f * float4(3.1f, 3.f, 2.8f, 1.f));
             
             Mesh* light = CreateQuad(
                                      {
@@ -269,19 +261,17 @@ namespace Baikal
             scene->AttachAutoreleaseObject(light);
             
             light->SetMaterial(emissive);
-            
+
             AreaLight* l1 = new AreaLight(light, 0);
             AreaLight* l2 = new AreaLight(light, 1);
+
             scene->AttachLight(l1);
             scene->AttachLight(l2);
             scene->AttachAutoreleaseObject(l1);
             scene->AttachAutoreleaseObject(l2);
-            
+
             scene->AttachAutoreleaseObject(emissive);
-            scene->AttachAutoreleaseObject(green);
-            scene->AttachAutoreleaseObject(spec);
-            scene->AttachAutoreleaseObject(mix);
-            
+            scene->AttachAutoreleaseObject(grey);
         }
         else if (filename == "sphere+plane+ibl")
         {

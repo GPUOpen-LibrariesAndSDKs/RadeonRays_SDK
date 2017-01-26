@@ -27,6 +27,7 @@ THE SOFTWARE.
 #include <../App/CL/texture.cl>
 #include <../App/CL/payload.cl>
 #include <../App/CL/bxdf.cl>
+//#define SOBOL
 
 void Material_Select(
     // Scene data

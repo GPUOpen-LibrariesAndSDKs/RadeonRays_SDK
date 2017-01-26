@@ -114,6 +114,7 @@ namespace Baikal
         , m_resetsampler(true)
         , m_scene_tracker(context, devidx)
         , m_num_bounces(num_bounces)
+        , m_framecnt(0)
     {
         std::string buildopts;
 
@@ -178,6 +179,9 @@ namespace Baikal
     {
         auto api = m_scene_tracker.GetIntersectionApi();
         auto& clwscene = m_scene_tracker.CompileScene(scene, m_render_data->mat_collector, m_render_data->tex_collector);
+
+        if (m_resetsampler)
+            m_framecnt = 0;
 
         // Check output
         assert(m_output);
@@ -247,6 +251,8 @@ namespace Baikal
             //
             m_context.Flush(0);
         }
+
+        ++m_framecnt;
     }
 
     void PtRenderer::SetOutput(Output* output)
@@ -386,6 +392,7 @@ namespace Baikal
         shadekernel.SetArg(argc++, m_render_data->samplers);
         shadekernel.SetArg(argc++, m_render_data->sobolmat);
         shadekernel.SetArg(argc++, pass);
+        shadekernel.SetArg(argc++, m_framecnt);
         shadekernel.SetArg(argc++, scene.volumes);
         shadekernel.SetArg(argc++, m_render_data->shadowrays);
         shadekernel.SetArg(argc++, m_render_data->lightsamples);

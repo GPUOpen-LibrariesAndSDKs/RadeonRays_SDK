@@ -107,7 +107,7 @@ float g_ao_radius = 1.f;
 float g_envmapmul = 1.f;
 float g_cspeed = 10.25f;
 
-float3 g_camera_pos = float3(0.f, 1.f, 4.f);
+float3 g_camera_pos = float3(0.f, 4.f, 12.f);
 float3 g_camera_at = float3(0.f, 1.f, 0.f);
 float3 g_camera_up = float3(0.f, 1.f, 0.f);
 
@@ -348,8 +348,8 @@ void InitData()
 
     {
         // Load OBJ scene
-        std::unique_ptr<Baikal::SceneIo> scene_io(Baikal::SceneIo::CreateSceneIoObj());
-        g_scene.reset(scene_io->LoadScene(filename, basepath));
+        std::unique_ptr<Baikal::SceneIo> scene_io(Baikal::SceneIo::CreateSceneIoTest());
+        g_scene.reset(scene_io->LoadScene("sphere+plane+area", basepath));
 
         // Enable this to generate new materal mapping for a model
 #if 0
@@ -767,9 +767,15 @@ void Update()
         }*/
     }
 
-    if (g_num_samples == -1 || g_samplecount++ < g_num_samples)
+    if (g_num_samples == -1 || g_samplecount < g_num_samples)
     {
         g_cfgs[g_primary].renderer->Render(*g_scene.get());
+        ++g_samplecount;
+    }
+    else if (g_samplecount == g_num_samples)
+    {
+        std::cout << "Target sample count reached\n";
+        ++g_samplecount;
     }
 
     //if (std::chrono::duration_cast<std::chrono::seconds>(time - updatetime).count() > 1)
