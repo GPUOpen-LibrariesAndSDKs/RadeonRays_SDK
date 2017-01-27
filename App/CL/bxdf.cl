@@ -23,7 +23,6 @@ THE SOFTWARE.
 #define BXDF_CL
 
 #include <../App/CL/utils.cl>
-#include <../App/CL/random.cl>
 #include <../App/CL/texture.cl>
 #include <../App/CL/payload.cl>
 

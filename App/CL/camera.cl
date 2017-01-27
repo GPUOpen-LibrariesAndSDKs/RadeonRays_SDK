@@ -22,14 +22,11 @@ THE SOFTWARE.
 #ifndef CAMERA_CL
 #define CAMERA_CL
 
+#include <../App/CL/common.cl>
 #include <../App/CL/payload.cl>
-#include <../App/CL/random.cl>
 #include <../App/CL/sampling.cl>
 #include <../App/CL/utils.cl>
 #include <../App/CL/path.cl>
-
-#define CMJ 1
-#define CMJ_DIM 4
 
 
 /// Ray generation kernel for perspective camera.
@@ -43,12 +40,11 @@ __kernel void PerspectiveCamera_GeneratePaths(
                              int imgwidth,
                              int imgheight,
                              // RNG seed value
-                             int randseed,
+                             uint rngseed,
                              // Output rays
                              __global ray* rays,
-                             __global SobolSampler* samplers,
+                             __global uint const* random,
                              __global uint const* sobolmat,
-                             int reset,
                              int frame
 #ifndef NO_PATH_DATA
                              ,__global Path* paths
@@ -69,35 +65,21 @@ __kernel void PerspectiveCamera_GeneratePaths(
         __global Path* mypath = paths + globalid.y * imgwidth + globalid.x;
 #endif
 
-        // Prepare RNG
-        Rng rng;
-        InitRng(randseed +  globalid.x * 157 + 10433 * globalid.y, &rng);
-
-#if SOBOL == 1
-        __global SobolSampler* sampler = samplers + globalid.y * imgwidth + globalid.x;
-
-        if (reset)
-        {
-            sampler->seq = 0;
-            sampler->s0 = RandUint(&rng);
-        }
-        else
-        {
-            sampler->seq++;
-        }
-
-        float2 sample0;
-        sample0.x = SobolSampler_Sample1D(sampler->seq, kPixelX, sampler->s0, sobolmat);
-        sample0.y = SobolSampler_Sample1D(sampler->seq, kPixelY, sampler->s0, sobolmat);
-#elif RANDOM == 1
-        float2 sample0 = UniformSampler_Sample2D(&rng);
-#elif CMJ == 1
-        // Pass defines current current light selection and current material selection
-        int pass = frame / (CMJ_DIM * CMJ_DIM);
-        int pattern0 = permute(globalid.y * imgwidth + globalid.x, (1024 * 1024), pass * 0xc13719e1);
-        int subsample0 = permute(frame % (CMJ_DIM * CMJ_DIM), CMJ_DIM * CMJ_DIM, pattern0 * 0xc517e953);
-        float2 sample0 = cmj(subsample0, CMJ_DIM, pattern0);
+        Sampler sampler;
+#if SAMPLER == SOBOL
+        uint scramble = random[globalid.x + imgwidth * globalid.y] * 0x1fe3434f;
+        Sampler_Init(&sampler, frame, SAMPLE_DIM_CAMERA_OFFSET, scramble);
+#elif SAMPLER == RANDOM
+        uint scramble = globalid.x + imgwidth * globalid.y * rngseed;
+        Sampler_Init(&sampler, scramble);
+#elif SAMPLER == CMJ
+        uint rnd = random[globalid.x + imgwidth * globalid.y];
+        uint scramble = rnd * 0x1fe3434f * ((frame + 133 * rnd) / (CMJ_DIM * CMJ_DIM));
+        Sampler_Init(&sampler, frame % (CMJ_DIM * CMJ_DIM), SAMPLE_DIM_CAMERA_OFFSET, scramble);
 #endif
+
+        // Generate sample
+        float2 sample0 = Sampler_Sample2D(&sampler, SAMPLER_ARGS);
 
         // Calculate [0..1] image plane sample
         float2 imgsample;
@@ -142,12 +124,12 @@ __kernel void PerspectiveCameraDof_GeneratePaths(
     int imgwidth,
     int imgheight,
     // RNG seed value
-    int randseed,
+    uint rngseed,
     // Output rays
     __global ray* rays,
-    __global SobolSampler* samplers,
+    __global uint* random,
     __global uint const* sobolmat,
-    int reset
+    int frame
 #ifndef NO_PATH_DATA
     , __global Path* paths
 #endif
@@ -167,35 +149,23 @@ __kernel void PerspectiveCameraDof_GeneratePaths(
         __global Path* mypath = paths + globalid.y * imgwidth + globalid.x;
 #endif
 
-        // Prepare RNG
-        Rng rng;
-        InitRng(randseed + globalid.x * 157 + 10433 * globalid.y, &rng);
-
-        //
-#ifdef SOBOL
-        __global SobolSampler* sampler = samplers + globalid.y * imgwidth + globalid.x;
-
-        if (reset)
-        {
-            sampler->seq = 0;
-            sampler->s0 = RandUint(&rng);
-        }
-        else
-        {
-            sampler->seq++;
-        }
-
-        float2 sample0;
-        sample0.x = SobolSampler_Sample1D(sampler->seq, kPixelX, sampler->s0, sobolmat);
-        sample0.y = SobolSampler_Sample1D(sampler->seq, kPixelY, sampler->s0, sobolmat);
-
-        float2 sample1;
-        sample1.x = SobolSampler_Sample1D(sampler->seq, kLensX, sampler->s0, sobolmat);
-        sample1.y = SobolSampler_Sample1D(sampler->seq, kLensY, sampler->s0, sobolmat);
-#else
-        float2 sample0 = UniformSampler_Sample2D(&rng);
-        float2 sample1 = UniformSampler_Sample2D(&rng);
+        Sampler sampler;
+#if SAMPLER == SOBOL
+        uint scramble = random[globalid.x + imgwidth * globalid.y] * 0x1fe3434f;
+        Sampler_Init(&sampler, frame, SAMPLE_DIM_CAMERA_OFFSET, scramble);
+#elif SAMPLER == RANDOM
+        uint scramble = globalid.x + imgwidth * globalid.y * rngseed;
+        Sampler_Init(&sampler, scramble);
+#elif SAMPLER == CMJ
+        uint rnd = random[globalid.x + imgwidth * globalid.y];
+        uint scramble = rnd * 0x1fe3434f * ((frame + 133 * rnd) / (CMJ_DIM * CMJ_DIM));
+        Sampler_Init(&sampler, frame % (CMJ_DIM * CMJ_DIM), SAMPLE_DIM_CAMERA_OFFSET, scramble);
 #endif
+
+        // Generate pixel and lens samples
+        float2 sample0 = Sampler_Sample2D(&sampler, SAMPLER_ARGS);
+        float2 sample1 = Sampler_Sample2D(&sampler, SAMPLER_ARGS);
+
 
         // Calculate [0..1] image plane sample
         float2 imgsample;

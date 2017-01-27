@@ -24,7 +24,6 @@ THE SOFTWARE.
 
 #include <../App/CL/utils.cl>
 #include <../App/CL/payload.cl>
-#include <../App/CL/random.cl>
 #include <../App/CL/texture.cl>
 #include <../App/CL/scene.cl>
 

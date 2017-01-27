@@ -92,13 +92,10 @@ namespace Baikal
         CLWContext m_context;
         // Output object
         ClwOutput* m_output;
-        // Flag to reset the sampler
-        mutable bool m_resetsampler;
         // Scene tracker
         SceneTracker m_scene_tracker;
 
         // GPU data
-        struct QmcSampler;
         struct PathState;
         struct RenderData;
 
@@ -112,8 +109,8 @@ namespace Baikal
         size_t m_vidmemws;
 
     private:
-        int m_num_bounces;
-        int m_framecnt;
+        std::uint32_t m_num_bounces;
+        mutable std::uint32_t m_framecnt;
     };
 
 }

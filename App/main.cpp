@@ -107,7 +107,7 @@ float g_ao_radius = 1.f;
 float g_envmapmul = 1.f;
 float g_cspeed = 10.25f;
 
-float3 g_camera_pos = float3(0.f, 4.f, 14.f);
+float3 g_camera_pos = float3(0.f, 1.f, 3.f);
 float3 g_camera_at = float3(0.f, 1.f, 0.f);
 float3 g_camera_up = float3(0.f, 1.f, 0.f);
 
@@ -348,8 +348,8 @@ void InitData()
 
     {
         // Load OBJ scene
-        std::unique_ptr<Baikal::SceneIo> scene_io(Baikal::SceneIo::CreateSceneIoTest());
-        g_scene.reset(scene_io->LoadScene("sphere+plane+area", basepath));
+        std::unique_ptr<Baikal::SceneIo> scene_io(Baikal::SceneIo::CreateSceneIoObj());
+        g_scene.reset(scene_io->LoadScene(filename, basepath));
 
         // Enable this to generate new materal mapping for a model
 #if 0
@@ -484,7 +484,7 @@ void OnKey(int key, int x, int y)
         if (!g_interop)
         {
             std::ostringstream oss;
-            oss << "aov_color_" << g_frame_count << ".hdr";
+            oss << "aov_color" << g_num_samples << ".png";
             SaveFrameBuffer(oss.str(), &g_outputs[g_primary].fdata[0]);
             break;
         }
@@ -1100,6 +1100,18 @@ void SaveFrameBuffer(std::string const& name, float3 const* data)
 
     std::vector<float3> tempbuf(g_window_width * g_window_height);
     tempbuf.assign(data, data + g_window_width*g_window_height);
+
+    for (auto y = 0; y < g_window_height; ++y)
+        for (auto x = 0; x < g_window_width; ++x)
+        {
+            
+            float3 val = data[(g_window_height - 1 - y) * g_window_width + x];
+            tempbuf[y * g_window_width + x] = (1.f / val.w) * val;
+
+            tempbuf[y * g_window_width + x].x = std::pow(tempbuf[y * g_window_width + x].x, 1.f / 2.2f);
+            tempbuf[y * g_window_width + x].y = std::pow(tempbuf[y * g_window_width + x].y, 1.f / 2.2f);
+            tempbuf[y * g_window_width + x].z = std::pow(tempbuf[y * g_window_width + x].z, 1.f / 2.2f);
+        }
 
     ImageOutput* out = ImageOutput::create(name);
 

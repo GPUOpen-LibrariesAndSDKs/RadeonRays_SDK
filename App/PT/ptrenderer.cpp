@@ -29,6 +29,8 @@ THE SOFTWARE.
 #include <cstddef>
 #include <cstdlib>
 #include <cstdint>
+#include <random>
+#include <algorithm>
 
 #include "sobol.h"
 
@@ -41,14 +43,6 @@ namespace Baikal
     using namespace RadeonRays;
 
     static int const kMaxLightSamples = 1;
-
-    struct PtRenderer::QmcSampler
-    {
-        std::uint32_t seq;
-        std::uint32_t s0;
-        std::uint32_t s1;
-        std::uint32_t s2;
-    };
 
     struct PtRenderer::PathState
     {
@@ -75,8 +69,8 @@ namespace Baikal
 
         CLWBuffer<float3> lightsamples;
         CLWBuffer<PathState> paths;
-        CLWBuffer<QmcSampler> samplers;
-        CLWBuffer<unsigned int> sobolmat;
+        CLWBuffer<std::uint32_t> random;
+        CLWBuffer<std::uint32_t> sobolmat;
         CLWBuffer<int> hitcount;
 
         CLWProgram program;
@@ -111,7 +105,6 @@ namespace Baikal
         , m_output(nullptr)
         , m_render_data(new RenderData)
         , m_vidmemws(0)
-        , m_resetsampler(true)
         , m_scene_tracker(context, devidx)
         , m_num_bounces(num_bounces)
         , m_framecnt(0)
@@ -162,7 +155,7 @@ namespace Baikal
     void PtRenderer::Clear(RadeonRays::float3 const& val, Output& output) const
     {
         static_cast<ClwOutput&>(output).Clear(val);
-        m_resetsampler = true;
+        m_framecnt = 0;
     }
 
     void PtRenderer::SetNumBounces(int num_bounces)
@@ -179,9 +172,6 @@ namespace Baikal
     {
         auto api = m_scene_tracker.GetIntersectionApi();
         auto& clwscene = m_scene_tracker.CompileScene(scene, m_render_data->mat_collector, m_render_data->tex_collector);
-
-        if (m_resetsampler)
-            m_framecnt = 0;
 
         // Check output
         assert(m_output);
@@ -294,8 +284,11 @@ namespace Baikal
         m_render_data->paths = m_context.CreateBuffer<PathState>(output.width() * output.height(), CL_MEM_READ_WRITE);
         m_vidmemws += output.width() * output.height() * sizeof(PathState);
 
-        m_render_data->samplers = m_context.CreateBuffer<QmcSampler>(output.width() * output.height(), CL_MEM_READ_WRITE);
-        m_vidmemws += output.width() * output.height() * sizeof(QmcSampler);
+        std::vector<std::uint32_t> random_buffer(output.width() * output.height());
+        std::generate(random_buffer.begin(), random_buffer.end(), std::rand);
+
+        m_render_data->random = m_context.CreateBuffer<std::uint32_t>(output.width() * output.height(), CL_MEM_READ_ONLY, &random_buffer[0]);
+        m_vidmemws += output.width() * output.height() * sizeof(std::uint32_t);
 
         std::vector<int> initdata(output.width() * output.height());
         std::iota(initdata.begin(), initdata.end(), 0);
@@ -348,12 +341,10 @@ namespace Baikal
         genkernel.SetArg(2, m_output->height());
         genkernel.SetArg(3, (int)rand_uint());
         genkernel.SetArg(4, m_render_data->rays[0]);
-        genkernel.SetArg(5, m_render_data->samplers);
+        genkernel.SetArg(5, m_render_data->random);
         genkernel.SetArg(6, m_render_data->sobolmat);
-        genkernel.SetArg(7, m_resetsampler);
-        genkernel.SetArg(8, m_framecnt);
-        genkernel.SetArg(9, m_render_data->paths);
-        m_resetsampler = 0;
+        genkernel.SetArg(7, m_framecnt);
+        genkernel.SetArg(8, m_render_data->paths);
 
         // Run generation kernel
         {
@@ -390,7 +381,7 @@ namespace Baikal
         shadekernel.SetArg(argc++, scene.lights);
         shadekernel.SetArg(argc++, scene.num_lights);
         shadekernel.SetArg(argc++, rand_uint());
-        shadekernel.SetArg(argc++, m_render_data->samplers);
+        shadekernel.SetArg(argc++, m_render_data->random);
         shadekernel.SetArg(argc++, m_render_data->sobolmat);
         shadekernel.SetArg(argc++, pass);
         shadekernel.SetArg(argc++, m_framecnt);
@@ -434,9 +425,10 @@ namespace Baikal
         shadekernel.SetArg(argc++, scene.lights);
         shadekernel.SetArg(argc++, scene.num_lights);
         shadekernel.SetArg(argc++, rand_uint());
-        shadekernel.SetArg(argc++, m_render_data->samplers);
+        shadekernel.SetArg(argc++, m_render_data->random);
         shadekernel.SetArg(argc++, m_render_data->sobolmat);
         shadekernel.SetArg(argc++, pass);
+        shadekernel.SetArg(argc++, m_framecnt);
         shadekernel.SetArg(argc++, scene.volumes);
         shadekernel.SetArg(argc++, m_render_data->shadowrays);
         shadekernel.SetArg(argc++, m_render_data->lightsamples);
@@ -466,9 +458,10 @@ namespace Baikal
         evalkernel.SetArg(argc++, scene.textures);
         evalkernel.SetArg(argc++, scene.texturedata);
         evalkernel.SetArg(argc++, rand_uint());
-        evalkernel.SetArg(argc++, m_render_data->samplers);
+        evalkernel.SetArg(argc++, m_render_data->random);
         evalkernel.SetArg(argc++, m_render_data->sobolmat);
         evalkernel.SetArg(argc++, pass);
+        evalkernel.SetArg(argc++, m_framecnt);
         evalkernel.SetArg(argc++, m_render_data->intersections);
         evalkernel.SetArg(argc++, m_render_data->paths);
         evalkernel.SetArg(argc++, m_output->data());
