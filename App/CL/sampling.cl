@@ -172,7 +172,7 @@ float2 cmj(int s, int n, int p)
 
 float2 CmjSampler_Sample2D(Sampler* sampler)
 {
-    int idx = permute(sampler->index, CMJ_DIM * CMJ_DIM, 0xa399d265 * sampler->scramble);
+    int idx = permute(sampler->index, CMJ_DIM * CMJ_DIM, 0xa399d265 * sampler->dimension * sampler->scramble);
     return cmj(idx, CMJ_DIM, sampler->dimension * sampler->scramble);
 }
 
