@@ -43,7 +43,7 @@ __kernel void PerspectiveCamera_GeneratePaths(
                              uint rngseed,
                              // Output rays
                              __global ray* rays,
-                             __global uint const* random,
+                             __global uint* random,
                              __global uint const* sobolmat,
                              int frame
 #ifndef NO_PATH_DATA
@@ -68,6 +68,12 @@ __kernel void PerspectiveCamera_GeneratePaths(
         Sampler sampler;
 #if SAMPLER == SOBOL
         uint scramble = random[globalid.x + imgwidth * globalid.y] * 0x1fe3434f;
+
+        if (frame & 0xF)
+        {
+            random[globalid.x + imgwidth * globalid.y] = WangHash(scramble);
+        }
+
         Sampler_Init(&sampler, frame, SAMPLE_DIM_CAMERA_OFFSET, scramble);
 #elif SAMPLER == RANDOM
         uint scramble = globalid.x + imgwidth * globalid.y * rngseed;
@@ -152,6 +158,12 @@ __kernel void PerspectiveCameraDof_GeneratePaths(
         Sampler sampler;
 #if SAMPLER == SOBOL
         uint scramble = random[globalid.x + imgwidth * globalid.y] * 0x1fe3434f;
+
+        if (frame & 0xF)
+        {
+            random[globalid.x + imgwidth * globalid.y] = WangHash(scramble);
+        }
+
         Sampler_Init(&sampler, frame, SAMPLE_DIM_CAMERA_OFFSET, scramble);
 #elif SAMPLER == RANDOM
         uint scramble = globalid.x + imgwidth * globalid.y * rngseed;

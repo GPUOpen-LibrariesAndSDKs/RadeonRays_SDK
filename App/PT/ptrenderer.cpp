@@ -287,7 +287,7 @@ namespace Baikal
         std::vector<std::uint32_t> random_buffer(output.width() * output.height());
         std::generate(random_buffer.begin(), random_buffer.end(), std::rand);
 
-        m_render_data->random = m_context.CreateBuffer<std::uint32_t>(output.width() * output.height(), CL_MEM_READ_ONLY, &random_buffer[0]);
+        m_render_data->random = m_context.CreateBuffer<std::uint32_t>(output.width() * output.height(), CL_MEM_READ_WRITE, &random_buffer[0]);
         m_vidmemws += output.width() * output.height() * sizeof(std::uint32_t);
 
         std::vector<int> initdata(output.width() * output.height());

@@ -36,7 +36,7 @@ THE SOFTWARE.
 #define SOBOL 2
 #define CMJ 3
 
-#define SAMPLER CMJ
+#define SAMPLER SOBOL
 
 #define CMJ_DIM 4
 
