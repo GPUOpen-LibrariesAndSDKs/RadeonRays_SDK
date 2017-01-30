@@ -21,7 +21,7 @@ THE SOFTWARE.
 ********************************************************************/
 #include "AO/aorenderer.h"
 #include "CLW/clwoutput.h"
-#include "Scene/scene.h"
+#include "Scene/scene1.h"
 
 #include <numeric>
 #include <chrono>
@@ -149,15 +149,18 @@ namespace Baikal
         m_resetsampler = true;
     }
 
-    void AoRenderer::Preprocess(Scene const& scene)
+    void AoRenderer::Preprocess(Scene1 const& scene)
     {
     }
 
     // Render the scene into the output
-    void AoRenderer::Render(Scene const& scene)
+    void AoRenderer::Render(Scene1 const& scene)
     {
         auto api = m_scene_tracker.GetIntersectionApi();
-        auto& clwscene = m_scene_tracker.CompileScene(scene);
+        
+        Collector mat_collector;
+        Collector tex_collector;
+        auto& clwscene = m_scene_tracker.CompileScene(scene, mat_collector, tex_collector);
 
         // Check output
         assert(m_output);

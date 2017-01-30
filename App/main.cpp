@@ -50,6 +50,7 @@ THE SOFTWARE.
 #include <thread>
 #include <atomic>
 #include <mutex>
+#include <fstream>
 
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -63,13 +64,18 @@ THE SOFTWARE.
 #include "math/mathutils.h"
 
 #include "tiny_obj_loader.h"
-#include "perspective_camera.h"
+#include "Scene/camera.h"
 #include "shader_manager.h"
-#include "Scene/scene.h"
+#include "Scene/scene1.h"
 #include "PT/ptrenderer.h"
 #include "AO/aorenderer.h"
 #include "CLW/clwoutput.h"
 #include "config_manager.h"
+#include "Scene/scene1.h"
+#include "Scene/IO/scene_io.h"
+#include "Scene/IO/material_io.h"
+
+Baikal::Scene1 scene;
 
 using namespace RadeonRays;
 
@@ -82,6 +88,7 @@ char const* g_modelname = "orig.objm";
 char const* g_envmapname = "../Resources/Textures/studio015.hdr";
 
 std::unique_ptr<ShaderManager>    g_shader_manager;
+std::unique_ptr<Baikal::PerspectiveCamera> g_camera;
 
 GLuint g_vertex_buffer;
 GLuint g_index_buffer;
@@ -98,18 +105,17 @@ int g_num_samples = -1;
 int g_samplecount = 0;
 float g_ao_radius = 1.f; 
 float g_envmapmul = 1.f;
-float g_cspeed = 100.25f;
+float g_cspeed = 10.25f;
 
-float3 g_camera_pos = float3(0.f, 1.f, 4.f);
+float3 g_camera_pos = float3(0.f, 1.f, 3.f);
 float3 g_camera_at = float3(0.f, 1.f, 0.f);
 float3 g_camera_up = float3(0.f, 1.f, 0.f);
 
 float2 g_camera_sensor_size = float2(0.036f, 0.024f);  // default full frame sensor 36x24 mm
 float2 g_camera_zcap = float2(0.0f, 100000.f);
 float g_camera_focal_length = 0.035f; // 35mm lens
-float g_camera_focus_distance = 0.f;
+float g_camera_focus_distance = 1.f;
 float g_camera_aperture = 0.f;
-
 
 bool g_recording_enabled = false;
 int g_frame_count = 0;
@@ -144,7 +150,7 @@ std::vector<std::thread> g_renderthreads;
 int g_primary = -1;
 
 
-std::unique_ptr<Baikal::Scene> g_scene;
+std::unique_ptr<Baikal::Scene1> g_scene;
 
 
 static bool     g_is_left_pressed = false;
@@ -340,34 +346,60 @@ void InitData()
     basepath += "/";
     std::string filename = basepath + g_modelname;
 
-    g_scene.reset(Baikal::Scene::LoadFromObj(filename, basepath));
+    {
+        // Load OBJ scene
+        std::unique_ptr<Baikal::SceneIo> scene_io(Baikal::SceneIo::CreateSceneIoObj());
+        g_scene.reset(scene_io->LoadScene(filename, basepath));
 
-    g_scene->camera_.reset(new PerspectiveCamera(
-        g_camera_pos
-        , g_camera_at
-        , g_camera_up));
+        // Enable this to generate new materal mapping for a model
+#if 0
+        std::unique_ptr<Baikal::MaterialIo> material_io(Baikal::MaterialIo::CreateMaterialIoXML());
+        material_io->SaveMaterialsFromScene(basepath + "materials.xml", *g_scene);
+        material_io->SaveIdentityMapping(basepath + "mapping.xml", *g_scene);
+#endif
+
+        // Check it we have material remapping
+        std::ifstream in_materials(basepath + "materials.xml");
+        std::ifstream in_mapping(basepath + "mapping.xml");
+
+        if (in_materials && in_mapping)
+        {
+            in_materials.close();
+            in_mapping.close();
+
+            std::unique_ptr<Baikal::MaterialIo> material_io(Baikal::MaterialIo::CreateMaterialIoXML());
+
+            auto mats = material_io->LoadMaterials(basepath + "materials.xml");
+            auto mapping = material_io->LoadMaterialMapping(basepath + "mapping.xml");
+
+            material_io->ReplaceSceneMaterials(*g_scene, *mats, mapping);
+        }
+    }
+
+    g_camera.reset(new Baikal::PerspectiveCamera(
+                                             g_camera_pos
+                                             , g_camera_at
+                                             , g_camera_up));
+    
+    g_scene->SetCamera(g_camera.get());
 
     // Adjust sensor size based on current aspect ratio
     float aspect = (float)g_window_width / g_window_height;
     g_camera_sensor_size.y = g_camera_sensor_size.x / aspect;
 
-    g_scene->camera_->SetSensorSize(g_camera_sensor_size);
-    g_scene->camera_->SetDepthRange(g_camera_zcap);
-    g_scene->camera_->SetFocalLength(g_camera_focal_length);
-    g_scene->camera_->SetFocusDistance(g_camera_focus_distance);
-    g_scene->camera_->SetAperture(g_camera_aperture);
+    g_camera->SetSensorSize(g_camera_sensor_size);
+    g_camera->SetDepthRange(g_camera_zcap);
+    g_camera->SetFocalLength(g_camera_focal_length);
+    g_camera->SetFocusDistance(g_camera_focus_distance);
+    g_camera->SetAperture(g_camera_aperture);
 
-    std::cout << "Camera type: " << (g_scene->camera_->GetAperture() > 0.f ? "Physical" : "Pinhole") << "\n";
-    std::cout << "Lens focal length: " << g_scene->camera_->GetFocalLength() * 1000.f << "mm\n";
-    std::cout << "Lens focus distance: " << g_scene->camera_->GetFocusDistance() << "m\n";
-    std::cout << "F-Stop: " << 1.f / (g_scene->camera_->GetAperture() * 10.f) << "\n";
+    std::cout << "Camera type: " << (g_camera->GetAperture() > 0.f ? "Physical" : "Pinhole") << "\n";
+    std::cout << "Lens focal length: " << g_camera->GetFocalLength() * 1000.f << "mm\n";
+    std::cout << "Lens focus distance: " << g_camera->GetFocusDistance() << "m\n";
+    std::cout << "F-Stop: " << 1.f / (g_camera->GetAperture() * 10.f) << "\n";
     std::cout << "Sensor size: " << g_camera_sensor_size.x * 1000.f << "x" << g_camera_sensor_size.y * 1000.f << "mm\n";
 
-    g_scene->SetEnvironment(g_envmapname, "", g_envmapmul);
-    g_scene->AddDirectionalLight(RadeonRays::float3(-0.3f, -1.f, -0.4f), 2.f * RadeonRays::float3(1.f, 1.f, 1.f));
-    g_scene->AddPointLight(RadeonRays::float3(-0.5f, 1.7f, 0.0f), RadeonRays::float3(1.f, 0.9f, 0.6f));
-    g_scene->AddSpotLight(RadeonRays::float3(0.5f, 1.5f, 0.0f), RadeonRays::float3(-0.5f, -1.0f, 0.1f), RadeonRays::float3(1.f, 0.9f, 0.6f),
-                           std::cos(M_PI_4/2), std::cos(M_PI_4));
+    
 #pragma omp parallel for
     for (int i = 0; i < g_cfgs.size(); ++i)
     {
@@ -445,9 +477,6 @@ void OnKey(int key, int x, int y)
     case GLUT_KEY_END:
         g_is_end_pressed = true;
         break;
-    case GLUT_KEY_F1:
-        g_mouse_delta = float2(0, 0);
-        break;
     case GLUT_KEY_F3:
         g_benchmark = true;
         break;
@@ -455,7 +484,7 @@ void OnKey(int key, int x, int y)
         if (!g_interop)
         {
             std::ostringstream oss;
-            oss << "aov_color_" << g_frame_count << ".hdr";
+            oss << "aov_color" << g_num_samples << ".png";
             SaveFrameBuffer(oss.str(), &g_outputs[g_primary].fdata[0]);
             break;
         }
@@ -516,6 +545,138 @@ void OnKeyUp(int key, int x, int y)
     }
 }
 
+void OnLetterKey(unsigned char key, int x, int y)
+{
+    switch(key)
+    {
+        case 'w':
+        {
+            float focal_length = g_camera->GetFocalLength();
+            focal_length += 0.001f;
+            g_camera->SetFocalLength(focal_length);
+            
+            for (int i = 0; i < g_cfgs.size(); ++i)
+            {
+                g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
+            }
+            
+            break;
+        }
+    
+        case 's':
+        {
+            float focal_length = g_camera->GetFocalLength();
+            
+            if (focal_length > 0.f)
+            {
+                focal_length -= 0.001f;
+                g_camera->SetFocalLength(focal_length);
+            
+                for (int i = 0; i < g_cfgs.size(); ++i)
+                {
+                    g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
+                }
+            }
+            
+            break;
+        }
+            
+        case 'q':
+        {
+
+            float aperture = g_camera->GetAperture();
+            
+            if (aperture == 0.f)
+            {
+                g_camera->SetAperture(0.025f);
+            }
+            else
+            {
+                g_camera->SetAperture(0.0f);
+            }
+            
+            for (int i = 0; i < g_cfgs.size(); ++i)
+            {
+                g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
+            }
+            
+            break;
+        }
+            
+        case 'd':
+        {
+            float aperture = g_camera->GetAperture();
+            
+            if (aperture > 0.f)
+            {
+                aperture -= 0.001f;
+                g_camera->SetAperture(aperture);
+                
+                for (int i = 0; i < g_cfgs.size(); ++i)
+                {
+                    g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
+                }
+            }
+            
+            break;
+        }
+            
+        case 'a':
+        {
+            float aperture = g_camera->GetAperture();
+            
+            if (aperture < 0.2f)
+            {
+                aperture += 0.001f;
+                g_camera->SetAperture(aperture);
+                
+                for (int i = 0; i < g_cfgs.size(); ++i)
+                {
+                    g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
+                }
+            }
+            
+            break;
+        }
+            
+        case 'z':
+        {
+            float focus_dist = g_camera->GetFocusDistance();
+            
+            if (focus_dist > 0.f)
+            {
+                focus_dist -= 0.1f;
+                g_camera->SetFocusDistance(focus_dist);
+                
+                for (int i = 0; i < g_cfgs.size(); ++i)
+                {
+                    g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
+                }
+            }
+            
+            break;
+        }
+            
+        case 'x':
+        {
+            float focus_dist = g_camera->GetFocusDistance();
+            
+            focus_dist += 0.1f;
+            g_camera->SetFocusDistance(focus_dist);
+            
+            for (int i = 0; i < g_cfgs.size(); ++i)
+            {
+                g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
+            }
+            
+            break;
+        }
+
+        default:
+            break;
+    }
+}
+
 void Update()
 {
     static auto prevtime = std::chrono::high_resolution_clock::now();
@@ -534,60 +695,58 @@ void Update()
 
     if (std::abs(camroty) > 0.001f)
     {
-        //g_scene->camera_->Tilt(camroty);
-        g_scene->camera_->ArcballRotateVertically(float3(0, 0, 0), camroty);
+        g_camera->Tilt(camroty);
+        //g_camera->ArcballRotateVertically(float3(0, 0, 0), camroty);
         update = true;
     }
 
     if (std::abs(camrotx) > 0.001f)
     {
 
-        //g_scene->camera_->Rotate(camrotx);
-        g_scene->camera_->ArcballRotateHorizontally(float3(0, 0, 0), camrotx);
+        g_camera->Rotate(camrotx);
+        //g_camera->ArcballRotateHorizontally(float3(0, 0, 0), camrotx);
         update = true;
     }
 
     const float kMovementSpeed = g_cspeed;
     if (g_is_fwd_pressed)
     {
-        g_scene->camera_->MoveForward((float)dt.count() * kMovementSpeed);
+        g_camera->MoveForward((float)dt.count() * kMovementSpeed);
         update = true;
     }
 
     if (g_is_back_pressed)
     {
-        g_scene->camera_->MoveForward(-(float)dt.count() * kMovementSpeed);
+        g_camera->MoveForward(-(float)dt.count() * kMovementSpeed);
         update = true;
     }
 
     if (g_is_right_pressed)
     {
-        g_scene->camera_->MoveRight((float)dt.count() * kMovementSpeed);
+        g_camera->MoveRight((float)dt.count() * kMovementSpeed);
         update = true;
     }
 
     if (g_is_left_pressed)
     {
-        g_scene->camera_->MoveRight(-(float)dt.count() * kMovementSpeed);
+        g_camera->MoveRight(-(float)dt.count() * kMovementSpeed);
         update = true;
     }
 
     if (g_is_home_pressed)
     {
-        g_scene->camera_->MoveUp((float)dt.count() * kMovementSpeed);
+        g_camera->MoveUp((float)dt.count() * kMovementSpeed);
         update = true;
     }
 
     if (g_is_end_pressed)
     {
-        g_scene->camera_->MoveUp(-(float)dt.count() * kMovementSpeed);
+        g_camera->MoveUp(-(float)dt.count() * kMovementSpeed);
         update = true;
     }
 
     if (update)
     {
-        g_scene->set_dirty(Baikal::Scene::kCamera);
-
         if (g_num_samples > -1)
         {
             g_samplecount = 0;
@@ -608,9 +767,15 @@ void Update()
         }*/
     }
 
-    if (g_num_samples == -1 || g_samplecount++ < g_num_samples)
+    if (g_num_samples == -1 || g_samplecount < g_num_samples)
     {
         g_cfgs[g_primary].renderer->Render(*g_scene.get());
+        ++g_samplecount;
+    }
+    else if (g_samplecount == g_num_samples)
+    {
+        std::cout << "Target sample count reached\n";
+        ++g_samplecount;
     }
 
     //if (std::chrono::duration_cast<std::chrono::seconds>(time - updatetime).count() > 1)
@@ -877,6 +1042,7 @@ int main(int argc, char * argv[])
 
         glutSpecialFunc(OnKey);
         glutSpecialUpFunc(OnKeyUp);
+        glutKeyboardFunc(OnLetterKey);
         glutMouseFunc(OnMouseButton);
         glutMotionFunc(OnMouseMove);
         glutIdleFunc(Update);
@@ -934,6 +1100,18 @@ void SaveFrameBuffer(std::string const& name, float3 const* data)
 
     std::vector<float3> tempbuf(g_window_width * g_window_height);
     tempbuf.assign(data, data + g_window_width*g_window_height);
+
+    for (auto y = 0; y < g_window_height; ++y)
+        for (auto x = 0; x < g_window_width; ++x)
+        {
+            
+            float3 val = data[(g_window_height - 1 - y) * g_window_width + x];
+            tempbuf[y * g_window_width + x] = (1.f / val.w) * val;
+
+            tempbuf[y * g_window_width + x].x = std::pow(tempbuf[y * g_window_width + x].x, 1.f / 2.2f);
+            tempbuf[y * g_window_width + x].y = std::pow(tempbuf[y * g_window_width + x].y, 1.f / 2.2f);
+            tempbuf[y * g_window_width + x].z = std::pow(tempbuf[y * g_window_width + x].z, 1.f / 2.2f);
+        }
 
     ImageOutput* out = ImageOutput::create(name);
 

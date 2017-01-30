@@ -26,29 +26,33 @@ THE SOFTWARE.
 #include <../App/CL/texture.cl>
 #include <../App/CL/payload.cl>
 
-void ApplyNormalMap(DifferentialGeometry* dg, TEXTURE_ARG_LIST)
+void DifferentialGeometry_ApplyNormalMap(DifferentialGeometry* diffgeo, TEXTURE_ARG_LIST)
 {
-    int nmapidx = dg->mat.nmapidx;
+    int nmapidx = diffgeo->mat.nmapidx;
     if (nmapidx != -1)
     {
         // Now n, dpdu, dpdv is orthonormal basis
-        float3 mappednormal = 2.f * Texture_Sample2D(dg->uv, TEXTURE_ARGS_IDX(nmapidx)).xyz - make_float3(1.f, 1.f, 1.f);
+        float3 mappednormal = 2.f * Texture_Sample2D(diffgeo->uv, TEXTURE_ARGS_IDX(nmapidx)).xyz - make_float3(1.f, 1.f, 1.f);
 
         // Return mapped version
-        dg->n = normalize(mappednormal.z *  dg->n * 0.5f + mappednormal.x * dg->dpdu + mappednormal.y * dg->dpdv);
+        diffgeo->n = normalize(mappednormal.z *  diffgeo->n * 0.5f + mappednormal.x * diffgeo->dpdu + mappednormal.y * diffgeo->dpdv);
+        diffgeo->dpdv = normalize(cross(diffgeo->n, diffgeo->dpdu));
+        diffgeo->dpdu = normalize(cross(diffgeo->dpdv, diffgeo->n));
     }
 }
 
-void ApplyBumpMap(DifferentialGeometry* dg, TEXTURE_ARG_LIST)
+void DifferentialGeometry_ApplyBumpMap(DifferentialGeometry* diffgeo, TEXTURE_ARG_LIST)
 {
-    int nmapidx = dg->mat.nmapidx;
+    int nmapidx = diffgeo->mat.nmapidx;
     if (nmapidx != -1)
     {
         // Now n, dpdu, dpdv is orthonormal basis
-        float3 mappednormal = 2.f * Texture_SampleBump(dg->uv, TEXTURE_ARGS_IDX(nmapidx)) - make_float3(1.f, 1.f, 1.f);
+        float3 mappednormal = 2.f * Texture_SampleBump(diffgeo->uv, TEXTURE_ARGS_IDX(nmapidx)) - make_float3(1.f, 1.f, 1.f);
 
         // Return mapped version
-        dg->n = normalize(mappednormal.z * dg->n + mappednormal.x * dg->dpdu + mappednormal.y * dg->dpdv);
+        diffgeo->n = normalize(mappednormal.z * diffgeo->n * 0.5f + mappednormal.x * diffgeo->dpdu + mappednormal.y * diffgeo->dpdv);
+        diffgeo->dpdv = normalize(cross(diffgeo->n, diffgeo->dpdu));
+        diffgeo->dpdu = normalize(cross(diffgeo->dpdv, diffgeo->n));
     }
 }
 

@@ -24,8 +24,8 @@ THE SOFTWARE.
 
 #include <../App/CL/utils.cl>
 #include <../App/CL/payload.cl>
-#include <../App/CL/random.cl>
 #include <../App/CL/texture.cl>
+#include <../App/CL/scene.cl>
 
 
 bool IntersectTriangle(ray const* r, float3 v1, float3 v2, float3 v3, float* a, float* b)

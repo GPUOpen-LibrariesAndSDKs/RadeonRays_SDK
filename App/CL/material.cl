@@ -22,8 +22,8 @@ THE SOFTWARE.
 #ifndef MATERIAL_CL
 #define MATERIAL_CL
 
+#include <../App/CL/common.cl>
 #include <../App/CL/utils.cl>
-#include <../App/CL/random.cl>
 #include <../App/CL/texture.cl>
 #include <../App/CL/payload.cl>
 #include <../App/CL/bxdf.cl>
@@ -33,20 +33,12 @@ void Material_Select(
     Scene const* scene,
     // Incoming direction
     float3 wi,
+    // Sampler
+    Sampler* sampler,
     // Texture args
     TEXTURE_ARG_LIST,
-
-#ifdef SOBOL
-    // Sampler state
-    __global SobolSampler* sampler,
-    // Sobol matrices
-    __global uint const* sobolmat,
-    // Current bounce
-    int bounce,
-#else
-    Rng* rng,
-#endif
-
+    // Sampler args
+    SAMPLER_ARG_LIST,
     // Geometry
     DifferentialGeometry* dg
 )
@@ -132,11 +124,7 @@ void Material_Select(
                     fresnel = FresnelDielectric(etai, etat, cosi, cost);
                 }
 
-#ifdef SOBOL
-                float sample = SobolSampler_Sample1D(sampler->seq, GetSampleDim(bounce, kMaterial + iter), sampler->s0, sobolmat);
-#else
-                float sample = UniformSampler_Sample2D(rng).x;
-#endif
+                float sample = Sampler_Sample1D(sampler, SAMPLER_ARGS);
 
                 if (sample < fresnel)
                 {
@@ -157,12 +145,8 @@ void Material_Select(
             }
             else
             {
+                float sample = Sampler_Sample1D(sampler, SAMPLER_ARGS);
 
-#ifdef SOBOL
-                float sample = SobolSampler_Sample1D(sampler->seq, GetSampleDim(bounce, kMaterial + iter), sampler->s0, sobolmat);
-#else
-                float sample = UniformSampler_Sample2D(rng).x;
-#endif
                 float weight = Texture_GetValue1f(mat.ns, dg->uv, TEXTURE_ARGS_IDX(mat.nsmapidx));
 
                 if (sample < weight)

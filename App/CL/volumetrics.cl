@@ -22,44 +22,11 @@ THE SOFTWARE.
 #ifndef VOLUMETRICS_CL
 #define VOLUMETRICS_CL
 
+#include <../App/CL/common.cl>
 #include <../App/CL/payload.cl>
 #include <../App/CL/path.cl>
 
 #define FAKE_SHAPE_SENTINEL 0xFFFFFF
-
-typedef enum
-{
-    kEmpty,
-    kHomogeneous,
-    kHeterogeneous
-} VolumeType;
-
-typedef enum
-{
-    kUniform,
-    kRayleigh,
-    kMieMurky,
-    kMieHazy,
-    kHG // this one requires one extra coeff
-} PhaseFunction;
-
-typedef struct _Volume
-{
-    VolumeType type;
-    PhaseFunction phase_func;
-    
-    // Id of volume data if present 
-    int data;
-    int extra;
-
-    // Absorbtion
-    float3 sigma_a;
-    // Scattering
-    float3 sigma_s;
-    // Emission
-    float3 sigma_e;
-} Volume;
-
 
 // The following functions are taken from PBRT
 float PhaseFunction_Uniform(float3 wi, float3 wo)
@@ -91,7 +58,6 @@ float PhaseFunction_HG(float3 wi, float3 wo, float g)
     return 1.f / (4.f * PI) *
         (1.f - g*g) / native_powr(1.f + g*g - 2.f * g * costheta, 1.5f);
 }
-
 
 // Evaluate volume transmittance along the ray [0, dist] segment
 float3 Volume_Transmittance(__global Volume const* volume, __global ray const* ray, float dist)
@@ -161,13 +127,15 @@ __kernel void EvaluateVolume(
     // Textures
     TEXTURE_ARG_LIST,
     // RNG seed
-    int rngseed,
+    uint rngseed,
     // Sampler state
-    __global SobolSampler* samplers,
+    __global uint* random,
     // Sobol matrices
     __global uint const* sobolmat,
     // Current bounce 
     int bounce,
+    // Current frame
+    int frame,
     // Intersection data
     __global Intersection* isects,
     // Current paths
@@ -195,18 +163,23 @@ __kernel void EvaluateVolume(
         // Check if we are inside some volume
         if (volidx != -1)
         {
-#ifdef SOBOL
-            __global SobolSampler* sampler = samplers + pixelidx;
-            float sample = SobolSampler_Sample1D(sampler->seq, GetSampleDim(bounce, kVolume), sampler->s0, sobolmat);
-#else
-            Rng rng;
-            InitRng(rngseed + (globalid << 2) * 157 + 13, &rng);
-            float sample = UniformSampler_Sample2D(&rng).x;
+            Sampler sampler;
+#if SAMPLER == SOBOL
+            uint scramble = random[pixelidx] * 0x1fe3434f;
+            Sampler_Init(&sampler, frame, SAMPLE_DIM_SURFACE_OFFSET + bounce * SAMPLE_DIMS_PER_BOUNCE + SAMPLE_DIM_VOLUME_APPLY_OFFSET, scramble);
+#elif SAMPLER == RANDOM
+            uint scramble = pixelidx * rngseed;
+            Sampler_Init(&sampler, scramble);
+#elif SAMPLER == CMJ
+            uint rnd = random[pixelidx];
+            uint scramble = rnd * 0x1fe3434f * ((frame + 71 * rnd) / (CMJ_DIM * CMJ_DIM));
+            Sampler_Init(&sampler, frame % (CMJ_DIM * CMJ_DIM), SAMPLE_DIM_SURFACE_OFFSET + bounce * SAMPLE_DIMS_PER_BOUNCE + SAMPLE_DIM_VOLUME_APPLY_OFFSET, scramble);
 #endif
+
             // Try sampling volume for a next scattering event
             float pdf = 0.f;
             float maxdist = Intersection_GetDistance(isects + globalid);
-            float d = Volume_SampleDistance(&volumes[volidx], &rays[globalid], maxdist, sample, &pdf);
+            float d = Volume_SampleDistance(&volumes[volidx], &rays[globalid], maxdist, Sampler_Sample1D(&sampler, SAMPLER_ARGS), &pdf);
             
             // Check if we shall skip the event (it is either outside of a volume or not happened at all)
             bool skip = d < 0 || d > maxdist || pdf <= 0.f;

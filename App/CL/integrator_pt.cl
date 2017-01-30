@@ -20,8 +20,13 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
+
+
+
+#include <../App/CL/common.cl>
+#include <../App/CL/ray.cl>
+#include <../App/CL/isect.cl>
 #include <../App/CL/utils.cl>
-#include <../App/CL/random.cl>
 #include <../App/CL/payload.cl>
 #include <../App/CL/texture.cl>
 #include <../App/CL/sampling.cl>
@@ -34,12 +39,6 @@ THE SOFTWARE.
 #include <../App/CL/volumetrics.cl>
 #include <../App/CL/path.cl>
 
-#define CRAZY_LOW_THROUGHPUT 0.0f
-#define CRAZY_HIGH_RADIANCE 3.f
-#define CRAZY_HIGH_DISTANCE 1000000.f
-#define CRAZY_LOW_DISTANCE 0.001f
-#define REASONABLE_RADIANCE(x) (clamp((x), 0.f, CRAZY_HIGH_RADIANCE))
-#define NON_BLACK(x) (length(x) > 0.f)
 
 // This kernel only handles scattered paths.
 // It applies direct illumination and generates
@@ -80,13 +79,15 @@ __kernel void ShadeVolume(
     // Number of emissive objects
     int num_lights,
     // RNG seed
-    int rngseed,
+    uint rngseed,
     // Sampler state
-    __global SobolSampler* samplers,
+    __global uint* random,
     // Sobol matrices
     __global uint const* sobolmat,
     // Current bounce
     int bounce,
+    // Current frame
+    int frame,
     // Volume data
     __global Volume const* volumes,
     // Shadow rays
@@ -137,27 +138,20 @@ __kernel void ShadeVolume(
         float3 o = rays[hitidx].o.xyz;
         float3 wi = rays[hitidx].d.xyz;
 
-#ifdef SOBOL
-        __global SobolSampler* sampler = samplers + pixelidx;
-        float sample0 = SobolSampler_Sample1D(sampler->seq, GetSampleDim(bounce, kVolumeLight), sampler->s0, sobolmat);
-        float2 sample1;
-        sample1.x = SobolSampler_Sample1D(sampler->seq, GetSampleDim(bounce, kVolumeLightU), sampler->s0, sobolmat);
-        sample1.y = SobolSampler_Sample1D(sampler->seq, GetSampleDim(bounce, kVolumeLightV), sampler->s0, sobolmat);
-#ifdef MULTISCATTER
-        float2 sample2;
-        sample2.x = SobolSampler_Sample1D(sampler->seq, GetSampleDim(bounce, kVolumeIndirectU), sampler->s0, sobolmat);
-        sample2.y = SobolSampler_Sample1D(sampler->seq, GetSampleDim(bounce, kVolumeIndirectV), sampler->s0, sobolmat);
+        Sampler sampler;
+#if SAMPLER == SOBOL
+        uint scramble = random[pixelidx] * 0x1fe3434f;
+        Sampler_Init(&sampler, frame, SAMPLE_DIM_SURFACE_OFFSET + bounce * SAMPLE_DIMS_PER_BOUNCE + SAMPLE_DIM_VOLUME_EVALUATE_OFFSET, scramble);
+#elif SAMPLER == RANDOM
+        uint scramble = pixelidx * rngseed;
+        Sampler_Init(&sampler, scramble);
+#elif SAMPLER == CMJ
+        uint rnd = random[pixelidx];
+        uint scramble = rnd * 0x1fe3434f * ((frame + 13 * rnd) / (CMJ_DIM * CMJ_DIM));
+        Sampler_Init(&sampler, frame % (CMJ_DIM * CMJ_DIM), SAMPLE_DIM_SURFACE_OFFSET + bounce * SAMPLE_DIMS_PER_BOUNCE + SAMPLE_DIM_VOLUME_EVALUATE_OFFSET, scramble);
 #endif
-#else
-        // Prepare RNG for sampling
-        Rng rng;
-        InitRng(rngseed + (globalid << 2) * 157 + 13, &rng);
-        float sample0 = UniformSampler_Sample2D(&rng).x;
-        float2 sample1 = UniformSampler_Sample2D(&rng);
-#ifdef MULTISCATTER
-        float2 sample2 = UniformSampler_Sample2D(&rng);
-#endif
-#endif
+
+
         // Here we know that volidx != -1 since this is a precondition
         // for scattering event
         int volidx = Path_GetVolumeIdx(path);
@@ -167,7 +161,7 @@ __kernel void ShadeVolume(
         float selection_pdf = 0.f;
         float3 wo;
 
-        int light_idx = Scene_SampleLight(&scene, sample0, &selection_pdf);
+        int light_idx = Scene_SampleLight(&scene, Sampler_Sample1D(&sampler, SAMPLER_ARGS), &selection_pdf);
 
         // Here we need fake differential geometry for light sampling procedure
         DifferentialGeometry dg;
@@ -175,7 +169,7 @@ __kernel void ShadeVolume(
         // since EvaluateVolume has put it there
         dg.p = o + wi * Intersection_GetDistance(isects + hitidx);
         // Get light sample intencity
-        float3 le = Light_Sample(light_idx, &scene, &dg, TEXTURE_ARGS, sample1, &wo, &pdf);
+        float3 le = Light_Sample(light_idx, &scene, &dg, TEXTURE_ARGS, Sampler_Sample2D(&sampler, SAMPLER_ARGS), &wo, &pdf);
 
         // Generate shadow ray
         float shadow_ray_length = 0.999f * length(wo);
@@ -211,7 +205,7 @@ __kernel void ShadeVolume(
 #ifdef MULTISCATTER
         // This is highly brute-force
         // TODO: investigate importance sampling techniques here
-        wo = Sample_MapToSphere(sample2);
+        wo = Sample_MapToSphere(Sampler_Sample2D(&sampler, SAMPLER_ARGS));
         pdf = 1.f / (4.f * PI);
 
         // Generate new path segment
@@ -227,6 +221,8 @@ __kernel void ShadeVolume(
 #endif
     }
 }
+
+
 
 // Handle ray-surface interaction possibly generating path continuation.
 // This is only applied to non-scattered paths.
@@ -266,13 +262,15 @@ __kernel void ShadeSurface(
     // Number of emissive objects
     int num_lights,
     // RNG seed
-    int rngseed,
+    uint rngseed,
     // Sampler states
-    __global SobolSampler* samplers,
+    __global uint* random,
     // Sobol matrices
     __global uint const* sobolmat,
     // Current bounce
     int bounce,
+    // Frame
+    int frame,
     // Volume data
     __global Volume const* volumes,
     // Shadow rays
@@ -322,46 +320,29 @@ __kernel void ShadeSurface(
 
         // Fetch incoming ray direction
         float3 wi = -normalize(rays[hitidx].d.xyz);
-#ifdef SOBOL
-        // Sample light
-        __global SobolSampler* sampler = samplers + pixelidx;
 
-        float2 sample0;
-        sample0.x = SobolSampler_Sample1D(sampler->seq, GetSampleDim(bounce, kBrdf), sampler->s0, sobolmat);
-        sample0.y = SobolSampler_Sample1D(sampler->seq, GetSampleDim(bounce, kLight), sampler->s0, sobolmat);
-
-        float2 sample1;
-        sample1.x = SobolSampler_Sample1D(sampler->seq, GetSampleDim(bounce, kLightU), sampler->s0, sobolmat);
-        sample1.y = SobolSampler_Sample1D(sampler->seq, GetSampleDim(bounce, kLightV), sampler->s0, sobolmat);
-
-        float2 sample2;
-        sample2.x = SobolSampler_Sample1D(sampler->seq, GetSampleDim(bounce, kBrdfU), sampler->s0, sobolmat);
-        sample2.y = SobolSampler_Sample1D(sampler->seq, GetSampleDim(bounce, kBrdfV), sampler->s0, sobolmat);
-
-        float2 sample3;
-        sample3.x = SobolSampler_Sample1D(sampler->seq, GetSampleDim(bounce, kIndirectU), sampler->s0, sobolmat);
-        sample3.y = SobolSampler_Sample1D(sampler->seq, GetSampleDim(bounce, kIndirectV), sampler->s0, sobolmat);
-
-        float sample4 = SobolSampler_Sample1D(sampler->seq, GetSampleDim(bounce, kRR), sampler->s0, sobolmat);
-#else
-        // Prepare RNG
-        Rng rng;
-        InitRng(rngseed + (globalid << 2) * 157 + 13, &rng);
-        float2 sample0 = UniformSampler_Sample2D(&rng);
-        float2 sample1 = UniformSampler_Sample2D(&rng);
-        float2 sample2 = UniformSampler_Sample2D(&rng);
-        float2 sample3 = UniformSampler_Sample2D(&rng);
-        float  sample4 = UniformSampler_Sample2D(&rng).x;
+        Sampler sampler;
+#if SAMPLER == SOBOL
+        uint scramble = random[pixelidx] * 0x1fe3434f;
+        Sampler_Init(&sampler, frame, SAMPLE_DIM_SURFACE_OFFSET + bounce * SAMPLE_DIMS_PER_BOUNCE, scramble);
+#elif SAMPLER == RANDOM
+        uint scramble = pixelidx * rngseed;
+        Sampler_Init(&sampler, scramble);
+#elif SAMPLER == CMJ
+        uint rnd = random[pixelidx];
+        uint scramble = rnd * 0x1fe3434f * ((frame + 331 * rnd) / (CMJ_DIM * CMJ_DIM));
+        Sampler_Init(&sampler, frame % (CMJ_DIM * CMJ_DIM), SAMPLE_DIM_SURFACE_OFFSET + bounce * SAMPLE_DIMS_PER_BOUNCE, scramble);
 #endif
 
         // Fill surface data
         DifferentialGeometry diffgeo;
-        FillDifferentialGeometry(&scene, &isect, &diffgeo);
+        DifferentialGeometry_Fill(&scene, &isect, &diffgeo);
 
         // Check if we are hitting from the inside
-        float ndotwi = dot(diffgeo.n, wi);
+
+        float backfacing = dot(diffgeo.ng, wi) < 0.f;
         int twosided = diffgeo.mat.twosided;
-        if (twosided && ndotwi < 0.f)
+        if (twosided && backfacing)
         {
             // Reverse normal and tangents in this case
             // but not for BTDFs, since BTDFs rely
@@ -372,23 +353,15 @@ __kernel void ShadeSurface(
             diffgeo.dpdv = -diffgeo.dpdv;
         }
 
-        // Select BxDF
-        Material_Select(
-            &scene, wi, TEXTURE_ARGS,
-#ifdef SOBOL
-            sampler, sobolmat, bounce,
-#else
-            &rng,
-#endif
-            &diffgeo
-        );
+        float ndotwi = dot(diffgeo.n, wi);
 
-        ndotwi = dot(diffgeo.n, wi);
+        // Select BxDF
+        Material_Select(&scene, wi, &sampler, TEXTURE_ARGS, SAMPLER_ARGS, &diffgeo);
 
         // Terminate if emissive
         if (Bxdf_IsEmissive(&diffgeo))
         {
-            if (ndotwi > 0.f)
+            if (!backfacing)
             {
                 float weight = 1.f;
 
@@ -419,12 +392,12 @@ __kernel void ShadeSurface(
 
 
         float s = Bxdf_IsBtdf(&diffgeo) ? (-sign(ndotwi)) : 1.f;
-        if (!twosided && ndotwi < 0.f && !Bxdf_IsBtdf(&diffgeo))
+        if (!twosided && backfacing && !Bxdf_IsBtdf(&diffgeo))
         {
-            // Reverse normal and tangents in this case
-            // but not for BTDFs, since BTDFs rely
-            // on normal direction in order to arrange
-            // indices of refraction
+             //Reverse normal and tangents in this case
+             //but not for BTDFs, since BTDFs rely
+             //on normal direction in order to arrange
+             //indices of refraction
             diffgeo.n = -diffgeo.n;
             diffgeo.dpdu = -diffgeo.dpdu;
             diffgeo.dpdv = -diffgeo.dpdv;
@@ -434,13 +407,15 @@ __kernel void ShadeSurface(
         // maintain proper volume stack here
         //if (Bxdf_IsBtdf(&diffgeo))
         //{
-            // If we entering set the volume
-            //path->volume = ndotwi > 0.f ? 0 : -1;
+        //    // If we entering set the volume
+        //    path->volume = !backfacing ? 0 : -1;
         //}
 
         // Check if we need to apply normal map
         //ApplyNormalMap(&diffgeo, TEXTURE_ARGS);
-        ApplyBumpMap(&diffgeo, TEXTURE_ARGS);
+        DifferentialGeometry_ApplyBumpMap(&diffgeo, TEXTURE_ARGS);
+        DifferentialGeometry_CalculateTangentTransforms(&diffgeo);
+
         float lightpdf = 0.f;
         float bxdflightpdf = 0.f;
         float bxdfpdf = 0.f;
@@ -453,18 +428,18 @@ __kernel void ShadeSurface(
         float bxdfweight = 1.f;
         float lightweight = 1.f;
 
-        int light_idx = num_lights > 0 ? Scene_SampleLight(&scene, sample0.y, &selection_pdf) : -1;
+        int light_idx = Scene_SampleLight(&scene, Sampler_Sample1D(&sampler, SAMPLER_ARGS), &selection_pdf);
 
         float3 throughput = Path_GetThroughput(path);
 
         // Sample bxdf
-        float3 bxdf = Bxdf_Sample(&diffgeo, wi, TEXTURE_ARGS, sample2, &bxdfwo, &bxdfpdf);
+        float3 bxdf = Bxdf_Sample(&diffgeo, wi, TEXTURE_ARGS, Sampler_Sample2D(&sampler, SAMPLER_ARGS), &bxdfwo, &bxdfpdf);
 
         // If we have light to sample we can hopefully do mis
         if (light_idx > -1)
         {
             // Sample light
-            float3 le = Light_Sample(light_idx, &scene, &diffgeo, TEXTURE_ARGS, sample1, &lightwo, &lightpdf);
+            float3 le = Light_Sample(light_idx, &scene, &diffgeo, TEXTURE_ARGS, Sampler_Sample2D(&sampler, SAMPLER_ARGS), &lightwo, &lightpdf);
             lightbxdfpdf = Bxdf_GetPdf(&diffgeo, wi, normalize(lightwo), TEXTURE_ARGS);
             lightweight = Light_IsSingular(&scene.lights[light_idx]) ? 1.f : BalanceHeuristic(1, lightpdf, 1, lightbxdfpdf);
 
@@ -474,8 +449,7 @@ __kernel void ShadeSurface(
             {
                 wo = lightwo;
                 float ndotwo = fabs(dot(diffgeo.n, normalize(wo)));
-                radiance = le * Bxdf_Evaluate(&diffgeo, wi, normalize(wo), TEXTURE_ARGS) * throughput *
-                    ndotwo * lightweight / lightpdf / selection_pdf;
+                radiance = le * Bxdf_Evaluate(&diffgeo, wi, normalize(wo), TEXTURE_ARGS) * throughput * ndotwo * lightweight / lightpdf / selection_pdf;
             }
         }
 
@@ -514,7 +488,7 @@ __kernel void ShadeSurface(
             0.2126f * throughput.x + 0.7152f * throughput.y + 0.0722f * throughput.z), 0.01f);
         // Only if it is 3+ bounce
         bool rr_apply = bounce > 3;
-        bool rr_stop = sample4 > q && rr_apply;
+        bool rr_stop = Sampler_Sample1D(&sampler, SAMPLER_ARGS) > q && rr_apply;
 
         if (rr_apply)
         {

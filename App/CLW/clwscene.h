@@ -2,11 +2,15 @@
 
 #include "CLW.h"
 #include "math/float3.h"
-#include "Scene/scene.h"
+#include "Scene/scene1.h"
 #include "radeon_rays.h"
+#include "Scene/Collector/collector.h"
+
 
 namespace Baikal
 {
+    using namespace RadeonRays;
+    
     enum class CameraType
     {
         kDefault,
@@ -17,21 +21,26 @@ namespace Baikal
 
     struct ClwScene
     {
+        #include "CL/payload.cl"
+        
         CLWBuffer<RadeonRays::float3> vertices;
         CLWBuffer<RadeonRays::float3> normals;
         CLWBuffer<RadeonRays::float2> uvs;
         CLWBuffer<int> indices;
 
-        CLWBuffer<Scene::Shape> shapes;
+        CLWBuffer<Shape> shapes;
 
-        CLWBuffer<Scene::Material> materials;
-        CLWBuffer<Scene::Light> lights;
+        CLWBuffer<Material> materials;
+        CLWBuffer<Light> lights;
         CLWBuffer<int> materialids;
-        CLWBuffer<Scene::Volume> volumes;
-        CLWBuffer<Scene::Texture> textures;
+        CLWBuffer<Volume> volumes;
+        CLWBuffer<Texture> textures;
         CLWBuffer<char> texturedata;
 
-        CLWBuffer<PerspectiveCamera> camera;
+        CLWBuffer<Camera> camera;
+        
+        std::unique_ptr<Bundle> material_bundle;
+        std::unique_ptr<Bundle> texture_bundle;
 
         int num_lights;
         int envmapidx;

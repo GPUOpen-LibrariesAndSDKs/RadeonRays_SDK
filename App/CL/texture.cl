@@ -22,31 +22,10 @@ THE SOFTWARE.
 #ifndef TEXTURE_CL
 #define TEXTURE_CL
 
+
+#include <../App/CL/payload.cl>
 #include <../App/CL/utils.cl>
 
-/// Supported formats
-enum TextureFormat
-{
-    UNKNOWN,
-    RGBA8,
-    RGBA16,
-    RGBA32
-};
-
-/// Texture description
-typedef
-    struct _Texture
-    {
-        // Width, height and depth
-        int w;
-        int h;
-        int d;
-        // Offset in texture data array
-        int dataoffset;
-        // Format
-        int fmt;
-        int extra;
-    } Texture;
 
 /// To simplify a bit
 #define TEXTURE_ARG_LIST __global Texture const* textures, __global char const* texturedata

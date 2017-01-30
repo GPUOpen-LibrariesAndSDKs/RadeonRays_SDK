@@ -50,9 +50,9 @@ namespace Baikal
         // Clear output
         void Clear(RadeonRays::float3 const& val, Output& output) const override;
         // Do necessary precalculation and initialization
-        void Preprocess(Scene const& scene) override;
+        void Preprocess(Scene1 const& scene) override;
         // Render the scene into the output
-        void Render(Scene const& scene) override;
+        void Render(Scene1 const& scene) override;
         // Set output
         void SetOutput(Output* output) override;
         // Interop function
