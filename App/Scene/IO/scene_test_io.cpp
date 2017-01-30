@@ -159,7 +159,7 @@ namespace Baikal
             scene->AttachShape(quad);
             scene->AttachAutoreleaseObject(quad);
             
-            Texture* ibl_texture = image_io->LoadImage("../Resources/Textures/parking.hdr");
+            Texture* ibl_texture = image_io->LoadImage("../Resources/Textures/studio015.hdr");
             scene->AttachAutoreleaseObject(ibl_texture);
             
             ImageBasedLight* ibl = new ImageBasedLight();
@@ -192,7 +192,7 @@ namespace Baikal
             scene->AttachShape(mesh);
             scene->AttachAutoreleaseObject(mesh);
             
-            Texture* ibl_texture = image_io->LoadImage("../Resources/Textures/parking.hdr");
+            Texture* ibl_texture = image_io->LoadImage("../Resources/Textures/studio015.hdr");
             scene->AttachAutoreleaseObject(ibl_texture);
             
             ImageBasedLight* ibl = new ImageBasedLight();
