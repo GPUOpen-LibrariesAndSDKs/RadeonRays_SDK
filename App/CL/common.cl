@@ -22,7 +22,6 @@ THE SOFTWARE.
 #ifndef COMMON_CL
 #define COMMON_CL
 
-
 #define CRAZY_LOW_THROUGHPUT 0.0f
 #define CRAZY_HIGH_RADIANCE 3.f
 #define CRAZY_HIGH_DISTANCE 1000000.f
@@ -36,8 +35,8 @@ THE SOFTWARE.
 #define SOBOL 2
 #define CMJ 3
 
-#define SAMPLER SOBOL
+#define SAMPLER CMJ
 
-#define CMJ_DIM 4
+#define CMJ_DIM 16
 
 #endif // COMMON_CL
