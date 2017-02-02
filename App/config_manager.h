@@ -29,6 +29,9 @@ namespace Baikal
 {
     class PtRenderer;
     class AoRenderer;
+    class IcRenderer;
+
+    using MyRenderer = IcRenderer;
 }
 
 class ConfigManager
@@ -54,7 +57,7 @@ public:
     {
         DeviceType type;
         int devidx;
-        Baikal::PtRenderer* renderer;
+        Baikal::IcRenderer* renderer;
         CLWContext context;
         bool caninterop;
 

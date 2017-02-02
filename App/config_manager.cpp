@@ -24,6 +24,7 @@ THE SOFTWARE.
 #include "CLW.h"
 #include "PT/ptrenderer.h"
 #include "AO/aorenderer.h"
+#include "IC/icrenderer.h"
 
 #ifndef APP_BENCHMARK
 
@@ -158,7 +159,7 @@ void ConfigManager::CreateConfigs(Mode mode, bool interop, std::vector<Config>& 
 
     for (int i = 0; i < configs.size(); ++i)
     {
-        configs[i].renderer = new Baikal::PtRenderer(configs[i].context, configs[i].devidx, initial_num_bounces);
+        configs[i].renderer = new Baikal::IcRenderer(configs[i].context, configs[i].devidx, initial_num_bounces);
     }
 }
 
@@ -213,7 +214,7 @@ void ConfigManager::CreateConfigs(Mode mode, bool interop, std::vector<Config>& 
 
     for (int i = 0; i < configs.size(); ++i)
     {
-        configs[i].renderer = new Baikal::PtRenderer(configs[i].context, configs[i].devidx, initial_num_bounces);
+        configs[i].renderer = new Baikal::IcRenderer(configs[i].context, configs[i].devidx, initial_num_bounces);
     }
 }
 #endif //APP_BENCHMARK

@@ -69,6 +69,7 @@ THE SOFTWARE.
 #include "Scene/scene1.h"
 #include "PT/ptrenderer.h"
 #include "AO/aorenderer.h"
+#include "IC/icrenderer.h"
 #include "CLW/clwoutput.h"
 #include "config_manager.h"
 #include "Scene/scene1.h"
@@ -106,6 +107,7 @@ int g_samplecount = 0;
 float g_ao_radius = 1.f; 
 float g_envmapmul = 1.f;
 float g_cspeed = 10.25f;
+bool g_show_cache = false;
 
 float3 g_camera_pos = float3(0.f, 1.f, 3.f);
 float3 g_camera_at = float3(0.f, 1.f, 0.f);
@@ -549,6 +551,18 @@ void OnLetterKey(unsigned char key, int x, int y)
 {
     switch(key)
     {
+        case 'c':
+        {
+            g_show_cache = !g_show_cache;
+
+            for (int i = 0; i < g_cfgs.size(); ++i)
+            {
+                g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
+            }
+
+            break;
+        }
+
         case 'w':
         {
             float focal_length = g_camera->GetFocalLength();
@@ -769,7 +783,11 @@ void Update()
 
     if (g_num_samples == -1 || g_samplecount < g_num_samples)
     {
-        g_cfgs[g_primary].renderer->Render(*g_scene.get());
+        if (!g_show_cache)
+            g_cfgs[g_primary].renderer->Render(*g_scene.get());
+        else
+            g_cfgs[g_primary].renderer->RenderCachedData(*g_scene.get());
+
         ++g_samplecount;
     }
     else if (g_samplecount == g_num_samples)
