@@ -51,9 +51,10 @@ namespace Baikal
         // Add radiance samples
         void AddRadianceSamples(CLWBuffer<RadeonRays::ray> rays,
             CLWBuffer<int> predicates,
-            CLWBuffer<RadeonRays::float3> samples, 
-            CLWBuffer<int> num_rays,
-            std::size_t max_rays);
+            CLWBuffer<RadeonRays::float3> samples,
+            int num_rays);
+
+        void Refit();
 
         // Get acceleration structure buffer
         Hlbvh& GetAccel() const;

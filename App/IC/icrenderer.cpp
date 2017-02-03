@@ -64,6 +64,10 @@ namespace Baikal
         // OpenCL stuff
         CLWBuffer<ray> rays[2];
         CLWBuffer<int> hits;
+        CLWBuffer<float3> indirect;
+        CLWBuffer<float3> indirect_througput;
+        CLWBuffer<ray> indirect_rays;
+        CLWBuffer<int> indirect_predicate;
 
         CLWBuffer<ray> shadowrays;
         CLWBuffer<int> shadowhits;
@@ -122,6 +126,7 @@ namespace Baikal
         , m_scene_tracker(context, devidx)
         , m_num_bounces(num_bounces)
         , m_framecnt(0)
+        , m_cache_ready(false)
     {
         std::string buildopts;
 
@@ -191,7 +196,6 @@ namespace Baikal
         // Check output
         assert(m_output);
 
-
         static bool once = false;
 
         if (!once)
@@ -214,6 +218,11 @@ namespace Baikal
         m_context.CopyBuffer(0, m_render_data->iota, m_render_data->pixelindices[0], 0, 0, m_render_data->iota.GetElementCount());
         m_context.CopyBuffer(0, m_render_data->iota, m_render_data->pixelindices[1], 0, 0, m_render_data->iota.GetElementCount());
         m_context.FillBuffer(0, m_render_data->hitcount, maxrays, 1);
+        m_context.FillBuffer(0, m_render_data->indirect, float3(), m_render_data->indirect.GetElementCount());
+        m_context.FillBuffer(0, m_render_data->indirect_througput, float3(1.f, 1.f, 1.f), m_render_data->indirect_througput.GetElementCount());
+        m_context.FillBuffer(0, m_render_data->indirect_predicate, -1, m_render_data->indirect_predicate.GetElementCount());
+
+        int pass_to_cache = (rand_uint() % (m_num_bounces - 2)) + 1;
 
         // Initialize first pass
         for (int pass = 0; pass < m_num_bounces; ++pass)
@@ -251,8 +260,11 @@ namespace Baikal
             // Shade hits
             ShadeVolume(clwscene, pass);
 
-            // Shade hits
-            ShadeSurface(clwscene, pass);
+            if (!m_cache_ready)
+                // Shade hits
+                ShadeSurface(clwscene, pass, pass_to_cache);
+            else
+                ShadeSurfaceCached(clwscene, pass);
 
             // Shade missing rays
             if (pass == 0)
@@ -266,10 +278,17 @@ namespace Baikal
             // Gather light samples and account for visibility
             GatherLightSamples(clwscene, pass);
 
-            // Update irradiance cache
-            UpdateRadianceCache(clwscene, pass, maxrays);
-
+            //
             m_context.Flush(0);
+        }
+
+        if (m_framecnt < 63 && !m_cache_ready)
+        {
+            UpdateRadianceCache(clwscene, 0, maxrays);
+        }
+        else
+        {
+            m_cache_ready = true;
         }
 
         ++m_framecnt;
@@ -296,6 +315,12 @@ namespace Baikal
         m_render_data->rays[1] = m_context.CreateBuffer<ray>(output.width() * output.height(), CL_MEM_READ_WRITE);
         m_vidmemws += output.width() * output.height() * sizeof(ray);
 
+        m_render_data->indirect_rays = m_context.CreateBuffer<ray>(output.width() * output.height(), CL_MEM_READ_WRITE);
+        m_vidmemws += output.width() * output.height() * sizeof(ray);
+
+        m_render_data->indirect_predicate = m_context.CreateBuffer<int>(output.width() * output.height(), CL_MEM_READ_WRITE);
+        m_vidmemws += output.width() * output.height() * sizeof(int);
+
         m_render_data->hits = m_context.CreateBuffer<int>(output.width() * output.height(), CL_MEM_READ_WRITE);
         m_vidmemws += output.width() * output.height() * sizeof(int);
 
@@ -313,6 +338,12 @@ namespace Baikal
 
         m_render_data->lightsamplespure = m_context.CreateBuffer<float3>(output.width() * output.height() * kMaxLightSamples, CL_MEM_READ_WRITE);
         m_vidmemws += output.width() * output.height() * sizeof(float3)* kMaxLightSamples;
+
+        m_render_data->indirect = m_context.CreateBuffer<float3>(output.width() * output.height(), CL_MEM_READ_WRITE);
+        m_vidmemws += output.width() * output.height() * sizeof(float3);
+
+        m_render_data->indirect_througput = m_context.CreateBuffer<float3>(output.width() * output.height(), CL_MEM_READ_WRITE);
+        m_vidmemws += output.width() * output.height() * sizeof(float3);
 
         m_render_data->paths = m_context.CreateBuffer<PathState>(output.width() * output.height(), CL_MEM_READ_WRITE);
         m_vidmemws += output.width() * output.height() * sizeof(PathState);
@@ -388,7 +419,7 @@ namespace Baikal
         }
     }
 
-    void IcRenderer::ShadeSurface(ClwScene const& scene, int pass)
+    void IcRenderer::ShadeSurface(ClwScene const& scene, int pass, int pass_cached)
     {
         // Fetch kernel
         CLWKernel shadekernel = m_render_data->program_ic.GetKernel("ShadeSurfaceAndCache");
@@ -417,6 +448,7 @@ namespace Baikal
         shadekernel.SetArg(argc++, m_render_data->random);
         shadekernel.SetArg(argc++, m_render_data->sobolmat);
         shadekernel.SetArg(argc++, pass);
+        shadekernel.SetArg(argc++, pass_cached);
         shadekernel.SetArg(argc++, m_framecnt);
         shadekernel.SetArg(argc++, scene.volumes);
         shadekernel.SetArg(argc++, m_render_data->shadowrays);
@@ -425,6 +457,10 @@ namespace Baikal
         shadekernel.SetArg(argc++, m_render_data->paths);
         shadekernel.SetArg(argc++, m_render_data->rays[(pass + 1) & 0x1]);
         shadekernel.SetArg(argc++, m_output->data());
+        shadekernel.SetArg(argc++, m_render_data->indirect);
+        shadekernel.SetArg(argc++, m_render_data->indirect_througput);
+        shadekernel.SetArg(argc++, m_render_data->indirect_rays);
+        shadekernel.SetArg(argc++, m_render_data->indirect_predicate);
 
         // Run shading kernel
         {
@@ -537,7 +573,7 @@ namespace Baikal
     void IcRenderer::GatherLightSamples(ClwScene const& scene, int pass)
     {
         // Fetch kernel
-        CLWKernel gatherkernel = m_render_data->program.GetKernel("GatherLightSamples");
+        CLWKernel gatherkernel = m_render_data->program_ic.GetKernel("GatherLightSamplesIndirect");
 
         // Set kernel parameters
         int argc = 0;
@@ -545,8 +581,10 @@ namespace Baikal
         gatherkernel.SetArg(argc++, m_render_data->hitcount);
         gatherkernel.SetArg(argc++, m_render_data->shadowhits);
         gatherkernel.SetArg(argc++, m_render_data->lightsamples);
+        gatherkernel.SetArg(argc++, m_render_data->lightsamplespure);
         gatherkernel.SetArg(argc++, m_render_data->paths);
         gatherkernel.SetArg(argc++, m_output->data());
+        gatherkernel.SetArg(argc++, m_render_data->indirect);
 
         // Run shading kernel
         {
@@ -689,7 +727,7 @@ namespace Baikal
         RestorePixelIndices(0);
 
         // Shade hits
-        ShadeSurface(clwscene, 0);
+        ShadeSurface(clwscene, 0, 0);
 
         // Shade missing rays
         ShadeMiss(clwscene, 0);
@@ -741,7 +779,7 @@ namespace Baikal
         RestorePixelIndices(1);
 
         // Shade hits
-        ShadeSurface(clwscene, 1);
+        ShadeSurface(clwscene, 1, 0);
 
         // Shade missing rays
         ShadeMiss(clwscene, 1);
@@ -781,7 +819,7 @@ namespace Baikal
             auto mesh_index_array = mesh->GetIndices();
             auto mesh_num_indices = mesh->GetNumIndices();
 
-            float density_per_sq_cm = 60.f;
+            float density_per_sq_cm = 400.f;
 
             for (auto idx = 0U; idx < mesh_num_indices / 3; ++idx)
             {
@@ -829,7 +867,7 @@ namespace Baikal
                     tangent_to_world.m30 = tangent_to_world.m31 = tangent_to_world.m32 = 0;
                     tangent_to_world.m33 = 1.f;
 
-                    temp_desc.push_back(RadianceCache::RadianceProbeDesc{ world_to_tangent , tangent_to_world, p, 0.05f, 0, 0, 0 });
+                    temp_desc.push_back(RadianceCache::RadianceProbeDesc{ world_to_tangent , tangent_to_world, p, 0.25f, 1, 0, 0 });
                 }
             }
         }
@@ -842,6 +880,8 @@ namespace Baikal
         {
             probe.r0 = float3(rand_float(), rand_float(), rand_float());
         }*/
+
+        std::cout << "Radiance probes count " << temp_desc.size() << "\n";
 
         probes = m_context.CreateBuffer<RadianceCache::RadianceProbeData>(temp_desc.size(), CL_MEM_READ_WRITE, &temp_probes[0]);
 
@@ -934,8 +974,58 @@ namespace Baikal
 
     }
 
-    void IcRenderer::UpdateRadianceCache(ClwScene const& scene, int pass, std::size_t maxrays)
+    void IcRenderer::UpdateRadianceCache(ClwScene const& scene, int pass, std::size_t num_rays)
     {
-        m_radiance_cache->AddRadianceSamples(m_render_data->shadowrays, m_render_data->shadowhits, m_render_data->lightsamplespure, m_render_data->hitcount, maxrays);
+        m_radiance_cache->AddRadianceSamples(m_render_data->indirect_rays, m_render_data->indirect_predicate, m_render_data->indirect, num_rays);
+    }
+
+    void IcRenderer::ShadeSurfaceCached(ClwScene const& scene, int pass)
+    {
+        // Fetch kernel
+        CLWKernel shadekernel = m_render_data->program_ic.GetKernel("ShadeSurface");
+
+        // Set kernel parameters
+        int argc = 0;
+        shadekernel.SetArg(argc++, m_render_data->rays[pass & 0x1]);
+        shadekernel.SetArg(argc++, m_render_data->intersections);
+        shadekernel.SetArg(argc++, m_render_data->compacted_indices);
+        shadekernel.SetArg(argc++, m_render_data->pixelindices[pass & 0x1]);
+        shadekernel.SetArg(argc++, m_render_data->hitcount);
+        shadekernel.SetArg(argc++, scene.vertices);
+        shadekernel.SetArg(argc++, scene.normals);
+        shadekernel.SetArg(argc++, scene.uvs);
+        shadekernel.SetArg(argc++, scene.indices);
+        shadekernel.SetArg(argc++, scene.shapes);
+        shadekernel.SetArg(argc++, scene.materialids);
+        shadekernel.SetArg(argc++, scene.materials);
+        shadekernel.SetArg(argc++, scene.textures);
+        shadekernel.SetArg(argc++, scene.texturedata);
+        shadekernel.SetArg(argc++, scene.envmapidx);
+        shadekernel.SetArg(argc++, scene.envmapmul);
+        shadekernel.SetArg(argc++, scene.lights);
+        shadekernel.SetArg(argc++, scene.num_lights);
+        shadekernel.SetArg(argc++, rand_uint());
+        shadekernel.SetArg(argc++, m_render_data->random);
+        shadekernel.SetArg(argc++, m_render_data->sobolmat);
+        shadekernel.SetArg(argc++, pass);
+        shadekernel.SetArg(argc++, m_framecnt);
+        shadekernel.SetArg(argc++, scene.volumes);
+
+        shadekernel.SetArg(argc++, m_radiance_cache->GetAccel().GetGpuData().nodes);
+        shadekernel.SetArg(argc++, m_radiance_cache->GetAccel().GetGpuData().sorted_bounds);
+        shadekernel.SetArg(argc++, m_radiance_cache->GetProbeDescs());
+        shadekernel.SetArg(argc++, m_radiance_cache->GetProbes());
+
+        shadekernel.SetArg(argc++, m_render_data->shadowrays);
+        shadekernel.SetArg(argc++, m_render_data->lightsamples);
+        shadekernel.SetArg(argc++, m_render_data->paths);
+        shadekernel.SetArg(argc++, m_render_data->rays[(pass + 1) & 0x1]);
+        shadekernel.SetArg(argc++, m_output->data());
+
+        // Run shading kernel
+        {
+            int globalsize = m_output->width() * m_output->height();
+            m_context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, shadekernel);
+        }
     }
 }

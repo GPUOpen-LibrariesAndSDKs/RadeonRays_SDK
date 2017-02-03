@@ -41,7 +41,7 @@ __kernel void AddRadianceSamples(
     __global ray const* sample_rays,
     __global int const* predicate,
     __global float3 const* samples, 
-    __global int const* num_samples,
+    int num_samples,
     __global HlbvhNode const* bvh,
     __global bbox const* bounds,
     __global RadianceProbeDesc* descs,
@@ -50,9 +50,9 @@ __kernel void AddRadianceSamples(
 {
     int global_id = get_global_id(0);
 
-    if (global_id < *num_samples)
+    if (global_id < num_samples)
     {
-        if (predicate[global_id] == -1)
+        if (predicate[global_id] == 1)
         {
             float3 sample_position = sample_rays[global_id].o.xyz;
             float3 sample_direction = sample_rays[global_id].d.xyz;

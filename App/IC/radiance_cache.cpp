@@ -80,8 +80,7 @@ namespace Baikal
         CLWBuffer<RadeonRays::ray> rays,
         CLWBuffer<int> predicates,
         CLWBuffer<RadeonRays::float3> samples,
-        CLWBuffer<int> num_rays,
-        std::size_t max_rays)
+        int num_rays)
     {
         auto kernel = m_gpudata->program.GetKernel("AddRadianceSamples");
 
@@ -90,7 +89,7 @@ namespace Baikal
         kernel.SetArg(argc++, rays);
         kernel.SetArg(argc++, predicates);
         kernel.SetArg(argc++, samples);
-        kernel.SetArg(argc++, num_rays);
+        kernel.SetArg(argc++, sizeof(int), &num_rays);
         kernel.SetArg(argc++, m_accel->GetGpuData().nodes);
         kernel.SetArg(argc++, m_accel->GetGpuData().sorted_bounds);
         kernel.SetArg(argc++, m_gpudata->descs);
@@ -98,9 +97,14 @@ namespace Baikal
 
         // Run shading kernel
         {
-            int globalsize = max_rays;
+            int globalsize = num_rays;
             m_context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, kernel);
         }
+    }
+
+    void RadianceCache::Refit()
+    {
+        m_accel->Build(m_gpudata->descs, m_gpudata->num_probes);
     }
 
     // Get acceleration structure buffer

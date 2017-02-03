@@ -110,7 +110,7 @@ void RadianceProbe_RefineEstimate(
         probe->b1.xyz += sh1 * sample.z;
         probe->b2.xyz += sh2 * sample.z;
 
-        desc->radius += 1.f / ray_distance;
+        //desc->radius += 1.f / ray_distance;
 
         atomic_inc(&desc->num_samples);
 
@@ -130,12 +130,17 @@ RadianceProbe_AddContribution(
     float* weight
 )
 {
-    float radius = desc->num_samples / desc->radius;
+    float radius = clamp(desc->num_samples / desc->radius, 0.05f, 0.25f);
+
     float3 normal = desc->world_to_tangent.m1.xyz;
+
     float perr = length(p - desc->p) / radius;
+
     float nerr = 9.0124*native_sqrt(1.f - dot(n, normal));
+
     float err = max(perr, nerr);
-    if (err < 1.0f)
+
+    if (err < 1.0f && length(p - desc->p) < radius)
     {
         float invs = 1.f / desc->num_samples;
         float wt = (1.0f - err);

@@ -77,7 +77,9 @@ namespace Baikal
         // Generate rays
         void GeneratePrimaryRays(ClwScene const& scene);
         // Shade first hit
-        void ShadeSurface(ClwScene const& scene, int pass);
+        void ShadeSurface(ClwScene const& scene, int pass, int pass_cached);
+        // Shade first hit
+        void ShadeSurfaceCached(ClwScene const& scene, int pass);
         // Evaluate volume
         void EvaluateVolume(ClwScene const& scene, int pass);
         // Handle missing rays
@@ -98,7 +100,7 @@ namespace Baikal
             CLWBuffer<RadianceCache::RadianceProbeData>& probes,
             std::size_t& num_probes);
         //
-        void UpdateRadianceCache(ClwScene const& scene, int pass, std::size_t maxrays);
+        void UpdateRadianceCache(ClwScene const& scene, int pass, std::size_t num_rays);
 
     public:
         // CL context
@@ -121,6 +123,8 @@ namespace Baikal
         // Vidmem usage
         // Working set
         size_t m_vidmemws;
+
+        bool m_cache_ready;
 
     private:
         std::uint32_t m_num_bounces;

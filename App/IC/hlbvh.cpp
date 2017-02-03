@@ -127,7 +127,9 @@ namespace Baikal
     void Hlbvh::BuildImpl(CLWBuffer<RadianceCache::RadianceProbeDesc> records, std::size_t num_records)
     {
         int size = num_records;
-        
+
+        std::cout << "Num probes " << num_records << "\n";
+
         // Make sure to allocate enough mem on GPU
         // We are trying to reuse space as reallocation takes time
         // but this call might be really frequent
@@ -135,13 +137,12 @@ namespace Baikal
         {
             AllocateBuffers(size);
         }
-        
-        
+
         // Initialize flags with zero 
         {
             m_context.FillBuffer(0, m_gpudata->flags, 0, m_gpudata->flags.GetElementCount()).Wait();
         }
-        
+
         // Calculate Morton codes array
         int arg = 0;
         m_gpudata->morton_code_func.SetArg(arg++, records);
@@ -188,9 +189,9 @@ namespace Baikal
         m_gpudata->refit_func.SetArg(arg++, sizeof(size), &size);
         m_gpudata->refit_func.SetArg(arg++, m_gpudata->nodes);
         m_gpudata->refit_func.SetArg(arg++, m_gpudata->flags);
-        
+
         globalsize = ((size + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
-        
+
         // Launch refit kernel
         m_context.Launch1D(0, globalsize, kWorkGroupSize, m_gpudata->refit_func);
 
