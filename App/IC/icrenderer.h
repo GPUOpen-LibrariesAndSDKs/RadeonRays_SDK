@@ -102,6 +102,10 @@ namespace Baikal
         //
         void UpdateRadianceCache(ClwScene const& scene, int pass, std::size_t num_rays);
 
+#ifdef RADIANCE_PROBE_DIRECT
+        void UpdateDirectRadianceCache(ClwScene const& scene, int pass, std::size_t max_rays);
+#endif
+
     public:
         // CL context
         CLWContext m_context;

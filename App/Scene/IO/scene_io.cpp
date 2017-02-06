@@ -138,7 +138,7 @@ namespace Baikal
                 material = diffuse;
             }
         }
-        
+
         // Set material name
         material->SetName(mat.name);
         
@@ -255,7 +255,7 @@ namespace Baikal
         light->SetEmittedRadiance(2.f * RadeonRays::float3(1.f, 1.f, 1.f));
         scene->AttachAutoreleaseObject(light);
 
-        //scene->AttachLight(light);
+        scene->AttachLight(light);
         //scene->AttachLight(ibl);
 
         return scene;

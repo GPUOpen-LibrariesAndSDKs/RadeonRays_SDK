@@ -31,7 +31,7 @@ typedef struct _RadianceProbeDesc
     float radius;
     int num_samples;
     int atomic_update;
-    int padding1;
+    int num_direct_samples;
 } RadianceProbeDesc;
 
 typedef struct _RadianceProbeData
@@ -47,6 +47,21 @@ typedef struct _RadianceProbeData
     float3 b0;
     float3 b1;
     float3 b2;
+
+#ifdef RADIANCE_PROBE_DIRECT
+    float3 dr0;
+    float3 dr1;
+    float3 dr2;
+
+    float3 dg0;
+    float3 dg1;
+    float3 dg2;
+
+    float3 db0;
+    float3 db1;
+    float3 db2;
+#endif
+
 } RadianceProbeData;
 
 inline
@@ -119,6 +134,50 @@ void RadianceProbe_RefineEstimate(
     }
 }
 
+#ifdef RADIANCE_PROBE_DIRECT
+inline
+void RadianceProbe_RefineDirectEstimate(
+    __global RadianceProbeDesc* restrict desc,
+    __global RadianceProbeData* restrict probe,
+    float3 sample,
+    float3 direction,
+    float ray_distance
+)
+{
+    float3 normal = desc->world_to_tangent.m1.xyz;
+
+    if (dot(normal, direction) > 0.f)
+    {
+        float3 direction_ts = matrix_mul_vector3(desc->world_to_tangent, direction);
+
+        float3 sh0, sh1, sh2;
+        SH_Get2ndOrderCoeffs(direction_ts, &sh0, &sh1, &sh2);
+
+        // Lock here
+        //while (atomic_cmpxchg(&desc->atomic_update, 0, 1) == 1);
+
+        probe->dr0.xyz += sh0 * sample.x;
+        probe->dr1.xyz += sh1 * sample.x;
+        probe->dr2.xyz += sh2 * sample.x;
+
+        probe->dg0.xyz += sh0 * sample.y;
+        probe->dg1.xyz += sh1 * sample.y;
+        probe->dg2.xyz += sh2 * sample.y;
+
+        probe->db0.xyz += sh0 * sample.z;
+        probe->db1.xyz += sh1 * sample.z;
+        probe->db2.xyz += sh2 * sample.z;
+
+        //desc->radius += 1.f / ray_distance;
+
+        atomic_inc(&desc->num_direct_samples);
+
+        // Unlock here
+        //atomic_xchg(&desc->atomic_update, 0);
+    }
+}
+#endif
+
 inline
 bool
 RadianceProbe_AddContribution(
@@ -130,7 +189,7 @@ RadianceProbe_AddContribution(
     float* weight
 )
 {
-    float radius = clamp(desc->num_samples / desc->radius, 0.05f, 0.25f);
+    float radius = clamp(desc->num_samples / desc->radius, 0.05f, 0.5f);
 
     float3 normal = desc->world_to_tangent.m1.xyz;
 
@@ -162,4 +221,50 @@ RadianceProbe_AddContribution(
 
     return false;
 }
+
+#ifdef RADIANCE_PROBE_DIRECT
+inline
+bool
+RadianceProbe_AddDirectContribution(
+    __global RadianceProbeDesc* restrict desc,
+    __global RadianceProbeData* restrict probe,
+    float3 p,
+    float3 n,
+    RadianceProbeData* out_probe,
+    float* weight
+)
+{
+    float radius = clamp(desc->num_samples / desc->radius, 0.05f, 0.5f);
+
+    float3 normal = desc->world_to_tangent.m1.xyz;
+
+    float perr = length(p - desc->p) / radius;
+
+    float nerr = 9.0124*native_sqrt(1.f - dot(n, normal));
+
+    float err = max(perr, nerr);
+
+    if (err < 1.0f && length(p - desc->p) < radius)
+    {
+        float invs = 1.f / desc->num_direct_samples;
+        float wt = (1.0f - err);
+        *weight += wt;
+
+        out_probe->dr0 += wt * probe->dr0 * invs;
+        out_probe->dr1 += wt * probe->dr1 * invs;
+        out_probe->dr2 += wt * probe->dr2 * invs;
+
+        out_probe->dg0 += wt * probe->dg0 * invs;
+        out_probe->dg1 += wt * probe->dg1 * invs;
+        out_probe->dg2 += wt * probe->dg2 * invs;
+
+        out_probe->db0 += wt * probe->db0 * invs;
+        out_probe->db1 += wt * probe->db1 * invs;
+        out_probe->db2 += wt * probe->db2 * invs;
+        return true;
+    }
+
+    return false;
+}
+#endif
 

@@ -117,6 +117,86 @@ void RadianceCache_GatherRadiance(
     }
 }
 
+#ifdef RADIANCE_PROBE_DIRECT
+inline
+void RadianceCache_GatherDirectRadiance(
+    __global HlbvhNode const* restrict bvh,
+    __global bbox const* restrict bounds,
+    __global RadianceProbeDesc const* restrict descs,
+    __global RadianceProbeData const* restrict probes,
+    float3 p,
+    float3 n,
+    RadianceProbeData* out_probe
+)
+{
+    int stack[STACK_SIZE];
+    int* ptr = stack;
+    *ptr++ = -1;
+    int idx = 0;
+
+    HlbvhNode node;
+    bbox lbox;
+    bbox rbox;
+
+    float weight = 0;
+
+    while (idx > -1)
+    {
+        node = bvh[idx];
+
+        if (LEAFNODE(node))
+        {
+            int probe_idx = STARTIDX(node);
+            RadianceProbe_AddDirectContribution(descs + probe_idx, probes + probe_idx, p, n, out_probe, &weight);
+        }
+        else
+        {
+            lbox = bounds[node.left];
+            rbox = bounds[node.right];
+
+            bool lhit = Bbox_ContainsPoint(lbox, p);
+            bool rhit = Bbox_ContainsPoint(rbox, p);
+
+            if (lhit && rhit)
+            {
+
+                idx = node.left;
+                *ptr++ = node.right;
+                continue;
+            }
+            else if (lhit)
+            {
+                idx = node.left;
+                continue;
+            }
+            else if (rhit)
+            {
+                idx = node.right;
+                continue;
+            }
+        }
+
+        idx = *--ptr;
+    }
+
+    if (weight > 0.f)
+    {
+        float invw = 1.f / weight;
+        out_probe->dr0 *= invw;
+        out_probe->dr1 *= invw;
+        out_probe->dr2 *= invw;
+
+        out_probe->dg0 *= invw;
+        out_probe->dg1 *= invw;
+        out_probe->dg2 *= invw;
+
+        out_probe->db0 *= invw;
+        out_probe->db1 *= invw;
+        out_probe->db2 *= invw;
+    }
+}
+#endif
+
 inline
 float3 RadianceCache_GatherIrradiance(
     __global HlbvhNode const* restrict bvh,
@@ -161,6 +241,99 @@ float3 RadianceCache_GatherIrradiance(
 
     return l;
 }
+//
+//inline
+//float3 RadianceCache_GatherRadiance(
+//    __global HlbvhNode const* restrict bvh,
+//    __global bbox const* restrict bounds,
+//    __global RadianceProbeDesc const* restrict descs,
+//    __global RadianceProbeData const* restrict probes,
+//    float3 p,
+//    float3 n,
+//    float3 wo)
+//{
+//    RadianceProbeData probe = { 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f };
+//    RadianceCache_GatherRadiance(bvh, bounds, descs, probes, p, , &probe);
+//
+//    float3 r0 = probe.r0;
+//    float3 r1 = probe.r1;
+//    float3 r2 = probe.r2;
+//    float3 b0 = probe.b0;
+//    float3 b1 = probe.b1;
+//    float3 b2 = probe.b2;
+//    float3 g0 = probe.g0;
+//    float3 g1 = probe.g1;
+//    float3 g2 = probe.g2;
+//
+//    float3 sh0, sh1, sh2;
+//
+//    SH_Get2ndOrderCoeffs(make_float3(0.f, 1.f, 0.f), &sh0, &sh1, &sh2);
+//
+//    sh0.x *= 0.8862268925f;
+//    sh0.y *= 0.0233267546f;
+//    sh0.z *= 0.4954159260f;
+//    sh1.x = 0.0000000000f;
+//    sh1.y *= -0.1107783690f;
+//    sh1.z = 0.0000000000f;
+//
+//    sh2.x *= 0.0499271341f;
+//    sh2.y = 0.0000000000f;
+//    sh2.z *= -0.0285469331f;
+//
+//    float3 l;
+//    l.x = 4 * PI * (dot(r0, sh0) + dot(r1, sh1) + dot(r2, sh2));
+//    l.y = 4 * PI * (dot(g0, sh0) + dot(g1, sh1) + dot(g2, sh2));
+//    l.z = 4 * PI * (dot(b0, sh0) + dot(b1, sh1) + dot(b2, sh2));
+//
+//    return l;
+//}
+
+#ifdef RADIANCE_PROBE_DIRECT
+inline
+float3 RadianceCache_GatherDirectIrradiance(
+    __global HlbvhNode const* restrict bvh,
+    __global bbox const* restrict bounds,
+    __global RadianceProbeDesc const* restrict descs,
+    __global RadianceProbeData const* restrict probes,
+    float3 p,
+    float3 n)
+{
+    RadianceProbeData probe = { 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f };
+    RadianceCache_GatherDirectRadiance(bvh, bounds, descs, probes, p, n, &probe);
+
+    float3 r0 = probe.dr0;
+    float3 r1 = probe.dr1;
+    float3 r2 = probe.dr2;
+    float3 b0 = probe.db0;
+    float3 b1 = probe.db1;
+    float3 b2 = probe.db2;
+    float3 g0 = probe.dg0;
+    float3 g1 = probe.dg1;
+    float3 g2 = probe.dg2;
+
+    float3 sh0, sh1, sh2;
+
+    SH_Get2ndOrderCoeffs(make_float3(0.f, 1.f, 0.f), &sh0, &sh1, &sh2);
+
+    sh0.x *= 0.8862268925f;
+    sh0.y *= 0.0233267546f;
+    sh0.z *= 0.4954159260f;
+    sh1.x = 0.0000000000f;
+    sh1.y *= -0.1107783690f;
+    sh1.z = 0.0000000000f;
+
+    sh2.x *= 0.0499271341f;
+    sh2.y = 0.0000000000f;
+    sh2.z *= -0.0285469331f;
+
+    float3 l;
+    l.x = 4 * PI * (dot(r0, sh0) + dot(r1, sh1) + dot(r2, sh2));
+    l.y = 4 * PI * (dot(g0, sh0) + dot(g1, sh1) + dot(g2, sh2));
+    l.z = 4 * PI * (dot(b0, sh0) + dot(b1, sh1) + dot(b2, sh2));
+
+    return l;
+}
+#endif
 
 
 
@@ -364,6 +537,11 @@ __kernel void ShadeSurfaceAndCache(
     // Indirect rays
     __global ray* indirect_rays,
     __global int* indirect_predicate
+#ifdef RADIANCE_PROBE_DIRECT
+    ,
+    // Light samples
+    __global float3* direct_light_samples
+#endif
 )
 {
     int globalid = get_global_id(0);
@@ -539,6 +717,10 @@ __kernel void ShadeSurfaceAndCache(
                         indirect_radiance = le * Bxdf_Evaluate(&diffgeo, wi, normalize(wo), TEXTURE_ARGS) * indirect_throughput[pixelidx] * ndotwo * lightweight / lightpdf / selection_pdf;
                     else
                         indirect_radiance = 0.f;
+
+#ifdef RADIANCE_PROBE_DIRECT
+                    direct_light_samples[globalid] = le * ndotwo * lightweight / lightpdf / selection_pdf;
+#endif
             }
         }
 
@@ -892,60 +1074,77 @@ __kernel void ShadeSurface(
         float3 wo;
         float bxdfweight = 1.f;
         float lightweight = 1.f;
+        float3 bxdf = 0.f;
 
         int light_idx = Scene_SampleLight(&scene, Sampler_Sample1D(&sampler, SAMPLER_ARGS), &selection_pdf);
 
         float3 throughput = Path_GetThroughput(path);
 
-        // Sample bxdf
-        float3 bxdf = Bxdf_Sample(&diffgeo, wi, TEXTURE_ARGS, Sampler_Sample2D(&sampler, SAMPLER_ARGS), &bxdfwo, &bxdfpdf);
-
-        // If we have light to sample we can hopefully do mis
-        if (light_idx > -1)
+#ifdef RADIANCE_PROBE_DIRECT
+        if (diffgeo.mat.type != kLambert)
         {
-            // Sample light
-            float3 le = Light_Sample(light_idx, &scene, &diffgeo, TEXTURE_ARGS, Sampler_Sample2D(&sampler, SAMPLER_ARGS), &lightwo, &lightpdf);
-            lightbxdfpdf = Bxdf_GetPdf(&diffgeo, wi, normalize(lightwo), TEXTURE_ARGS);
-            lightweight = Light_IsSingular(&scene.lights[light_idx]) ? 1.f : BalanceHeuristic(1, lightpdf, 1, lightbxdfpdf);
+#endif
+            // Sample bxdf
+            bxdf = Bxdf_Sample(&diffgeo, wi, TEXTURE_ARGS, Sampler_Sample2D(&sampler, SAMPLER_ARGS), &bxdfwo, &bxdfpdf);
 
-
-            // Apply MIS to account for both
-            if (NON_BLACK(le) && lightpdf > 0.0f && !Bxdf_IsSingular(&diffgeo))
+            // If we have light to sample we can hopefully do mis
+            if (light_idx > -1)
             {
-                wo = lightwo;
-                float ndotwo = fabs(dot(diffgeo.n, normalize(wo)));
-                radiance = le * Bxdf_Evaluate(&diffgeo, wi, normalize(wo), TEXTURE_ARGS) * throughput * ndotwo * lightweight / lightpdf / selection_pdf;
-            }
-        }
+                // Sample light
+                float3 le = Light_Sample(light_idx, &scene, &diffgeo, TEXTURE_ARGS, Sampler_Sample2D(&sampler, SAMPLER_ARGS), &lightwo, &lightpdf);
+                lightbxdfpdf = Bxdf_GetPdf(&diffgeo, wi, normalize(lightwo), TEXTURE_ARGS);
+                lightweight = Light_IsSingular(&scene.lights[light_idx]) ? 1.f : BalanceHeuristic(1, lightpdf, 1, lightbxdfpdf);
 
-        // If we have some light here generate a shadow ray
-        if (NON_BLACK(radiance))
-        {
-            // Generate shadow ray
-            float shadow_ray_length = (1.f - 2.f * CRAZY_LOW_DISTANCE) * length(wo);
-            float3 shadow_ray_dir = normalize(wo);
-            float3 shadow_ray_o = diffgeo.p + CRAZY_LOW_DISTANCE * s * diffgeo.n;
-            int shadow_ray_mask = Bxdf_IsSingular(&diffgeo) ? 0xFFFFFFFF : 0x0000FFFF;
 
-            Ray_Init(shadowrays + globalid, shadow_ray_o, shadow_ray_dir, shadow_ray_length, 0.f, shadow_ray_mask);
-
-            // Apply the volume to shadow ray if needed
-            int volidx = Path_GetVolumeIdx(path);
-            if (volidx != -1)
-            {
-                radiance *= Volume_Transmittance(&volumes[volidx], &shadowrays[globalid], shadow_ray_length);
-                radiance += Volume_Emission(&volumes[volidx], &shadowrays[globalid], shadow_ray_length) * throughput;
+                // Apply MIS to account for both
+                if (NON_BLACK(le) && lightpdf > 0.0f && !Bxdf_IsSingular(&diffgeo))
+                {
+                    wo = lightwo;
+                    float ndotwo = fabs(dot(diffgeo.n, normalize(wo)));
+                    radiance = le * Bxdf_Evaluate(&diffgeo, wi, normalize(wo), TEXTURE_ARGS) * throughput * ndotwo * lightweight / lightpdf / selection_pdf;
+                }
             }
 
-            // And write the light sample
-            lightsamples[globalid] = REASONABLE_RADIANCE(radiance);
+            // If we have some light here generate a shadow ray
+            if (NON_BLACK(radiance))
+            {
+                // Generate shadow ray
+                float shadow_ray_length = (1.f - 2.f * CRAZY_LOW_DISTANCE) * length(wo);
+                float3 shadow_ray_dir = normalize(wo);
+                float3 shadow_ray_o = diffgeo.p + CRAZY_LOW_DISTANCE * s * diffgeo.n;
+                int shadow_ray_mask = Bxdf_IsSingular(&diffgeo) ? 0xFFFFFFFF : 0x0000FFFF;
+
+                Ray_Init(shadowrays + globalid, shadow_ray_o, shadow_ray_dir, shadow_ray_length, 0.f, shadow_ray_mask);
+
+                // Apply the volume to shadow ray if needed
+                int volidx = Path_GetVolumeIdx(path);
+                if (volidx != -1)
+                {
+                    radiance *= Volume_Transmittance(&volumes[volidx], &shadowrays[globalid], shadow_ray_length);
+                    radiance += Volume_Emission(&volumes[volidx], &shadowrays[globalid], shadow_ray_length) * throughput;
+                }
+
+                // And write the light sample
+                lightsamples[globalid] = REASONABLE_RADIANCE(radiance);
+            }
+            else
+            {
+                // Otherwise save some intersector cycles
+                Ray_SetInactive(shadowrays + globalid);
+                lightsamples[globalid] = 0;
+            }
+#ifdef RADIANCE_PROBE_DIRECT
         }
         else
         {
+            float3 i = RadianceCache_GatherDirectIrradiance(bvh, bounds, descs, probes, diffgeo.p, diffgeo.n);
+            output[pixelidx] += Path_GetThroughput(path) * i * diffgeo.mat.kx.xyz;
+
             // Otherwise save some intersector cycles
             Ray_SetInactive(shadowrays + globalid);
             lightsamples[globalid] = 0;
         }
+#endif
 
 
         if (diffgeo.mat.type == kLambert)
@@ -958,6 +1157,20 @@ __kernel void ShadeSurface(
             Path_Kill(path);
             Ray_SetInactive(indirectrays + globalid);
         }
+        //else
+        //{
+        //    bxdfwo = normalize(bxdfwo);
+        //    float3 t = bxdf * fabs(dot(diffgeo.n, bxdfwo));
+
+        //    float3 r = RadianceCache_GatherRadiance(bvh, bounds, descs, probes, diffgeo.p, diffgeo.n, bxdfwo);
+
+        //    if (NON_BLACK(t) && bxdfpdf > 0.f)
+        //        output[pixelidx] += Path_GetThroughput(path) * bxdf * r / bxdfpdf;
+
+        //    // Otherwise kill the path
+        //    Path_Kill(path);
+        //    Ray_SetInactive(indirectrays + globalid);
+        //}
 
 
         // Apply Russian roulette

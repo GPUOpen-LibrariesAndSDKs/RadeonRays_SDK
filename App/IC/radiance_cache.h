@@ -53,7 +53,14 @@ namespace Baikal
             CLWBuffer<int> predicates,
             CLWBuffer<RadeonRays::float3> samples,
             int num_rays);
-
+#ifdef RADIANCE_PROBE_DIRECT
+        // Add radiance samples
+        void AddDirectRadianceSamples(CLWBuffer<RadeonRays::ray> rays,
+            CLWBuffer<int> predicates,
+            CLWBuffer<RadeonRays::float3> samples,
+            CLWBuffer<int> num_rays,
+            int max_rays);
+#endif
         void Refit();
 
         // Get acceleration structure buffer
@@ -94,6 +101,20 @@ namespace Baikal
         RadeonRays::float3 b0;
         RadeonRays::float3 b1;
         RadeonRays::float3 b2;
+
+#ifdef RADIANCE_PROBE_DIRECT
+        RadeonRays::float3 dr0;
+        RadeonRays::float3 dr1;
+        RadeonRays::float3 dr2;
+
+        RadeonRays::float3 dg0;
+        RadeonRays::float3 dg1;
+        RadeonRays::float3 dg2;
+
+        RadeonRays::float3 db0;
+        RadeonRays::float3 db1;
+        RadeonRays::float3 db2;
+#endif
     };
 
 }

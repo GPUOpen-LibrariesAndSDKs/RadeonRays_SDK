@@ -48,7 +48,7 @@ namespace Baikal
     using namespace RadeonRays;
 
     static int const kMaxLightSamples = 1;
-    static int const kMaxRadianceRecords = 65536;
+    static int const kMaxRadianceRecords = 512000;
 
     struct IcRenderer::PathState
     {
@@ -78,7 +78,10 @@ namespace Baikal
         CLWBuffer<int> iota;
 
         CLWBuffer<float3> lightsamples;
-        CLWBuffer<float3> lightsamplespure;
+        CLWBuffer<float3> indirect_light_samples;
+#ifdef RADIANCE_PROBE_DIRECT
+        CLWBuffer<float3> direct_light_samples;
+#endif
         CLWBuffer<PathState> paths;
         CLWBuffer<std::uint32_t> random;
         CLWBuffer<std::uint32_t> sobolmat;
@@ -278,11 +281,15 @@ namespace Baikal
             // Gather light samples and account for visibility
             GatherLightSamples(clwscene, pass);
 
+#ifdef RADIANCE_PROBE_DIRECT
+            UpdateDirectRadianceCache(clwscene, pass, maxrays);
+#endif
+
             //
             m_context.Flush(0);
         }
 
-        if (m_framecnt < 63 && !m_cache_ready)
+        if (m_framecnt < 125 && !m_cache_ready)
         {
             UpdateRadianceCache(clwscene, 0, maxrays);
         }
@@ -336,8 +343,13 @@ namespace Baikal
         m_render_data->lightsamples = m_context.CreateBuffer<float3>(output.width() * output.height() * kMaxLightSamples, CL_MEM_READ_WRITE);
         m_vidmemws += output.width() * output.height() * sizeof(float3)* kMaxLightSamples;
 
-        m_render_data->lightsamplespure = m_context.CreateBuffer<float3>(output.width() * output.height() * kMaxLightSamples, CL_MEM_READ_WRITE);
+        m_render_data->indirect_light_samples = m_context.CreateBuffer<float3>(output.width() * output.height() * kMaxLightSamples, CL_MEM_READ_WRITE);
         m_vidmemws += output.width() * output.height() * sizeof(float3)* kMaxLightSamples;
+
+#ifdef RADIANCE_PROBE_DIRECT
+        m_render_data->direct_light_samples = m_context.CreateBuffer<float3>(output.width() * output.height() * kMaxLightSamples, CL_MEM_READ_WRITE);
+        m_vidmemws += output.width() * output.height() * sizeof(float3)* kMaxLightSamples;
+#endif
 
         m_render_data->indirect = m_context.CreateBuffer<float3>(output.width() * output.height(), CL_MEM_READ_WRITE);
         m_vidmemws += output.width() * output.height() * sizeof(float3);
@@ -453,7 +465,7 @@ namespace Baikal
         shadekernel.SetArg(argc++, scene.volumes);
         shadekernel.SetArg(argc++, m_render_data->shadowrays);
         shadekernel.SetArg(argc++, m_render_data->lightsamples);
-        shadekernel.SetArg(argc++, m_render_data->lightsamplespure);
+        shadekernel.SetArg(argc++, m_render_data->indirect_light_samples);
         shadekernel.SetArg(argc++, m_render_data->paths);
         shadekernel.SetArg(argc++, m_render_data->rays[(pass + 1) & 0x1]);
         shadekernel.SetArg(argc++, m_output->data());
@@ -461,6 +473,9 @@ namespace Baikal
         shadekernel.SetArg(argc++, m_render_data->indirect_througput);
         shadekernel.SetArg(argc++, m_render_data->indirect_rays);
         shadekernel.SetArg(argc++, m_render_data->indirect_predicate);
+#ifdef RADIANCE_PROBE_DIRECT
+        shadekernel.SetArg(argc++, m_render_data->direct_light_samples);
+#endif
 
         // Run shading kernel
         {
@@ -581,7 +596,7 @@ namespace Baikal
         gatherkernel.SetArg(argc++, m_render_data->hitcount);
         gatherkernel.SetArg(argc++, m_render_data->shadowhits);
         gatherkernel.SetArg(argc++, m_render_data->lightsamples);
-        gatherkernel.SetArg(argc++, m_render_data->lightsamplespure);
+        gatherkernel.SetArg(argc++, m_render_data->indirect_light_samples);
         gatherkernel.SetArg(argc++, m_render_data->paths);
         gatherkernel.SetArg(argc++, m_output->data());
         gatherkernel.SetArg(argc++, m_render_data->indirect);
@@ -819,7 +834,7 @@ namespace Baikal
             auto mesh_index_array = mesh->GetIndices();
             auto mesh_num_indices = mesh->GetNumIndices();
 
-            float density_per_sq_cm = 400.f;
+            float density_per_sq_cm = 100.f;
 
             for (auto idx = 0U; idx < mesh_num_indices / 3; ++idx)
             {
@@ -867,7 +882,7 @@ namespace Baikal
                     tangent_to_world.m30 = tangent_to_world.m31 = tangent_to_world.m32 = 0;
                     tangent_to_world.m33 = 1.f;
 
-                    temp_desc.push_back(RadianceCache::RadianceProbeDesc{ world_to_tangent , tangent_to_world, p, 0.25f, 1, 0, 0 });
+                    temp_desc.push_back(RadianceCache::RadianceProbeDesc{ world_to_tangent , tangent_to_world, p, 0.5f, 1, 0, 1 });
                 }
             }
         }
@@ -876,11 +891,6 @@ namespace Baikal
 
         /// Just to make it faster
         std::vector<RadianceCache::RadianceProbeData> temp_probes(temp_desc.size());
-       /* for (auto& probe : temp_probes)
-        {
-            probe.r0 = float3(rand_float(), rand_float(), rand_float());
-        }*/
-
         std::cout << "Radiance probes count " << temp_desc.size() << "\n";
 
         probes = m_context.CreateBuffer<RadianceCache::RadianceProbeData>(temp_desc.size(), CL_MEM_READ_WRITE, &temp_probes[0]);
@@ -978,6 +988,13 @@ namespace Baikal
     {
         m_radiance_cache->AddRadianceSamples(m_render_data->indirect_rays, m_render_data->indirect_predicate, m_render_data->indirect, num_rays);
     }
+
+#ifdef RADIANCE_PROBE_DIRECT
+    void IcRenderer::UpdateDirectRadianceCache(ClwScene const& scene, int pass, std::size_t max_rays)
+    {
+        m_radiance_cache->AddDirectRadianceSamples(m_render_data->shadowrays, m_render_data->shadowhits, m_render_data->direct_light_samples, m_render_data->hitcount, max_rays);
+    }
+#endif
 
     void IcRenderer::ShadeSurfaceCached(ClwScene const& scene, int pass)
     {
