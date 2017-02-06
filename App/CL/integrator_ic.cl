@@ -117,6 +117,78 @@ void RadianceCache_GatherRadiance(
     }
 }
 
+inline
+float3 RadianceCache_GatherDirectionalRadiance(
+    __global HlbvhNode const* restrict bvh,
+    __global bbox const* restrict bounds,
+    __global RadianceProbeDesc const* restrict descs,
+    __global RadianceProbeData const* restrict probes,
+    float3 p,
+    float3 n,
+    float3 wo
+)
+{
+    int stack[STACK_SIZE];
+    int* ptr = stack;
+    *ptr++ = -1;
+    int idx = 0;
+
+    HlbvhNode node;
+    bbox lbox;
+    bbox rbox;
+
+    float weight = 0;
+    float3 radiance = 0.f;
+
+    while (idx > -1)
+    {
+        node = bvh[idx];
+
+        if (LEAFNODE(node))
+        {
+            int probe_idx = STARTIDX(node);
+            RadianceProbe_AddDirectionalContribution(descs + probe_idx, probes + probe_idx, p, n, wo, &radiance, &weight);
+        }
+        else
+        {
+            lbox = bounds[node.left];
+            rbox = bounds[node.right];
+
+            bool lhit = Bbox_ContainsPoint(lbox, p);
+            bool rhit = Bbox_ContainsPoint(rbox, p);
+
+            if (lhit && rhit)
+            {
+
+                idx = node.left;
+                *ptr++ = node.right;
+                continue;
+            }
+            else if (lhit)
+            {
+                idx = node.left;
+                continue;
+            }
+            else if (rhit)
+            {
+                idx = node.right;
+                continue;
+            }
+        }
+
+        idx = *--ptr;
+    }
+
+    if (weight > 0.f)
+    {
+        float invw = 1.f / weight;
+        radiance *= invw;
+    }
+
+    return radiance;
+}
+
+
 #ifdef RADIANCE_PROBE_DIRECT
 inline
 void RadianceCache_GatherDirectRadiance(
@@ -241,52 +313,7 @@ float3 RadianceCache_GatherIrradiance(
 
     return l;
 }
-//
-//inline
-//float3 RadianceCache_GatherRadiance(
-//    __global HlbvhNode const* restrict bvh,
-//    __global bbox const* restrict bounds,
-//    __global RadianceProbeDesc const* restrict descs,
-//    __global RadianceProbeData const* restrict probes,
-//    float3 p,
-//    float3 n,
-//    float3 wo)
-//{
-//    RadianceProbeData probe = { 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f };
-//    RadianceCache_GatherRadiance(bvh, bounds, descs, probes, p, , &probe);
-//
-//    float3 r0 = probe.r0;
-//    float3 r1 = probe.r1;
-//    float3 r2 = probe.r2;
-//    float3 b0 = probe.b0;
-//    float3 b1 = probe.b1;
-//    float3 b2 = probe.b2;
-//    float3 g0 = probe.g0;
-//    float3 g1 = probe.g1;
-//    float3 g2 = probe.g2;
-//
-//    float3 sh0, sh1, sh2;
-//
-//    SH_Get2ndOrderCoeffs(make_float3(0.f, 1.f, 0.f), &sh0, &sh1, &sh2);
-//
-//    sh0.x *= 0.8862268925f;
-//    sh0.y *= 0.0233267546f;
-//    sh0.z *= 0.4954159260f;
-//    sh1.x = 0.0000000000f;
-//    sh1.y *= -0.1107783690f;
-//    sh1.z = 0.0000000000f;
-//
-//    sh2.x *= 0.0499271341f;
-//    sh2.y = 0.0000000000f;
-//    sh2.z *= -0.0285469331f;
-//
-//    float3 l;
-//    l.x = 4 * PI * (dot(r0, sh0) + dot(r1, sh1) + dot(r2, sh2));
-//    l.y = 4 * PI * (dot(g0, sh0) + dot(g1, sh1) + dot(g2, sh2));
-//    l.z = 4 * PI * (dot(b0, sh0) + dot(b1, sh1) + dot(b2, sh2));
-//
-//    return l;
-//}
+
 
 #ifdef RADIANCE_PROBE_DIRECT
 inline
@@ -1151,26 +1178,26 @@ __kernel void ShadeSurface(
         {
             float3 i = RadianceCache_GatherIrradiance(bvh, bounds, descs, probes, diffgeo.p, diffgeo.n);
 
-            output[pixelidx] += Path_GetThroughput(path) * i * diffgeo.mat.kx.xyz;
+            output[pixelidx] += Path_GetThroughput(path) * i * bxdf * PI;
 
             // Otherwise kill the path
             Path_Kill(path);
             Ray_SetInactive(indirectrays + globalid);
         }
-        //else
-        //{
-        //    bxdfwo = normalize(bxdfwo);
-        //    float3 t = bxdf * fabs(dot(diffgeo.n, bxdfwo));
+        else if (bounce > 0)
+        {
+            bxdfwo = normalize(bxdfwo);
+            float3 t = bxdf * fabs(dot(diffgeo.n, bxdfwo));
 
-        //    float3 r = RadianceCache_GatherRadiance(bvh, bounds, descs, probes, diffgeo.p, diffgeo.n, bxdfwo);
+            float3 r =  RadianceCache_GatherDirectionalRadiance(bvh, bounds, descs, probes, diffgeo.p, diffgeo.n, bxdfwo);
 
-        //    if (NON_BLACK(t) && bxdfpdf > 0.f)
-        //        output[pixelidx] += Path_GetThroughput(path) * bxdf * r / bxdfpdf;
+            if (NON_BLACK(t) && bxdfpdf > 0.f)
+                output[pixelidx] += Path_GetThroughput(path) * t * r / bxdfpdf;
 
-        //    // Otherwise kill the path
-        //    Path_Kill(path);
-        //    Ray_SetInactive(indirectrays + globalid);
-        //}
+            // Otherwise kill the path
+            Path_Kill(path);
+            Ray_SetInactive(indirectrays + globalid);
+        }
 
 
         // Apply Russian roulette

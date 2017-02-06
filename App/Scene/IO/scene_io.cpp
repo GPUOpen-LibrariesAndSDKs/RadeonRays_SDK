@@ -36,7 +36,7 @@ namespace Baikal
         Material* material = nullptr;
 
         // Check if this is emissive
-        if (emission.sqnorm() > 0)
+        if (0 && emission.sqnorm() > 0)
         {
             // If yes create emissive brdf
             material = new SingleBxdf(SingleBxdf::BxdfType::kEmissive);

@@ -195,11 +195,11 @@ RadianceProbe_AddContribution(
 
     float perr = length(p - desc->p) / radius;
 
-    float nerr = 9.0124*native_sqrt(1.f - dot(n, normal));
+    float nerr = 9.0124*native_sqrt(1.f - fabs(dot(n, normal)));
 
     float err = max(perr, nerr);
 
-    if (err < 1.0f && length(p - desc->p) < radius)
+    if (err < 1.0f)
     {
         float invs = 1.f / desc->num_samples;
         float wt = (1.0f - err);
@@ -216,6 +216,59 @@ RadianceProbe_AddContribution(
         out_probe->b0 += wt * probe->b0 * invs;
         out_probe->b1 += wt * probe->b1 * invs;
         out_probe->b2 += wt * probe->b2 * invs;
+        return true;
+    }
+
+    return false;
+}
+
+inline
+bool
+RadianceProbe_AddDirectionalContribution(
+    __global RadianceProbeDesc* restrict desc,
+    __global RadianceProbeData* restrict probe,
+    float3 p,
+    float3 n,
+    float3 wo,
+    float3* out_radiance,
+    float* weight
+)
+{
+    float radius = clamp(desc->num_samples / desc->radius, 0.05f, 0.5f);
+
+    float3 normal = desc->world_to_tangent.m1.xyz;
+
+    float perr = length(p - desc->p) / radius;
+
+    float nerr = 9.0124*native_sqrt(1.f - fabs(dot(n, normal)));
+
+    float err = max(perr, nerr);
+
+    if (err < 1.0f)
+    {
+        float3 wo_ts = matrix_mul_vector3(desc->world_to_tangent, wo);
+        float3 sh0, sh1, sh2;
+        SH_Get2ndOrderCoeffs(wo_ts, &sh0, &sh1, &sh2);
+
+        float invs = 1.f / desc->num_samples;
+        float wt = (1.0f - err);
+        *weight += wt;
+
+        float3 r0 = wt * probe->r0 * invs;
+        float3 r1 = wt * probe->r1 * invs;
+        float3 r2 = wt * probe->r2 * invs;
+
+        float3 g0 = wt * probe->g0 * invs;
+        float3 g1 = wt * probe->g1 * invs;
+        float3 g2 = wt * probe->g2 * invs;
+
+        float3 b0 = wt * probe->b0 * invs;
+        float3 b1 = wt * probe->b1 * invs;
+        float3 b2 = wt * probe->b2 * invs;
+
+        out_radiance->x += PI * (dot(r0, sh0) + dot(r1, sh1) + dot(r2, sh2));
+        out_radiance->y += PI * (dot(g0, sh0) + dot(g1, sh1) + dot(g2, sh2));
+        out_radiance->z += PI * (dot(b0, sh0) + dot(b1, sh1) + dot(b2, sh2));
         return true;
     }
 

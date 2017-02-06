@@ -289,7 +289,7 @@ namespace Baikal
             m_context.Flush(0);
         }
 
-        if (m_framecnt < 125 && !m_cache_ready)
+        if (m_framecnt < 128 && !m_cache_ready)
         {
             UpdateRadianceCache(clwscene, 0, maxrays);
         }
@@ -834,7 +834,7 @@ namespace Baikal
             auto mesh_index_array = mesh->GetIndices();
             auto mesh_num_indices = mesh->GetNumIndices();
 
-            float density_per_sq_cm = 100.f;
+            float density_per_sq_cm = 200.f;
 
             for (auto idx = 0U; idx < mesh_num_indices / 3; ++idx)
             {
