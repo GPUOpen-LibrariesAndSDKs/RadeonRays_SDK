@@ -102,22 +102,21 @@ namespace Baikal
         virtual Iterator* CreateTextureIterator() const;
         // Iterator of inputs
         virtual Iterator* CreateInputIterator() const;
+        // Check if material has emissive components
+        virtual bool HasEmission() const;
 
         // Set input value
         // If specific data type is not supported throws std::runtime_error
-        virtual void SetInputValue(std::string const& name, RadeonRays::float4 const& value);
-        virtual void SetInputValue(std::string const& name, Texture const* texture);
-        virtual void SetInputValue(std::string const& name, Material const* material);
+        void SetInputValue(std::string const& name, RadeonRays::float4 const& value);
+        void SetInputValue(std::string const& name, Texture const* texture);
+        void SetInputValue(std::string const& name, Material const* material);
 
-        virtual InputValue GetInputValue(std::string const& name) const;
+        InputValue GetInputValue(std::string const& name) const;
 
         // Check if material is two-sided (normal direction does not matter and can be reversed)
-        virtual bool IsTwoSided() const;
+        bool IsTwoSided() const;
         // Set two-sidedness
-        virtual void SetTwoSided(bool twosided);
-
-        // Check if material has emissive components
-        virtual bool HasEmission() const;
+        void SetTwoSided(bool twosided);
 
     protected:
         // Register specific input
@@ -126,7 +125,6 @@ namespace Baikal
         void ClearInputs();
 
     private:
-
         class InputIterator;
 
         using InputMap = std::map<std::string, Input>;
@@ -165,8 +163,8 @@ namespace Baikal
 
         SingleBxdf(BxdfType type);
 
-        virtual BxdfType GetBxdfType() const;
-        virtual void SetBxdfType(BxdfType type);
+        BxdfType GetBxdfType() const;
+        void SetBxdfType(BxdfType type);
 
         // Check if material has emissive components
         bool HasEmission() const override;
@@ -187,8 +185,8 @@ namespace Baikal
 
         MultiBxdf(Type type);
 
-        virtual Type GetType() const;
-        virtual void SetType(Type type);
+        Type GetType() const;
+        void SetType(Type type);
 
         // Check if material has emissive components
         bool HasEmission() const override;

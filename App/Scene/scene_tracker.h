@@ -61,7 +61,7 @@ namespace Baikal
         virtual ~SceneTracker();
 
         // Given a scene this method produces (or loads from cache) corresponding GPU representation.
-        virtual ClwScene& CompileScene(Scene1 const& scene, Collector& mat_collector, Collector& tex_collector) const;
+        ClwScene& CompileScene(Scene1 const& scene, Collector& mat_collector, Collector& tex_collector) const;
         
 
         // Get underlying intersection API.

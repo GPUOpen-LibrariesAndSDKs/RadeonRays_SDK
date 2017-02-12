@@ -53,8 +53,8 @@ namespace Baikal
         virtual ~Shape() = 0;
         
         // Get and set material
-        virtual void SetMaterial(Material const* material);
-        virtual Material const* GetMaterial() const;
+        void SetMaterial(Material const* material);
+        Material const* GetMaterial() const;
         
         // Forbidden stuff
         Shape(Shape const&) = delete;
@@ -75,27 +75,31 @@ namespace Baikal
         Mesh();
         
         // Set and get index array
-        virtual void SetIndices(std::uint32_t const* indices, std::size_t num_indices);
-        virtual std::size_t GetNumIndices() const;
-        virtual std::uint32_t const* GetIndices() const;
+        void SetIndices(std::uint32_t const* indices, std::size_t num_indices);
+        std::size_t GetNumIndices() const;
+        std::uint32_t const* GetIndices() const;
         
         // Set and get vertex array
-        virtual void SetVertices(RadeonRays::float3 const* vertices, std::size_t num_vertices);
-        virtual void SetVertices(float const* vertices, std::size_t num_vertices);
-        virtual std::size_t GetNumVertices() const;
-        virtual RadeonRays::float3 const* GetVertices() const;
+        void SetVertices(RadeonRays::float3 const* vertices, std::size_t num_vertices);
+        void SetVertices(float const* vertices, std::size_t num_vertices);
+        std::size_t GetNumVertices() const;
+        RadeonRays::float3 const* GetVertices() const;
         
         // Set and get normal array
-        virtual void SetNormals(RadeonRays::float3 const* normals, std::size_t num_normals);
-        virtual void SetNormals(float const* normals, std::size_t num_normals);
-        virtual std::size_t GetNumNormals() const;
-        virtual RadeonRays::float3 const* GetNormals() const;
+        void SetNormals(RadeonRays::float3 const* normals, std::size_t num_normals);
+        void SetNormals(float const* normals, std::size_t num_normals);
+        std::size_t GetNumNormals() const;
+        RadeonRays::float3 const* GetNormals() const;
         
         // Set and get UV array
-        virtual void SetUVs(RadeonRays::float2 const* uvs, std::size_t num_uvs);
-        virtual void SetUVs(float const* uvs, std::size_t num_uvs);
-        virtual std::size_t GetNumUVs() const;
-        virtual RadeonRays::float2 const* GetUVs() const;
+        void SetUVs(RadeonRays::float2 const* uvs, std::size_t num_uvs);
+        void SetUVs(float const* uvs, std::size_t num_uvs);
+        std::size_t GetNumUVs() const;
+        RadeonRays::float2 const* GetUVs() const;
+        
+        // Forbidden stuff
+        Mesh(Mesh const&) = delete;
+        Mesh& operator = (Mesh const&) = delete;
         
     private:
         std::unique_ptr<RadeonRays::float3[]> m_vertices;

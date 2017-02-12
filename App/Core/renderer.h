@@ -94,7 +94,7 @@ namespace Baikal
 
         
         /**
-            Forbidden stuff.
+            Disallow copies and moves.
          */
         Renderer(Renderer const&) = delete;
         Renderer& operator = (Renderer const&) = delete;

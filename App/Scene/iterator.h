@@ -57,7 +57,7 @@ namespace Baikal
         // Retrieve with uncoditional cast: caller is responsible of all the implications, no type check here
         template <typename T> T* ItemAs() const { return reinterpret_cast<T*>(Item()); }
         
-        // TODO: support these later
+        // Disable copies and moves
         Iterator(Iterator const&) = delete;
         Iterator& operator = (Iterator const&) = delete;
     };

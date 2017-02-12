@@ -68,25 +68,25 @@ namespace Baikal
         virtual ~Collector();
         
         // Clear collector state (CreateIterator returns invalid iterator if the collector is empty)
-        virtual void Clear();
+        void Clear();
         // Create an iterator of objects
-        virtual Iterator* CreateIterator() const;
+        Iterator* CreateIterator() const;
         // Collect objects and their dependencies
-        virtual void Collect(Iterator* iter, ExpandFunc expand_func);
+        void Collect(Iterator* iter, ExpandFunc expand_func);
         // Commit collected objects
-        virtual void Commit();
+        void Commit();
         // Given a budnle check if all collected objects are in the bundle and do not require update
-        virtual bool NeedsUpdate(Bundle const* bundle, ChangedFunc cahnged_func) const;
+        bool NeedsUpdate(Bundle const* bundle, ChangedFunc cahnged_func) const;
         // Get number of objects in the collection
-        virtual std::size_t GetNumItems() const;
+        std::size_t GetNumItems() const;
         // Create serialised bundle (randomly accessible dump of objects)
-        virtual Bundle* CreateBundle() const;
+        Bundle* CreateBundle() const;
         // Get item index within a collection
-        virtual std::uint32_t GetItemIndex(void const* item) const;
+        std::uint32_t GetItemIndex(void const* item) const;
         // Finalization function
-        virtual void Finalize(FinalizeFunc finalize_func);
+        void Finalize(FinalizeFunc finalize_func);
     
-        // Forbidden stuff
+        // Disallow copies and moves
         Collector(Collector const&) = delete;
         Collector& operator = (Collector const&) = delete;
         

@@ -59,16 +59,16 @@ namespace Baikal
         //virtual RadeonRays::float3 GetRadiantPower() const = 0;
         
         // Set and get position
-        virtual RadeonRays::float3 GetPosition() const;
-        virtual void SetPosition(RadeonRays::float3 const& p);
+        RadeonRays::float3 GetPosition() const;
+        void SetPosition(RadeonRays::float3 const& p);
         
         // Set and get direction
-        virtual RadeonRays::float3 GetDirection() const;
-        virtual void SetDirection(RadeonRays::float3 const& d);
+        RadeonRays::float3 GetDirection() const;
+        void SetDirection(RadeonRays::float3 const& d);
         
         // Set and get emitted radiance (differential)
-        virtual RadeonRays::float3 GetEmittedRadiance() const;
-        virtual void SetEmittedRadiance(RadeonRays::float3 const& e);
+        RadeonRays::float3 GetEmittedRadiance() const;
+        void SetEmittedRadiance(RadeonRays::float3 const& e);
         
         // Iterator for all the textures used by the light
         virtual Iterator* CreateTextureIterator() const;
@@ -123,8 +123,8 @@ namespace Baikal
         SpotLight();
         // Get and set inner and outer falloff angles: they are set as cosines of angles between light direction
         // and cone opening.
-        virtual void SetConeShape(RadeonRays::float2 angles);
-        virtual RadeonRays::float2 GetConeShape() const;
+        void SetConeShape(RadeonRays::float2 angles);
+        RadeonRays::float2 GetConeShape() const;
         
     private:
         // Opening angles (x - inner, y - outer)
@@ -146,13 +146,13 @@ namespace Baikal
     public:
         ImageBasedLight();
         // Get and set illuminant texture
-        virtual void SetTexture(Texture const* texture);
-        virtual Texture const* GetTexture() const;
+        void SetTexture(Texture const* texture);
+        Texture const* GetTexture() const;
         
         // Get and set multiplier.
         // Multiplier is used to adjust emissive power.
-        virtual float GetMultiplier() const;
-        virtual void SetMultiplier(float m);
+        float GetMultiplier() const;
+        void SetMultiplier(float m);
         
         // Iterator for all the textures used by the light
         Iterator* CreateTextureIterator() const override;
@@ -170,9 +170,9 @@ namespace Baikal
     public:
         AreaLight(Shape const* shape, std::size_t idx);
         // Get parent shape
-        virtual Shape const* GetShape() const;
+        Shape const* GetShape() const;
         // Get parent prim idx
-        virtual std::size_t GetPrimitiveIdx() const;
+        std::size_t GetPrimitiveIdx() const;
         
     private:
         // Parent shape

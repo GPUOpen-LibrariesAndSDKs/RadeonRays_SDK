@@ -41,13 +41,13 @@ namespace Baikal
         virtual ~SceneObject() = 0;
         
         // Check if the object has been changed since last reset
-        virtual bool IsDirty() const;
+        bool IsDirty() const;
         // Set dirty flag
-        virtual void SetDirty(bool dirty) const;
+        void SetDirty(bool dirty) const;
         
         // Set & get name
-        virtual void SetName(std::string const& name);
-        virtual std::string GetName() const;
+        void SetName(std::string const& name);
+        std::string GetName() const;
         
         SceneObject(SceneObject const&) = delete;
         SceneObject& operator = (SceneObject const&) = delete;
