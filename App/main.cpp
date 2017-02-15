@@ -348,7 +348,7 @@ void InitData()
 
     {
         // Load OBJ scene
-        std::unique_ptr<Baikal::SceneIo> scene_io(Baikal::SceneIo::CreateSceneIoObj());
+        std::unique_ptr<Baikal::SceneIo> scene_io(Baikal::SceneIo::CreateSceneIoS3d());
         g_scene.reset(scene_io->LoadScene(filename, basepath));
 
         // Enable this to generate new materal mapping for a model
