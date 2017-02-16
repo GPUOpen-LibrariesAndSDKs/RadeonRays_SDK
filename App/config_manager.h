@@ -31,7 +31,7 @@ namespace Baikal
     class AoRenderer;
     class IcRenderer;
 
-    using MyRenderer = IcRenderer;
+    using MyRenderer = PtRenderer;
 }
 
 class ConfigManager

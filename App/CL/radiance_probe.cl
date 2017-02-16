@@ -189,7 +189,7 @@ RadianceProbe_AddContribution(
     float* weight
 )
 {
-    float radius = clamp(desc->num_samples / desc->radius, 100.f * 0.05f, 100.f * 0.5f);
+    float radius = clamp(desc->num_samples / desc->radius, 0.05f, 1.5f);
 
     float3 normal = desc->world_to_tangent.m1.xyz;
 
@@ -199,7 +199,7 @@ RadianceProbe_AddContribution(
 
     float err = max(perr, nerr);
 
-    if (err < 2.0f)
+    if (err < 1.0f)
     {
         float invs = 1.f / desc->num_samples;
         float wt = (1.0f - err);
@@ -234,7 +234,7 @@ RadianceProbe_AddDirectionalContribution(
     float* weight
 )
 {
-    float radius =  clamp(desc->num_samples / desc->radius, 100.f * 0.05f, 100.f * 0.5f);
+    float radius =  clamp(desc->num_samples / desc->radius, 0.05f, 1.5f);
 
     float3 normal = desc->world_to_tangent.m1.xyz;
 

@@ -13,6 +13,8 @@
 #include <memory>
 #include <stack>
 
+#include <iostream>
+
 using namespace RadeonRays;
 
 
@@ -524,6 +526,32 @@ namespace Baikal
 
     void SceneTracker::RecompileFull(Scene1 const& scene, Collector& mat_collector, Collector& tex_collector, ClwScene& out) const
     {
+
+#ifndef DISABLE_STDOUT_LOGGING
+        std::cout << "Compiling scene...\n";
+        std::cout << "Number of objects: " << scene.GetNumShapes() << "\n";
+        std::cout << "Number of lights: " << scene.GetNumLights() << "\n";
+
+        std::size_t num_polygons = 0;
+        std::size_t num_emissive_polygons = 0;
+        for (auto iter = std::unique_ptr<Iterator>(scene.CreateShapeIterator()); iter->IsValid(); iter->Next())
+        {
+            auto mesh = iter->ItemAs<Mesh const>();
+
+            num_polygons += mesh->GetNumIndices() / 3;
+
+            auto material = mesh->GetMaterial();
+
+            if (material && material->HasEmission())
+            {
+                num_emissive_polygons += mesh->GetNumIndices() / 3;
+            }
+        }
+
+        std::cout << "Num polygons: " << num_polygons << "\n";
+        std::cout << "Num emissive polygons: " << num_emissive_polygons << "\n\n";
+#endif
+
         // This is usually unnecessary, but just in case we reuse "out" parameter here
         for (auto& s : out.isect_shapes)
         {

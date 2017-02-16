@@ -218,12 +218,12 @@ namespace Baikal
 
         if (!once)
         {
-            /*std::size_t num_probes;
+            std::size_t num_probes;
             GenerateProbeRequests(scene, m_render_data->temp_descs, m_render_data->temp_probes, num_probes);
 
             m_radiance_cache->AttachProbes(m_render_data->temp_descs, m_render_data->temp_probes, num_probes);
-*/
-            GeneratePrimaryProbeRequests(clwscene, m_render_data->temp_descs);
+
+            //GeneratePrimaryProbeRequests(clwscene, m_render_data->temp_descs);
 
             once = true;
         }
@@ -287,8 +287,6 @@ namespace Baikal
             else
                 ShadeSurfaceCached(clwscene, pass);
 
-
-
             // Shade missing rays
             if (pass == 0)
                 ShadeMiss(clwscene, pass);
@@ -318,17 +316,17 @@ namespace Baikal
             m_cache_ready = true;
         }
 
-        static int passes = 0;
-        if (m_cache_ready && m_framecnt % 128 == 1 && passes < 4)
-        {
-            if (AttachNewProbes())
-            {
-                m_framecnt = 0;
-                m_cache_ready = false;
-            }
+        //static int passes = 0;
+        //if (m_cache_ready && m_framecnt % 128 == 1 && passes < 4)
+        //{
+        //    if (AttachNewProbes())
+        //    {
+        //        m_framecnt = 0;
+        //        m_cache_ready = false;
+        //    }
 
-            passes++;
-        }
+        //    passes++;
+        //}
 
         ++m_framecnt;
     }
@@ -874,7 +872,7 @@ namespace Baikal
             auto mesh_index_array = mesh->GetIndices();
             auto mesh_num_indices = mesh->GetNumIndices();
 
-            float density_per_sq_cm = 0.02f;
+            float density_per_sq_cm = 2.f;
 
             for (auto idx = 0U; idx < mesh_num_indices / 3; ++idx)
             {
@@ -922,16 +920,17 @@ namespace Baikal
                     tangent_to_world.m30 = tangent_to_world.m31 = tangent_to_world.m32 = 0;
                     tangent_to_world.m33 = 1.f;
 
-                    temp_desc.push_back(RadianceCache::RadianceProbeDesc{ world_to_tangent , tangent_to_world, p, 2.f, 1, 0, 1 });
+                    temp_desc.push_back(RadianceCache::RadianceProbeDesc{ world_to_tangent , tangent_to_world, p, 2.f, 2, 0, 1 });
                 }
             }
         }
+
+        std::cout << "Radiance probes count " << temp_desc.size() << "\n";
 
         desc = m_context.CreateBuffer<RadianceCache::RadianceProbeDesc>(temp_desc.size(), CL_MEM_READ_WRITE, &temp_desc[0]);
 
         /// Just to make it faster
         std::vector<RadianceCache::RadianceProbeData> temp_probes(temp_desc.size());
-        std::cout << "Radiance probes count " << temp_desc.size() << "\n";
 
         probes = m_context.CreateBuffer<RadianceCache::RadianceProbeData>(temp_desc.size(), CL_MEM_READ_WRITE, &temp_probes[0]);
 

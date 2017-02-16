@@ -783,10 +783,10 @@ void Update()
 
     if (g_num_samples == -1 || g_samplecount < g_num_samples)
     {
-        if (!g_show_cache)
+        //if (!g_show_cache)
             g_cfgs[g_primary].renderer->Render(*g_scene.get());
-        else
-            g_cfgs[g_primary].renderer->RenderCachedData(*g_scene.get());
+        //else
+        //    g_cfgs[g_primary].renderer->RenderCachedData(*g_scene.get());
 
         ++g_samplecount;
     }

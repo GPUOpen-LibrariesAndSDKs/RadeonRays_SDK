@@ -497,7 +497,7 @@ __kernel void VisualizeCache(
         l.y = 4 * PI * (dot(g0, sh0) + dot(g1, sh1) + dot(g2, sh2));
         l.z = 4 * PI * (dot(b0, sh0) + dot(b1, sh1) + dot(b2, sh2));
 
-        output[pixelidx].xyz = r > 1.f ? l : make_float3(0.f, 1.f, 0.f);
+        output[pixelidx].xyz = l;// r > 0.02f ? l : make_float3(0.f, 1.f, 0.f);
         output[pixelidx].w = 1.f;
     }
 }
@@ -1186,51 +1186,53 @@ __kernel void ShadeSurface(
         }
 #endif
 
-
-        if (diffgeo.mat.type == kLambert)
+        if (bounce > 0)
         {
-            bool found = false;
-            float3 i = RadianceCache_GatherIrradiance(bvh, bounds, descs, probes, diffgeo.p, diffgeo.n, &found);
-
-            if (!found)
+            if (diffgeo.mat.type == kLambert)
             {
-                i = make_float3(0.0f, 1.f, 0.f);
-                int cnt = atomic_inc(miss_count);
+                bool found = false;
+                float3 i = RadianceCache_GatherIrradiance(bvh, bounds, descs, probes, diffgeo.p, diffgeo.n, &found);
 
-                if (cnt < 512000)
+                if (!found)
                 {
-                    miss_positions[cnt] = diffgeo.p;
-                    miss_normals[cnt] = diffgeo.n;
+                    i = make_float3(0.0f, 1.f, 0.f);
+                    int cnt = atomic_inc(miss_count);
+
+                    if (cnt < 512000)
+                    {
+                        miss_positions[cnt] = diffgeo.p;
+                        miss_normals[cnt] = diffgeo.n;
+                    }
+                    else
+                    {
+                        atomic_dec(miss_count);
+                    }
                 }
-                else
+
+                if (found)
                 {
-                    atomic_dec(miss_count);
+                    output[pixelidx] += Path_GetThroughput(path) * i * bxdf * PI;
+
+                    // Otherwise kill the path
+                    Path_Kill(path);
+                    Ray_SetInactive(indirectrays + globalid);
                 }
             }
-
-            if (found)
+            else
             {
-                output[pixelidx] += Path_GetThroughput(path) * i * bxdf * PI;
+                bool found = false;
+                bxdfwo = normalize(bxdfwo);
+                float3 t = bxdf * fabs(dot(diffgeo.n, bxdfwo));
+
+                float3 r = RadianceCache_GatherDirectionalRadiance(bvh, bounds, descs, probes, diffgeo.p, diffgeo.n, bxdfwo, &found);
+
+                if (NON_BLACK(t) && bxdfpdf > 0.f)
+                    output[pixelidx] += Path_GetThroughput(path) * t * r / bxdfpdf;
 
                 // Otherwise kill the path
                 Path_Kill(path);
                 Ray_SetInactive(indirectrays + globalid);
             }
-        }
-        else if (bounce > 0)
-        {
-            bool found = false;
-            bxdfwo = normalize(bxdfwo);
-            float3 t = bxdf * fabs(dot(diffgeo.n, bxdfwo));
-
-            float3 r =  RadianceCache_GatherDirectionalRadiance(bvh, bounds, descs, probes, diffgeo.p, diffgeo.n, bxdfwo, &found);
-
-            if (NON_BLACK(t) && bxdfpdf > 0.f)
-                output[pixelidx] += Path_GetThroughput(path) * t * r / bxdfpdf;
-
-            // Otherwise kill the path
-            Path_Kill(path);
-            Ray_SetInactive(indirectrays + globalid);
         }
 
 
@@ -1469,7 +1471,7 @@ __kernel void QuadTree_DistributeSamples(
         if (my_node->num_samples_to_distribute == 1)
         {
             int idx = atom_inc(desc_count);
-            descs[idx].radius = 20.f;// 1.f / 0.125f;
+            descs[idx].radius = 1.f / 0.25f;
             descs[idx].num_samples = 1;
             descs[idx].p = my_node->position;
             float3 p = my_node->position;
