@@ -36,7 +36,7 @@ namespace Baikal
         Material* material = nullptr;
 
         // Check if this is emissive
-        if (emission.sqnorm() > 0)
+        if (0 && emission.sqnorm() > 0)
         {
             // If yes create emissive brdf
             material = new SingleBxdf(SingleBxdf::BxdfType::kEmissive);
@@ -138,7 +138,7 @@ namespace Baikal
                 material = diffuse;
             }
         }
-        
+
         // Set material name
         material->SetName(mat.name);
         
@@ -250,13 +250,13 @@ namespace Baikal
         scene->AttachAutoreleaseObject(ibl);
 
         // TODO: temporary code to add directional light
-        /*DirectionalLight* light = new DirectionalLight();
+        DirectionalLight* light = new DirectionalLight();
         light->SetDirection(RadeonRays::float3(-0.3f, -1.f, -0.4f));
         light->SetEmittedRadiance(2.f * RadeonRays::float3(1.f, 1.f, 1.f));
         scene->AttachAutoreleaseObject(light);
 
-        scene->AttachLight(light);*/
-        scene->AttachLight(ibl);
+        scene->AttachLight(light);
+        //scene->AttachLight(ibl);
 
         return scene;
     }

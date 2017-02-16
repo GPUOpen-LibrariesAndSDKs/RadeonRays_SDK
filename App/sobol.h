@@ -28,7 +28,7 @@
 
 #pragma once
 
-unsigned g_SobolMatrices[1024 * 52] =
+static unsigned g_SobolMatrices[1024 * 52] =
 {
     0x80000000U,
     0x40000000U,

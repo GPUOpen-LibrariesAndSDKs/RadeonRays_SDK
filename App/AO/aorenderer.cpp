@@ -29,8 +29,7 @@ THE SOFTWARE.
 #include <cstdlib>
 #include <cstdint>
 
-//#include "sobol.h"
-extern unsigned g_SobolMatrices[];
+#include "sobol.h"
 
 #ifdef RR_EMBED_KERNELS
 #include "./CL/cache/kernels.h"
