@@ -429,7 +429,7 @@ float3 PointLight_Sample(// Emissive object
 {
     *wo = light->p - dg->p;
     *pdf = 1.f;
-    return light->intensity;
+    return (light->intensity) / dot(*wo, *wo);
 }
 
 /// Get PDF for a given direction
@@ -489,7 +489,7 @@ float3 SpotLight_Sample(// Emissive object
     if (ddotwo > light->oa)
     {
         *pdf = 1.f;
-        return ddotwo > light->ia ? light->intensity : light->intensity * (1.f - (light->ia - ddotwo) / (light->ia - light->oa));
+        return ddotwo > light->ia ? (light->intensity / dot(*wo, *wo)) : (light->intensity / dot(*wo, *wo)) * (1.f - (light->ia - ddotwo) / (light->ia - light->oa));
     }
     else
     {

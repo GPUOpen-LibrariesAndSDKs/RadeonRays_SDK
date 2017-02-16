@@ -48,5 +48,13 @@ namespace Baikal
         CameraType camera_type;
 
         std::vector<RadeonRays::Shape*> isect_shapes;
+
+        ClwScene()
+            : num_lights(0)
+            , envmapidx(-1)
+            , envmapmul(1.f)
+        {
+
+        }
     };
 }

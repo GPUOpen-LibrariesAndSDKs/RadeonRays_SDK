@@ -134,7 +134,7 @@ namespace Baikal
         scene->AttachAutoreleaseObject(light);*/
 
         //scene->AttachLight(light);
-        scene->AttachLight(ibl);
+        //scene->AttachLight(ibl);
 
         return scene;
     }

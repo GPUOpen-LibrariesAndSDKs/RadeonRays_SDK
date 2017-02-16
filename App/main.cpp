@@ -107,8 +107,8 @@ float g_ao_radius = 1.f;
 float g_envmapmul = 1.f;
 float g_cspeed = 10.25f;
 
-float3 g_camera_pos = float3(0.f, 1.f, 3.f);
-float3 g_camera_at = float3(0.f, 1.f, 0.f);
+float3 g_camera_pos = float3(0.f, 1.f, 0.f);
+float3 g_camera_at = float3(1.f, 1.f, 2.f);
 float3 g_camera_up = float3(0.f, 1.f, 0.f);
 
 float2 g_camera_sensor_size = float2(0.036f, 0.024f);  // default full frame sensor 36x24 mm
