@@ -99,8 +99,13 @@ namespace Baikal
             CLWBuffer<RadianceCache::RadianceProbeDesc>& desc, 
             CLWBuffer<RadianceCache::RadianceProbeData>& probes,
             std::size_t& num_probes);
+
+        void GeneratePrimaryProbeRequests(ClwScene& scene, CLWBuffer<RadianceCache::RadianceProbeDesc>& desc);
+
         //
         void UpdateRadianceCache(ClwScene const& scene, int pass, std::size_t num_rays);
+
+        bool AttachNewProbes();
 
 #ifdef RADIANCE_PROBE_DIRECT
         void UpdateDirectRadianceCache(ClwScene const& scene, int pass, std::size_t max_rays);
@@ -117,6 +122,7 @@ namespace Baikal
         // GPU data
         struct PathState;
         struct RenderData;
+        struct QuadTreeNode;
 
         std::unique_ptr<RenderData> m_render_data;
         std::unique_ptr<RadianceCache> m_radiance_cache;

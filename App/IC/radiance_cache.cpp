@@ -67,12 +67,12 @@ namespace Baikal
         m_context.CopyBuffer(0, probes, m_gpudata->probes, 0, m_gpudata->num_probes, num_probes).Wait();
 
 
-        std::vector<RadianceProbeData> temp(num_probes);
-        m_context.ReadBuffer(0, m_gpudata->probes, &temp[0], num_probes).Wait();
-
-        m_accel->Build(m_gpudata->descs, num_probes);
+        //std::vector<RadianceProbeData> temp(num_probes);
+        //m_context.ReadBuffer(0, m_gpudata->probes, &temp[0], num_probes).Wait();
 
         m_gpudata->num_probes += num_probes;
+
+        m_accel->Build(m_gpudata->descs, m_gpudata->num_probes);
     }
 
     // Add radiance samples

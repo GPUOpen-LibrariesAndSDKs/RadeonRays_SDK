@@ -40,7 +40,7 @@ THE SOFTWARE.
 
 
 inline
-void RadianceCache_GatherRadiance(
+bool RadianceCache_GatherRadiance(
     __global HlbvhNode const* restrict bvh, 
     __global bbox const* restrict bounds, 
     __global RadianceProbeDesc const* restrict descs,
@@ -115,6 +115,8 @@ void RadianceCache_GatherRadiance(
         out_probe->b1 *= invw;
         out_probe->b2 *= invw;
     }
+
+    return weight > 0.f;
 }
 
 inline
@@ -125,7 +127,8 @@ float3 RadianceCache_GatherDirectionalRadiance(
     __global RadianceProbeData const* restrict probes,
     float3 p,
     float3 n,
-    float3 wo
+    float3 wo,
+    bool* found
 )
 {
     int stack[STACK_SIZE];
@@ -184,6 +187,8 @@ float3 RadianceCache_GatherDirectionalRadiance(
         float invw = 1.f / weight;
         radiance *= invw;
     }
+
+    *found = weight > 0.f;
 
     return radiance;
 }
@@ -276,10 +281,11 @@ float3 RadianceCache_GatherIrradiance(
     __global RadianceProbeDesc const* restrict descs,
     __global RadianceProbeData const* restrict probes,
     float3 p,
-    float3 n)
+    float3 n,
+    bool* found)
 {
     RadianceProbeData probe = { 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f };
-    RadianceCache_GatherRadiance(bvh, bounds, descs, probes, p, n, &probe);
+    *found = RadianceCache_GatherRadiance(bvh, bounds, descs, probes, p, n, &probe);
 
     float3 r0 = probe.r0;
     float3 r1 = probe.r1;
@@ -456,6 +462,7 @@ __kernel void VisualizeCache(
 
         int idx = Hlbvh_GetClosestItemIndex(bvh, bounds, diffgeo.p);
         int num_samples = descs[idx].num_samples;
+        float r = length(descs[idx].p - diffgeo.p);
 
         RadianceProbeData probe = { 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f };
         RadianceCache_GatherRadiance(bvh, bounds, descs, probes, diffgeo.p, diffgeo.n, &probe);
@@ -490,10 +497,12 @@ __kernel void VisualizeCache(
         l.y = 4 * PI * (dot(g0, sh0) + dot(g1, sh1) + dot(g2, sh2));
         l.z = 4 * PI * (dot(b0, sh0) + dot(b1, sh1) + dot(b2, sh2));
 
-        output[pixelidx].xyz = l;
+        output[pixelidx].xyz = r > 1.f ? l : make_float3(0.f, 1.f, 0.f);
         output[pixelidx].w = 1.f;
     }
 }
+
+
 
 // Handle ray-surface interaction possibly generating path continuation.
 // This is only applied to non-scattered paths.
@@ -957,6 +966,10 @@ __kernel void ShadeSurface(
     __global ray* indirectrays,
     // Radiance
     __global float3* output
+    ,
+    __global float3* miss_positions,
+    __global float3* miss_normals,
+    __global int* miss_count
 )
 {
     int globalid = get_global_id(0);
@@ -1176,20 +1189,41 @@ __kernel void ShadeSurface(
 
         if (diffgeo.mat.type == kLambert)
         {
-            float3 i = RadianceCache_GatherIrradiance(bvh, bounds, descs, probes, diffgeo.p, diffgeo.n);
+            bool found = false;
+            float3 i = RadianceCache_GatherIrradiance(bvh, bounds, descs, probes, diffgeo.p, diffgeo.n, &found);
 
-            output[pixelidx] += Path_GetThroughput(path) * i * bxdf * PI;
+            if (!found)
+            {
+                i = make_float3(0.0f, 1.f, 0.f);
+                int cnt = atomic_inc(miss_count);
 
-            // Otherwise kill the path
-            Path_Kill(path);
-            Ray_SetInactive(indirectrays + globalid);
+                if (cnt < 512000)
+                {
+                    miss_positions[cnt] = diffgeo.p;
+                    miss_normals[cnt] = diffgeo.n;
+                }
+                else
+                {
+                    atomic_dec(miss_count);
+                }
+            }
+
+            if (found)
+            {
+                output[pixelidx] += Path_GetThroughput(path) * i * bxdf * PI;
+
+                // Otherwise kill the path
+                Path_Kill(path);
+                Ray_SetInactive(indirectrays + globalid);
+            }
         }
         else if (bounce > 0)
         {
+            bool found = false;
             bxdfwo = normalize(bxdfwo);
             float3 t = bxdf * fabs(dot(diffgeo.n, bxdfwo));
 
-            float3 r =  RadianceCache_GatherDirectionalRadiance(bvh, bounds, descs, probes, diffgeo.p, diffgeo.n, bxdfwo);
+            float3 r =  RadianceCache_GatherDirectionalRadiance(bvh, bounds, descs, probes, diffgeo.p, diffgeo.n, bxdfwo, &found);
 
             if (NON_BLACK(t) && bxdfpdf > 0.f)
                 output[pixelidx] += Path_GetThroughput(path) * t * r / bxdfpdf;
@@ -1239,6 +1273,242 @@ __kernel void ShadeSurface(
             // Otherwise kill the path
             Path_Kill(path);
             Ray_SetInactive(indirectrays + globalid);
+        }
+    }
+}
+
+
+typedef struct _QuadTreeNode
+{
+    float3 position;
+    float3 normal;
+    float error;
+    int num_samples;
+    int num_samples_to_distribute;
+    int padding2;
+} QuadTreeNode;
+
+// Handle ray-surface interaction possibly generating path continuation.
+// This is only applied to non-scattered paths.
+__kernel void QuadTree_Init(
+    // Ray batch
+    __global ray const* rays,
+    // Intersection data
+    __global Intersection const* isects,
+    // Number of rays
+    int num_rays,
+    // Vertices
+    __global float3 const* vertices,
+    // Normals
+    __global float3 const* normals,
+    // UVs
+    __global float2 const* uvs,
+    // Indices
+    __global int const* indices,
+    // Shapes
+    __global Shape const* shapes,
+    __global QuadTreeNode* out_nodes
+)
+{
+    int globalid = get_global_id(0);
+
+    Scene scene =
+    {
+        vertices,
+        normals,
+        uvs,
+        indices,
+        shapes,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+    };
+
+    if (globalid < num_rays)
+    {
+        Intersection isect = isects[globalid];
+
+        if (isect.shapeid == -1)
+        {
+            out_nodes[globalid].num_samples = 0;
+        }
+        else
+        {
+            out_nodes[globalid].num_samples = 1;
+
+            DifferentialGeometry diffgeo;
+            DifferentialGeometry_Fill(&scene, &isect, &diffgeo);
+
+            out_nodes[globalid].position = diffgeo.p;
+            out_nodes[globalid].normal = diffgeo.n;
+        }
+    }
+}
+
+
+inline float CalculateError(float a, float3 p1, float3 p2, float3 n1, float3 n2)
+{
+    return a * length(p1 - p2) + native_sqrt(2.f - 2.f * dot(n1, n2));
+}
+
+__kernel void QuadTree_BuildLevel(
+    uint src_mip_offset,
+    uint dst_mip_offset,
+    uint w,
+    uint h,
+    __global QuadTreeNode* quadtree
+)
+{
+    int x = get_global_id(0);
+    int y = get_global_id(1);
+
+    if (x < w && y < h)
+    {
+        __global QuadTreeNode* src_level = quadtree + src_mip_offset;
+        __global QuadTreeNode* dst_level = quadtree + dst_mip_offset;
+
+        __global QuadTreeNode* my_node = dst_level + w * y + x;
+
+        QuadTreeNode tmp = { 0.f, 0.f, 0.f, 0, 0, 0};
+        __global QuadTreeNode* src_node0 = src_level + (w << 1) * (y << 1) + (x << 1);
+        __global QuadTreeNode* src_node1 = src_level + (w << 1) * (y << 1) + ((x << 1) + 1);
+        __global QuadTreeNode* src_node2 = src_level + (w << 1) * ((y << 1) + 1) + (x << 1);
+        __global QuadTreeNode* src_node3 = src_level + (w << 1) * ((y << 1) + 1) + ((x << 1) + 1);
+
+        int cnt = 0;
+        if (src_node0->num_samples > 0) 
+        { 
+            tmp.position += src_node0->position;
+            tmp.normal += src_node0->normal;
+            tmp.num_samples += src_node0->num_samples;
+            ++cnt;
+        }
+
+        if (src_node1->num_samples > 0)
+        {
+            tmp.position += src_node1->position;
+            tmp.normal += src_node1->normal;
+            tmp.num_samples += src_node1->num_samples;
+            ++cnt;
+        }
+
+        if (src_node2->num_samples > 0)
+        {
+            tmp.position += src_node2->position;
+            tmp.normal += src_node2->normal;
+            tmp.num_samples += src_node2->num_samples;
+            ++cnt;
+        }
+
+        if (src_node3->num_samples > 0)
+        {
+            tmp.position += src_node3->position;
+            tmp.normal += src_node3->normal;
+            tmp.num_samples += src_node3->num_samples;
+            ++cnt;
+        }
+
+        if (cnt > 0)
+        {
+            tmp.position /= cnt;
+            tmp.normal = normalize(tmp.normal / cnt);
+        }
+
+        if (src_node0->num_samples > 0)
+        {
+            tmp.error += CalculateError(1.f, tmp.position, src_node0->position, tmp.normal, src_node0->normal);
+        }
+
+        if (src_node1->num_samples > 0)
+        {
+            tmp.error += CalculateError(1.f, tmp.position, src_node1->position, tmp.normal, src_node1->normal);
+        }
+
+        if (src_node2->num_samples > 0)
+        {
+            tmp.error += CalculateError(1.f, tmp.position, src_node2->position, tmp.normal, src_node2->normal);
+        }
+
+        if (src_node3->num_samples > 0)
+        {
+            tmp.error += CalculateError(1.f, tmp.position, src_node3->position, tmp.normal, src_node3->normal);
+        }
+
+        /*if (cnt > 0)
+        {
+            tmp.error /= cnt;
+        }*/
+
+        *my_node = tmp;
+    }
+}
+
+__kernel void QuadTree_DistributeSamples(
+    uint src_mip_offset,
+    uint dst_mip_offset,
+    uint w,
+    uint h,
+    __global QuadTreeNode* quadtree,
+    __global RadianceProbeDesc* descs,
+    __global int* desc_count
+)
+{
+    int x = get_global_id(0);
+    int y = get_global_id(1);
+
+    if (x < w && y < h)
+    {
+        __global QuadTreeNode* src_level = quadtree + src_mip_offset;
+        __global QuadTreeNode* dst_level = quadtree + dst_mip_offset;
+
+        __global QuadTreeNode* my_node = src_level + w * y + x;
+
+        if (my_node->num_samples_to_distribute == 1)
+        {
+            int idx = atom_inc(desc_count);
+            descs[idx].radius = 20.f;// 1.f / 0.125f;
+            descs[idx].num_samples = 1;
+            descs[idx].p = my_node->position;
+            float3 p = my_node->position;
+
+            float3 n = my_node->normal;
+            float3 t = GetOrthoVector(n);
+            float3 b = cross(n, t);
+
+            matrix world_to_tangent;
+            world_to_tangent.m0.x = t.x; world_to_tangent.m0.y = t.y; world_to_tangent.m0.z = t.z;
+            world_to_tangent.m0.w = -dot(t, p);
+            world_to_tangent.m1.x = n.x; world_to_tangent.m1.y = n.y; world_to_tangent.m1.z = n.z;
+            world_to_tangent.m1.w = -dot(n, p);
+            world_to_tangent.m2.x = b.x; world_to_tangent.m2.y = b.y; world_to_tangent.m2.z = b.z;
+            world_to_tangent.m2.w = -dot(b, p);
+
+            matrix tangent_to_world;
+            tangent_to_world = matrix_transpose(world_to_tangent);
+            tangent_to_world.m0.w = p.x;
+            tangent_to_world.m1.w = p.y;
+            tangent_to_world.m2.w = p.z;
+            tangent_to_world.m3.x = tangent_to_world.m3.y = tangent_to_world.m3.z = 0;
+            tangent_to_world.m3.w = 1.f;
+
+            descs[idx].world_to_tangent = world_to_tangent;
+            descs[idx].tangent_to_world = tangent_to_world;
+        }
+        else if (my_node->num_samples_to_distribute > 1)
+        {
+            __global QuadTreeNode* dst_node0 = dst_level + (w << 1) * (y << 1) + (x << 1);
+            __global QuadTreeNode* dst_node1 = dst_level + (w << 1) * ((y << 1) + 1) + (x << 1);
+            __global QuadTreeNode* dst_node2 = dst_level + (w << 1) * (y << 1) + ((x << 1) + 1);
+            __global QuadTreeNode* dst_node3 = dst_level + (w << 1) * ((y << 1) + 1) + ((x << 1) + 1);
+
+            float err = my_node->error;
+            dst_node0->num_samples_to_distribute = (int)ceil(0.25f * my_node->num_samples_to_distribute);
+            dst_node1->num_samples_to_distribute = (int)ceil(0.25f * my_node->num_samples_to_distribute);
+            dst_node2->num_samples_to_distribute = (int)ceil(0.25f * my_node->num_samples_to_distribute);
+            dst_node3->num_samples_to_distribute = (int)ceil(0.25f * my_node->num_samples_to_distribute);
         }
     }
 }
