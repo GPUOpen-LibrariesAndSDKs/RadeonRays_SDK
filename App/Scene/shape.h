@@ -73,7 +73,7 @@ namespace Baikal
     {
     public:
         Mesh();
-        
+
         // Set and get index array
         virtual void SetIndices(std::uint32_t const* indices, std::size_t num_indices);
         virtual std::size_t GetNumIndices() const;

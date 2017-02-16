@@ -36,7 +36,7 @@ namespace Baikal
         Material* material = nullptr;
 
         // Check if this is emissive
-        if (0 && emission.sqnorm() > 0)
+        if (emission.sqnorm() > 0)
         {
             // If yes create emissive brdf
             material = new SingleBxdf(SingleBxdf::BxdfType::kEmissive);
@@ -56,7 +56,7 @@ namespace Baikal
         else
         {
             auto s = RadeonRays::float3(mat.specular[0], mat.specular[1], mat.specular[2]);
-            
+
             if ((s.sqnorm() > 0 || !mat.specular_texname.empty()))
             {
                 // Otherwise create lambert
@@ -251,8 +251,8 @@ namespace Baikal
 
         // TODO: temporary code to add directional light
         DirectionalLight* light = new DirectionalLight();
-        light->SetDirection(RadeonRays::float3(-0.3f, -1.f, -0.4f));
-        light->SetEmittedRadiance(2.f * RadeonRays::float3(1.f, 1.f, 1.f));
+        light->SetDirection(RadeonRays::float3(-0.6f, -1.f, 0.6f));
+        light->SetEmittedRadiance(10.f * RadeonRays::float3(1.f, 1.f, 1.f));
         scene->AttachAutoreleaseObject(light);
 
         scene->AttachLight(light);

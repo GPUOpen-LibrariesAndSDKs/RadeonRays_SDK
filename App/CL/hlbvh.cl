@@ -19,7 +19,7 @@ typedef struct
 
 #define STARTIDX(x)     (((int)((x).left)))
 #define LEAFNODE(x)     (((x).left) == ((x).right))
-#define STACK_SIZE 32
+#define STACK_SIZE 48
 
 inline 
 float3 Bbox_GetCenter(bbox box)

@@ -125,7 +125,7 @@ void RadianceProbe_RefineEstimate(
         probe->b1.xyz += sh1 * sample.z;
         probe->b2.xyz += sh2 * sample.z;
 
-        //desc->radius += 1.f / ray_distance;
+        desc->radius += (1.f / ray_distance);
 
         atomic_inc(&desc->num_samples);
 
@@ -189,7 +189,7 @@ RadianceProbe_AddContribution(
     float* weight
 )
 {
-    float radius = clamp(desc->num_samples / desc->radius, 0.05f, 0.5f);
+    float radius = clamp(desc->num_samples / desc->radius, 100.f * 0.05f, 100.f * 0.5f);
 
     float3 normal = desc->world_to_tangent.m1.xyz;
 
@@ -199,7 +199,7 @@ RadianceProbe_AddContribution(
 
     float err = max(perr, nerr);
 
-    if (err < 1.0f)
+    if (err < 2.0f)
     {
         float invs = 1.f / desc->num_samples;
         float wt = (1.0f - err);
@@ -234,7 +234,7 @@ RadianceProbe_AddDirectionalContribution(
     float* weight
 )
 {
-    float radius = clamp(desc->num_samples / desc->radius, 0.05f, 0.5f);
+    float radius =  clamp(desc->num_samples / desc->radius, 100.f * 0.05f, 100.f * 0.5f);
 
     float3 normal = desc->world_to_tangent.m1.xyz;
 
@@ -266,9 +266,9 @@ RadianceProbe_AddDirectionalContribution(
         float3 b1 = wt * probe->b1 * invs;
         float3 b2 = wt * probe->b2 * invs;
 
-        out_radiance->x += PI * (dot(r0, sh0) + dot(r1, sh1) + dot(r2, sh2));
-        out_radiance->y += PI * (dot(g0, sh0) + dot(g1, sh1) + dot(g2, sh2));
-        out_radiance->z += PI * (dot(b0, sh0) + dot(b1, sh1) + dot(b2, sh2));
+        out_radiance->x += (dot(r0, sh0) + dot(r1, sh1) + dot(r2, sh2));
+        out_radiance->y += (dot(g0, sh0) + dot(g1, sh1) + dot(g2, sh2));
+        out_radiance->z += (dot(b0, sh0) + dot(b1, sh1) + dot(b2, sh2));
         return true;
     }
 

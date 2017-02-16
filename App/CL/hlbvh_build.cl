@@ -74,9 +74,9 @@ __kernel void CalcRecordBoundsAndMortonCodes(
         mortoncodes[globalid] = CalculateMortonCode(center);
 
         bbox bound;
-        float radius = clamp(probe.num_samples / probe.radius, 0.05f, 0.5f);
-        bound.pmin = center - probe.radius;
-        bound.pmax = center + probe.radius;
+        float radius = 20.f;// clamp(probe.num_samples / probe.radius, 0.05f, 0.5f);
+        bound.pmin = center - radius;
+        bound.pmax = center + radius;
         bounds[globalid] = bound;
     }
 }

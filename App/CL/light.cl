@@ -429,7 +429,7 @@ float3 PointLight_Sample(// Emissive object
 {
     *wo = light->p - dg->p;
     *pdf = 1.f;
-    return light->intensity;
+    return (light->intensity) / dot(*wo, *wo);
 }
 
 /// Get PDF for a given direction
