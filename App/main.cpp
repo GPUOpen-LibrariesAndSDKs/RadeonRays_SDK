@@ -68,6 +68,7 @@ THE SOFTWARE.
 #include "shader_manager.h"
 #include "Scene/scene1.h"
 #include "PT/ptrenderer.h"
+#include "BDPT/bdptrenderer.h"
 #include "AO/aorenderer.h"
 #include "IC/icrenderer.h"
 #include "CLW/clwoutput.h"
@@ -109,8 +110,8 @@ float g_envmapmul = 1.f;
 float g_cspeed = 10.25f;
 bool g_show_cache = false;
 
-float3 g_camera_pos = float3(0.f, 1.f, 0.f);
-float3 g_camera_at = float3(1.f, 1.f, 2.f);
+float3 g_camera_pos = float3(0.f, 1.f, 2.f);
+float3 g_camera_at = float3(0.f, 1.f, 0.f);
 float3 g_camera_up = float3(0.f, 1.f, 0.f);
 
 float2 g_camera_sensor_size = float2(0.036f, 0.024f);  // default full frame sensor 36x24 mm
@@ -350,7 +351,7 @@ void InitData()
 
     {
         // Load OBJ scene
-        std::unique_ptr<Baikal::SceneIo> scene_io(Baikal::SceneIo::CreateSceneIoS3d());
+        std::unique_ptr<Baikal::SceneIo> scene_io(Baikal::SceneIo::CreateSceneIoObj());
         g_scene.reset(scene_io->LoadScene(filename, basepath));
 
         // Enable this to generate new materal mapping for a model

@@ -105,6 +105,7 @@ void DifferentialGeometry_Fill(// Scene
     // Get material at shading point
     int matidx = scene->materialids[shape.startidx / 3 + primid];
     diffgeo->mat = scene->materials[matidx];
+    diffgeo->matidx = matidx;
 
     /// From PBRT book
     float du1 = uv0.x - uv2.x;

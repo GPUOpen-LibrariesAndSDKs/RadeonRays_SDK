@@ -489,11 +489,11 @@ float3 Lambert_Evaluate(
     TEXTURE_ARG_LIST
     )
 {
-    const float3 kd = Texture_GetValue3f(dg->mat.kx.xyz, dg->uv, TEXTURE_ARGS_IDX(dg->mat.kxmapidx));
 
+    const float3 kd = Texture_GetValue3f(dg->mat.kx.xyz, dg->uv, TEXTURE_ARGS_IDX(dg->mat.kxmapidx));
     float F = dg->mat.fresnel;
 
-    return F * kd / PI;
+   return F * kd / PI;
 }
 
 /// Lambert BRDF PDF

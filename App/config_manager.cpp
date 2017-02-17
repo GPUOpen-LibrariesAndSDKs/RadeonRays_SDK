@@ -22,6 +22,7 @@ THE SOFTWARE.
 #include "config_manager.h"
 
 #include "CLW.h"
+#include "BDPT/bdptrenderer.h"
 #include "PT/ptrenderer.h"
 #include "AO/aorenderer.h"
 #include "IC/icrenderer.h"

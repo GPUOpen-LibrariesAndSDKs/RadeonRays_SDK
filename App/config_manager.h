@@ -30,8 +30,9 @@ namespace Baikal
     class PtRenderer;
     class AoRenderer;
     class IcRenderer;
+    class BdptRenderer;
 
-    using MyRenderer = PtRenderer;
+    using MyRenderer = BdptRenderer;
 }
 
 class ConfigManager

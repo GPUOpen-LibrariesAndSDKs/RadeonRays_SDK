@@ -46,6 +46,8 @@ void Material_Select(
     // Check material type
     int type = dg->mat.type;
 
+    int selected = dg->matidx;
+
     // If material is regular BxDF we do not have to sample it
     if (type != kFresnelBlend && type != kMix)
     {
@@ -133,6 +135,7 @@ void Material_Select(
                     // 
                     mat = scene->materials[idx];
                     mat.fresnel = 1.f;
+                    selected = idx;
                 }
                 else
                 {
@@ -141,6 +144,7 @@ void Material_Select(
                     // 
                     mat = scene->materials[idx];
                     mat.fresnel = 1.f;
+                    selected = idx;
                 }
             }
             else
@@ -156,6 +160,7 @@ void Material_Select(
                     //
                     mat = scene->materials[idx];
                     mat.fresnel = 1.f;
+                    selected = idx;
                 }
                 else
                 {
@@ -164,11 +169,13 @@ void Material_Select(
                     //
                     mat = scene->materials[idx];
                     mat.fresnel = 1.f;
+                    selected = idx;
                 }
             }
         }
 
         dg->mat = mat;
+        dg->matidx = selected;
     }
 }
 

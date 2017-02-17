@@ -336,6 +336,76 @@ float AreaLight_GetPdf(// Emissive object
     }
 }
 
+/// Sample direction to the light
+float3 AreaLight_SampleVertex(// Emissive object
+    Light const* light,
+    // Scene
+    Scene const* scene,
+    // Textures
+    TEXTURE_ARG_LIST,
+    // Sample
+    float2 sample0,
+    float2 sample1,
+    // Direction to light source
+    float3* p,
+    float3* n,
+    float3* wo,
+    // PDF
+    float* pdf)
+{
+    int shapeidx = light->shapeidx;
+    int primidx = light->primidx;
+
+    // Extract shape data
+    Shape shape = scene->shapes[shapeidx];
+
+    // Fetch indices starting from startidx and offset by primid
+    int i0 = scene->indices[shape.startidx + 3 * primidx];
+    int i1 = scene->indices[shape.startidx + 3 * primidx + 1];
+    int i2 = scene->indices[shape.startidx + 3 * primidx + 2];
+
+    // Fetch normals
+    float3 n0 = scene->normals[shape.startvtx + i0];
+    float3 n1 = scene->normals[shape.startvtx + i1];
+    float3 n2 = scene->normals[shape.startvtx + i2];
+
+    // Fetch positions
+    float3 v0 = scene->vertices[shape.startvtx + i0];
+    float3 v1 = scene->vertices[shape.startvtx + i1];
+    float3 v2 = scene->vertices[shape.startvtx + i2];
+
+    // Fetch UVs
+    float2 uv0 = scene->uvs[shape.startvtx + i0];
+    float2 uv1 = scene->uvs[shape.startvtx + i1];
+    float2 uv2 = scene->uvs[shape.startvtx + i2];
+
+    // Generate sample on triangle
+    float r0 = sample0.x;
+    float r1 = sample0.y;
+
+    // Convert random to barycentric coords
+    float2 uv;
+    uv.x = native_sqrt(r0) * (1.f - r1);
+    uv.y = native_sqrt(r0) * r1;
+
+    // Calculate barycentric position and normal
+    *n = normalize((1.f - uv.x - uv.y) * n0 + uv.x * n1 + uv.y * n2);
+    *p = (1.f - uv.x - uv.y) * v0 + uv.x * v1 + uv.y * v2;
+    float2 tx = (1.f - uv.x - uv.y) * uv0 + uv.x * uv1 + uv.y * uv2;
+
+    int matidx = scene->materialids[shape.startidx / 3 + primidx];
+    Material mat = scene->materials[matidx];
+
+    const float3 ke = Texture_GetValue3f(mat.kx.xyz, tx, TEXTURE_ARGS_IDX(mat.kxmapidx));
+
+    *wo = Sample_MapToHemisphere(sample1, *n, 1.f);
+
+    float area = 0.5f * length(cross(v2 - v0, v2 - v1));
+    *pdf = (1.f / area) * fabs(dot(*n, *wo)) / PI;
+
+    return ke;
+}
+
 /*
 Directional light
 */
@@ -619,6 +689,37 @@ float Light_GetPdf(// Light index
     }
 
     return 0.f;
+}
+
+/// Sample direction to the light
+float3 Light_SampleVertex(// Light index
+    int idx,
+    // Scene
+    Scene const* scene,
+    // Textures
+    TEXTURE_ARG_LIST,
+    // Sample
+    float2 sample0,
+    float2 sample1,
+    // Direction to light source
+    float3* p,
+    float3* n,
+    float3* wo,
+    // PDF
+    float* pdf)
+{
+    Light light = scene->lights[idx];
+
+    switch (light.type)
+    {
+    case kArea:
+        return AreaLight_SampleVertex(&light, scene, TEXTURE_ARGS, sample0, sample1, p, n, wo, pdf);
+    //case kPoint:
+        //return PointLight_SampleVertex(&light, scene, TEXTURE_ARGS, sample, p, n, wo, pdf);
+    }
+
+    *pdf = 0.f;
+    return make_float3(0.f, 0.f, 0.f);
 }
 
 /// Check if the light is singular
