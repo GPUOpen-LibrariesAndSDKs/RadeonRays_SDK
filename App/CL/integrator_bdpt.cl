@@ -348,7 +348,9 @@ __kernel void Connect(
     float3 camera_wo = normalize(light_dg.p - camera_dg.p);
     float dist = length(light_dg.p - camera_dg.p);
     float3 camera_bxdf = Bxdf_Evaluate(&camera_dg, camera_wi, camera_wo, TEXTURE_ARGS);
-    float camera_pdf = Bxdf_GetPdf(&camera_dg, camera_wi, camera_wo, TEXTURE_ARGS);
+    
+
+
     float camera_dotnl = fabs(dot(camera_dg.n, camera_wo));
 
     float3 camera_contribution = my_prev_camera_vertex->flow;
@@ -364,7 +366,45 @@ __kernel void Connect(
     light_contribution *= (light_bxdf * light_dotnl);
 
 
-    float3 val = weight * ( camera_contribution * light_contribution ) / (dist * dist);
+
+    float camera_vertex_pdf_fwd = my_camera_vertex->pdf_fwd;
+    float light_vertex_pdf_fwd = my_light_vertex->pdf_fwd;
+    float camera_vertex_pdf_bwd = Pdf_ConvertSolidAngleToArea(Bxdf_GetPdf(&light_dg, light_wi, light_wo, TEXTURE_ARGS),
+        camera_dg.p, light_dg.p, light_dg.n);
+    float camera_prev_vertex_pdf_bwd = Pdf_ConvertSolidAngleToArea(Bxdf_GetPdf(&camera_dg, camera_wi, camera_wo, TEXTURE_ARGS),
+        my_prev_camera_vertex->p, camera_dg.p, camera_dg.n);
+    float light_vertex_pdf_bwd = Pdf_ConvertSolidAngleToArea(Bxdf_GetPdf(&camera_dg, camera_wo, camera_wi, TEXTURE_ARGS),
+        light_dg.p, camera_dg.p, camera_dg.n);
+    float light_prev_vertex_pdf_bwd = Pdf_ConvertSolidAngleToArea(Bxdf_GetPdf(&light_dg, light_wo, light_wi, TEXTURE_ARGS),
+        my_prev_light_vertex->p, light_dg.p, light_dg.n);
+
+    float sumw = (camera_vertex_pdf_bwd / camera_vertex_pdf_fwd);
+    sumw += (camera_vertex_pdf_bwd / camera_vertex_pdf_fwd) * (camera_prev_vertex_pdf_bwd / my_prev_camera_vertex->pdf_fwd);
+
+    float wc = (camera_vertex_pdf_bwd / camera_vertex_pdf_fwd) * (camera_prev_vertex_pdf_bwd / my_prev_camera_vertex->pdf_fwd);
+
+    sumw += (light_vertex_pdf_bwd / light_vertex_pdf_fwd);
+    sumw += (light_vertex_pdf_bwd / light_vertex_pdf_fwd) * (light_prev_vertex_pdf_bwd / my_prev_light_vertex->pdf_fwd);
+
+    float wl = (light_vertex_pdf_bwd / light_vertex_pdf_fwd) * (light_prev_vertex_pdf_bwd / my_prev_light_vertex->pdf_fwd);
+    
+    for (int i = s - 2; i >= 0; --i)
+    {
+        __global PathVertex const* v = camera_subpath + MAX_PATH_LEN * global_id + i;
+        wc *= (v->pdf_bwd / v->pdf_fwd);
+        sumw += wc;
+    }
+
+    for (int i = t - 2; i >= 0; --i)
+    {
+        __global PathVertex const* v = light_subpath + MAX_PATH_LEN * global_id + i;
+        wl *= (v->pdf_bwd / v->pdf_fwd);
+        sumw += wl;
+    }
+
+    float mis_weight = 1.f / (1.f + sumw);
+
+    float3 val = mis_weight * ( camera_contribution * light_contribution ) / (dist * dist);
     contributions[global_id].xyz = REASONABLE_RADIANCE(val);
 
     float  connect_ray_length = (1.f - 2.f * CRAZY_LOW_DISTANCE) * dist;
@@ -795,6 +835,49 @@ __kernel void SampleSurface(
         bxdfwo = normalize(bxdfwo);
         float3 t = bxdf * fabs(dot(diffgeo.n, bxdfwo));
 
+        // Write path vertex
+        __global int* my_counter = path_vertex_counts + pixelidx;
+        int idx = atom_inc(my_counter);
+
+        if (idx < MAX_PATH_LEN)
+        {
+            __global PathVertex* my_vertex = path_vertices + MAX_PATH_LEN * pixelidx + idx;
+            __global PathVertex* my_prev_vertex = path_vertices + MAX_PATH_LEN * pixelidx + idx - 1;
+            // Fill vertex
+
+            // Calculate forward PDF of a current vertex
+            float pdf_solid_angle = Ray_GetExtra(&rays[hitidx]).x;
+            float pdf_fwd = Pdf_ConvertSolidAngleToArea(pdf_solid_angle, rays[hitidx].o.xyz, diffgeo.p, diffgeo.n);
+
+            PathVertex v;
+            PathVertex_Init(&v,
+                diffgeo.p,
+                diffgeo.n,
+                diffgeo.ng,
+                diffgeo.uv,
+                pdf_fwd,
+                0.f,
+                throughput * t / bxdfpdf,
+                kSurface,
+                diffgeo.matidx);
+
+            *my_vertex = v;
+
+            // TODO: wrong
+            if (my_prev_vertex->type == kSurface)
+            {
+                float pdf_bwd = Pdf_ConvertSolidAngleToArea(Bxdf_GetPdf(&diffgeo, bxdfwo, wi, TEXTURE_ARGS), diffgeo.p, my_prev_vertex->p, my_prev_vertex->n);
+                my_prev_vertex->pdf_bwd = pdf_bwd;
+            }
+        }
+        else
+        {
+            atom_dec(my_counter);
+            Path_Kill(path);
+            Ray_SetInactive(newrays + globalid);
+            return;
+        }
+
         // Only continue if we have non-zero throughput & pdf
         if (NON_BLACK(t) && bxdfpdf > 0.f)
         {
@@ -808,47 +891,7 @@ __kernel void SampleSurface(
             Ray_Init(newrays + globalid, new_ray_o, new_ray_dir, CRAZY_HIGH_DISTANCE, 0.f, 0xFFFFFFFF);
             Ray_SetExtra(newrays + globalid, make_float2(bxdfpdf, 0.f));
 
-            // Write path vertex
-            __global int* my_counter = path_vertex_counts + pixelidx;
-            int idx = atom_inc(my_counter);
-
-            if (idx < MAX_PATH_LEN)
-            {
-                __global PathVertex* my_vertex = path_vertices + MAX_PATH_LEN * pixelidx + idx;
-                __global PathVertex* my_prev_vertex = path_vertices + MAX_PATH_LEN * pixelidx + idx - 1;
-                // Fill vertex
-
-                // Calculate forward PDF of a current vertex
-                float pdf_solid_angle = Ray_GetExtra(&rays[hitidx]).x;
-                float pdf_fwd = Pdf_ConvertSolidAngleToArea(pdf_solid_angle, rays[hitidx].o.xyz, diffgeo.p, diffgeo.n);
-
-                PathVertex v;
-                PathVertex_Init(&v, 
-                    diffgeo.p, 
-                    diffgeo.n, 
-                    diffgeo.ng, 
-                    diffgeo.uv, 
-                    pdf_fwd, 
-                    0.f, 
-                    throughput * t / bxdfpdf, 
-                    kSurface,
-                    diffgeo.matidx);
-
-                *my_vertex = v;
-
-                // TODO: wrong
-                if (my_prev_vertex->type == kSurface)
-                {
-                    float pdf_bwd = Pdf_ConvertSolidAngleToArea(Bxdf_GetPdf(&diffgeo, bxdfwo, wi, TEXTURE_ARGS), diffgeo.p, my_prev_vertex->p, my_prev_vertex->n);
-                    my_prev_vertex->pdf_bwd = pdf_bwd;
-                }
-            }
-            else
-            {
-                atom_dec(my_counter);
-                Path_Kill(path);
-                Ray_SetInactive(newrays + globalid);
-            }
+            
         }
         else
         {
