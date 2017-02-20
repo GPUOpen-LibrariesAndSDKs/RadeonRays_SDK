@@ -79,9 +79,212 @@ __kernel void GatherContributions(
 
         // Divide by number of light samples (samples already have built-in throughput)
         output[globalid].xyz += radiance;
-        output[globalid].w += 1.f;
     }
 }
+
+__kernel void GatherCaustics(
+    // Number of rays
+    int numrays,
+    int w,
+    int h,
+    // Shadow rays hits
+    __global int const* shadowhits,
+    // Light samples
+    __global float3 const* contributions,
+    __global float2 const* coords,
+    // Radiance sample buffer
+    __global float4* output
+)
+{
+    int globalid = get_global_id(0);
+
+    if (globalid < numrays)
+    {
+        // Prepare accumulator variable
+        float3 radiance = make_float3(0.f, 0.f, 0.f);
+
+        // Start collecting samples
+        {
+            // If shadow ray didn't hit anything and reached skydome
+            if (shadowhits[globalid] == -1)
+            {
+                // Add its contribution to radiance accumulator
+                radiance = contributions[globalid];
+
+                float2 uv = coords[globalid];
+                int x = (int)(uv.x * w);
+                int y = (int)(uv.y * h);
+                output[y * w + x].xyz += radiance;
+            }
+        }
+
+        // Divide by number of light samples (samples already have built-in throughput)
+
+    }
+}
+
+__kernel void IncrementSampleCounter(
+    // Number of rays
+    int numrays,
+    // Radiance sample buffer
+    __global float4* output
+)
+{
+    int globalid = get_global_id(0);
+
+    if (globalid < numrays)
+    {
+        // Start collecting samples
+        {
+            output[globalid].w += 1.f;
+        }
+    }
+}
+
+
+
+__kernel void DirectConnect(
+    int s,
+    __global int* camera_count,
+    __global PathVertex const* camera_subpath,
+    __global int* light_count,
+    __global PathVertex const* light_subpath,
+    __global float3 const* vertices,
+    // Normals
+    __global float3 const* normals,
+    // UVs
+    __global float2 const* uvs,
+    // Indices
+    __global int const* indices,
+    // Shapes
+    __global Shape const* shapes,
+    // Material IDs
+    __global int const* materialids,
+    // Materials
+    __global Material const* materials,
+    // Textures
+    TEXTURE_ARG_LIST,
+    // Environment texture index
+    int envmapidx,
+    // Envmap multiplier
+    float envmapmul,
+    // Emissives
+    __global Light const* lights,
+    // Number of emissive objects
+    int num_lights,
+    // RNG seed value
+    uint rngseed,
+    __global uint* random,
+    // Sobol matrices
+    __global uint const* sobolmat,
+    // Frame
+    int frame,
+    __global ray* shadowrays,
+    __global float3* lightsamples
+)
+{
+    int global_id = get_global_id(0);
+
+    int num_camera_vertices = *(camera_count + global_id);
+    int num_light_vertices = *(light_count + global_id);
+
+    float weight = 1.f;// / ((num_camera_vertices - 1) * (num_light_vertices));
+
+    __global PathVertex const* my_camera_vertex = camera_subpath + MAX_PATH_LEN * global_id + s;
+    __global PathVertex const* my_prev_camera_vertex = camera_subpath + MAX_PATH_LEN * global_id + s - 1;
+
+
+    DifferentialGeometry diffgeo;
+    diffgeo.p = my_camera_vertex->p;
+    diffgeo.n = my_camera_vertex->n;
+    diffgeo.ng = my_camera_vertex->ng;
+    diffgeo.uv = my_camera_vertex->uv;
+    diffgeo.dpdu = GetOrthoVector(diffgeo.n);
+    diffgeo.dpdv = cross(diffgeo.n, diffgeo.dpdu);
+    diffgeo.mat = materials[my_camera_vertex->matidx];
+    diffgeo.mat.fresnel = 1.f;
+    DifferentialGeometry_CalculateTangentTransforms(&diffgeo);
+
+
+    float3 wi = normalize(my_prev_camera_vertex->p - diffgeo.p);
+    float3 throughput = my_prev_camera_vertex->flow;
+
+    if (s >= num_camera_vertices)
+    {
+        lightsamples[global_id].xyz = 0.f;
+        Ray_SetInactive(shadowrays + global_id);
+        return;
+    }
+
+    Scene scene =
+    {
+        vertices,
+        normals,
+        uvs,
+        indices,
+        shapes,
+        materialids,
+        materials,
+        lights,
+        envmapidx,
+        envmapmul,
+        num_lights
+    };
+
+    Sampler sampler;
+#if SAMPLER == SOBOL
+    uint scramble = random[global_id] * 0x1fe3434f;
+    Sampler_Init(&sampler, frame, SAMPLE_DIM_SURFACE_OFFSET + bounce * SAMPLE_DIMS_PER_BOUNCE, scramble);
+#elif SAMPLER == RANDOM
+    uint scramble = global_id * rngseed;
+    Sampler_Init(&sampler, scramble);
+#elif SAMPLER == CMJ
+    uint rnd = random[global_id];
+    uint scramble = rnd * 0x1fe3434f * ((frame + 331 * rnd) / (CMJ_DIM * CMJ_DIM));
+    Sampler_Init(&sampler, frame % (CMJ_DIM * CMJ_DIM), SAMPLE_DIM_SURFACE_OFFSET + bounce * SAMPLE_DIMS_PER_BOUNCE, scramble);
+#endif
+
+
+    float selection_pdf;
+    int light_idx = Scene_SampleLight(&scene, Sampler_Sample1D(&sampler, SAMPLER_ARGS), &selection_pdf);
+
+    // Sample light
+    float lightpdf;
+    float3 lightwo;
+    float3 le = Light_Sample(light_idx, &scene, &diffgeo, TEXTURE_ARGS, Sampler_Sample2D(&sampler, SAMPLER_ARGS), &lightwo, &lightpdf);
+    float3 radiance = 0.f;
+    float3 wo;
+
+    // Apply MIS to account for both
+    if (NON_BLACK(le) && lightpdf > 0.0f && !Bxdf_IsSingular(&diffgeo))
+    {
+        wo = lightwo;
+        float ndotwo = fabs(dot(diffgeo.n, normalize(wo)));
+        radiance = le * Bxdf_Evaluate(&diffgeo, wi, normalize(wo), TEXTURE_ARGS) * throughput * ndotwo / lightpdf / selection_pdf;
+    }
+
+    // If we have some light here generate a shadow ray
+    if (NON_BLACK(radiance))
+    {
+        // Generate shadow ray
+        float shadow_ray_length = 0.999f * (1.f - CRAZY_LOW_DISTANCE) * length(lightwo);
+        float3 shadow_ray_dir = normalize(lightwo);
+        float3 shadow_ray_o = diffgeo.p + normalize(diffgeo.n) * CRAZY_LOW_DISTANCE;
+        int shadow_ray_mask = 0xFFFFFFFF;
+
+        Ray_Init(shadowrays + global_id, shadow_ray_o, shadow_ray_dir, shadow_ray_length, 0.f, shadow_ray_mask);
+
+        // And write the light sample
+        lightsamples[global_id] = REASONABLE_RADIANCE(radiance);
+    }
+    else
+    {
+        // Otherwise save some intersector cycles
+        Ray_SetInactive(shadowrays + global_id);
+        lightsamples[global_id] = 0;
+    }
+}
+
 
 __kernel void Connect(
     int s,
@@ -111,7 +314,7 @@ __kernel void Connect(
         return;
     }
 
-    float weight = 1.f / (num_camera_vertices + num_light_vertices - 2);
+    float weight = 1.f / ((num_camera_vertices - 1) * (num_light_vertices - 1));
 
     __global PathVertex const* my_camera_vertex = camera_subpath + MAX_PATH_LEN * global_id + s;
     __global PathVertex const* my_prev_camera_vertex = camera_subpath + MAX_PATH_LEN * global_id + s - 1;
@@ -143,12 +346,13 @@ __kernel void Connect(
 
     float3 camera_wi = normalize(camera_dg.p - my_prev_camera_vertex->p);
     float3 camera_wo = normalize(light_dg.p - camera_dg.p);
+    float dist = length(light_dg.p - camera_dg.p);
     float3 camera_bxdf = Bxdf_Evaluate(&camera_dg, camera_wi, camera_wo, TEXTURE_ARGS);
     float camera_pdf = Bxdf_GetPdf(&camera_dg, camera_wi, camera_wo, TEXTURE_ARGS);
     float camera_dotnl = fabs(dot(camera_dg.n, camera_wo));
 
     float3 camera_contribution = my_prev_camera_vertex->flow;
-    camera_contribution *= (camera_bxdf * camera_dotnl / camera_pdf);
+    camera_contribution *= (camera_bxdf * camera_dotnl);
 
     float3 light_wi = normalize(light_dg.p - my_prev_light_vertex->p);
     float3 light_wo = -camera_wo;
@@ -157,23 +361,133 @@ __kernel void Connect(
     float light_dotnl = fabs(dot(light_dg.n, light_wo));
 
     float3 light_contribution = my_prev_light_vertex->flow;
-    light_contribution *= (light_bxdf * light_dotnl / light_pdf);
+    light_contribution *= (light_bxdf * light_dotnl);
 
-    contributions[global_id].xyz = weight*camera_contribution*light_contribution;
 
-    float  connect_ray_length = (1.f - 2.f * CRAZY_LOW_DISTANCE) * length(camera_wo);
-    float3 connect_ray_dir = normalize(camera_wo);
+    float3 val = weight * ( camera_contribution * light_contribution ) / (dist * dist);
+    contributions[global_id].xyz = REASONABLE_RADIANCE(val);
+
+    float  connect_ray_length = (1.f - 2.f * CRAZY_LOW_DISTANCE) * dist;
+    float3 connect_ray_dir = camera_wo;
     float3 connect_ray_o = camera_dg.p + CRAZY_LOW_DISTANCE * camera_dg.n;
 
     Ray_Init(connection_rays + global_id, connect_ray_o, connect_ray_dir, connect_ray_length, 0.f, 0xFFFFFFFF);
+}
 
-    if (camera_pdf == 0.f || light_pdf == 0.f)
+
+__kernel void ConnectCaustic(
+    int t,
+    __global int* camera_count,
+    __global PathVertex const* camera_subpath,
+    __global int* light_count,
+    __global PathVertex const* light_subpath,
+    __global Camera const* camera,
+    __global Material const* materials,
+    TEXTURE_ARG_LIST,
+    __global ray* connection_rays,
+    __global float4* contributions,
+    __global float2* coords
+)
+{
+    int global_id = get_global_id(0);
+
+    int num_light_vertices = *(light_count + global_id);
+    int num_camera_vertices = *(camera_count + global_id);
+
+    if (t >= num_light_vertices)
     {
         contributions[global_id].xyz = 0.f;
         Ray_SetInactive(connection_rays + global_id);
         return;
     }
 
+    float weight = 1.f / ((num_camera_vertices) * (num_light_vertices));
+
+    __global PathVertex const* my_camera_vertex = camera_subpath + MAX_PATH_LEN * global_id;
+    __global PathVertex const* my_light_vertex = light_subpath + MAX_PATH_LEN * global_id + t;
+    __global PathVertex const* my_prev_light_vertex = light_subpath + MAX_PATH_LEN * global_id + t - 1;
+
+    DifferentialGeometry camera_dg;
+    camera_dg.p = my_camera_vertex->p;
+    camera_dg.n = my_camera_vertex->n;
+    camera_dg.ng = my_camera_vertex->ng;
+    camera_dg.uv = my_camera_vertex->uv;
+    camera_dg.dpdu = GetOrthoVector(camera_dg.n);
+    camera_dg.dpdv = cross(camera_dg.n, camera_dg.dpdu);
+    camera_dg.mat = materials[my_camera_vertex->matidx];
+    camera_dg.mat.fresnel = 1.f;
+    DifferentialGeometry_CalculateTangentTransforms(&camera_dg);
+
+    DifferentialGeometry light_dg;
+    light_dg.p = my_light_vertex->p;
+    light_dg.n = my_light_vertex->n;
+    light_dg.ng = my_light_vertex->ng;
+    light_dg.uv = my_light_vertex->uv;
+    light_dg.dpdu = GetOrthoVector(light_dg.n);
+    light_dg.dpdv = cross(light_dg.dpdu, light_dg.n);
+    light_dg.mat = materials[my_light_vertex->matidx];
+    light_dg.mat.fresnel = 1.f;
+    DifferentialGeometry_CalculateTangentTransforms(&light_dg);
+
+    float3 camera_wo = normalize(light_dg.p - camera_dg.p);
+
+    float3 light_wi = normalize(light_dg.p - my_prev_light_vertex->p);
+    float3 light_wo = -camera_wo;
+    float3 light_bxdf = Bxdf_Evaluate(&light_dg, normalize(light_wi), normalize(light_wo), TEXTURE_ARGS);
+    float light_pdf = Bxdf_GetPdf(&light_dg, light_wi, light_wo, TEXTURE_ARGS);
+    float light_dotnl = fabs(dot(light_dg.n, light_wo));
+
+    float3 light_contribution = my_prev_light_vertex->flow;
+    light_contribution *= (light_bxdf * light_dotnl);
+
+    //float w0 = camera_pdf / (camera_pdf + light_pdf);
+    //float w1 = light_pdf / (camera_pdf + light_pdf);
+
+    float3 val =  weight * (light_contribution);
+    contributions[global_id].xyz = REASONABLE_RADIANCE(val);
+
+    float  connect_ray_length = (1.f - 2.f * CRAZY_LOW_DISTANCE) * length(light_dg.p - camera_dg.p);
+    float3 connect_ray_dir = camera_wo;
+    float3 connect_ray_o = camera_dg.p;
+
+
+    Ray_Init(connection_rays + global_id, connect_ray_o, connect_ray_dir, connect_ray_length, 0.f, 0xFFFFFFFF);
+
+    ray r;
+    r.o.xyz = light_dg.p;
+    r.o.w = CRAZY_HIGH_DISTANCE;
+    r.d.xyz = normalize(camera_dg.p - light_dg.p);
+
+    float3 v0, v1, v2, v3;
+    float2 ext = 0.5 * camera->dim;
+    v0 = camera->focal_length * camera->forward - ext.x * camera->right - ext.y * camera->up;
+    v1 = camera->focal_length * camera->forward + ext.x * camera->right - ext.y * camera->up;
+    v2 = camera->focal_length * camera->forward + ext.x * camera->right + ext.y * camera->up;
+    v3 = camera->focal_length * camera->forward - ext.x * camera->right + ext.y * camera->up;
+
+    r.o.w = CRAZY_HIGH_DISTANCE;
+    float a, b;
+    float3 p;
+    if (IntersectTriangle(&r, v0, v1, v2, &a, &b))
+    {
+        p = (1.f - a - b) * v0 + a * v1 + b * v2;
+    }
+    else if (IntersectTriangle(&r, v0, v2, v3, &a, &b))
+    {
+        p = (1.f - a - b) * v0 + a * v2 + b * v3;
+    }
+    else
+    {
+        contributions[global_id].xyz = 0.f;
+        Ray_SetInactive(connection_rays + global_id);
+        return;
+    }
+
+    float3 imgp = p - v0;
+    float2 impuv;
+    impuv.x = clamp(dot(imgp, v1 - v0) / dot(v1 - v0, v1 - v0), 0.f, 1.f);
+    impuv.y = clamp(dot(imgp, v3 - v0) / dot(v3 - v0, v3 - v0), 0.f, 1.f);
+    coords[global_id] = impuv;
 }
 
 
@@ -308,7 +622,7 @@ __kernel void GenerateLightVertices(
             ke / (selection_pdf * light_pdf),
             kLight,
             -1);
-
+        v.val = ke;
         *my_count = 1;
         *my_vertex = v;
     }
@@ -522,6 +836,7 @@ __kernel void SampleSurface(
 
                 *my_vertex = v;
 
+                // TODO: wrong
                 if (my_prev_vertex->type == kSurface)
                 {
                     float pdf_bwd = Pdf_ConvertSolidAngleToArea(Bxdf_GetPdf(&diffgeo, bxdfwo, wi, TEXTURE_ARGS), diffgeo.p, my_prev_vertex->p, my_prev_vertex->n);

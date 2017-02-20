@@ -82,6 +82,8 @@ namespace Baikal
         void FilterPathStream(int pass);
         // 
         void Connect(ClwScene const& scene, int c, int l);
+        void ConnectDirect(ClwScene const& scene, int c);
+        void ConnectCaustic(ClwScene const& scene, int l);
         void RandomWalk(ClwScene const& scene, int num_rays, 
             CLWBuffer<PathVertex> vertices, CLWBuffer<int> counts);
 

@@ -63,6 +63,7 @@ namespace Baikal
         float pdf_fwd;
         float pdf_bwd;
         float3 flow;
+        float3 val;
         int type;
         int matidx;
         int flags;
@@ -84,6 +85,7 @@ namespace Baikal
         CLWBuffer<int> iota;
 
         CLWBuffer<float3> lightsamples;
+        CLWBuffer<float2> coords;
         CLWBuffer<PathState> paths;
         CLWBuffer<std::uint32_t> random;
         CLWBuffer<std::uint32_t> sobolmat;
@@ -199,7 +201,7 @@ namespace Baikal
         m_context.FillBuffer(0, m_render_data->hitcount, num_rays, 1);
 
         // Initialize first pass
-        for (int pass = 0; pass < m_num_bounces; ++pass)
+        for (int pass = 0; pass < kMaxRandomWalkLength; ++pass)
         {
             // Clear ray hits buffer
             m_context.FillBuffer(0, m_render_data->hits, 0, m_render_data->hits.GetElementCount());
@@ -366,12 +368,191 @@ namespace Baikal
         //m_context.ReadBuffer(0, m_render_data->light_subpath, &vertices[0], num_rays * kMaxRandomWalkLength).Wait();
 
         for (int c = 1; c < kMaxRandomWalkLength; ++c)
+        {
+            ConnectDirect(clwscene, c);
+        }
+
+       for (int c = 1; c < kMaxRandomWalkLength; ++c)
             for (int l = 1; l < kMaxRandomWalkLength; ++l)
             {
                 Connect(clwscene, c, l);
             }
 
+       //for (int l = 1; l < kMaxRandomWalkLength; ++l)
+       //{
+           //ConnectCaustic(clwscene, l);
+       //}
+
+
+        {
+            // Fetch kernel
+            std::string kernel_name = "IncrementSampleCounter";
+
+            CLWKernel gatherkernel = m_render_data->program.GetKernel(kernel_name);
+
+            // Set kernel parameters
+            int num_rays = m_output->width() * m_output->height();
+
+            int argc = 0;
+            gatherkernel.SetArg(argc++, num_rays);
+            gatherkernel.SetArg(argc++, m_output->data());
+
+            // Run generation kernel
+            {
+                int globalsize = num_rays;
+                m_context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, gatherkernel);
+
+            }
+        }
+
         ++m_framecnt;
+    }
+
+    void BdptRenderer::ConnectCaustic(ClwScene const& scene, int l)
+    {
+        m_context.FillBuffer(0, m_render_data->shadowhits, 1, m_render_data->shadowhits.GetElementCount());
+
+        int num_rays = m_output->width() * m_output->height();
+
+        {
+            // Fetch kernel
+            std::string kernel_name = "ConnectCaustic";
+
+            CLWKernel connectkernel = m_render_data->program.GetKernel(kernel_name);
+
+            // Set kernel parameters
+            int num_rays = m_output->width() * m_output->height();
+
+            int argc = 0;
+            connectkernel.SetArg(argc++, l);
+            connectkernel.SetArg(argc++, m_render_data->camera_subpath_len);
+            connectkernel.SetArg(argc++, m_render_data->camera_subpath);
+            connectkernel.SetArg(argc++, m_render_data->light_subpath_len);
+            connectkernel.SetArg(argc++, m_render_data->light_subpath);
+            connectkernel.SetArg(argc++, scene.camera);
+            connectkernel.SetArg(argc++, scene.materials);
+            connectkernel.SetArg(argc++, scene.textures);
+            connectkernel.SetArg(argc++, scene.texturedata);
+            connectkernel.SetArg(argc++, m_render_data->shadowrays);
+            connectkernel.SetArg(argc++, m_render_data->lightsamples);
+            connectkernel.SetArg(argc++, m_render_data->coords);
+
+            // Run generation kernel
+            {
+                int globalsize = num_rays;
+                m_context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, connectkernel);
+            }
+        }
+
+       // std::vector<float2> coords(num_rays);
+        //m_context.ReadBuffer(0, m_render_data->coords, &coords[0], num_rays).Wait();
+
+        m_scene_tracker.GetIntersectionApi()
+            ->QueryOcclusion(m_render_data->fr_shadowrays, num_rays, m_render_data->fr_shadowhits, nullptr, nullptr);
+
+        //std::vector<float3> samples(num_rays);
+        //m_context.ReadBuffer(0, m_render_data->lightsamples, &samples[0], num_rays).Wait();
+
+        //std::vector<float3> samples(num_rays);
+        //m_context.ReadBuffer(0, m_render_data->lightsamples, &samples[0], num_rays).Wait();
+
+
+        {
+            // Fetch kernel
+            std::string kernel_name = "GatherCaustics";
+
+            CLWKernel gatherkernel = m_render_data->program.GetKernel(kernel_name);
+
+            // Set kernel parameters
+            int num_rays = m_output->width() * m_output->height();
+
+            int argc = 0;
+            gatherkernel.SetArg(argc++, num_rays);
+            gatherkernel.SetArg(argc++, m_output->width());
+            gatherkernel.SetArg(argc++, m_output->height());
+            gatherkernel.SetArg(argc++, m_render_data->shadowhits);
+            gatherkernel.SetArg(argc++, m_render_data->lightsamples);
+            gatherkernel.SetArg(argc++, m_render_data->coords);
+            gatherkernel.SetArg(argc++, m_output->data());
+
+            // Run generation kernel
+            {
+                int globalsize = num_rays;
+                m_context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, gatherkernel);
+            }
+        }
+
+    }
+
+    void BdptRenderer::ConnectDirect(ClwScene const& scene, int c)
+    {
+        m_context.FillBuffer(0, m_render_data->shadowhits, 1, m_render_data->shadowhits.GetElementCount());
+
+        // Fetch kernel
+        CLWKernel shadekernel = m_render_data->program.GetKernel("DirectConnect");
+
+        int num_rays = m_output->width() * m_output->height();
+
+        {
+            // Set kernel parameters
+            int argc = 0;
+            shadekernel.SetArg(argc++, c);
+            shadekernel.SetArg(argc++, m_render_data->camera_subpath_len);
+            shadekernel.SetArg(argc++, m_render_data->camera_subpath);
+            shadekernel.SetArg(argc++, m_render_data->light_subpath_len);
+            shadekernel.SetArg(argc++, m_render_data->light_subpath);
+            shadekernel.SetArg(argc++, scene.vertices);
+            shadekernel.SetArg(argc++, scene.normals);
+            shadekernel.SetArg(argc++, scene.uvs);
+            shadekernel.SetArg(argc++, scene.indices);
+            shadekernel.SetArg(argc++, scene.shapes);
+            shadekernel.SetArg(argc++, scene.materialids);
+            shadekernel.SetArg(argc++, scene.materials);
+            shadekernel.SetArg(argc++, scene.textures);
+            shadekernel.SetArg(argc++, scene.texturedata);
+            shadekernel.SetArg(argc++, scene.envmapidx);
+            shadekernel.SetArg(argc++, scene.envmapmul);
+            shadekernel.SetArg(argc++, scene.lights);
+            shadekernel.SetArg(argc++, scene.num_lights);
+            shadekernel.SetArg(argc++, rand_uint());
+            shadekernel.SetArg(argc++, m_render_data->random);
+            shadekernel.SetArg(argc++, m_render_data->sobolmat);
+            shadekernel.SetArg(argc++, m_framecnt);
+            shadekernel.SetArg(argc++, m_render_data->shadowrays);
+            shadekernel.SetArg(argc++, m_render_data->lightsamples);
+
+            // Run shading kernel
+            {
+                int globalsize = num_rays;
+                m_context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, shadekernel);
+            }
+        }
+
+        m_scene_tracker.GetIntersectionApi()
+            ->QueryOcclusion(m_render_data->fr_shadowrays, num_rays, m_render_data->fr_shadowhits, nullptr, nullptr);
+
+        {
+            // Fetch kernel
+            std::string kernel_name = "GatherContributions";
+
+            CLWKernel gatherkernel = m_render_data->program.GetKernel(kernel_name);
+
+            // Set kernel parameters
+            int num_rays = m_output->width() * m_output->height();
+
+            int argc = 0;
+            gatherkernel.SetArg(argc++, num_rays);
+            gatherkernel.SetArg(argc++, m_render_data->shadowhits);
+            gatherkernel.SetArg(argc++, m_render_data->lightsamples);
+            gatherkernel.SetArg(argc++, m_output->data());
+
+            // Run generation kernel
+            {
+                int globalsize = num_rays;
+                m_context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, gatherkernel);
+            }
+        }
+
     }
 
     void BdptRenderer::SetOutput(Output* output)
@@ -409,6 +590,9 @@ namespace Baikal
 
         m_render_data->lightsamples = m_context.CreateBuffer<float3>(output.width() * output.height() * kMaxLightSamples, CL_MEM_READ_WRITE);
         m_vidmemws += output.width() * output.height() * sizeof(float3)* kMaxLightSamples;
+
+        m_render_data->coords = m_context.CreateBuffer<float2>(output.width() * output.height() * kMaxLightSamples, CL_MEM_READ_WRITE);
+        m_vidmemws += output.width() * output.height() * sizeof(float2)* kMaxLightSamples;
 
         m_render_data->paths = m_context.CreateBuffer<PathState>(output.width() * output.height(), CL_MEM_READ_WRITE);
         m_vidmemws += output.width() * output.height() * sizeof(PathState);

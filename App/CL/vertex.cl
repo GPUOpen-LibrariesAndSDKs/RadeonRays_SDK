@@ -17,9 +17,11 @@ typedef struct _PathVertex
     float pdf_fwd;
     float pdf_bwd;
     float3 flow;
+    float3 val;
     int type;
     int matidx;
     int flags;
+    int padding;
 } PathVertex;
 
 inline
@@ -46,4 +48,5 @@ void PathVertex_Init(
     v->type = type;
     v->matidx = matidx;
     v->flags = 0;
+    v->val = 0.f;
 }
