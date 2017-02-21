@@ -457,7 +457,7 @@ __kernel void ShadeSurface(
         if (NON_BLACK(radiance))
         {
             // Generate shadow ray
-            float shadow_ray_length = (1.f - 2.f * CRAZY_LOW_DISTANCE) * length(wo);
+            float shadow_ray_length = 0.999f * (1.f - CRAZY_LOW_DISTANCE) * length(wo);
             float3 shadow_ray_dir = normalize(wo);
             float3 shadow_ray_o = diffgeo.p + CRAZY_LOW_DISTANCE * s * diffgeo.n;
             int shadow_ray_mask = Bxdf_IsSingular(&diffgeo) ? 0xFFFFFFFF : 0x0000FFFF;
