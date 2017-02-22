@@ -75,7 +75,7 @@ namespace Baikal
         void GenerateLightVertices(ClwScene const& scene);
         // Shade first hit
         void SampleSurface(ClwScene const& scene, int pass,
-             CLWBuffer<PathVertex> vertices, CLWBuffer<int> counts);
+             CLWBuffer<PathVertex> vertices, CLWBuffer<int> counts, int mode);
         // Restore pixel indices after compaction
         void RestorePixelIndices(int pass);
         // Convert intersection info to compaction predicate
@@ -85,7 +85,7 @@ namespace Baikal
         void ConnectDirect(ClwScene const& scene, int c);
         void ConnectCaustic(ClwScene const& scene, int l);
         void RandomWalk(ClwScene const& scene, int num_rays, 
-            CLWBuffer<PathVertex> vertices, CLWBuffer<int> counts);
+            CLWBuffer<PathVertex> vertices, CLWBuffer<int> counts, int mode);
 
     public:
         // CL context

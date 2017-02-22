@@ -191,7 +191,7 @@ namespace Baikal
     }
 
     void BdptRenderer::RandomWalk(ClwScene const& scene, int num_rays,
-        CLWBuffer<PathVertex> vertices, CLWBuffer<int> counts)
+        CLWBuffer<PathVertex> vertices, CLWBuffer<int> counts, int mode)
     {
         auto api = m_scene_tracker.GetIntersectionApi();
 
@@ -222,7 +222,7 @@ namespace Baikal
             RestorePixelIndices(pass);
 
             // Shade hits
-            SampleSurface(scene, pass, vertices, counts);
+            SampleSurface(scene, pass, vertices, counts, mode);
 
             //
             m_context.Flush(0);
@@ -352,7 +352,7 @@ namespace Baikal
         // Generate primary
         GenerateCameraVertices(clwscene);
 
-        RandomWalk(clwscene, num_rays, m_render_data->camera_subpath, m_render_data->camera_subpath_len);
+        RandomWalk(clwscene, num_rays, m_render_data->camera_subpath, m_render_data->camera_subpath_len, 0);
 
         //std::vector<int> counts(num_rays);
         //m_context.ReadBuffer(0, m_render_data->camera_subpath_len, &counts[0], num_rays);
@@ -362,26 +362,26 @@ namespace Baikal
 
         GenerateLightVertices(clwscene);
 
-        RandomWalk(clwscene, num_rays, m_render_data->light_subpath, m_render_data->light_subpath_len);
+        RandomWalk(clwscene, num_rays, m_render_data->light_subpath, m_render_data->light_subpath_len, 1);
 
         //m_context.ReadBuffer(0, m_render_data->light_subpath_len, &counts[0], num_rays);
         //m_context.ReadBuffer(0, m_render_data->light_subpath, &vertices[0], num_rays * kMaxRandomWalkLength).Wait();
 
-        for (int c = 1; c < kMaxRandomWalkLength; ++c)
-        {
-            ConnectDirect(clwscene, c);
-        }
+       // for (int c = 1; c < kMaxRandomWalkLength; ++c)
+       // {
+       //     ConnectDirect(clwscene, c);
+       // }
 
-       for (int c = 1; c < kMaxRandomWalkLength; ++c)
-            for (int l = 1; l < kMaxRandomWalkLength; ++l)
-            {
-                Connect(clwscene, c, l);
-            }
+       //for (int c = 1; c < kMaxRandomWalkLength; ++c)
+       //     for (int l = 1; l < kMaxRandomWalkLength; ++l)
+       //     {
+       //         Connect(clwscene, c, l);
+       //     } 
 
-       //for (int l = 1; l < kMaxRandomWalkLength; ++l)
-       //{
-           //ConnectCaustic(clwscene, l);
-       //}
+        for (int l = 1; l < kMaxRandomWalkLength; ++l)
+       {
+           ConnectCaustic(clwscene, l);
+       }
 
 
         {
@@ -401,6 +401,8 @@ namespace Baikal
             {
                 int globalsize = num_rays;
                 m_context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, gatherkernel);
+                //m_context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, gatherkernel);
+                //m_context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, gatherkernel);
 
             }
         }
@@ -681,7 +683,7 @@ namespace Baikal
     }
 
     void BdptRenderer::SampleSurface(ClwScene const& scene, int pass,
-        CLWBuffer<PathVertex> vertices, CLWBuffer<int> counts)
+        CLWBuffer<PathVertex> vertices, CLWBuffer<int> counts, int mode)
     {
         // Fetch kernel
         CLWKernel shadekernel = m_render_data->program.GetKernel("SampleSurface");
@@ -711,6 +713,7 @@ namespace Baikal
         shadekernel.SetArg(argc++, m_render_data->sobolmat);
         shadekernel.SetArg(argc++, pass);
         shadekernel.SetArg(argc++, m_framecnt);
+        shadekernel.SetArg(argc++, mode);
         shadekernel.SetArg(argc++, m_render_data->paths);
         shadekernel.SetArg(argc++, m_render_data->rays[(pass + 1) & 0x1]);
         shadekernel.SetArg(argc++, vertices);

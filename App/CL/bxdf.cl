@@ -29,6 +29,12 @@ THE SOFTWARE.
 #define DENOM_EPS 0.0f
 #define ROUGHNESS_EPS 0.0001f
 
+enum TransferMode
+{
+    kRadiance = 0,
+    kImportance = 1
+};
+
 
 enum BxdfFlags
 {
@@ -756,6 +762,11 @@ float3 IdealRefract_Sample(
     *wo = normalize(make_float3(eta * -wi.x, entering ? -cost : cost, eta * -wi.z));
 
     *pdf = 1.f;
+
+    if (dg->transfer_mode == kImportance)
+    {
+        eta = 1.f / eta;
+    }
 
     return cost > DENOM_EPS ? (F * eta * eta * ks / cost) : 0.f;
 }

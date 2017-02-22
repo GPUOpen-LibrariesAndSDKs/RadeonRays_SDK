@@ -337,6 +337,7 @@ __kernel void ShadeSurface(
         // Fill surface data
         DifferentialGeometry diffgeo;
         DifferentialGeometry_Fill(&scene, &isect, &diffgeo);
+        diffgeo.transfer_mode = kRadiance;
 
         // Check if we are hitting from the inside
 
@@ -442,7 +443,6 @@ __kernel void ShadeSurface(
             float3 le = Light_Sample(light_idx, &scene, &diffgeo, TEXTURE_ARGS, Sampler_Sample2D(&sampler, SAMPLER_ARGS), &lightwo, &lightpdf);
             lightbxdfpdf = Bxdf_GetPdf(&diffgeo, wi, normalize(lightwo), TEXTURE_ARGS);
             lightweight = Light_IsSingular(&scene.lights[light_idx]) ? 1.f : BalanceHeuristic(1, lightpdf, 1, lightbxdfpdf);
-
 
             // Apply MIS to account for both
             if (NON_BLACK(le) && lightpdf > 0.0f && !Bxdf_IsSingular(&diffgeo))

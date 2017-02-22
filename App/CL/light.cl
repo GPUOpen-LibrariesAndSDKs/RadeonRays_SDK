@@ -40,7 +40,7 @@ bool IntersectTriangle(ray const* r, float3 v1, float3 v2, float3 v3, float* a, 
     const float  b2 = dot(r->d.xyz, s2) * invd;
     const float temp = dot(e2, s2) * invd;
 
-    if (b1 < 0.f || b1 > 1.f || b2 < 0.f || b1 + b2 > 1.f)
+    if (b1 < 0.f || b1 > 1.f || b2 < 0.f || b1 + b2 > 1.f || temp < 0.f)
     {
         return false;
     }
@@ -334,6 +334,30 @@ float AreaLight_GetPdf(// Emissive object
     {
         return 0.f;
     }
+}
+
+/// Sample direction to the light
+float3 PointLight_SampleVertex(// Emissive object
+    Light const* light,
+    // Scene
+    Scene const* scene,
+    // Textures
+    TEXTURE_ARG_LIST,
+    // Sample
+    float2 sample0,
+    float2 sample1,
+    // Direction to light source
+    float3* p,
+    float3* n,
+    float3* wo,
+    // PDF
+    float* pdf)
+{
+    *p = light->p;
+    *n = make_float3(0.f, 1.f, 0.f);
+    *wo = Sample_MapToSphere(sample0);
+    *pdf = 1.f / (4.f * PI);
+    return light->intensity;
 }
 
 /// Sample direction to the light
@@ -714,8 +738,8 @@ float3 Light_SampleVertex(// Light index
     {
     case kArea:
         return AreaLight_SampleVertex(&light, scene, TEXTURE_ARGS, sample0, sample1, p, n, wo, pdf);
-    //case kPoint:
-        //return PointLight_SampleVertex(&light, scene, TEXTURE_ARGS, sample, p, n, wo, pdf);
+    case kPoint:
+        return PointLight_SampleVertex(&light, scene, TEXTURE_ARGS, sample0, sample1, p, n, wo, pdf);
     }
 
     *pdf = 0.f;

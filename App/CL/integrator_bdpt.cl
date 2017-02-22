@@ -74,11 +74,9 @@ __kernel void GatherContributions(
             {
                 // Add its contribution to radiance accumulator
                 radiance += contributions[globalid];
+                output[globalid].xyz += radiance;
             }
         }
-
-        // Divide by number of light samples (samples already have built-in throughput)
-        output[globalid].xyz += radiance;
     }
 }
 
@@ -115,11 +113,11 @@ __kernel void GatherCaustics(
                 int x = (int)(uv.x * w);
                 int y = (int)(uv.y * h);
                 output[y * w + x].xyz += radiance;
+                //output[y * w + x].w += 1.f;
             }
         }
 
         // Divide by number of light samples (samples already have built-in throughput)
-
     }
 }
 
@@ -188,7 +186,7 @@ __kernel void DirectConnect(
     int num_camera_vertices = *(camera_count + global_id);
     int num_light_vertices = *(light_count + global_id);
 
-    float weight = 1.f;// / ((num_camera_vertices - 1) * (num_light_vertices));
+    float weight = 1.f;// / (num_camera_vertices - 1);
 
     __global PathVertex const* my_camera_vertex = camera_subpath + MAX_PATH_LEN * global_id + s;
     __global PathVertex const* my_prev_camera_vertex = camera_subpath + MAX_PATH_LEN * global_id + s - 1;
@@ -249,33 +247,66 @@ __kernel void DirectConnect(
     int light_idx = Scene_SampleLight(&scene, Sampler_Sample1D(&sampler, SAMPLER_ARGS), &selection_pdf);
 
     // Sample light
-    float lightpdf;
+    float lightpdf = 0.f;
+    float lightbxdfpdf = 0.f;
+    float bxdfpdf = 0.f;
+    float bxdflightpdf = 0.f;
+    float lightweight = 0.f;
+    float bxdfweight = 0.f;
+
+
     float3 lightwo;
+    float3 bxdfwo;
     float3 le = Light_Sample(light_idx, &scene, &diffgeo, TEXTURE_ARGS, Sampler_Sample2D(&sampler, SAMPLER_ARGS), &lightwo, &lightpdf);
+    float3 bxdf = Bxdf_Sample(&diffgeo, normalize(wi), TEXTURE_ARGS, Sampler_Sample2D(&sampler, SAMPLER_ARGS), &bxdfwo, &bxdfpdf);
+    lightbxdfpdf = Bxdf_GetPdf(&diffgeo, normalize(wi), normalize(lightwo), TEXTURE_ARGS);
+    bxdflightpdf = Light_GetPdf(light_idx, &scene, &diffgeo, normalize(bxdfwo), TEXTURE_ARGS);
+
+    bool singular_light = Light_IsSingular(&scene.lights[light_idx]);
+    bool singular_bxdf = Bxdf_IsSingular(&diffgeo);
+    lightweight = singular_light  ? 1.f : BalanceHeuristic(1, lightpdf, 1, lightbxdfpdf);
+    bxdfweight = singular_bxdf ? 1.f : BalanceHeuristic(1, bxdfpdf, 1, bxdflightpdf);
+
     float3 radiance = 0.f;
     float3 wo;
 
-    // Apply MIS to account for both
-    if (NON_BLACK(le) && lightpdf > 0.0f && !Bxdf_IsSingular(&diffgeo))
+    if (singular_light && singular_bxdf)
+    {
+        // Otherwise save some intersector cycles
+        Ray_SetInactive(shadowrays + global_id);
+        lightsamples[global_id] = 0;
+        return;
+    }
+
+    float split = Sampler_Sample1D(&sampler, SAMPLER_ARGS);
+
+    if (((singular_bxdf && !singular_light) ||  split < 0.5f) && bxdfpdf > 0.f)
+    {
+        wo = CRAZY_HIGH_DISTANCE * bxdfwo;
+        float ndotwo = fabs(dot(diffgeo.n, normalize(wo)));
+        radiance = 2.f * bxdfweight * Light_GetLe(light_idx, &scene, &diffgeo, &wo, TEXTURE_ARGS) * bxdf * throughput * ndotwo / bxdfpdf;
+    }
+
+    if (((!singular_bxdf && singular_light) || split >= 0.5f) && lightpdf > 0.f)
     {
         wo = lightwo;
         float ndotwo = fabs(dot(diffgeo.n, normalize(wo)));
-        radiance = le * Bxdf_Evaluate(&diffgeo, wi, normalize(wo), TEXTURE_ARGS) * throughput * ndotwo / lightpdf / selection_pdf;
+        radiance = 2.f * lightweight * le * Bxdf_Evaluate(&diffgeo, wi, normalize(wo), TEXTURE_ARGS) * throughput * ndotwo / lightpdf / selection_pdf;
     }
 
     // If we have some light here generate a shadow ray
     if (NON_BLACK(radiance))
     {
         // Generate shadow ray
-        float shadow_ray_length = 0.999f * (1.f - CRAZY_LOW_DISTANCE) * length(lightwo);
-        float3 shadow_ray_dir = normalize(lightwo);
+        float shadow_ray_length = 0.999f * (1.f - CRAZY_LOW_DISTANCE) * length(wo);
+        float3 shadow_ray_dir = normalize(wo);
         float3 shadow_ray_o = diffgeo.p + normalize(diffgeo.n) * CRAZY_LOW_DISTANCE;
         int shadow_ray_mask = 0xFFFFFFFF;
 
         Ray_Init(shadowrays + global_id, shadow_ray_o, shadow_ray_dir, shadow_ray_length, 0.f, shadow_ray_mask);
 
         // And write the light sample
-        lightsamples[global_id] = REASONABLE_RADIANCE(radiance);
+        lightsamples[global_id] = REASONABLE_RADIANCE(weight * radiance);
     }
     else
     {
@@ -314,8 +345,6 @@ __kernel void Connect(
         return;
     }
 
-    float weight = 1.f / ((num_camera_vertices - 1) * (num_light_vertices - 1));
-
     __global PathVertex const* my_camera_vertex = camera_subpath + MAX_PATH_LEN * global_id + s;
     __global PathVertex const* my_prev_camera_vertex = camera_subpath + MAX_PATH_LEN * global_id + s - 1;
 
@@ -344,19 +373,17 @@ __kernel void Connect(
     light_dg.mat.fresnel = 1.f;
     DifferentialGeometry_CalculateTangentTransforms(&light_dg);
 
-    float3 camera_wi = normalize(camera_dg.p - my_prev_camera_vertex->p);
+    float3 camera_wi = normalize(my_prev_camera_vertex->p - camera_dg.p);
     float3 camera_wo = normalize(light_dg.p - camera_dg.p);
     float dist = length(light_dg.p - camera_dg.p);
     float3 camera_bxdf = Bxdf_Evaluate(&camera_dg, camera_wi, camera_wo, TEXTURE_ARGS);
     
-
-
     float camera_dotnl = fabs(dot(camera_dg.n, camera_wo));
 
     float3 camera_contribution = my_prev_camera_vertex->flow;
     camera_contribution *= (camera_bxdf * camera_dotnl);
 
-    float3 light_wi = normalize(light_dg.p - my_prev_light_vertex->p);
+    float3 light_wi = normalize(my_prev_light_vertex->p - light_dg.p);
     float3 light_wo = -camera_wo;
     float3 light_bxdf = Bxdf_Evaluate(&light_dg, light_wi, light_wo, TEXTURE_ARGS);
     float light_pdf = Bxdf_GetPdf(&light_dg, light_wi, light_wo, TEXTURE_ARGS);
@@ -441,7 +468,7 @@ __kernel void ConnectCaustic(
         return;
     }
 
-    float weight = 1.f / ((num_camera_vertices) * (num_light_vertices));
+    float weight = 1.f;// 1.f / (num_light_vertices - 1);
 
     __global PathVertex const* my_camera_vertex = camera_subpath + MAX_PATH_LEN * global_id;
     __global PathVertex const* my_light_vertex = light_subpath + MAX_PATH_LEN * global_id + t;
@@ -471,11 +498,11 @@ __kernel void ConnectCaustic(
 
     float3 camera_wo = normalize(light_dg.p - camera_dg.p);
 
-    float3 light_wi = normalize(light_dg.p - my_prev_light_vertex->p);
+    float3 light_wi = normalize(my_prev_light_vertex->p - light_dg.p);
     float3 light_wo = -camera_wo;
-    float3 light_bxdf = Bxdf_Evaluate(&light_dg, normalize(light_wi), normalize(light_wo), TEXTURE_ARGS);
+    float3 light_bxdf = Bxdf_Evaluate(&light_dg, light_wi, light_wo, TEXTURE_ARGS);
     float light_pdf = Bxdf_GetPdf(&light_dg, light_wi, light_wo, TEXTURE_ARGS);
-    float light_dotnl = fabs(dot(light_dg.n, light_wo));
+    float light_dotnl = max(dot(light_dg.n, light_wo), 0.f);
 
     float3 light_contribution = my_prev_light_vertex->flow;
     light_contribution *= (light_bxdf * light_dotnl);
@@ -483,27 +510,27 @@ __kernel void ConnectCaustic(
     //float w0 = camera_pdf / (camera_pdf + light_pdf);
     //float w1 = light_pdf / (camera_pdf + light_pdf);
 
-    float3 val =  weight * (light_contribution);
+    float dist = length(light_dg.p - camera_dg.p);
+    float3 val =  (light_contribution) / (dist * dist);
     contributions[global_id].xyz = REASONABLE_RADIANCE(val);
 
-    float  connect_ray_length = (1.f - 2.f * CRAZY_LOW_DISTANCE) * length(light_dg.p - camera_dg.p);
+    float  connect_ray_length = 0.99f * length(light_dg.p - camera_dg.p);
     float3 connect_ray_dir = camera_wo;
     float3 connect_ray_o = camera_dg.p;
-
 
     Ray_Init(connection_rays + global_id, connect_ray_o, connect_ray_dir, connect_ray_length, 0.f, 0xFFFFFFFF);
 
     ray r;
-    r.o.xyz = light_dg.p;
+    r.o.xyz = camera_dg.p;
     r.o.w = CRAZY_HIGH_DISTANCE;
-    r.d.xyz = normalize(camera_dg.p - light_dg.p);
+    r.d.xyz = normalize(light_dg.p - camera_dg.p);
 
     float3 v0, v1, v2, v3;
-    float2 ext = 0.5 * camera->dim;
-    v0 = camera->focal_length * camera->forward - ext.x * camera->right - ext.y * camera->up;
-    v1 = camera->focal_length * camera->forward + ext.x * camera->right - ext.y * camera->up;
-    v2 = camera->focal_length * camera->forward + ext.x * camera->right + ext.y * camera->up;
-    v3 = camera->focal_length * camera->forward - ext.x * camera->right + ext.y * camera->up;
+    float2 ext = 0.5f * camera->dim;
+    v0 = camera->p + camera->focal_length * camera->forward - ext.x * camera->right - ext.y * camera->up;
+    v1 = camera->p + camera->focal_length * camera->forward + ext.x * camera->right - ext.y * camera->up;
+    v2 = camera->p + camera->focal_length * camera->forward + ext.x * camera->right + ext.y * camera->up;
+    v3 = camera->p + camera->focal_length * camera->forward - ext.x * camera->right + ext.y * camera->up;
 
     r.o.w = CRAZY_HIGH_DISTANCE;
     float a, b;
@@ -715,6 +742,8 @@ __kernel void SampleSurface(
     int bounce,
     // Frame
     int frame,
+    //
+    int transfer_mode,
     // Path throughput
     __global Path* paths,
     // Indirect rays
@@ -770,11 +799,12 @@ __kernel void SampleSurface(
         // Fill surface data
         DifferentialGeometry diffgeo;
         DifferentialGeometry_Fill(&scene, &isect, &diffgeo);
+        diffgeo.transfer_mode = transfer_mode;
 
         // Check if we are hitting from the inside
 
         float backfacing = dot(diffgeo.ng, wi) < 0.f;
-        int twosided = diffgeo.mat.twosided;
+        int twosided = false; // diffgeo.mat.twosided;
         if (twosided && backfacing)
         {
             // Reverse normal and tangents in this case
