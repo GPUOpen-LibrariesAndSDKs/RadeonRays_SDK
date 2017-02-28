@@ -339,21 +339,8 @@ __kernel void ShadeSurface(
         DifferentialGeometry_Fill(&scene, &isect, &diffgeo);
 
         // Check if we are hitting from the inside
-
-        float backfacing = dot(diffgeo.ng, wi) < 0.f;
-		int twosided = diffgeo.mat.twosided;
-        if (twosided && backfacing)
-        {
-            // Reverse normal and tangents in this case
-            // but not for BTDFs, since BTDFs rely
-            // on normal direction in order to arrange
-            // indices of refraction
-            diffgeo.n = -diffgeo.n;
-            diffgeo.dpdu = -diffgeo.dpdu;
-            diffgeo.dpdv = -diffgeo.dpdv;
-        }
-
-        float ndotwi = dot(diffgeo.n, wi);
+		float ngdotwi = dot(diffgeo.ng, wi);
+        bool backfacing =  ngdotwi < 0.f;
 
         // Select BxDF
         Material_Select(&scene, wi, &sampler, TEXTURE_ARGS, SAMPLER_ARGS, &diffgeo);
@@ -388,11 +375,11 @@ __kernel void ShadeSurface(
 
             lightsamples[globalid] = 0.f;
             return;
-        }
+        } 
 
 
-        float s = Bxdf_IsBtdf(&diffgeo) ? (-sign(ndotwi)) : 1.f;
-        if (!twosided && backfacing && !Bxdf_IsBtdf(&diffgeo))
+        float s = Bxdf_IsBtdf(&diffgeo) ? (-sign(ngdotwi)) : 1.f;
+        if (backfacing && !Bxdf_IsBtdf(&diffgeo))
         {
              //Reverse normal and tangents in this case
              //but not for BTDFs, since BTDFs rely
@@ -401,7 +388,9 @@ __kernel void ShadeSurface(
             diffgeo.n = -diffgeo.n;
             diffgeo.dpdu = -diffgeo.dpdu;
             diffgeo.dpdv = -diffgeo.dpdv;
+			s = -s;
         }
+
 
         // TODO: this is test code, need to
         // maintain proper volume stack here
@@ -413,9 +402,12 @@ __kernel void ShadeSurface(
 
         // Check if we need to apply normal map
         //ApplyNormalMap(&diffgeo, TEXTURE_ARGS);
-        DifferentialGeometry_ApplyBumpMap(&diffgeo, TEXTURE_ARGS);
+		DifferentialGeometry_ApplyBumpMap(&diffgeo, TEXTURE_ARGS);
+
 		//DifferentialGeometry_ApplyNormalMap(&diffgeo, TEXTURE_ARGS);
         DifferentialGeometry_CalculateTangentTransforms(&diffgeo);
+
+		float ndotwi = fabs(dot(diffgeo.n, wi));
 
         float lightpdf = 0.f;
         float bxdflightpdf = 0.f;
