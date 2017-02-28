@@ -37,7 +37,7 @@ namespace Baikal
 {
     
     /**
-     \brief Interface for rendering output. 
+     \brief Interface for rendering output surface.
      
      Represents discrete 2D surface with [0..w]x[0..h] coordinate ranges.
      */

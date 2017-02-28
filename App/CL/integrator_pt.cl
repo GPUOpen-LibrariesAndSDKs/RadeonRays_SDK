@@ -341,7 +341,7 @@ __kernel void ShadeSurface(
         // Check if we are hitting from the inside
 
         float backfacing = dot(diffgeo.ng, wi) < 0.f;
-        int twosided = diffgeo.mat.twosided;
+		int twosided = diffgeo.mat.twosided;
         if (twosided && backfacing)
         {
             // Reverse normal and tangents in this case
@@ -414,6 +414,7 @@ __kernel void ShadeSurface(
         // Check if we need to apply normal map
         //ApplyNormalMap(&diffgeo, TEXTURE_ARGS);
         DifferentialGeometry_ApplyBumpMap(&diffgeo, TEXTURE_ARGS);
+		//DifferentialGeometry_ApplyNormalMap(&diffgeo, TEXTURE_ARGS);
         DifferentialGeometry_CalculateTangentTransforms(&diffgeo);
 
         float lightpdf = 0.f;
@@ -459,7 +460,7 @@ __kernel void ShadeSurface(
             // Generate shadow ray
             float shadow_ray_length = 0.999f * (1.f - CRAZY_LOW_DISTANCE) * length(wo);
             float3 shadow_ray_dir = normalize(wo);
-            float3 shadow_ray_o = diffgeo.p + CRAZY_LOW_DISTANCE * s * diffgeo.n;
+            float3 shadow_ray_o = diffgeo.p + CRAZY_LOW_DISTANCE * s * diffgeo.ng;
             int shadow_ray_mask = Bxdf_IsSingular(&diffgeo) ? 0xFFFFFFFF : 0x0000FFFF;
 
             Ray_Init(shadowrays + globalid, shadow_ray_o, shadow_ray_dir, shadow_ray_length, 0.f, shadow_ray_mask);
@@ -473,7 +474,7 @@ __kernel void ShadeSurface(
             }
 
             // And write the light sample
-            lightsamples[globalid] = REASONABLE_RADIANCE(radiance);
+			lightsamples[globalid] = REASONABLE_RADIANCE(radiance);
         }
         else
         {
@@ -511,7 +512,7 @@ __kernel void ShadeSurface(
 
             // Generate ray
             float3 indirect_ray_dir = bxdfwo;
-            float3 indirect_ray_o = diffgeo.p + CRAZY_LOW_DISTANCE * s * diffgeo.n;
+            float3 indirect_ray_o = diffgeo.p + CRAZY_LOW_DISTANCE * s * diffgeo.ng;
 
             Ray_Init(indirectrays + globalid, indirect_ray_o, indirect_ray_dir, CRAZY_HIGH_DISTANCE, 0.f, 0xFFFFFFFF);
             Ray_SetExtra(indirectrays + globalid, make_float2(bxdfpdf, fabs(dot(diffgeo.n, bxdfwo))));
