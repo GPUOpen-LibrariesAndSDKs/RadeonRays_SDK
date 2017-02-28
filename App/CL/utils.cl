@@ -217,6 +217,12 @@ float4 lerp(float4 a, float4 b, float w)
     return a + w*(b-a);
 }
 
+/// Linearly interpolate between two values
+float3 lerp3(float3 a, float3 b, float w)
+{
+	return a + w*(b - a);
+}
+
 /// Translate cartesian coordinates to spherical system
 void CartesianToSpherical ( float3 cart, float* r, float* phi, float* theta )
 {

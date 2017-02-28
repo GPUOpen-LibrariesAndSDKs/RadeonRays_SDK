@@ -34,6 +34,7 @@ THE SOFTWARE.
 #define TEXTURE_ARGS_IDX(x) x, textures, texturedata
 
 /// Sample 2D texture
+inline
 float4 Texture_Sample2D(float2 uv, TEXTURE_ARG_LIST_IDX(texidx))
 {
     // Get width and height
@@ -121,6 +122,7 @@ float4 Texture_Sample2D(float2 uv, TEXTURE_ARG_LIST_IDX(texidx))
 }
 
 /// Sample lattitue-longitude environment map using 3d vector
+inline
 float3 Texture_SampleEnvMap(float3 d, TEXTURE_ARG_LIST_IDX(texidx))
 {
     // Transform to spherical coords
@@ -137,6 +139,7 @@ float3 Texture_SampleEnvMap(float3 d, TEXTURE_ARG_LIST_IDX(texidx))
 }
 
 /// Get data from parameter value or texture
+inline
 float3 Texture_GetValue3f(
                 // Value
                 float3 v,
@@ -158,6 +161,7 @@ float3 Texture_GetValue3f(
 }
 
 /// Get data from parameter value or texture
+inline
 float4 Texture_GetValue4f(
                 // Value
                 float4 v,
@@ -179,6 +183,7 @@ float4 Texture_GetValue4f(
 }
 
 /// Get data from parameter value or texture
+inline
 float Texture_GetValue1f(
                         // Value
                         float v,
@@ -199,7 +204,94 @@ float Texture_GetValue1f(
     return v;
 }
 
+inline float3 TextureData_SampleNormalFromBump_uchar4(__global uchar4 const* mydatac, int width, int height, int t0, int s0)
+{
+	int t0minus = clamp(t0 - 1, 0, height - 1);
+	int t0plus = clamp(t0 + 1, 0, height - 1);
+	int s0minus = clamp(s0 - 1, 0, width - 1);
+	int s0plus = clamp(s0 + 1, 0, width - 1);
+
+	const uchar utex00 = (*(mydatac + width * t0minus + s0minus)).x;
+	const uchar utex10 = (*(mydatac + width * t0minus + (s0))).x;
+	const uchar utex20 = (*(mydatac + width * t0minus + s0plus)).x;
+
+	const uchar utex01 = (*(mydatac + width * (t0)+s0minus)).x;
+	const uchar utex21 = (*(mydatac + width * (t0)+(s0 + 1))).x;
+
+	const uchar utex02 = (*(mydatac + width * t0plus + s0minus)).x;
+	const uchar utex12 = (*(mydatac + width * t0plus + (s0))).x;
+	const uchar utex22 = (*(mydatac + width * t0plus + s0plus)).x;
+
+	const float tex00 = (float)utex00 / 255.f;
+	const float tex10 = (float)utex10 / 255.f;
+	const float tex20 = (float)utex20 / 255.f;
+
+	const float tex01 = (float)utex01 / 255.f;
+	const float tex21 = (float)utex21 / 255.f;
+
+	const float tex02 = (float)utex02 / 255.f;
+	const float tex12 = (float)utex12 / 255.f;
+	const float tex22 = (float)utex22 / 255.f;
+
+	const float Gx = tex00 - tex20 + 2.0f * tex01 - 2.0f * tex21 + tex02 - tex22;
+	const float Gy = tex00 + 2.0f * tex10 + tex20 - tex02 - 2.0f * tex12 - tex22;
+	const float3 n = make_float3(Gx, Gy, 1.f);
+
+	return n;
+}
+
+inline float3 TextureData_SampleNormalFromBump_half4(__global half const* mydatah, int width, int height, int t0, int s0)
+{
+	int t0minus = clamp(t0 - 1, 0, height - 1);
+	int t0plus = clamp(t0 + 1, 0, height - 1);
+	int s0minus = clamp(s0 - 1, 0, width - 1);
+	int s0plus = clamp(s0 + 1, 0, width - 1);
+
+	const float tex00 = vload_half4(width * t0minus + s0minus, mydatah).x;
+	const float tex10 = vload_half4(width * t0minus + (s0), mydatah).x;
+	const float tex20 = vload_half4(width * t0minus + s0plus, mydatah).x;
+
+	const float tex01 = vload_half4(width * (t0)+s0minus, mydatah).x;
+	const float tex21 = vload_half4(width * (t0)+s0plus, mydatah).x;
+
+	const float tex02 = vload_half4(width * t0plus + s0minus, mydatah).x;
+	const float tex12 = vload_half4(width * t0plus + (s0), mydatah).x;
+	const float tex22 = vload_half4(width * t0plus + s0plus, mydatah).x;
+
+	const float Gx = tex00 - tex20 + 2.0f * tex01 - 2.0f * tex21 + tex02 - tex22;
+	const float Gy = tex00 + 2.0f * tex10 + tex20 - tex02 - 2.0f * tex12 - tex22;
+	const float3 n = make_float3(Gx, Gy, 1.f);
+
+	return n;
+}
+
+inline float3 TextureData_SampleNormalFromBump_float4(__global float4 const* mydataf, int width, int height, int t0, int s0)
+{
+	int t0minus = clamp(t0 - 1, 0, height - 1);
+	int t0plus = clamp(t0 + 1, 0, height - 1);
+	int s0minus = clamp(s0 - 1, 0, width - 1);
+	int s0plus = clamp(s0 + 1, 0, width - 1);
+
+	const float tex00 = (*(mydataf + width * t0minus + s0minus)).x;
+	const float tex10 = (*(mydataf + width * t0minus + (s0))).x;
+	const float tex20 = (*(mydataf + width * t0minus + s0plus)).x;
+
+	const float tex01 = (*(mydataf + width * (t0)+s0minus)).x;
+	const float tex21 = (*(mydataf + width * (t0)+s0plus)).x;
+
+	const float tex02 = (*(mydataf + width * t0plus + s0minus)).x;
+	const float tex12 = (*(mydataf + width * t0plus + (s0))).x;
+	const float tex22 = (*(mydataf + width * t0plus + s0plus)).x;
+
+	const float Gx = tex00 - tex20 + 2.0f * tex01 - 2.0f * tex21 + tex02 - tex22;
+	const float Gy = tex00 + 2.0f * tex10 + tex20 - tex02 - 2.0f * tex12 - tex22;
+	const float3 n = make_float3(Gx, Gy, 1.f);
+
+	return n;
+}
+
 /// Sample 2D texture
+inline
 float3 Texture_SampleBump(float2 uv, TEXTURE_ARG_LIST_IDX(texidx))
 {
     // Get width and height
@@ -222,84 +314,55 @@ float3 Texture_SampleBump(float2 uv, TEXTURE_ARG_LIST_IDX(texidx))
     int s0 = clamp((int)floor(uv.x * width), 0, width - 1);
     int t0 = clamp((int)floor(uv.y * height), 0, height - 1);
 
+	int s1 = clamp(s0 + 1, 0, width - 1);
+	int t1 = clamp(t0 + 1, 0, height - 1);
+
+	// Calculate weights for linear filtering
+	float wx = uv.x * width - floor(uv.x * width);
+	float wy = uv.y * height - floor(uv.y * height);
+
     switch (textures[texidx].fmt)
     {
     case RGBA32:
     {
         __global float3 const* mydataf = (__global float3 const*)mydata;
 
-        // Sobel filter
-        const float tex00 = (*(mydataf + width * (t0 - 1) + (s0-1))).x;
-        const float tex10 = (*(mydataf + width * (t0 - 1) + (s0))).x;
-        const float tex20 = (*(mydataf + width * (t0 - 1) + (s0 + 1))).x;
+		float3 n00 = TextureData_SampleNormalFromBump_float4(mydataf, width, height, t0, s0);
+		float3 n01 = TextureData_SampleNormalFromBump_float4(mydataf, width, height, t0, s1);
+		float3 n10 = TextureData_SampleNormalFromBump_float4(mydataf, width, height, t1, s0);
+		float3 n11 = TextureData_SampleNormalFromBump_float4(mydataf, width, height, t1, s1);
 
-        const float tex01 = (*(mydataf + width * (t0) + (s0 - 1))).x;
-        const float tex21 = (*(mydataf + width * (t0) + (s0 + 1))).x;
+		float3 n = lerp3(lerp3(n00, n01, wx), lerp3(n10, n11, wx), wy);
 
-        const float tex02 = (*(mydataf + width * (t0 + 1) + (s0 - 1))).x;
-        const float tex12 = (*(mydataf + width * (t0 + 1) + (s0))).x;
-        const float tex22 = (*(mydataf + width * (t0 + 1) + (s0 + 1))).x;
-
-        const float Gx = tex00 - tex20 + 2.0f * tex01 - 2.0f * tex21 + tex02 - tex22;
-        const float Gy = tex00 + 2.0f * tex10 + tex20 - tex02 - 2.0f * tex12 - tex22;
-        const float3 n = make_float3(Gx, Gy, 1.f);
-
-        return 0.5f * normalize(n) + make_float3(0.5f, 0.5f, 0.5f);
+		return 0.5f * normalize(n) + make_float3(0.5f, 0.5f, 0.5f);
     }
 
     case RGBA16:
     {
         __global half const* mydatah = (__global half const*)mydata;
 
-        const float tex00 = vload_half4(width * (t0 - 1) + (s0 - 1), mydatah).x;
-        const float tex10 = vload_half4(width * (t0 - 1) + (s0), mydatah).x;
-        const float tex20 = vload_half4(width * (t0 - 1) + (s0 + 1), mydatah).x;
+		float3 n00 = TextureData_SampleNormalFromBump_half4(mydatah, width, height, t0, s0);
+		float3 n01 = TextureData_SampleNormalFromBump_half4(mydatah, width, height, t0, s1);
+		float3 n10 = TextureData_SampleNormalFromBump_half4(mydatah, width, height, t1, s0);
+		float3 n11 = TextureData_SampleNormalFromBump_half4(mydatah, width, height, t1, s1);
 
-        const float tex01 = vload_half4(width * (t0)+(s0 - 1), mydatah).x;
-        const float tex21 = vload_half4(width * (t0)+(s0 + 1), mydatah).x;
+		float3 n = lerp3(lerp3(n00, n01, wx), lerp3(n10, n11, wx), wy);
 
-        const float tex02 = vload_half4(width * (t0 + 1) + (s0 - 1), mydatah).x;
-        const float tex12 = vload_half4(width * (t0 + 1) + (s0), mydatah).x;
-        const float tex22 = vload_half4(width * (t0 + 1) + (s0 + 1), mydatah).x;
-
-        const float Gx = tex00 - tex20 + 2.0f * tex01 - 2.0f * tex21 + tex02 - tex22;
-        const float Gy = tex00 + 2.0f * tex10 + tex20 - tex02 - 2.0f * tex12 - tex22;
-        const float3 n = make_float3(Gx, Gy, 1.f);
-
-        return 0.5f * normalize(n) + make_float3(0.5f, 0.5f, 0.5f);
+		return 0.5f * normalize(n) + make_float3(0.5f, 0.5f, 0.5f);
     }
 
     case RGBA8:
     {
         __global uchar4 const* mydatac = (__global uchar4 const*)mydata;
 
-        const uchar utex00 = (*(mydatac + width * (t0 - 1) + (s0 - 1))).x;
-        const uchar utex10 = (*(mydatac + width * (t0 - 1) + (s0))).x;
-        const uchar utex20 = (*(mydatac + width * (t0 - 1) + (s0 + 1))).x;
+		float3 n00 = TextureData_SampleNormalFromBump_uchar4(mydatac, width, height, t0, s0);
+		float3 n01 = TextureData_SampleNormalFromBump_uchar4(mydatac, width, height, t0, s1);
+		float3 n10 = TextureData_SampleNormalFromBump_uchar4(mydatac, width, height, t1, s0);
+		float3 n11 = TextureData_SampleNormalFromBump_uchar4(mydatac, width, height, t1, s1);
 
-        const uchar utex01 = (*(mydatac + width * (t0)+(s0 - 1))).x;
-        const uchar utex21 = (*(mydatac + width * (t0)+(s0 + 1))).x;
+		float3 n = lerp3(lerp3(n00, n01, wx), lerp3(n10, n11, wx), wy);
 
-        const uchar utex02 = (*(mydatac + width * (t0 + 1) + (s0 - 1))).x;
-        const uchar utex12 = (*(mydatac + width * (t0 + 1) + (s0))).x;
-        const uchar utex22 = (*(mydatac + width * (t0 + 1) + (s0 + 1))).x;
-
-        const float tex00 = (float)utex00 / 255.f;
-        const float tex10 = (float)utex10 / 255.f;
-        const float tex20 = (float)utex20 / 255.f;
-
-        const float tex01 = (float)utex01 / 255.f;
-        const float tex21 = (float)utex21 / 255.f;
-
-        const float tex02 = (float)utex02 / 255.f;
-        const float tex12 = (float)utex12 / 255.f;
-        const float tex22 = (float)utex22 / 255.f;
-
-        const float Gx = tex00 - tex20 + 2.0f * tex01 - 2.0f * tex21 + tex02 - tex22;
-        const float Gy = tex00 + 2.0f * tex10 + tex20 - tex02 - 2.0f * tex12 - tex22;
-        const float3 n = make_float3(Gx, Gy, 1.f);
-
-        return 0.5f * normalize(n) + make_float3(0.5f, 0.5f, 0.5f);
+		return 0.5f * normalize(n) + make_float3(0.5f, 0.5f, 0.5f);
     }
 
     default:
