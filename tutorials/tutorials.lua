@@ -4,6 +4,9 @@ if fileExists("./triangle/triangle.lua") then
     dofile("./triangle/triangle.lua")
 end
 
+if fileExists("./triangle_light/triangle_light.lua") then
+    dofile("./triangle_light/triangle_light.lua")
+end
 
 if fileExists("./cornellbox/cornellbox.lua") then
     dofile("./cornellbox/cornellbox.lua")

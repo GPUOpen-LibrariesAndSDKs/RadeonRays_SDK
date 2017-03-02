@@ -4,7 +4,7 @@
 #include <cassert>
 #include <iostream>
 #include <memory>
-#include "shader_manager.h"
+#include "../tools/shader_manager.h"
 
 using namespace RadeonRays;
 
@@ -121,12 +121,10 @@ int main(int argc, char* argv[])
             nativeidx = idx;
         }
     }
-
     assert(nativeidx != -1);
     IntersectionApi* api = IntersectionApi::Create(nativeidx);
 
     Shape* shape = api->CreateMesh(g_vertices, 3, 3 * sizeof(float), g_indices, 0, g_numfaceverts, 1);
-
     assert(shape != nullptr);
     api->AttachShape(shape);
 
