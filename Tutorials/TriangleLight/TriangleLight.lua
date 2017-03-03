@@ -1,9 +1,9 @@
-project "TutorialCornellBoxShadow"
+project "TutorialTriangleLight"
     kind "ConsoleApp"
-    location "../cornellbox_shadow"
+    location "../TriangleLight"
     links {"RadeonRays", "CLW", "Calc"}
-    files { "../cornellbox_shadow/**.h", "../cornellbox_shadow/**.cpp", "../tools/**.h", "../tools/**.cpp", "../cornellbox_shadow/**.fsh" , "../cornellbox_shadow/**.vsh"}
-    includedirs{ "../../RadeonRays/include", "../../CLW", "../tools", "." }
+    files { "../TriangleLight/**.h", "../TriangleLight/**.cpp", "../Tools/shader_manager.h", "../Tools/shader_manager.cpp", "../TriangleLight/**.fsh", "../TriangleLight/**.vsh"}
+    includedirs{ "../../RadeonRays/include", "../../CLW", "../Tools", "." }
 
     if os.is("macosx") then
         sysincludedirs {"/usr/local/include"}

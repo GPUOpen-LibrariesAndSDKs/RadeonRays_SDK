@@ -260,8 +260,8 @@ else
     end
 
     if _OPTIONS["tutorials"] then
-        if fileExists("./tutorials/tutorials.lua") then
-            dofile("./tutorials/tutorials.lua")
+        if fileExists("./Tutorials/Tutorials.lua") then
+            dofile("./Tutorials/Tutorials.lua")
         end
     end
 

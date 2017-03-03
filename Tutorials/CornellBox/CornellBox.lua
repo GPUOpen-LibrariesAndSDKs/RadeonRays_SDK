@@ -1,9 +1,9 @@
-project "TutorialTriangleLight"
+project "TutorialCornellBox"
     kind "ConsoleApp"
-    location "../triangle_light"
+    location "../CornellBox"
     links {"RadeonRays", "CLW", "Calc"}
-    files { "../triangle_light/**.h", "../triangle_light/**.cpp", "../tools/**.h", "../tools/**.cpp", "../triangle_light/**.fsh", "../triangle_light/**.vsh"}
-    includedirs{ "../../RadeonRays/include", "../../CLW", "../tools", "." }
+    files { "../CornellBox/**.h", "../CornellBox/**.cpp", "../Tools/**.h", "../Tools/**.cpp", "../CornellBox/**.fsh" , "../CornellBox/**.vsh"}
+    includedirs{ "../../RadeonRays/include", "../../CLW", "../Tools", "." }
 
     if os.is("macosx") then
         sysincludedirs {"/usr/local/include"}
