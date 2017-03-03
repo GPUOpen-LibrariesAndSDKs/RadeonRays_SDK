@@ -35,11 +35,6 @@ namespace {
         1.f,-1.f,0.f,
         0.f,1.f,0.f,
     };
-    float const g_normals[] = {
-        -1.f,-1.f,1.f,
-        1.f,-1.f,1.f,
-        0.f,1.f,1.f,
-    };
     int const g_indices[] = { 0, 1, 2 };
     const int g_numfaceverts[] = { 3 };
     
@@ -68,6 +63,7 @@ void InitGl()
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(g_indices), g_indices, GL_STATIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    //texture
     glGenTextures(1, &g_texture);
     glBindTexture(GL_TEXTURE_2D, g_texture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -125,10 +121,11 @@ int main(int argc, char* argv[])
     }
 #endif
 
+    //prepare triangle for drawing
     InitGl();
 
+    //choose device
     int nativeidx = -1;
-
     // Always use OpenCL
     IntersectionApi::SetPlatform(DeviceInfo::kOpenCL);
 
@@ -145,32 +142,35 @@ int main(int argc, char* argv[])
     assert(nativeidx != -1);
     IntersectionApi* api = IntersectionApi::Create(nativeidx);
 
+    //adding triangle to tracing scene
     Shape* shape = api->CreateMesh(g_vertices, 3, 3 * sizeof(float), g_indices, 0, g_numfaceverts, 1);
     assert(shape != nullptr);
     api->AttachShape(shape);
+    //commit scene changes
+    api->Commit();
 
-    // Rays
+    // prepare rays for intersection
     ray rays[3];
-
-    // Prepare the ray
     rays[0].o = float4(0.f, 0.f, -1.f, 1000.f);
     rays[0].d = float3(0.f, 0.f, 10.f);
     rays[1].o = float4(0.f, 0.5f, -10.f, 1000.f);
     rays[1].d = float3(0.f, 0.f, 1.f);
     rays[2].o = float4(0.4f, 0.f, -10.f, 1000.f);
     rays[2].d = float3(0.f, 0.f, 1.f);
-
-    // Intersection and hit data
-    Intersection isect[3];
-
     auto ray_buffer = api->CreateBuffer(3 * sizeof(ray), rays);
+
+    // prepare intersection data
+    Intersection isect[3];
     auto isect_buffer = api->CreateBuffer(3 * sizeof(Intersection), nullptr);
-    api->Commit();
     
+    //intersection
     api->QueryIntersection(ray_buffer, 3, isect_buffer, nullptr, nullptr);
+    
+    //get results
     Event* e = nullptr;
     Intersection* tmp = nullptr;
     api->MapBuffer(isect_buffer, kMapRead, 0, 3 * sizeof(Intersection), (void**)&tmp, &e);
+    //RadeonRays calls are asynchronous, so need to wait for calculation to complete.
     e->Wait();
     api->DeleteEvent(e);
     e = nullptr;
@@ -178,6 +178,8 @@ int main(int argc, char* argv[])
     isect[0] = tmp[0];
     isect[1] = tmp[1];
     isect[2] = tmp[2];
+
+    //preparing triangle texture
     std::vector<unsigned char> tex_data(g_window_width * g_window_height * 4);
     for (int i = 0; i < g_window_width * g_window_height; ++i)
     {
@@ -187,10 +189,12 @@ int main(int argc, char* argv[])
         tex_data[4 * i + 3] = 255;
     }
 
+    //marking ray hits on triangle texture as red dots
     for (int i = 0; i < 3; ++i)
     {
         if (isect[i].shapeid == kNullId)
             continue;
+
         float x = g_vertices[3] * isect[i].uvwt.x + g_vertices[6] * isect[i].uvwt.y + g_vertices[0] * (1 - isect[i].uvwt.x - isect[i].uvwt.y);
         float y = g_vertices[4] * isect[i].uvwt.x + g_vertices[7] * isect[i].uvwt.y + g_vertices[1] * (1 - isect[i].uvwt.x - isect[i].uvwt.y);
 
@@ -200,15 +204,16 @@ int main(int argc, char* argv[])
         tex_data[k*4 + 2] = 0;
     }
 
+    //update texture
     glBindTexture(GL_TEXTURE_2D, g_texture);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, g_window_width, g_window_height, GL_RGBA, GL_UNSIGNED_BYTE, tex_data.data());
     glBindTexture(GL_TEXTURE_2D, NULL);
 
+    //draw scene and start main loop.
     glutDisplayFunc(DrawScene);
-    glutMainLoop(); //Start the main loop
+    glutMainLoop();
 
-    api->DetachShape(shape);
-    api->DeleteShape(shape);
+    //cleanup
     IntersectionApi::Delete(api);
 
     return 0;

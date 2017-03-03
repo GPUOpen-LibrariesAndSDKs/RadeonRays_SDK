@@ -103,31 +103,27 @@ void InitGl()
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-
+    //texture
     glGenTextures(1, &g_texture);
     glBindTexture(GL_TEXTURE_2D, g_texture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, g_window_width, g_window_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 void DrawScene()
 {
-
     glDisable(GL_DEPTH_TEST);
     glViewport(0, 0, g_window_width, g_window_height);
-
     glClear(GL_COLOR_BUFFER_BIT);
 
     glBindBuffer(GL_ARRAY_BUFFER, g_vertex_buffer);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g_index_buffer);
 
+    //shader data
     GLuint program = g_shader_manager->GetProgram("simple");
     glUseProgram(program);
-
     GLuint texloc = glGetUniformLocation(program, "g_Texture");
     assert(texloc >= 0);
 
@@ -138,13 +134,12 @@ void DrawScene()
 
     GLuint position_attr = glGetAttribLocation(program, "inPosition");
     GLuint texcoord_attr = glGetAttribLocation(program, "inTexcoord");
-
     glVertexAttribPointer(position_attr, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 5, 0);
     glVertexAttribPointer(texcoord_attr, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void*)(sizeof(float) * 3));
-
     glEnableVertexAttribArray(position_attr);
     glEnableVertexAttribArray(texcoord_attr);
 
+    //draw rectanle
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, nullptr);
 
     glDisableVertexAttribArray(texcoord_attr);
@@ -154,8 +149,6 @@ void DrawScene()
     glUseProgram(0);
 
     glFinish();
-
-
     glutSwapBuffers();
 }
 
@@ -174,9 +167,11 @@ int main(int argc, char* argv[])
         return -1;
     }
 #endif
-
+    // Prepare rectangle for drawing texture
+    // rendered using intersection results
     InitGl();
 
+    // Choose device
     int nativeidx = -1;
     // Always use OpenCL
     IntersectionApi::SetPlatform(DeviceInfo::kOpenCL);
@@ -191,23 +186,20 @@ int main(int argc, char* argv[])
             nativeidx = idx;
         }
     }
-
     assert(nativeidx != -1);
     IntersectionApi* api = IntersectionApi::Create(nativeidx);
 
-    //Shapes
+    // Adding triangle to tracing scene
     Shape* shape = api->CreateMesh(g_vertices, 3, 3 * sizeof(float), g_indices, 0, g_numfaceverts, 1);
     assert(shape != nullptr);
     api->AttachShape(shape);
-
-    //point light position
-    float3 light = { 0.f, 0.f, 0.25f };
+    // Commit scene changes
+    api->Commit();
 
     const int k_raypack_size = g_window_height * g_window_width;
-    // Rays
-    std::vector<ray> rays(k_raypack_size);
 
-    // Prepare the ray
+    // Prepare rays. One for each texture pixel.
+    std::vector<ray> rays(k_raypack_size);
     for (int i = 0; i < g_window_height; ++i)
         for (int j = 0; j < g_window_width; ++j)
         {
@@ -219,27 +211,34 @@ int main(int argc, char* argv[])
             rays[i * g_window_width + j].o = float3(x, y, z, 1000.f);
             rays[i * g_window_width + j].d = float3{0.f, 0.f, -1.f};
         }
-
-    // Intersection and hit data
-    std::vector<Intersection> isect(k_raypack_size);
-
     Buffer* ray_buffer = api->CreateBuffer(rays.size() * sizeof(ray), rays.data());
+
+    // Intersection data
+    std::vector<Intersection> isect(k_raypack_size);
     Buffer* isect_buffer = api->CreateBuffer(isect.size() * sizeof(Intersection), nullptr);
 
-    api->Commit();
+    // Intersection
     api->QueryIntersection(ray_buffer, k_raypack_size, isect_buffer, nullptr, nullptr);
+    
+    // Get results
     Event* e = nullptr;
     Intersection* tmp = nullptr;
     api->MapBuffer(isect_buffer, kMapRead, 0, isect.size() * sizeof(Intersection), (void**)&tmp, &e);
+    // RadeonRays calls are asynchronous, so need to wait for calculation to complete.
     e->Wait();
     api->DeleteEvent(e);
     e = nullptr;
 
+    // Copy results
     for (int i = 0; i < k_raypack_size; ++i)
     {
         isect[i] = tmp[i];
     }
 
+    // Point light position
+    float3 light = { 0.f, 0.f, 0.25f };
+
+    // Render triangle and lightning
     std::vector<unsigned char> tex_data(k_raypack_size * 4);
     for (int i = 0; i < k_raypack_size; ++i)
     {
@@ -248,14 +247,16 @@ int main(int argc, char* argv[])
 
         if (shape_id != kNullId)
         {
+            // Calculate position and normal of the intersection point
             float3 pos = ConvertFromBarycentric(g_vertices, g_indices, prim_id, isect[i].uvwt);
             float3 norm = ConvertFromBarycentric(g_normals, g_indices, prim_id, isect[i].uvwt);
             norm.normalize();
+
+            // Calculate lighting
             float3 col = { 0.f, 0.f, 0.f };
             float3 light_dir = light - pos;
             light_dir.normalize();
             float dot_prod = dot(norm, light_dir);
-
             if (dot_prod > 0)
                 col += dot_prod * g_color;
 
@@ -266,18 +267,24 @@ int main(int argc, char* argv[])
         }
         else
         {
+            // Draw white pixels for misses
             tex_data[i * 4] = 255;
             tex_data[i * 4 + 1] = 255;
             tex_data[i * 4 + 2] = 255;
             tex_data[i * 4 + 3] = 255;
         }
     }
+
+    // Update texture data
     glBindTexture(GL_TEXTURE_2D, g_texture);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, g_window_width, g_window_height, GL_RGBA, GL_UNSIGNED_BYTE, tex_data.data());
     glBindTexture(GL_TEXTURE_2D, NULL);
 
+    // Start main loop.
     glutDisplayFunc(DrawScene);
-    glutMainLoop(); //Start the main loop
+    glutMainLoop(); 
+
+    // Cleanup
     IntersectionApi::Delete(api);
 
     return 0;

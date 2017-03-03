@@ -40,24 +40,6 @@ namespace {
     int g_window_width = 640;
     int g_window_height = 480;
     std::unique_ptr<ShaderManager> g_shader_manager;
-    char g_color[] = { 255, 0 ,0,
-                        0, 255, 0,
-                        0, 0, 255,
-                        0, 255, 255,
-                        255, 0, 255,
-                        255, 255, 0,
-                        255, 255, 255,
-                        100, 100, 100 };
-}
-
-void CheckGlErr()
-{
-    auto err = glGetError();
-    while (err != GL_NO_ERROR)
-    {
-        std::cout << "err " << err << std::endl;
-        err = glGetError();
-    }
 }
 
 void InitData()
@@ -121,18 +103,15 @@ void InitGl()
     // fill data
     glBufferData(GL_ARRAY_BUFFER, sizeof(quad_vdata), quad_vdata, GL_STATIC_DRAW);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(quad_idata), quad_idata, GL_STATIC_DRAW);
-
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-
+    // texture
     glGenTextures(1, &g_texture);
     glBindTexture(GL_TEXTURE_2D, g_texture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, g_window_width, g_window_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
@@ -147,9 +126,9 @@ void DrawScene()
     glBindBuffer(GL_ARRAY_BUFFER, g_vertex_buffer);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g_index_buffer);
 
+    // shader data
     GLuint program = g_shader_manager->GetProgram("simple");
     glUseProgram(program);
-
     GLuint texloc = glGetUniformLocation(program, "g_Texture");
     assert(texloc >= 0);
 
@@ -160,13 +139,12 @@ void DrawScene()
 
     GLuint position_attr = glGetAttribLocation(program, "inPosition");
     GLuint texcoord_attr = glGetAttribLocation(program, "inTexcoord");
-
     glVertexAttribPointer(position_attr, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 5, 0);
     glVertexAttribPointer(texcoord_attr, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void*)(sizeof(float) * 3));
-
     glEnableVertexAttribArray(position_attr);
     glEnableVertexAttribArray(texcoord_attr);
 
+    // draw rectanle
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, nullptr);
 
     glDisableVertexAttribArray(texcoord_attr);
@@ -176,8 +154,6 @@ void DrawScene()
     glUseProgram(0);
 
     glFinish();
-    
-
     glutSwapBuffers();
 }
 
@@ -196,15 +172,17 @@ int main(int argc, char* argv[])
         return -1;
     }
 #endif
-
+    // Prepare rectangle for drawing texture
+    // rendered using intersection results
     InitGl();
+
+    // Load CornellBox model
     InitData();
 
+    // Choose device
     int nativeidx = -1;
-
     // Always use OpenCL
     IntersectionApi::SetPlatform(DeviceInfo::kOpenCL);
-
     for (auto idx = 0U; idx < IntersectionApi::GetDeviceCount(); ++idx)
     {
         DeviceInfo devinfo;
@@ -215,12 +193,10 @@ int main(int argc, char* argv[])
             nativeidx = idx;
         }
     }
-
     assert(nativeidx != -1);
     IntersectionApi* api = IntersectionApi::Create(nativeidx);
     
-    //Shapes
-    float3 light = {-0.01f, 1.85f, 0.1f};
+    // Adding meshes to tracing scene
     for (int id = 0; id < g_objshapes.size(); ++id)
     {
         shape_t& objshape = g_objshapes[id];
@@ -234,12 +210,13 @@ int main(int argc, char* argv[])
         api->AttachShape(shape);
         shape->SetId(id);
     }
+    // Ñommit scene changes
+    api->Commit();
 
     const int k_raypack_size = g_window_height * g_window_width;
-    // Rays
+    
+    // Prepare rays. One for each texture pixel.
     std::vector<ray> rays(k_raypack_size);
-
-    // Prepare the ray
     float4 camera_pos = { 0.f, 1.f, 3.f, 1000.f };
     for (int i = 0; i < g_window_height; ++i)
         for (int j = 0; j < g_window_width; ++j)
@@ -249,27 +226,29 @@ int main(int argc, char* argv[])
             float x = -1.f + xstep * (float)j;
             float y = ystep * (float)i;
             float z = 1.f;
+            // Perspective view
             rays[i * g_window_width + j].o = camera_pos;
             rays[i * g_window_width + j].d = float3(x - camera_pos.x, y - camera_pos.y, z - camera_pos.z);
         }
-
-    // Intersection and hit data
-    std::vector<Intersection> isect(k_raypack_size);
-
     Buffer* ray_buffer = api->CreateBuffer(rays.size() * sizeof(ray), rays.data());
+
+    // Intersection data
+    std::vector<Intersection> isect(k_raypack_size);
     Buffer* isect_buffer = api->CreateBuffer(isect.size() * sizeof(Intersection), nullptr);
     
-    api->Commit();
+    // Intersection
     api->QueryIntersection(ray_buffer, k_raypack_size, isect_buffer, nullptr, nullptr);
 
-    //get intersection info
+    // Get results
     Event* e = nullptr;
     Intersection* tmp = nullptr;
     api->MapBuffer(isect_buffer, kMapRead, 0, isect.size() * sizeof(Intersection), (void**)&tmp, &e);
+    // RadeonRays calls are asynchronous, so need to wait for calculation to complete.
     e->Wait();
     api->DeleteEvent(e);
     e = nullptr;
     
+    // Copy results
     for (int i = 0; i < k_raypack_size; ++i)
     {
         isect[i] = tmp[i];
@@ -277,7 +256,11 @@ int main(int argc, char* argv[])
     api->UnmapBuffer(isect_buffer, tmp, nullptr);
     tmp = nullptr;
 
-    //shadow rays
+    // Point light position
+    float3 light = { -0.01f, 1.85f, 0.1f };
+
+    // Shadow rays
+    // 
     std::vector<ray> shadow_rays(k_raypack_size);
     for (int i = 0; i < g_window_height; ++i)
         for (int j = 0; j < g_window_width; ++j)
@@ -286,6 +269,7 @@ int main(int argc, char* argv[])
             int shape_id = isect[k].shapeid;
             int prim_id = isect[k].primid;
             
+            // Need shadow rays only for intersections
             if (shape_id == kNullId || prim_id == kNullId)
             {
                 shadow_rays[k].SetActive(false);
@@ -297,26 +281,24 @@ int main(int argc, char* argv[])
             shadow_rays[k].d = dir;
             shadow_rays[k].d.normalize();
             shadow_rays[k].o = pos + shadow_rays[k].d * std::numeric_limits<float>::epsilon();
-            shadow_rays[k].SetMaxT(std::sqrt(dir.sqnorm()) - std::numeric_limits<float>::epsilon());
+            shadow_rays[k].SetMaxT(std::sqrt(dir.sqnorm()));
 
         }
-
-    int* tmp_occl1 = new int[k_raypack_size];
-    for (int i = 0; i < k_raypack_size; ++i)
-    {
-        tmp_occl1[i] = -1;
-    }
     Buffer* shadow_rays_buffer = api->CreateBuffer(shadow_rays.size() * sizeof(ray), shadow_rays.data());
-    Buffer* occl_buffer = api->CreateBuffer(k_raypack_size * sizeof(int), tmp_occl1);
+    Buffer* occl_buffer = api->CreateBuffer(k_raypack_size * sizeof(int), nullptr);
 
     int* tmp_occl = nullptr;
+    
+    // Occlusion
     api->QueryOcclusion(shadow_rays_buffer, k_raypack_size, occl_buffer, nullptr, nullptr);
+
+    // Results
     api->MapBuffer(occl_buffer, kMapRead, 0, k_raypack_size * sizeof(int), (void**)&tmp_occl, &e);
     e->Wait();
     api->DeleteEvent(e);
     e = nullptr;
 
-    //draw
+    // Draw
     std::vector<unsigned char> tex_data(k_raypack_size * 4);
     for (int i = 0; i < k_raypack_size ; ++i)
     {
@@ -328,7 +310,9 @@ int main(int argc, char* argv[])
             mesh_t& mesh = g_objshapes[shape_id].mesh;
             int mat_id = mesh.material_ids[prim_id];
             material_t& mat = g_objmaterials[mat_id];
-            if (tmp_occl[i] != kNullId && tmp_occl[i] != shape_id)
+            
+            // theck there is no shapes between intersection point and light source
+            if (tmp_occl[i] != kNullId)
             {
                 continue;
             }
@@ -337,14 +321,16 @@ int main(int argc, char* argv[])
                                 mat.diffuse[1],
                                 mat.diffuse[2] };
 
+            // Calculate position and normal of the intersection point
             float3 pos = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
             float3 norm = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
             norm.normalize();
+
+            // Calculate lighting
             float3 col = { 0.f, 0.f, 0.f };
             float3 light_dir = light - pos;
             light_dir.normalize();
             float dot_prod = dot(norm, light_dir);
-
             if (dot_prod > 0)
                 col += dot_prod * diff_col;
 
@@ -354,12 +340,17 @@ int main(int argc, char* argv[])
             tex_data[i * 4 + 3] = 255;
         }
     }
+
+    // Update texture data
     glBindTexture(GL_TEXTURE_2D, g_texture);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, g_window_width, g_window_height, GL_RGBA, GL_UNSIGNED_BYTE, tex_data.data());
     glBindTexture(GL_TEXTURE_2D, NULL);
 
+    // Start the main loop
     glutDisplayFunc(DrawScene);
-    glutMainLoop(); //Start the main loop
+    glutMainLoop();
+
+    // Cleanup
     IntersectionApi::Delete(api);
 
     return 0;
