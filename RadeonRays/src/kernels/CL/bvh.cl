@@ -36,7 +36,8 @@ DEFINES
 /*************************************************************************
  TYPE DEFINITIONS
  **************************************************************************/
-#define STARTIDX(x)     (((int)(x->pmin.w)))
+#define STARTIDX(x)     (((int)(x->pmin.w)) >> 4)
+#define NUMPRIMS(x)     (((int)(x->pmin.w)) & 0xF)
 #define LEAFNODE(x)     (((x).pmin.w) != -1.f)
 
 typedef struct 
@@ -63,6 +64,7 @@ HELPER FUNCTIONS
 BVH FUNCTIONS
 **************************************************************************/
 //  intersect a ray with leaf BVH node
+inline
 void IntersectLeafClosest(
     SceneData const* scenedata,
     BvhNode const* node,
@@ -74,27 +76,33 @@ void IntersectLeafClosest(
     Face face;
 
     int start = STARTIDX(node);
-    face = scenedata->faces[start];
-    v1 = scenedata->vertices[face.idx[0]];
-    v2 = scenedata->vertices[face.idx[1]];
-    v3 = scenedata->vertices[face.idx[2]];
+    int numprims = NUMPRIMS(node);
+
+    for (int i = 0; i < numprims; ++i)
+    {
+        face = scenedata->faces[start + i];
+        v1 = scenedata->vertices[face.idx[0]];
+        v2 = scenedata->vertices[face.idx[1]];
+        v3 = scenedata->vertices[face.idx[2]];
 
 #ifdef RR_RAY_MASK
-    int shapemask = scenedata->shapes[face.shapeidx].mask;
+        int shapemask = scenedata->shapes[face.shapeidx].mask;
 
-    if (Ray_GetMask(r) & shapemask)
+        if (Ray_GetMask(r) & shapemask)
 #endif
 
-    {
-        if (IntersectTriangle(r, v1, v2, v3, isect))
         {
-            isect->primid = face.id;
-            isect->shapeid = scenedata->shapes[face.shapeidx].id;
+            if (IntersectTriangle(r, v1, v2, v3, isect))
+            {
+                isect->primid = face.id;
+                isect->shapeid = face.shapeidx;
+            }
         }
     }
 }
 
 //  intersect a ray with leaf BVH node
+inline
 bool IntersectLeafAny(
     SceneData const* scenedata,
     BvhNode const* node,
@@ -105,20 +113,25 @@ bool IntersectLeafAny(
     Face face;
 
     int start = STARTIDX(node);
-    face = scenedata->faces[start];
-    v1 = scenedata->vertices[face.idx[0]];
-    v2 = scenedata->vertices[face.idx[1]];
-    v3 = scenedata->vertices[face.idx[2]];
+    int numprims = NUMPRIMS(node);
+
+    for (int i = 0; i < numprims; ++i)
+    {
+        face = scenedata->faces[start + i];
+        v1 = scenedata->vertices[face.idx[0]];
+        v2 = scenedata->vertices[face.idx[1]];
+        v3 = scenedata->vertices[face.idx[2]];
 
 #ifdef RR_RAY_MASK
-    int shapemask = scenedata->shapes[face.shapeidx].mask;
+        int shapemask = scenedata->shapes[face.shapeidx].mask;
 
-    if (Ray_GetMask(r) & shapemask)
+        if (Ray_GetMask(r) & shapemask)
 #endif
-    {
-        if (IntersectTriangleP(r, v1, v2, v3))
         {
-            return true;
+            if (IntersectTriangleP(r, v1, v2, v3))
+            {
+                return true;
+            }
         }
     }
 
@@ -127,47 +140,60 @@ bool IntersectLeafAny(
 
 
 // intersect Ray against the whole BVH structure
+inline
 void IntersectSceneClosest(SceneData const* scenedata,  ray const* r, Intersection* isect)
 {
-    const float3 invdir  = make_float3(1.f, 1.f, 1.f)/r->d.xyz;
+    const float3 invdir  = native_recip(r->d.xyz);
 
     isect->uvwt = make_float4(0.f, 0.f, 0.f, r->o.w);
     isect->shapeid = -1;
     isect->primid = -1;
 
     int idx = 0;
+    int deferred[4];
+    int cnt = 0;
 
     while (idx != -1)
     {
         // Try intersecting against current node's bounding box.
         // If this is the leaf try to intersect against contained triangle.
-        BvhNode node = scenedata->nodes[idx];
-        if (IntersectBox(r, invdir, node, isect->uvwt.w))
+        while (idx != -1 && cnt < 4)
         {
-            if (LEAFNODE(node))
+            BvhNode node = scenedata->nodes[idx];
+            if (IntersectBox(r, invdir, node, isect->uvwt.w))
             {
-                IntersectLeafClosest(scenedata, &node, r, isect);
-                idx = (int)(node.pmax.w);
+                if (LEAFNODE(node))
+                {
+                    deferred[cnt++] = idx;
+                    idx = (int)(node.pmax.w);
+                }
+                // Traverse child nodes otherwise.
+                else
+                {
+                    ++idx;
+                }
             }
-            // Traverse child nodes otherwise.
             else
             {
-                ++idx;
+                idx = (int)(node.pmax.w);
             }
         }
-        else
+
+        for (int i = 0; i < cnt; ++i)
         {
-            idx = (int)(node.pmax.w);
+            BvhNode node = scenedata->nodes[deferred[i]];
+            IntersectLeafClosest(scenedata, &node, r, isect);
         }
-    };
+
+        cnt = 0;
+    }
 }
 
-
-
 // intersect Ray against the whole BVH structure
+inline
 bool IntersectSceneAny(SceneData const* scenedata,  ray const* r)
 {
-    float3 invdir  = make_float3(1.f, 1.f, 1.f)/r->d.xyz;
+    float3 invdir  = native_recip(r->d.xyz);
 
     int idx = 0;
     while (idx != -1)

@@ -190,7 +190,7 @@ namespace RadeonRays
             bool use_splits = false;
             int max_split_depth = maxdepth ? (int)maxdepth->AsFloat() : 10;
             float min_overlap = overlap ? overlap->AsFloat() : 0.05f;
-            float traversal_cost = tcost ? tcost->AsFloat() : 10.f;
+            float traversal_cost = tcost ? tcost->AsFloat() : 1.f;
             float extra_node_budget = node_budget ? node_budget->AsFloat() : 0.5f;
 
             if (builder && builder->AsString() == "sah")
@@ -289,6 +289,7 @@ namespace RadeonRays
             }
 
             m_bvh->Build(&bounds[0], numfaces);
+            m_bvh->PrintStatistics(std::cout);
 
 #ifdef RR_PROFILE
             m_bvh->PrintStatistics(std::cout);
@@ -373,8 +374,6 @@ namespace RadeonRays
                     int id;
                     // Idx count
                     int cnt;
-
-                    int padding[2];
                 };
 
                 // This number is different from the number of faces for some BVHs 
@@ -429,7 +428,8 @@ namespace RadeonRays
                     facedata[i].idx[1] = myfacedata[faceidx].idx[1] + mystartidx;
                     facedata[i].idx[2] = myfacedata[faceidx].idx[2] + mystartidx;
 
-                    facedata[i].shapeidx = shapeidx;
+                    // Optimization: we are putting faceid here
+                    facedata[i].shapeidx = shapes[shapeidx]->GetId();
                     facedata[i].cnt = 0;
                     facedata[i].id = faceidx;
                 }

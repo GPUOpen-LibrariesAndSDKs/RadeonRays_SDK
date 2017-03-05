@@ -74,8 +74,6 @@ typedef struct _Face
     int id;
     // Idx count
     int cnt;
-
-    int2 padding;
 } Face;
 
 #ifndef APPLE

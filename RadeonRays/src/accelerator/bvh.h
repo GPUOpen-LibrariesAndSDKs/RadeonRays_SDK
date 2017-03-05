@@ -120,6 +120,9 @@ namespace RadeonRays
         // Node allocator counter, atomic for thread safety
         std::atomic<int> m_nodecnt;
 
+        // Identifiers of leaf primitives
+        std::vector<int> m_packed_indices;
+
         // Bounding box containing all primitives
         bbox m_bounds;
         // Root node
@@ -171,7 +174,7 @@ namespace RadeonRays
 
     inline int const* Bvh::GetIndices() const 
     { 
-        return &m_indices[0]; 
+        return &m_packed_indices[0]; 
     }
 
     inline size_t Bvh::GetNumIndices() const 

@@ -69,7 +69,7 @@ namespace RadeonRays
             }
             else
             {
-                node.lbound.pmin.w = (float)(current.first->lc->startidx);
+                node.lbound.pmin.w = (float)((current.first->lc->startidx << 4 ) | (current.first->lc->numprims & 0xF));
             }
 
             node.rbound = current.first->rc->bounds;
@@ -80,7 +80,7 @@ namespace RadeonRays
             }
             else
             {
-                node.rbound.pmin.w = (float)(current.first->rc->startidx);
+                node.rbound.pmin.w = (float)((current.first->rc->startidx << 4) | (current.first->rc->numprims & 0xF));
             }
 
             if (current.second > 0)

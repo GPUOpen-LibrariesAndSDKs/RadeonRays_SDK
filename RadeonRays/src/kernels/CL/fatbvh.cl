@@ -33,15 +33,29 @@ EXTENSIONS
 /*************************************************************************
 TYPE DEFINITIONS
 **************************************************************************/
-#define STARTIDX(x)     (((int)((x).pmin.w)))
+#define STARTIDX(x)     (((int)(x.pmin.w)) >> 4)
+#define NUMPRIMS(x)     (((int)(x.pmin.w)) & 0xF)
 #define LEAFNODE(x)     (((x).pmin.w) != -1.f)
-#define SHORT_STACK_SIZE 16
+#define SHORT_STACK_SIZE 8
 
+//#define GLOBAL_STACK
 
 typedef struct
 {
-    bbox lbound;
-    bbox rbound;
+    union
+    {
+        struct
+        {
+            bbox lbound;
+            bbox rbound;
+        };
+
+        struct
+        {
+            bbox bounds[2];
+        };
+    };
+
 } FatBvhNode;
 
 typedef struct
@@ -68,9 +82,11 @@ HELPER FUNCTIONS
 BVH FUNCTIONS
 **************************************************************************/
 //  intersect a ray with leaf BVH node
+inline
 void IntersectLeafClosest(
     SceneData const* scenedata,
-    int faceidx,
+    int startidx,
+    int numprims,
     ray const* r,                // ray to instersect
     Intersection* isect          // Intersection structure
     )
@@ -78,49 +94,57 @@ void IntersectLeafClosest(
     float3 v1, v2, v3;
     Face face;
 
-    face = scenedata->faces[faceidx];
-    v1 = scenedata->vertices[face.idx[0]];
-    v2 = scenedata->vertices[face.idx[1]];
-    v3 = scenedata->vertices[face.idx[2]];
+    for (int i = 0; i < numprims; ++i)
+    {
+        face = scenedata->faces[startidx + i];
+        v1 = scenedata->vertices[face.idx[0]];
+        v2 = scenedata->vertices[face.idx[1]];
+        v3 = scenedata->vertices[face.idx[2]];
 
 #ifdef RR_RAY_MASK
-    int shapemask = scenedata->shapes[face.shapeidx].mask;
+        int shapemask = scenedata->shapes[face.shapeidx].mask;
 
-    if (Ray_GetMask(r) & shapemask)
+        if (Ray_GetMask(r) & shapemask)
 #endif
-    {
-        if (IntersectTriangle(r, v1, v2, v3, isect))
         {
-            isect->primid = face.id;
-            isect->shapeid = scenedata->shapes[face.shapeidx].id;
+            if (IntersectTriangle(r, v1, v2, v3, isect))
+            {
+                isect->primid = face.id;
+                isect->shapeid = face.shapeidx;
+            }
         }
     }
 }
 
 //  intersect a ray with leaf BVH node
+inline
 bool IntersectLeafAny(
     SceneData const* scenedata,
-    int faceidx,
+    int startidx,
+    int numprims,
     ray const* r                      // ray to instersect
     )
 {
     float3 v1, v2, v3;
     Face face;
 
-    face = scenedata->faces[faceidx];
-    v1 = scenedata->vertices[face.idx[0]];
-    v2 = scenedata->vertices[face.idx[1]];
-    v3 = scenedata->vertices[face.idx[2]];
+    for (int i = 0; i < numprims; ++i)
+    {
+        face = scenedata->faces[startidx + i];
+        v1 = scenedata->vertices[face.idx[0]];
+        v2 = scenedata->vertices[face.idx[1]];
+        v3 = scenedata->vertices[face.idx[2]];
 
 #ifdef RR_RAY_MASK
-    int shapemask = scenedata->shapes[face.shapeidx].mask;
+        int shapemask = scenedata->shapes[face.shapeidx].mask;
 
-    if (Ray_GetMask(r) & shapemask)
+        if (Ray_GetMask(r) & shapemask)
 #endif
-    {
-        if (IntersectTriangleP(r, v1, v2, v3))
         {
-            return true;
+            if (IntersectTriangleP(r, v1, v2, v3))
+            {
+                return true;
+            }
         }
     }
 
@@ -129,6 +153,7 @@ bool IntersectLeafAny(
 
 #ifndef GLOBAL_STACK
 // intersect Ray against the whole BVH structure
+inline
 bool IntersectSceneClosest(SceneData const* scenedata, ray const* r, Intersection* isect, __global int* stack, __local int* ldsstack)
 {
     const float3 invdir = native_recip(r->d.xyz);
@@ -136,9 +161,6 @@ bool IntersectSceneClosest(SceneData const* scenedata, ray const* r, Intersectio
     isect->uvwt = make_float4(0.f, 0.f, 0.f, r->o.w);
     isect->shapeid = -1;
     isect->primid = -1;
-
-    if (r->o.w < 0.f)
-        return false;
 
     __global int* gsptr = stack;
     __local  int* lsptr = ldsstack;
@@ -149,38 +171,48 @@ bool IntersectSceneClosest(SceneData const* scenedata, ray const* r, Intersectio
     int idx = 0;
     FatBvhNode node;
 
-    bool leftleaf = false;
-    bool rightleaf = false;
-    float lefthit = 0.f;
-    float righthit = 0.f;
-    int step = 0;
+    int2 deferred[8];
+    int cnt = 0;
 
     while (idx > -1)
     {
-        while (idx > -1)
+        while (idx > -1 && cnt < 5)
         {
             node = scenedata->nodes[idx];
 
-            leftleaf = LEAFNODE(node.lbound);
-            rightleaf = LEAFNODE(node.rbound);
+            bool l0 = LEAFNODE(node.lbound);
+            bool l1 = LEAFNODE(node.rbound);
+            float d0 = -1.f;
+            float d1 = -1.f;
 
-            lefthit = leftleaf ? -1.f : IntersectBoxF(r, invdir, node.lbound, isect->uvwt.w);
-            righthit = rightleaf ? -1.f : IntersectBoxF(r, invdir, node.rbound, isect->uvwt.w);
-
-            if (leftleaf)
+            if (l0)
             {
-                IntersectLeafClosest(scenedata, STARTIDX(node.lbound), r, isect);
+                //IntersectLeafClosest(scenedata, STARTIDX(node.lbound), NUMPRIMS(node.lbound), r, isect);
+                deferred[cnt].x = STARTIDX(node.lbound);
+                deferred[cnt].y = NUMPRIMS(node.lbound);
+                cnt++;
+            }
+            else
+            {
+                d0 = IntersectBoxF(r, invdir, node.lbound, isect->uvwt.w);
             }
 
-            if (rightleaf)
+            if (l1)
             {
-                IntersectLeafClosest(scenedata, STARTIDX(node.rbound), r, isect);
+                //IntersectLeafClosest(scenedata, STARTIDX(node.rbound), NUMPRIMS(node.rbound), r, isect);
+                deferred[cnt].x = STARTIDX(node.rbound);
+                deferred[cnt].y = NUMPRIMS(node.rbound);
+                cnt++;
+            }
+            else
+            {
+                d1 = IntersectBoxF(r, invdir, node.rbound, isect->uvwt.w);
             }
 
-            if (lefthit > 0.f && righthit > 0.f)
+            if (d0 > 0 && d1 > 0)
             {
                 int deferred = -1;
-                if (lefthit > righthit)
+                if (d0 > d1)
                 {
                     idx = (int)node.rbound.pmax.w;
                     deferred = (int)node.lbound.pmax.w;;
@@ -207,12 +239,12 @@ bool IntersectSceneClosest(SceneData const* scenedata, ray const* r, Intersectio
 
                 continue;
             }
-            else if (lefthit > 0)
+            else if (d0 > 0)
             {
                 idx = (int)node.lbound.pmax.w;
                 continue;
             }
-            else if (righthit > 0)
+            else if (d1 > 0)
             {
                 idx = (int)node.rbound.pmax.w;
                 continue;
@@ -234,12 +266,20 @@ bool IntersectSceneClosest(SceneData const* scenedata, ray const* r, Intersectio
             lsptr = ldsstack + (SHORT_STACK_SIZE - 1) * 64;
             idx = ldsstack[64 * (SHORT_STACK_SIZE - 1)];
         }
+
+        for (int i = 0; i < cnt; ++i)
+        {
+            IntersectLeafClosest(scenedata, deferred[i].x, deferred[i].y, r, isect);
+        }
+
+        cnt = 0;
     }
 
     return isect->shapeid >= 0;
 }
 #else
 // intersect Ray against the whole BVH structure
+inline
 bool IntersectSceneClosest(SceneData const* scenedata, ray const* r, Intersection* isect)
 {
     const float3 invdir = native_recip(r->d.xyz);
@@ -248,73 +288,79 @@ bool IntersectSceneClosest(SceneData const* scenedata, ray const* r, Intersectio
     isect->shapeid = -1;
     isect->primid = -1;
 
-    if (r->o.w < 0.f)
-        return false;
-    
     int stack[32];
-
     int* sptr = stack;
     *sptr++ = -1;
 
     int idx = 0;
     FatBvhNode node;
+    //int2 deferred[6];
+    //int cnt = 0;
 
-    bool leftleaf = false;
-    bool rightleaf = false;
-    float lefthit = 0.f;
-    float righthit = 0.f;
-    int step = 0;
-
-    while (idx > -1)
-    {
-        node = scenedata->nodes[idx];
-
-        leftleaf = LEAFNODE(node.lbound);
-        rightleaf = LEAFNODE(node.rbound);
-
-        lefthit = leftleaf ? -1.f : IntersectBoxF(r, invdir, node.lbound, isect->uvwt.w);
-        righthit = rightleaf ? -1.f : IntersectBoxF(r, invdir, node.rbound, isect->uvwt.w);
-
-        if (leftleaf)
+    //while (idx > -1)
+    //{
+        while (idx > -1 /*&& cnt < 4*/)
         {
-            IntersectLeafClosest(scenedata, STARTIDX(node.lbound), r, isect);
-        }
+            node = scenedata->nodes[idx];
 
-        if (rightleaf)
-        {
-            IntersectLeafClosest(scenedata, STARTIDX(node.rbound), r, isect);
-        }
+            float2 d = -1.f;
 
-        if (lefthit > 0.f && righthit > 0.f)
-        {
-            int deferred = -1;
-            if (lefthit > righthit)
+            for (int i = 0; i < 2; ++i)
             {
-                idx = (int)node.rbound.pmax.w;
-                deferred = (int)node.lbound.pmax.w;;
+                if (LEAFNODE(node.bounds[i]))
+                {
+                    IntersectLeafClosest(scenedata, STARTIDX(node.bounds[i]), NUMPRIMS(node.bounds[i]), r, isect);
+                    //deferred[cnt].x = STARTIDX(node.bounds[i]);
+                    //deferred[cnt].y = NUMPRIMS(node.bounds[i]);
+                    //cnt++;
+                }
+                else
+                {
+                    d[i] = IntersectBoxF(r, invdir, node.bounds[i], isect->uvwt.w);
+                }
+            }
+
+            if (d[0] > 0.f && d[1] > 0.f)
+            {
+                int deferred = -1;
+                if (d[0] < d[1])
+                {
+                    idx = (int)node.bounds[0].pmax.w;
+                    deferred = (int)node.bounds[1].pmax.w;
+                }
+                else
+                {
+                    idx = (int)node.bounds[1].pmax.w;
+                    deferred = (int)node.bounds[0].pmax.w;
+                }
+
+                *sptr++ = deferred;
+                //continue;
+            }
+            else if (d[0] > 0.f)
+            {
+                idx = (int)node.bounds[0].pmax.w;
+                //continue;
+
             }
             else
             {
-                idx = (int)node.lbound.pmax.w;
-                deferred = (int)node.rbound.pmax.w;
+                idx = (int)node.bounds[1].pmax.w;
+                //continue;
+
             }
 
-                    *sptr++ = deferred;
-            continue;
-        }
-        else if (lefthit > 0)
-        {
-            idx = (int)node.lbound.pmax.w;
-            continue;
-        }
-        else if (righthit > 0)
-        {
-            idx = (int)node.rbound.pmax.w;
-            continue;
+            if (d[0] < 0.f && d[1] < 0.f)
+                idx = *--sptr;
         }
 
-                idx = *--sptr;
-    }
+       /* for (int i = 0; i < cnt; ++i)
+        {
+            IntersectLeafClosest(scenedata, deferred[i].x, deferred[i].y, r, isect);
+        }
+
+        cnt = 0;*/
+    //}
 
     return isect->shapeid >= 0;
 }
@@ -322,6 +368,7 @@ bool IntersectSceneClosest(SceneData const* scenedata, ray const* r, Intersectio
 
 #ifndef GLOBAL_STACK
 // intersect Ray against the whole BVH structure
+inline
 bool IntersectSceneAny(SceneData const* scenedata, ray const* r, __global int* stack, __local int* ldsstack)
 {
     const float3 invdir = native_recip(r->d.xyz);
@@ -357,13 +404,13 @@ bool IntersectSceneAny(SceneData const* scenedata, ray const* r, __global int* s
 
             if (leftleaf)
             {
-                if (IntersectLeafAny(scenedata, STARTIDX(node.lbound), r))
-                                    return true;
+                if (IntersectLeafAny(scenedata, STARTIDX(node.lbound), NUMPRIMS(node.lbound), r))
+                                 return true;
             }
 
             if (rightleaf)
             {
-                if (IntersectLeafAny(scenedata, STARTIDX(node.rbound), r))
+                if (IntersectLeafAny(scenedata, STARTIDX(node.rbound), NUMPRIMS(node.rbound), r))
                                 return true;
             }
 
@@ -465,7 +512,7 @@ bool IntersectSceneAny(SceneData const* scenedata, ray const* r)
 
         if (leftleaf)
         {
-            if (IntersectLeafAny(scenedata, STARTIDX(node.lbound), r))
+            if (IntersectLeafAny(scenedata, STARTIDX(node.lbound), NUMPRIMS(node.lbound), r))
             {
                 found = true;
                 break;
@@ -474,7 +521,7 @@ bool IntersectSceneAny(SceneData const* scenedata, ray const* r)
         
         if (rightleaf)
         {
-            if (IntersectLeafAny(scenedata, STARTIDX(node.rbound), r))
+            if (IntersectLeafAny(scenedata, STARTIDX(node.rbound), NUMPRIMS(node.rbound), r))
                     {
                         found = true;
                         break;

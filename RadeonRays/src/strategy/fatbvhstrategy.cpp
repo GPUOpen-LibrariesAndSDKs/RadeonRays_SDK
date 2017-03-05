@@ -394,8 +394,6 @@ namespace RadeonRays
                     int id;
                     // Idx count
                     int cnt;
-
-                    int padding[2];
                 };
 
                 // This number is different from the number of faces for some BVHs 
@@ -450,7 +448,7 @@ namespace RadeonRays
                     facedata[i].idx[1] = myfacedata[faceidx].idx[1] + mystartidx;
                     facedata[i].idx[2] = myfacedata[faceidx].idx[2] + mystartidx;
 
-                    facedata[i].shapeidx = shapeidx;
+                    facedata[i].shapeidx = shapes[shapeidx]->GetId();
                     facedata[i].cnt = 0;
                     facedata[i].id = faceidx;
                 }

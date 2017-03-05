@@ -77,21 +77,24 @@ namespace RadeonRays
             primitive_mutex_.lock();
 #endif
             node->type = kLeaf;
-            node->startidx = req.startidx;
+            node->startidx = m_packed_indices.size();
             node->numprims = req.numprims;
+
+            for (auto i = 0U; i < req.numprims; ++i)
+            {
+                m_packed_indices.push_back(primindices[req.startidx + i]);
+            }
 #ifdef USE_TBB
             primitive_mutex_.unlock();
 #endif
         }
         else
         {
-            node->type = kInternal;
-
             // Choose the maximum extent
             int axis = req.centroid_bounds.maxdim();
             float border = req.centroid_bounds.center()[axis];
 
-            if (m_usesah && req.level < 10)
+            if (m_usesah)
             {
                 SahSplit ss = FindSahSplit(req, bounds, centroids, primindices);
 
@@ -99,8 +102,26 @@ namespace RadeonRays
                 {
                     axis = ss.dim;
                     border = ss.split;
+
+                    if (req.numprims < ss.sah && req.numprims < 4)
+                    {
+                        //std::cout << "Leaf would be created with " << req.numprims << "\n";
+                        node->type = kLeaf;
+                        node->startidx = m_packed_indices.size();
+                        node->numprims = req.numprims;
+
+                        for (auto i = 0U; i < req.numprims; ++i)
+                        {
+                            m_packed_indices.push_back(primindices[req.startidx + i]);
+                        }
+
+                        if (req.ptr) *req.ptr = node;
+                        return;
+                    }
                 }
             }
+
+            node->type = kInternal;
 
             // Start partitioning and updating extents for children at the same time
             bbox leftbounds, rightbounds, leftcentroid_bounds, rightcentroid_bounds;
