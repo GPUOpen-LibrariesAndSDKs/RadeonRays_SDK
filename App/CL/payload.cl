@@ -31,10 +31,10 @@ typedef struct _Camera
         float3 right;
         float3 up;
         float3 p;
-        
+
         // Image plane width & height in current units
         float2 dim;
-        
+
         // Near and far Z
         float2 zcap;
         // Focal lenght
@@ -127,7 +127,7 @@ typedef struct _Material
         int type;
         int num_materials;
     };
-    
+
     int twosided;
 } Material;
 
@@ -162,8 +162,8 @@ typedef struct _Light
             int texdiffuse;
             float multiplier;
         };
-        
-        
+
+
         // Spot
         struct
         {
@@ -198,11 +198,11 @@ typedef struct _Volume
     {
         VolumeType type;
         PhaseFunction phase_func;
-        
+
         // Id of volume data if present
         int data;
         int extra;
-        
+
         // Absorbtion
         float3 sigma_a;
         // Scattering
@@ -245,7 +245,7 @@ typedef struct __matrix
             float4 m1;
             float4 m2;
             float4 m3;
-        };
+        } rows;
 
         float m[16];
     };

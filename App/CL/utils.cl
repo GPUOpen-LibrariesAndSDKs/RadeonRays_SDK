@@ -72,73 +72,73 @@ float matrix_get(matrix m, int i, int j)
 matrix matrix_from_cols(float4 c0, float4 c1, float4 c2, float4 c3)
 {
     matrix m;
-    m.m0 = make_float4(c0.x, c1.x, c2.x, c3.x);
-    m.m1 = make_float4(c0.y, c1.y, c2.y, c3.y);
-    m.m2 = make_float4(c0.z, c1.z, c2.z, c3.z);
-    m.m3 = make_float4(c0.w, c1.w, c2.w, c3.w);
+    m.rows.m0 = make_float4(c0.x, c1.x, c2.x, c3.x);
+    m.rows.m1 = make_float4(c0.y, c1.y, c2.y, c3.y);
+    m.rows.m2 = make_float4(c0.z, c1.z, c2.z, c3.z);
+    m.rows.m3 = make_float4(c0.w, c1.w, c2.w, c3.w);
     return m;
 }
 
 matrix matrix_from_rows(float4 c0, float4 c1, float4 c2, float4 c3)
 {
     matrix m;
-    m.m0 = c0;
-    m.m1 = c1;
-    m.m2 = c2;
-    m.m3 = c3;
+    m.rows.m0 = c0;
+    m.rows.m1 = c1;
+    m.rows.m2 = c2;
+    m.rows.m3 = c3;
     return m;
 }
 
 matrix matrix_from_rows3(float3 c0, float3 c1, float3 c2)
 {
     matrix m;
-    m.m0.xyz = c0; m.m0.w = 0;
-    m.m1.xyz = c1; m.m1.w = 0;
-    m.m2.xyz = c2; m.m2.w = 0;
-    m.m3 = make_float4(0.f, 0.f, 0.f, 1.f);
+    m.rows.m0.xyz = c0; m.rows.m0.w = 0;
+    m.rows.m1.xyz = c1; m.rows.m1.w = 0;
+    m.rows.m2.xyz = c2; m.rows.m2.w = 0;
+    m.rows.m3 = make_float4(0.f, 0.f, 0.f, 1.f);
     return m;
 }
 
 matrix matrix_from_cols3(float3 c0, float3 c1, float3 c2)
 {
     matrix m;
-    m.m0 = make_float4(c0.x, c1.x, c2.x, 0.f);
-    m.m1 = make_float4(c0.y, c1.y, c2.y, 0.f);
-    m.m2 = make_float4(c0.z, c1.z, c2.z, 0.f);
-    m.m3 = make_float4(0.f, 0.f, 0.f, 1.f);
+    m.rows.m0 = make_float4(c0.x, c1.x, c2.x, 0.f);
+    m.rows.m1 = make_float4(c0.y, c1.y, c2.y, 0.f);
+    m.rows.m2 = make_float4(c0.z, c1.z, c2.z, 0.f);
+    m.rows.m3 = make_float4(0.f, 0.f, 0.f, 1.f);
     return m;
 }
 
 matrix matrix_transpose(matrix m)
 {
-    return matrix_from_cols(m.m0, m.m1, m.m2, m.m3);
+    return matrix_from_cols(m.rows.m0, m.rows.m1, m.rows.m2, m.rows.m3);
 }
 
 float4 matrix_mul_vector4(matrix m, float4 v)
 {
     float4 res;
-    res.x = dot(m.m0, v);
-    res.y = dot(m.m1, v);
-    res.z = dot(m.m2, v);
-    res.w = dot(m.m3, v);
+    res.x = dot(m.rows.m0, v);
+    res.y = dot(m.rows.m1, v);
+    res.z = dot(m.rows.m2, v);
+    res.w = dot(m.rows.m3, v);
     return res;
 }
 
 float3 matrix_mul_vector3(matrix m, float3 v)
 {
     float3 res;
-    res.x = dot(m.m0.xyz, v);
-    res.y = dot(m.m1.xyz, v);
-    res.z = dot(m.m2.xyz, v);
+    res.x = dot(m.rows.m0.xyz, v);
+    res.y = dot(m.rows.m1.xyz, v);
+    res.z = dot(m.rows.m2.xyz, v);
     return res;
 }
 
 float3 matrix_mul_point3(matrix m, float3 v)
 {
     float3 res;
-    res.x = dot(m.m0.xyz, v) + m.m0.w;
-    res.y = dot(m.m1.xyz, v) + m.m1.w;
-    res.z = dot(m.m2.xyz, v) + m.m2.w;
+    res.x = dot(m.rows.m0.xyz, v) + m.rows.m0.w;
+    res.y = dot(m.rows.m1.xyz, v) + m.rows.m1.w;
+    res.z = dot(m.rows.m2.xyz, v) + m.rows.m2.w;
     return res;
 }
 
