@@ -22,6 +22,8 @@
 #ifndef KERNEL_CL
 #define KERNEL_CL
 
+#define EPSILON 0.001f
+
 typedef struct _Ray
 {
     /// xyz - origin, w - max range
@@ -78,7 +80,6 @@ float4 ConvertFromBarycentric(__global const float* vec,
     return a * (1 - uvwt->x - uvwt->y) + b * uvwt->x + c * uvwt->y;
 }
 
-
 __kernel void GeneratePerspectiveRays(__global Ray* rays,
                                     __global const Camera* cam,
                                     int width,
@@ -124,7 +125,7 @@ __kernel void GenerateShadowRays(__global Ray* rays,
                             int width,
                             int height)
 {
-        int2 globalid;
+    int2 globalid;
     globalid.x  = get_global_id(0);
     globalid.y  = get_global_id(1);
 
@@ -141,12 +142,15 @@ __kernel void GenerateShadowRays(__global Ray* rays,
            return;
         }
         
-        // Calculate position of the intersection point
+        // Calculate position and normal of the intersection point
         int ind = indents[shape_id];
-        float4 pos = ConvertFromBarycentric(positions + ind*3, ids + ind*3, prim_id, &isect[k].uvwt);
+        float4 pos = ConvertFromBarycentric(positions + ind*3, ids + ind, prim_id, &isect[k].uvwt);
+        float4 norm = ConvertFromBarycentric(normals + ind*3, ids + ind, prim_id, &isect[k].uvwt);
+        norm = normalize(norm);
+
         float4 dir = light - pos;
         rays[k].d = normalize(dir);
-        rays[k].o = pos + rays[k].d * FLT_EPSILON;
+        rays[k].o = pos + norm * EPSILON;
         rays[k].o.w = length(dir);
 
         rays[k].extra.x = 0xFFFFFFFF;
@@ -181,22 +185,20 @@ __kernel void Shading(//scene
         int shape_id = isect[k].shapeid;
         int prim_id = isect[k].primid;
 
-        if (shape_id != -1 && prim_id != -1/* && occl[k] != -1*/)
+        if (shape_id != -1 && prim_id != -1 && occl[k] == -1)
         {
             // Calculate position and normal of the intersection point
             int ind = indents[shape_id];
-            float4 pos = ConvertFromBarycentric(positions + ind*3, ids + ind*3, prim_id, &isect[k].uvwt);
-            float4 norm = ConvertFromBarycentric(normals + ind*3, ids + ind*3, prim_id, &isect[k].uvwt);
+
+            float4 pos = ConvertFromBarycentric(positions + ind*3, ids + ind, prim_id, &isect[k].uvwt);
+            float4 norm = ConvertFromBarycentric(normals + ind*3, ids + ind, prim_id, &isect[k].uvwt);
             norm = normalize(norm);
 
-            // float4 diff_col = (float4)( 0.5f,
-            //                             0.5f,
-            //                             0.5f, 1.f);
-            int color_id = (ind + prim_id)*3;
+            //triangle diffuse color
+            int color_id = ind + prim_id*3;
             float4 diff_col = (float4)( colors[color_id],
                                         colors[color_id + 1],
                                         colors[color_id + 2], 1.f);
-
 
             // Calculate lighting
             float4 col = (float4)( 0.f, 0.f, 0.f, 0.f );

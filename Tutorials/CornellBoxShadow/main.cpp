@@ -100,7 +100,7 @@ void InitData()
             colors.push_back(mat.diffuse[2]);
         }
         
-        //fill empty space to simplify indentation in arrays
+        // add additional emty data to simplify indentation in arrays
         if (mesh.positions.size() / 3 < mesh.indices.size())
         {
             int count = mesh.indices.size() - mesh.positions.size() / 3;
@@ -113,29 +113,13 @@ void InitData()
         }
 
         indents.push_back(indent);
-        indent += mesh.indices.size() / 3;
+        indent += mesh.indices.size();
     }
     g_positions = CLWBuffer<float>::Create(g_context, CL_MEM_READ_ONLY, verts.size(), verts.data());
     g_normals = CLWBuffer<float>::Create(g_context, CL_MEM_READ_ONLY, normals.size(), normals.data());
     g_indices = CLWBuffer<int>::Create(g_context, CL_MEM_READ_ONLY, inds.size(), inds.data());
     g_colors = CLWBuffer<float>::Create(g_context, CL_MEM_READ_ONLY, colors.size(), colors.data());
     g_indent = CLWBuffer<int>::Create(g_context, CL_MEM_READ_ONLY, indents.size(), indents.data());
-}
-
-float3 ConvertFromBarycentric(const float* vec, const int* ind, int prim_id, const float4& uvwt)
-{
-    float3 a = { vec[ind[prim_id * 3] * 3],
-                vec[ind[prim_id * 3] * 3 + 1],
-                vec[ind[prim_id * 3] * 3 + 2], 0.f};
-
-    float3 b = { vec[ind[prim_id * 3 + 1] * 3],
-                vec[ind[prim_id * 3 + 1] * 3 + 1],
-                vec[ind[prim_id * 3 + 1] * 3 + 2], 0.f };
-
-    float3 c = { vec[ind[prim_id * 3 + 2] * 3],
-                vec[ind[prim_id * 3 + 2] * 3 + 1],
-                vec[ind[prim_id * 3 + 2] * 3 + 2], 0.f };
-    return a * (1 - uvwt.x - uvwt.y) + b * uvwt.x + c * uvwt.y;
 }
 
 Buffer* GeneratePrimaryRays()
@@ -227,7 +211,6 @@ Buffer* Shading(const CLWBuffer<Intersection> &isect, const CLWBuffer<int> &occl
 
     return CreateFromOpenClBuffer(g_api, out_buff);
 }
-
 
 void DrawScene()
 {
@@ -397,112 +380,34 @@ int main(int argc, char* argv[])
     // Prepare rays. One for each texture pixel.
     Buffer* ray_buffer = GeneratePrimaryRays();
     // Intersection data
-    std::vector<Intersection> isect(k_raypack_size);
     CLWBuffer<Intersection> isect_buffer_cl = CLWBuffer<Intersection>::Create(g_context, CL_MEM_READ_WRITE, g_window_width*g_window_height);
     Buffer* isect_buffer = CreateFromOpenClBuffer(g_api, isect_buffer_cl);
     
     // Intersection
     g_api->QueryIntersection(ray_buffer, k_raypack_size, isect_buffer, nullptr, nullptr);
 
-    // Get results
-    Event* e = nullptr;
-    Intersection* tmp = nullptr;
-    g_api->MapBuffer(isect_buffer, kMapRead, 0, isect.size() * sizeof(Intersection), (void**)&tmp, &e);
-    // RadeonRays calls are asynchronous, so need to wait for calculation to complete.
-    e->Wait();
-    g_api->DeleteEvent(e);
-    e = nullptr;
-    
-    // Copy results
-    for (int i = 0; i < k_raypack_size; ++i)
-    {
-        isect[i] = tmp[i];
-    }
-    g_api->UnmapBuffer(isect_buffer, tmp, nullptr);
-    tmp = nullptr;
-
     // Point light position
     float3 light = { -0.01f, 1.85f, 0.1f };
-    Buffer* shadow_rays_buffer = GenerateShadowRays(isect_buffer_cl, light);
+    
     // Shadow rays
-    //std::vector<ray> shadow_rays(k_raypack_size);
-    //for (int i = 0; i < g_window_height; ++i)
-    //    for (int j = 0; j < g_window_width; ++j)
-    //    {
-    //        int k = i * g_window_width + j;
-    //        int shape_id = isect[k].shapeid;
-    //        int prim_id = isect[k].primid;
-    //        
-    //        // Need shadow rays only for intersections
-    //        if (shape_id == kNullId || prim_id == kNullId)
-    //        {
-    //            shadow_rays[k].SetActive(false);
-    //            continue;
-    //        }
-    //        mesh_t& mesh = g_objshapes[shape_id].mesh;
-    //        float3 pos = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), prim_id, isect[k].uvwt);
-    //        float3 dir = light - pos;
-    //        shadow_rays[k].d = dir;
-    //        shadow_rays[k].d.normalize();
-    //        shadow_rays[k].o = pos + shadow_rays[k].d * std::numeric_limits<float>::epsilon();
-    //        shadow_rays[k].SetMaxT(std::sqrt(dir.sqnorm()));
-
-    //    }
-    //Buffer* shadow_rays_buffer = g_api->CreateBuffer(shadow_rays.size() * sizeof(ray), shadow_rays.data());
+    Buffer* shadow_rays_buffer = GenerateShadowRays(isect_buffer_cl, light);
     CLWBuffer<int> occl_buffer_cl = CLWBuffer<int>::Create(g_context, CL_MEM_READ_WRITE, g_window_width*g_window_height);
     Buffer* occl_buffer = CreateFromOpenClBuffer(g_api, occl_buffer_cl);
 
     // Occlusion
     g_api->QueryOcclusion(shadow_rays_buffer, k_raypack_size, occl_buffer, nullptr, nullptr);
     
+    // Shading
     Buffer* tex_buf = Shading(isect_buffer_cl, occl_buffer_cl, light);
-    // Draw
+    
+    // Get image data
     std::vector<unsigned char> tex_data(k_raypack_size * 4);
-    //for (int i = 0; i < k_raypack_size ; ++i)
-    //{
-    //    int shape_id = isect[i].shapeid;
-    //    int prim_id = isect[i].primid;
-
-    //    if (shape_id != kNullId && prim_id != kNullId)
-    //    {
-    //        mesh_t& mesh = g_objshapes[shape_id].mesh;
-    //        int mat_id = mesh.material_ids[prim_id];
-    //        material_t& mat = g_objmaterials[mat_id];
-    //        
-    //        // theck there is no shapes between intersection point and light source
-    //        if (tmp_occl[i] != kNullId)
-    //        {
-    //            continue;
-    //        }
-
-    //        float3 diff_col = { mat.diffuse[0],
-    //                            mat.diffuse[1],
-    //                            mat.diffuse[2] };
-
-    //        // Calculate position and normal of the intersection point
-    //        float3 pos = ConvertFromBarycentric(mesh.positions.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
-    //        float3 norm = ConvertFromBarycentric(mesh.normals.data(), mesh.indices.data(), prim_id, isect[i].uvwt);
-    //        norm.normalize();
-
-    //        // Calculate lighting
-    //        float3 col = { 0.f, 0.f, 0.f };
-    //        float3 light_dir = light - pos;
-    //        light_dir.normalize();
-    //        float dot_prod = dot(norm, light_dir);
-    //        if (dot_prod > 0)
-    //            col += dot_prod * diff_col;
-
-    //        tex_data[i * 4] = col[0] * 255;
-    //        tex_data[i * 4 + 1] = col[1] * 255;
-    //        tex_data[i * 4 + 2] = col[2] * 255;
-    //        tex_data[i * 4 + 3] = 255;
-    //    }
-    //}
-
     unsigned char* pixels = nullptr;
+    Event* e = nullptr;
     g_api->MapBuffer(tex_buf, kMapRead, 0, 4 * k_raypack_size * sizeof(unsigned char), (void**)&pixels, &e);
     e->Wait();
     memcpy(tex_data.data(), pixels, 4 * k_raypack_size * sizeof(unsigned char));
+
     // Update texture data
     glBindTexture(GL_TEXTURE_2D, g_texture);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, g_window_width, g_window_height, GL_RGBA, GL_UNSIGNED_BYTE, tex_data.data());
