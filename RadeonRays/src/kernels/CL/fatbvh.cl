@@ -36,7 +36,7 @@ TYPE DEFINITIONS
 #define STARTIDX(x)     (((int)(x.pmin.w)) >> 4)
 #define NUMPRIMS(x)     (((int)(x.pmin.w)) & 0xF)
 #define LEAFNODE(x)     (((x).pmin.w) != -1.f)
-#define SHORT_STACK_SIZE 8
+#define SHORT_STACK_SIZE 16
 
 //#define GLOBAL_STACK
 
@@ -128,6 +128,7 @@ bool IntersectLeafAny(
     float3 v1, v2, v3;
     Face face;
 
+    bool hit = false;
     for (int i = 0; i < numprims; ++i)
     {
         face = scenedata->faces[startidx + i];
@@ -143,12 +144,13 @@ bool IntersectLeafAny(
         {
             if (IntersectTriangleP(r, v1, v2, v3))
             {
-                return true;
+                hit =  true;
+                break;
             }
         }
     }
 
-    return false;
+    return hit;
 }
 
 #ifndef GLOBAL_STACK
@@ -483,7 +485,7 @@ bool IntersectSceneAny(SceneData const* scenedata, ray const* r)
 
     if (r->o.w < 0.f)
         return false;
-    
+
     int stack[32];
 
     int* sptr = stack;
@@ -518,7 +520,7 @@ bool IntersectSceneAny(SceneData const* scenedata, ray const* r)
                 break;
             }
         }
-        
+
         if (rightleaf)
         {
             if (IntersectLeafAny(scenedata, STARTIDX(node.rbound), NUMPRIMS(node.rbound), r))
@@ -582,7 +584,7 @@ __kernel void IntersectClosest(
     int local_id = get_local_id(0);
     int group_id = get_group_id(0);
 
-    // Fill scene data 
+    // Fill scene data
     SceneData scenedata =
     {
         nodes,
@@ -596,12 +598,12 @@ __kernel void IntersectClosest(
     {
         // Fetch ray
         ray r = rays[global_id];
-        
+
         if (Ray_IsActive(&r))
         {
             // Calculate closest hit
             Intersection isect;
-#ifndef GLOBAL_STACK 
+#ifndef GLOBAL_STACK
             IntersectSceneClosest(&scenedata, &r, &isect, stack + group_id * 64 * 32 + local_id * 32, ldsstack + local_id);
 #else
             IntersectSceneClosest(&scenedata, &r, &isect);
@@ -622,7 +624,7 @@ __kernel void IntersectAny(
     __global ShapeData const* shapes,     // Shape data
     __global ray const* rays,        // Ray workload
     int offset,                // Offset in rays array
-    int numrays,               // Number of rays to process                    
+    int numrays,               // Number of rays to process
     __global int* hitresults  // Hit results
     , __global int* stack
     )
@@ -633,7 +635,7 @@ __kernel void IntersectAny(
     int local_id = get_local_id(0);
     int group_id = get_group_id(0);
 
-    // Fill scene data 
+    // Fill scene data
     SceneData scenedata =
     {
         nodes,
@@ -651,7 +653,7 @@ __kernel void IntersectAny(
         if (Ray_IsActive(&r))
         {
             // Calculate any intersection
-#ifndef GLOBAL_STACK 
+#ifndef GLOBAL_STACK
             hitresults[global_id] = IntersectSceneAny(&scenedata, &r, stack + group_id * 64 * 32 + local_id * 32, ldsstack + local_id) ? 1 : -1;
 #else
             hitresults[global_id] = IntersectSceneAny(&scenedata, &r) ? 1 : -1;
@@ -680,7 +682,7 @@ __kernel void IntersectClosestRC(
     int local_id = get_local_id(0);
     int group_id = get_group_id(0);
 
-    // Fill scene data 
+    // Fill scene data
     SceneData scenedata =
     {
         nodes,
@@ -700,7 +702,7 @@ __kernel void IntersectClosestRC(
         {
             // Calculate closest hit
             Intersection isect;
-#ifndef GLOBAL_STACK 
+#ifndef GLOBAL_STACK
             IntersectSceneClosest(&scenedata, &r, &isect, stack + group_id * 64 * 32 + local_id * 32, ldsstack + local_id);
 #else
             IntersectSceneClosest(&scenedata, &r, &isect);
@@ -731,7 +733,7 @@ __kernel void IntersectAnyRC(
     int local_id = get_local_id(0);
     int group_id = get_group_id(0);
 
-    // Fill scene data 
+    // Fill scene data
     SceneData scenedata =
     {
         nodes,
@@ -750,7 +752,7 @@ __kernel void IntersectAnyRC(
         if (Ray_IsActive(&r))
         {
             // Calculate any intersection
-#ifndef GLOBAL_STACK 
+#ifndef GLOBAL_STACK
             hitresults[global_id] = IntersectSceneAny(&scenedata, &r, stack + group_id * 64 * 32 + local_id * 32, ldsstack + local_id) ? 1 : -1;
 #else
             hitresults[global_id] = IntersectSceneAny(&scenedata, &r) ? 1 : -1;
