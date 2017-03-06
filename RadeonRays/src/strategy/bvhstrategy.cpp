@@ -190,7 +190,7 @@ namespace RadeonRays
             bool use_splits = false;
             int max_split_depth = maxdepth ? (int)maxdepth->AsFloat() : 10;
             float min_overlap = overlap ? overlap->AsFloat() : 0.05f;
-            float traversal_cost = tcost ? tcost->AsFloat() : 1.f;
+            float traversal_cost = tcost ? tcost->AsFloat() : 10.f;
             float extra_node_budget = node_budget ? node_budget->AsFloat() : 0.5f;
 
             if (builder && builder->AsString() == "sah")
@@ -203,7 +203,7 @@ namespace RadeonRays
                 use_splits = true;
             }
 
-            m_bvh.reset( use_splits ? 
+            m_bvh.reset( use_splits ?
                 new SplitBvh(traversal_cost, max_split_depth, min_overlap, extra_node_budget) :
                 new Bvh(traversal_cost, use_sah)
             );
@@ -376,7 +376,7 @@ namespace RadeonRays
                     int cnt;
                 };
 
-                // This number is different from the number of faces for some BVHs 
+                // This number is different from the number of faces for some BVHs
                 auto numindices = m_bvh->GetNumIndices();
                 // Create face buffer
                 m_gpudata->faces = m_device->CreateBuffer(numindices * sizeof(Face), Calc::BufferType::kRead);

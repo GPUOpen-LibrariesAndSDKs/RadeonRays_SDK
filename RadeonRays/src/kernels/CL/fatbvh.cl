@@ -36,7 +36,9 @@ TYPE DEFINITIONS
 #define STARTIDX(x)     (((int)(x.pmin.w)) >> 4)
 #define NUMPRIMS(x)     (((int)(x.pmin.w)) & 0xF)
 #define LEAFNODE(x)     (((x).pmin.w) != -1.f)
+#define CHILD(x,i)         ((int)x.bounds[i].pmax.w)
 #define SHORT_STACK_SIZE 16
+#define WAVEFRONT_SIZE 64
 
 //#define GLOBAL_STACK
 
@@ -94,6 +96,7 @@ void IntersectLeafClosest(
     float3 v1, v2, v3;
     Face face;
 
+#pragma unroll 4
     for (int i = 0; i < numprims; ++i)
     {
         face = scenedata->faces[startidx + i];
@@ -168,17 +171,17 @@ bool IntersectSceneClosest(SceneData const* scenedata, ray const* r, Intersectio
     __local  int* lsptr = ldsstack;
 
     *lsptr = -1;
-    lsptr += 64;
+    lsptr += WAVEFRONT_SIZE;
 
     int idx = 0;
     FatBvhNode node;
 
-    int2 deferred[8];
+    int2 deferred[9];
     int cnt = 0;
 
     while (idx > -1)
     {
-        while (idx > -1 && cnt < 5)
+        while (idx > -1 && cnt < 8)
         {
             node = scenedata->nodes[idx];
 
@@ -216,43 +219,43 @@ bool IntersectSceneClosest(SceneData const* scenedata, ray const* r, Intersectio
                 int deferred = -1;
                 if (d0 > d1)
                 {
-                    idx = (int)node.rbound.pmax.w;
-                    deferred = (int)node.lbound.pmax.w;;
+                    idx = CHILD(node, 1);
+                    deferred = CHILD(node, 0);
                 }
                 else
                 {
-                    idx = (int)node.lbound.pmax.w;
-                    deferred = (int)node.rbound.pmax.w;
+                    idx = CHILD(node, 0);
+                    deferred = CHILD(node, 1);
                 }
 
-                if (lsptr - ldsstack >= SHORT_STACK_SIZE * 64)
+                if (lsptr - ldsstack >= SHORT_STACK_SIZE * WAVEFRONT_SIZE)
                 {
                     for (int i = 1; i < SHORT_STACK_SIZE; ++i)
                     {
-                        gsptr[i] = ldsstack[i * 64];
+                        gsptr[i] = ldsstack[i * WAVEFRONT_SIZE];
                     }
 
                     gsptr += SHORT_STACK_SIZE;
-                    lsptr = ldsstack + 64;
+                    lsptr = ldsstack + WAVEFRONT_SIZE;
                 }
 
                 *lsptr = deferred;
-                lsptr += 64;
+                lsptr += WAVEFRONT_SIZE;
 
                 continue;
             }
             else if (d0 > 0)
             {
-                idx = (int)node.lbound.pmax.w;
+                idx = CHILD(node, 0);
                 continue;
             }
             else if (d1 > 0)
             {
-                idx = (int)node.rbound.pmax.w;
+                idx = CHILD(node, 1);
                 continue;
             }
 
-            lsptr -= 64;
+            lsptr -= WAVEFRONT_SIZE;
             idx = *(lsptr);
         }
 
@@ -262,11 +265,11 @@ bool IntersectSceneClosest(SceneData const* scenedata, ray const* r, Intersectio
 
             for (int i = 1; i < SHORT_STACK_SIZE; ++i)
             {
-                ldsstack[i * 64] = gsptr[i];
+                ldsstack[i * WAVEFRONT_SIZE] = gsptr[i];
             }
 
-            lsptr = ldsstack + (SHORT_STACK_SIZE - 1) * 64;
-            idx = ldsstack[64 * (SHORT_STACK_SIZE - 1)];
+            lsptr = ldsstack + (SHORT_STACK_SIZE - 1) * WAVEFRONT_SIZE;
+            idx = ldsstack[WAVEFRONT_SIZE * (SHORT_STACK_SIZE - 1)];
         }
 
         for (int i = 0; i < cnt; ++i)

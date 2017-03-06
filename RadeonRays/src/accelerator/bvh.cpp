@@ -31,6 +31,8 @@ THE SOFTWARE.
 
 namespace RadeonRays
 {
+    static int constexpr kMaxPrimitivesPerLeaf = 4;
+
     static bool is_nan(float v)
     {
         return v != v;
@@ -103,9 +105,8 @@ namespace RadeonRays
                     axis = ss.dim;
                     border = ss.split;
 
-                    if (req.numprims < ss.sah && req.numprims < 4)
+                    if (req.numprims < ss.sah && req.numprims < kMaxPrimitivesPerLeaf)
                     {
-                        //std::cout << "Leaf would be created with " << req.numprims << "\n";
                         node->type = kLeaf;
                         node->startidx = m_packed_indices.size();
                         node->numprims = req.numprims;
@@ -203,7 +204,7 @@ namespace RadeonRays
 
                 splitidx = first;
             }
-            
+
             if (splitidx == req.startidx || splitidx == req.startidx + req.numprims)
             {
                 splitidx = req.startidx + (req.numprims >> 1);
@@ -320,7 +321,7 @@ namespace RadeonRays
             int  rightcount = req.numprims;
 
             // Start best SAH search
-            // i is current split candidate (split between i and i + 1) 
+            // i is current split candidate (split between i and i + 1)
             float sahtmp = 0.f;
             for (int i = 0; i < kNumBins - 1; ++i)
             {
@@ -336,7 +337,7 @@ namespace RadeonRays
                 {
                     split.dim = axis;
                     splitidx = i;
-                    sah = sahtmp;
+                    split.sah = sah = sahtmp;
                 }
             }
         }
@@ -495,8 +496,3 @@ namespace RadeonRays
     }
 
 }
-
-
-
-
-

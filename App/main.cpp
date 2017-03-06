@@ -84,7 +84,7 @@ char const* kHelpMessage =
 "App [-p path_to_models][-f model_name][-b][-r][-ns number_of_shadow_rays][-ao ao_radius][-w window_width][-h window_height][-nb number_of_indirect_bounces]";
 char const* g_path =
 "../Resources/CornellBox";
-char const* g_modelname = "CornellBox-Glossy.obj";
+char const* g_modelname = "orig.objm";
 char const* g_envmapname = "../Resources/Textures/studio015.hdr";
 
 std::unique_ptr<ShaderManager>    g_shader_manager;
@@ -103,7 +103,7 @@ int g_progressive = false;
 int g_num_bounces = 5;
 int g_num_samples = -1;
 int g_samplecount = 0;
-float g_ao_radius = 1.f; 
+float g_ao_radius = 1.f;
 float g_envmapmul = 1.f;
 float g_cspeed = 10.25f;
 
@@ -380,7 +380,7 @@ void InitData()
                                              g_camera_pos
                                              , g_camera_at
                                              , g_camera_up));
-    
+
     g_scene->SetCamera(g_camera.get());
 
     // Adjust sensor size based on current aspect ratio
@@ -399,7 +399,7 @@ void InitData()
     std::cout << "F-Stop: " << 1.f / (g_camera->GetAperture() * 10.f) << "\n";
     std::cout << "Sensor size: " << g_camera_sensor_size.x * 1000.f << "x" << g_camera_sensor_size.y * 1000.f << "mm\n";
 
-    
+
 #pragma omp parallel for
     for (int i = 0; i < g_cfgs.size(); ++i)
     {
@@ -554,38 +554,38 @@ void OnLetterKey(unsigned char key, int x, int y)
             float focal_length = g_camera->GetFocalLength();
             focal_length += 0.001f;
             g_camera->SetFocalLength(focal_length);
-            
+
             for (int i = 0; i < g_cfgs.size(); ++i)
             {
                 g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
             }
-            
+
             break;
         }
-    
+
         case 's':
         {
             float focal_length = g_camera->GetFocalLength();
-            
+
             if (focal_length > 0.f)
             {
                 focal_length -= 0.001f;
                 g_camera->SetFocalLength(focal_length);
-            
+
                 for (int i = 0; i < g_cfgs.size(); ++i)
                 {
                     g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
                 }
             }
-            
+
             break;
         }
-            
+
         case 'q':
         {
 
             float aperture = g_camera->GetAperture();
-            
+
             if (aperture == 0.f)
             {
                 g_camera->SetAperture(0.025f);
@@ -594,81 +594,81 @@ void OnLetterKey(unsigned char key, int x, int y)
             {
                 g_camera->SetAperture(0.0f);
             }
-            
+
             for (int i = 0; i < g_cfgs.size(); ++i)
             {
                 g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
             }
-            
+
             break;
         }
-            
+
         case 'd':
         {
             float aperture = g_camera->GetAperture();
-            
+
             if (aperture > 0.f)
             {
                 aperture -= 0.001f;
                 g_camera->SetAperture(aperture);
-                
+
                 for (int i = 0; i < g_cfgs.size(); ++i)
                 {
                     g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
                 }
             }
-            
+
             break;
         }
-            
+
         case 'a':
         {
             float aperture = g_camera->GetAperture();
-            
+
             if (aperture < 0.2f)
             {
                 aperture += 0.001f;
                 g_camera->SetAperture(aperture);
-                
+
                 for (int i = 0; i < g_cfgs.size(); ++i)
                 {
                     g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
                 }
             }
-            
+
             break;
         }
-            
+
         case 'z':
         {
             float focus_dist = g_camera->GetFocusDistance();
-            
+
             if (focus_dist > 0.f)
             {
                 focus_dist -= 0.1f;
                 g_camera->SetFocusDistance(focus_dist);
-                
+
                 for (int i = 0; i < g_cfgs.size(); ++i)
                 {
                     g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
                 }
             }
-            
+
             break;
         }
-            
+
         case 'x':
         {
             float focus_dist = g_camera->GetFocusDistance();
-            
+
             focus_dist += 0.1f;
             g_camera->SetFocusDistance(focus_dist);
-            
+
             for (int i = 0; i < g_cfgs.size(); ++i)
             {
                 g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
             }
-            
+
             break;
         }
 
@@ -1104,7 +1104,7 @@ void SaveFrameBuffer(std::string const& name, float3 const* data)
     for (auto y = 0; y < g_window_height; ++y)
         for (auto x = 0; x < g_window_width; ++x)
         {
-            
+
             float3 val = data[(g_window_height - 1 - y) * g_window_width + x];
             tempbuf[y * g_window_width + x] = (1.f / val.w) * val;
 
