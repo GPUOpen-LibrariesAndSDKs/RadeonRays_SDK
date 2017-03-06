@@ -6,7 +6,7 @@
 #include "Scene/material.h"
 
 #include "Scene/IO/image_io.h"
-#include "Scene/Collector/Collector.h"
+#include "Scene/Collector/collector.h"
 
 
 #include "XML/tinyxml2.h"
@@ -18,7 +18,7 @@
 namespace Baikal
 {
     using namespace tinyxml2;
-    
+
     // XML based material IO implememtation
     class MaterialIoXML : public MaterialIo
     {
@@ -60,7 +60,7 @@ namespace Baikal
         std::set<ResolveRequest> m_resolve_requests;
         std::string m_base_path;
     };
-    
+
     MaterialIo* MaterialIo::CreateMaterialIoXML()
     {
         return new MaterialIoXML();
@@ -106,7 +106,7 @@ namespace Baikal
 
     static SingleBxdf::BxdfType StringToBxdf(std::string const& bxdf)
     {
-        static std::map<std::string, SingleBxdf::BxdfType> bxdf_map = 
+        static std::map<std::string, SingleBxdf::BxdfType> bxdf_map =
         {
             { "zero" , Baikal::SingleBxdf::BxdfType::kZero },
             { "lambert" , Baikal::SingleBxdf::BxdfType::kLambert },
@@ -167,7 +167,7 @@ namespace Baikal
         else
         {
             printer.PushAttribute("type", "material");
-            
+
             printer.PushAttribute("value", (int)(reinterpret_cast<std::uint64_t>(value.mat_value)));
         }
 
@@ -243,13 +243,13 @@ namespace Baikal
             if (type == MultiBxdf::Type::kFresnelBlend)
             {
                 Material::InputValue ior = material->GetInputValue("ior");
-                
+
                 WriteInput(io, printer, "ior", ior);
             }
             else
             {
                 Material::InputValue weight = material->GetInputValue("weight");
-                
+
                 WriteInput(io, printer, "weight", weight);
             }
         }
