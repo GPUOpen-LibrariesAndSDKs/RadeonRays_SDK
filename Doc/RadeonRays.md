@@ -119,22 +119,21 @@ rays[2].d = float3(0.f, 0.f, 1.f);
 Buffer* ray_buffer = api->CreateBuffer(3 * sizeof(ray), rays);
 ```
 The layout of ray is structure:  
-| o.xyz | Ray origin                 |
-|-------|----------------------------|
-| d.xyz | Ray direction              |
-| o.w   | Ray maximum distance       |
-| d.w   | Time stamp for motion blur |
+* o.xyz - Ray origin
+* d.xyz - Ray direction
+* o.w   - Ray maximum distance
+* d.w   - Time stamp for motion blur
 
 The same way need to allocate memory for intersection results:
 ```
 Buffer* isect_buffer = api->CreateBuffer(3 * sizeof(Intersection), nullptr);
 ```
 Intersection structure:  
-| uvwt.xyz | Parametric coordinates of a hit (xy for triangles and quads) |
-|----------|--------------------------------------------------------------|
-| uvwt.w   | Hit distance along the ray                                   |
-| shapeid  | ID of a shape                                                |
-| primid   | ID of a primitive within a shape                             |
+* uvwt.xyz - Parametric coordinates of a hit (xy for triangles and quads)
+* uvwt.w   - Hit distance along the ray
+* shapeid  - ID of a shape
+* primid   - ID of a primitive within a shape  
+
 Shape ID corresponds to a value which is either automatically assigned to a shape at creation time by the API or manually set by the user using Shape::SetId() method. Primitive ID is a zero-based index of a primitive within a shape (in the order they were passed to CreateMesh method). If no intersection is detected, they are both set to kNullId(-1).
 
 Buffers can be mapped and unmapped with the following calls:
