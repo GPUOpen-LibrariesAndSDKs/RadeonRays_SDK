@@ -1086,7 +1086,7 @@ float3 Passthrough_Sample(
     // so set it to 1.f
     *pdf = 1.f;
 
-    // 
+    //
     return coswo > 0.0001f ? (1.f / coswo) : 0.f;
 }
 

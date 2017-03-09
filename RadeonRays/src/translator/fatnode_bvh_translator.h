@@ -31,13 +31,15 @@ THE SOFTWARE.
 #include "math/quaternion.h"
 #include "math/float3.h"
 
+#include "../util/perfect_hash_map.h"
+
 namespace RadeonRays
 {
     /// Fatnode translator transforms regular binary BVH into the form where:
     /// * Each node contains bounding boxes of its children
     /// * Both children follow parent node in the layuot (breadth first)
     /// * No parent informantion is stored for the node => stacked traversal only
-    /// 
+    ///
     class FatNodeBvhTranslator
     {
     public:
@@ -65,10 +67,14 @@ namespace RadeonRays
         //void UpdateTopLevel(Bvh const& bvh);
 
         std::vector<Node> nodes_;
-        std::vector<int>  extra_;
-        std::vector<int>  roots_;
+        std::vector<int> extra_;
+        std::vector<int> roots_;
+        std::vector<int> indices_;
+        std::vector<int> addresses_;
         int nodecnt_;
         int root_;
+        std::unique_ptr<PerfectHashMap<int, int>> m_hash_map;
+        int max_idx_;
 
     private:
         int ProcessRootNode(Bvh::Node const* node);

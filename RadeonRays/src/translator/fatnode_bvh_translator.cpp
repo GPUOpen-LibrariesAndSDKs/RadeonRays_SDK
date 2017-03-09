@@ -35,15 +35,21 @@ namespace RadeonRays
     {
         // WARNING: this is crucial in order for the nodes not to migrate in memory as push_back adds nodes
         nodecnt_ = 0;
+        max_idx_ = -1;
         int newsize = bvh.m_nodecnt;
         nodes_.resize(newsize);
         extra_.resize(newsize);
+        indices_.resize(newsize);
+        addresses_.resize(newsize);
 
         // Check if we have been initialized
         assert(bvh.m_root);
 
         // Process root
         ProcessRootNode(bvh.m_root);
+
+        // Build a hash
+        m_hash_map.reset(new PerfectHashMap<int, int>(max_idx_, &indices_[0], &addresses_[0], (int)indices_.size(), -1));
     }
 
 
@@ -59,7 +65,15 @@ namespace RadeonRays
             auto current = workqueue.front();
             workqueue.pop();
 
-            Node& node(nodes_[nodecnt_++]);
+            Node& node(nodes_[nodecnt_]);
+            indices_[nodecnt_] = current.first->index;
+            addresses_[nodecnt_] = nodecnt_;
+            ++nodecnt_;
+
+            if (current.first->index > max_idx_)
+            {
+                max_idx_ = current.first->index;
+            }
 
             node.lbound = current.first->lc->bounds;
             if (current.first->lc->type == Bvh::NodeType::kInternal)

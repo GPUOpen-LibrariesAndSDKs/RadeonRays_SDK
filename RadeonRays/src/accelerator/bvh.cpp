@@ -71,6 +71,7 @@ namespace RadeonRays
 
         Node* node = AllocateNode();
         node->bounds = req.bounds;
+        node->index = req.index;
 
         // Create leaf node if we have enough prims
         if (req.numprims < 2)
@@ -223,9 +224,9 @@ namespace RadeonRays
             }
 
             // Left request
-            SplitRequest leftrequest = { req.startidx, splitidx - req.startidx, &node->lc, leftbounds, leftcentroid_bounds, req.level + 1 };
+            SplitRequest leftrequest = { req.startidx, splitidx - req.startidx, &node->lc, leftbounds, leftcentroid_bounds, req.level + 1, (req.index << 1) };
             // Right request
-            SplitRequest rightrequest = { splitidx, req.numprims - (splitidx - req.startidx), &node->rc, rightbounds, rightcentroid_bounds, req.level + 1 };
+            SplitRequest rightrequest = { splitidx, req.numprims - (splitidx - req.startidx), &node->rc, rightbounds, rightcentroid_bounds, req.level + 1, (req.index << 1) + 1 };
 
             {
                 // Put those to stack
@@ -370,7 +371,7 @@ namespace RadeonRays
             centroids[i] = c;
         }
 
-        SplitRequest init = { 0, numbounds, nullptr, m_bounds, centroid_bounds, 0 };
+        SplitRequest init = { 0, numbounds, nullptr, m_bounds, centroid_bounds, 0, 1 };
 
 #ifdef USE_BUILD_STACK
         std::stack<SplitRequest> stack;
