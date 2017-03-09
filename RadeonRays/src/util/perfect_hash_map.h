@@ -53,7 +53,7 @@ public:
 
 
     // DEBUG:
-    D hash_table_size() const { return m_hash_table.size(); }
+    D hash_table_size() const { return static_cast<D>(m_hash_table.size()); }
     D displacement_table_size() const { return m_t; }
     D const* displacement_table_ptr() const { return &m_displacement[0]; }
     V const* hash_table_ptr() const { return &m_hash_table[0]; }

@@ -80,7 +80,7 @@ namespace RadeonRays
             primitive_mutex_.lock();
 #endif
             node->type = kLeaf;
-            node->startidx = m_packed_indices.size();
+            node->startidx = static_cast<int>(m_packed_indices.size());
             node->numprims = req.numprims;
 
             for (auto i = 0U; i < req.numprims; ++i)
@@ -109,7 +109,7 @@ namespace RadeonRays
                     if (req.numprims < ss.sah && req.numprims < kMaxPrimitivesPerLeaf)
                     {
                         node->type = kLeaf;
-                        node->startidx = m_packed_indices.size();
+                        node->startidx = static_cast<int>(m_packed_indices.size());
                         node->numprims = req.numprims;
 
                         for (auto i = 0U; i < req.numprims; ++i)

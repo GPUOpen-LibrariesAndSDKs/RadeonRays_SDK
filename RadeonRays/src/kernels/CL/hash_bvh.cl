@@ -181,7 +181,6 @@ bool intersect(
     while (addr > -1)
     {
         node = scenedata->nodes[addr];
-
         bool l0 = LEAFNODE(node.lbound);
         bool l1 = LEAFNODE(node.rbound);
         float d0 = -1.f;
@@ -220,7 +219,6 @@ bool intersect(
             {
                 addr = CHILD(node, 0);
             }
-
             continue;
         }
         else if (d0 > 0)
@@ -250,7 +248,7 @@ bool intersect(
         nodeidx = (nodeidx >> num_levels) ^ 0x1;
 
         int d = displacement[nodeidx / t];
-        addr = hash[d + nodeidx & (t - 1)];
+        addr = hash[d + (nodeidx & (t - 1))];
     }
 
     return isect->shapeid >= 0;
