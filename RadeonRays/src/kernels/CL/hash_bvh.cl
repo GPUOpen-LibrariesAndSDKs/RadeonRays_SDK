@@ -382,6 +382,15 @@ __kernel void IntersectClosest(
     int local_id = get_local_id(0);
     int group_id = get_group_id(0);
 
+    SceneData scenedata =
+    {
+        nodes,
+        vertices,
+        faces,
+        shapes,
+        0
+    };
+
     if (global_id < numrays)
     {
         // Fetch ray
@@ -389,194 +398,9 @@ __kernel void IntersectClosest(
 
         if (Ray_IsActive(&r))
         {
-            // Calculate closest hit
-            //intersect(&scenedata, &r, &isect, displacement, hashmap, t);
-            float3 const invdir = native_recip(r.d.xyz);
-            float3 const oxinvdir = r.o.xyz * invdir;
-            float t_max = r.o.w;
-
-            int bittrail = 0;
-            int nodeidx = 1;
-            int addr = 0;
-            int faceidx = -1;
-            int postponed = -1;
-            //int deferred[3];
-            //int cnt = 0;
-            bool found = false;
-            int p1 = -1;
-            int p2 = -1;
-
-            float3 v1, v2, v3;
-            Face face;
-            FatBvhNode node;
-
-            while (addr > -1)
-            {
-                while (addr > -1 && !found)
-                {
-                    node = nodes[addr];
-                    bool l0 = LEAFNODE(node.lbound);
-                    bool l1 = LEAFNODE(node.rbound);
-                    float d0 = -1.f;
-                    float d1 = -1.f;
-
-                    if (l0)
-                    {
-                        p1 = STARTIDX(node.lbound);
-                        found = true;
-                    }
-                    else
-                    {
-                        const float3 f = mad(node.lbound.pmax.xyz, invdir, oxinvdir);
-                        const float3 n = mad(node.lbound.pmin.xyz, invdir, oxinvdir);
-                        const float3 tmax = max(f, n);
-                        const float3 tmin = min(f, n);
-                        const float t1 = amd_min3(tmax.x, tmax.y, tmax.z);
-                        const float t0 = amd_max3(tmin.x, tmin.y, tmin.z);
-                        if (t0 < t1)
-                        {
-                            d0 = t0 > 0.f ? t0 : min(t1, t_max); 
-                        }
-                    }
-
-                    if (l1)
-                    {
-                        if (found)
-                            p2 = STARTIDX(node.rbound);
-                        else
-                            p1 = STARTIDX(node.rbound);
-
-                        found = true;
-                    }
-                    else
-                    {
-                        const float3 f = mad(node.rbound.pmax.xyz, invdir, oxinvdir);
-                        const float3 n = mad(node.rbound.pmin.xyz, invdir, oxinvdir);
-                        const float3 tmax = max(f, n);
-                        const float3 tmin = min(f, n);
-                        const float t1 = amd_min3(tmax.x, tmax.y, tmax.z);
-                        const float t0 = amd_max3(tmin.x, tmin.y, tmin.z);
-                        if (t0 < t1)
-                        {
-                            d1 = t0 > 0.f ? t0 : min(t1, t_max); 
-                        }
-                    }
-
-                    if (d0 > 0 && d1 > 0)
-                    {
-                        bittrail = bittrail << 1;
-                        nodeidx = nodeidx << 1;
-                        bittrail = bittrail ^ 0x1;
-
-                        if (d0 > d1)
-                        {
-                            addr = CHILD(node, 1);
-                            nodeidx = nodeidx ^ 0x1;
-                            postponed = CHILD(node, 0);
-                        }
-                        else
-                        {
-                            addr = CHILD(node, 0);
-                            postponed = CHILD(node, 1);
-                        }
-                        continue;
-                    }
-                    else if (d0 > 0)
-                    {
-                        bittrail = bittrail << 1;
-                        nodeidx = nodeidx << 1;
-                        addr = CHILD(node, 0);
-                        continue;
-                    }
-                    else if (d1 > 0)
-                    {
-                        bittrail = bittrail << 1;
-                        nodeidx = nodeidx << 1;
-                        nodeidx = nodeidx ^ 0x1;
-                        addr = CHILD(node, 1);
-                        continue;
-                    }
-                }
-
-                if (found)
-                {
-                    face = faces[p1];
-                    v1 = vertices[face.idx[0]];
-                    v2 = vertices[face.idx[1]];
-                    v3 = vertices[face.idx[2]];
-
-                    float f = IntersectTriangleLight(r, v1, v2, v3, t_max);
-                    if (f < t_max)
-                    {
-                        faceidx = p1;
-                        t_max = f;
-                    }
-
-                    if (p2 != -1)
-                    {
-                        face = faces[p2];
-                        v1 = vertices[face.idx[0]];
-                        v2 = vertices[face.idx[1]];
-                        v3 = vertices[face.idx[2]];
-
-                        float f = IntersectTriangleLight(r, v1, v2, v3, t_max);
-                        if (f < t_max)
-                        {
-                            faceidx = p2;
-                            t_max = f;
-                        }
-                    }
-
-                    p1 = p2 = -1;
-                    found = false;
-                }
-
-                if (bittrail == 0)
-                {
-                    addr = -1;
-                    continue;
-                }
-
-                int num_levels = 31 - clz(bittrail & -bittrail);
-                bittrail = (bittrail >> num_levels) ^ 0x1;
-                nodeidx = (nodeidx >> num_levels) ^ 0x1;
-
-                if (postponed != -1)
-                {
-                    addr = postponed;
-                    postponed = -1;
-                    continue;
-                }
-
-                int d = displacement[nodeidx / t];
-                addr = hashmap[d + (nodeidx & (t - 1))];
-            }
-
-            if (faceidx != -1)
-            {
-                face = faces[p2];
-                hits[global_id].shapeid = face.shapeidx;
-                hits[global_id].primid = face.id;
-
-                v1 = vertices[face.idx[0]];
-                v2 = vertices[face.idx[1]];
-                v3 = vertices[face.idx[2]];
-
-                const float3 e1 = v2 - v1;
-                const float3 e2 = v3 - v1;
-                const float3 s1 = cross(r.d.xyz, e2);
-                const float  invd = native_recip(dot(s1, e1));
-                const float3 d = r.o.xyz - v1;
-                const float  b1 = dot(d, s1) * invd;
-                const float3 s2 = cross(d, e1);
-                const float  b2 = dot(r.d.xyz, s2) * invd;
-                hits[global_id].uvwt = make_float4(b1, b2, 0.f, t_max);
-            }
-            else
-            {
-                hits[global_id].shapeid = -1;
-                hits[global_id].primid = -1;
-            }
+            Intersection isect;
+            intersect(&scenedata, &r, &isect, displacement, hashmap, t);
+            hits[global_id] = isect;
         }
     }
 }
@@ -713,99 +537,123 @@ __kernel void IntersectClosestRC(
             int nodeidx = 1;
             int addr = 0;
             int faceidx = -1;
+            int p1 = -1;
+            int p2 = -1;
+            bool found = false;
 
             FatBvhNode node;
             while (addr > -1)
             {
-                node = nodes[addr];
-                bool l0 = LEAFNODE(node.lbound);
-                bool l1 = LEAFNODE(node.rbound);
-                float d0 = -1.f;
-                float d1 = -1.f;
-
-                if (l0)
+                while (addr > -1 && !found)
                 {
-                    float3 v1, v2, v3;
-                    Face face;
-                    face = faces[STARTIDX(node.lbound)];
-                    v1 = vertices[face.idx[0]];
-                    v2 = vertices[face.idx[1]];
-                    v3 = vertices[face.idx[2]];
-                    if (IntersectTriangle(&r, v1, v2, v3, &isect))
+                    node = nodes[addr];
+                    bool l0 = LEAFNODE(node.lbound);
+                    bool l1 = LEAFNODE(node.rbound);
+                    float d0 = -1.f;
+                    float d1 = -1.f;
+
+                    if (l0)
                     {
-                        faceidx = STARTIDX(node.lbound);
-                    }
-                }
-                else
-                {
-                    d0 = IntersectBoxF(&r, invdir, node.lbound, isect.uvwt.w);
-                }
-
-                if (l1)
-                {
-                    float3 v1, v2, v3;
-                    Face face;
-                    face = faces[STARTIDX(node.rbound)];
-                    v1 = vertices[face.idx[0]];
-                    v2 = vertices[face.idx[1]];
-                    v3 = vertices[face.idx[2]];
-
-
-                    if (IntersectTriangle(&r, v1, v2, v3, &isect))
-                    {
-                        faceidx = STARTIDX(node.rbound);
-                    }
-                }
-                else
-                {
-                    d1 = IntersectBoxF(&r, invdir, node.rbound, isect.uvwt.w);
-                }
-
-                if (d0 > 0 && d1 > 0)
-                {
-                    bittrail = bittrail << 1;
-                    nodeidx = nodeidx << 1;
-                    bittrail = bittrail ^ 0x1;
-
-                    if (d0 > d1)
-                    {
-                        addr = CHILD(node, 1);
-                        nodeidx = nodeidx ^ 0x1;
+                        p1 = STARTIDX(node.lbound);
+                        found = true;
                     }
                     else
                     {
-                        addr = CHILD(node, 0);
+                        d0 = IntersectBoxF(&r, invdir, node.lbound, isect.uvwt.w);
                     }
-                    continue;
-                }
-                else if (d0 > 0)
-                {
-                    bittrail = bittrail << 1;
-                    nodeidx = nodeidx << 1;
-                    addr = CHILD(node, 0);
-                    continue;
-                }
-                else if (d1 > 0)
-                {
-                    bittrail = bittrail << 1;
-                    nodeidx = nodeidx << 1;
-                    nodeidx = nodeidx ^ 0x1;
-                    addr = CHILD(node, 1);
-                    continue;
+
+                    if (l1)
+                    {
+                        if (!found)
+                        {
+                            p1 = STARTIDX(node.rbound);
+                        }
+                        else
+                        {
+                            p2 = STARTIDX(node.rbound);
+                        }
+                        found = true;
+                    }
+                    else
+                    {
+                        d1 = IntersectBoxF(&r, invdir, node.rbound, isect.uvwt.w);
+                    }
+
+                    if (d0 > 0 && d1 > 0)
+                    {
+                        bittrail = bittrail << 1;
+                        nodeidx = nodeidx << 1;
+                        bittrail = bittrail ^ 0x1;
+
+                        if (d0 > d1)
+                        {
+                            addr = CHILD(node, 1);
+                            nodeidx = nodeidx ^ 0x1;
+                        }
+                        else
+                        {
+                            addr = CHILD(node, 0);
+                        }
+                        continue;
+                    }
+                    else if (d0 > 0)
+                    {
+                        bittrail = bittrail << 1;
+                        nodeidx = nodeidx << 1;
+                        addr = CHILD(node, 0);
+                        continue;
+                    }
+                    else if (d1 > 0)
+                    {
+                        bittrail = bittrail << 1;
+                        nodeidx = nodeidx << 1;
+                        nodeidx = nodeidx ^ 0x1;
+                        addr = CHILD(node, 1);
+                        continue;
+                    }
+
+                    if (bittrail == 0)
+                    {
+                        addr = -1;
+                        continue;
+                    }
+
+                    int num_levels = 31 - clz(bittrail & -bittrail);
+                    bittrail = (bittrail >> num_levels) ^ 0x1;
+                    nodeidx = (nodeidx >> num_levels) ^ 0x1;
+
+                    int d = displacement[nodeidx / t];
+                    addr = hashmap[d + (nodeidx & (t - 1))];
                 }
 
-                if (bittrail == 0)
+                if (found)
                 {
-                    addr = -1;
-                    continue;
-                }
+                    float3 v1, v2, v3;
+                    Face face;
+                    face = faces[p1];
+                    v1 = vertices[face.idx[0]];
+                    v2 = vertices[face.idx[1]];
+                    v3 = vertices[face.idx[2]];
+                    if (IntersectTriangle(&r, v1, v2, v3, &isect))
+                    {
+                        faceidx = p1;
+                    }
 
-                int num_levels = 31 - clz(bittrail & -bittrail);
-                bittrail = (bittrail >> num_levels) ^ 0x1;
-                nodeidx = (nodeidx >> num_levels) ^ 0x1;
+                    if (p2 != -1)
+                    {
+                        face = faces[p2];
+                        v1 = vertices[face.idx[0]];
+                        v2 = vertices[face.idx[1]];
+                        v3 = vertices[face.idx[2]];
+                        if (IntersectTriangle(&r, v1, v2, v3, &isect))
+                        {
+                            faceidx = p2;
+                        }
+                    }
 
-                int d = displacement[nodeidx / t];
-                addr = hashmap[d + (nodeidx & (t - 1))];
+                    found = false;
+                    p1 = p2 = -1;
+                }   
             }
 
             if (faceidx != -1)
@@ -813,6 +661,8 @@ __kernel void IntersectClosestRC(
                 isect.shapeid = faces[faceidx].shapeidx;
                 isect.primid = faces[faceidx].id;
             }
+
+            hits[global_id] = isect;
         }
     }
 }
