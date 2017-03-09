@@ -31,7 +31,7 @@ THE SOFTWARE.
 
 namespace RadeonRays
 {
-    static int constexpr kMaxPrimitivesPerLeaf = 4;
+    static int constexpr kMaxPrimitivesPerLeaf = 1;
 
     static bool is_nan(float v)
     {

@@ -95,8 +95,6 @@ void IntersectLeafClosest(
 {
     float3 v1, v2, v3;
     Face face;
-
-#pragma unroll 4
     for (int i = 0; i < numprims; ++i)
     {
         face = scenedata->faces[startidx + i];
@@ -359,16 +357,6 @@ __kernel void IntersectClosest(
     int local_id = get_local_id(0);
     int group_id = get_group_id(0);
 
-    // Fill scene data
-    SceneData scenedata =
-    {
-        nodes,
-        vertices,
-        faces,
-        shapes,
-        0
-    };
-
     if (global_id < numrays)
     {
         // Fetch ray
@@ -378,7 +366,122 @@ __kernel void IntersectClosest(
         {
             // Calculate closest hit
             Intersection isect;
-            intersect(&scenedata, &r, &isect, displacement, hashmap, t);
+            //intersect(&scenedata, &r, &isect, displacement, hashmap, t);
+            float3 const invdir = native_recip(r.d.xyz);
+            isect.uvwt = make_float4(0.f, 0.f, 0.f, r.o.w);
+            isect.shapeid = -1;
+            isect.primid = -1;
+
+            int bittrail = 0;
+            int nodeidx = 1;
+            int addr = 0;
+            int faceidx = -1;
+            int deferred[3];
+            int cnt = 0;
+
+            float3 v1, v2, v3;
+            Face face;
+            FatBvhNode node;
+
+            while (addr > -1)
+            {
+                while (addr > -1 && cnt < 2)
+                {
+                    node = nodes[addr];
+                    bool l0 = LEAFNODE(node.lbound);
+                    bool l1 = LEAFNODE(node.rbound);
+                    float d0 = -1.f;
+                    float d1 = -1.f;
+
+                    if (l0)
+                    {
+                        deferred[cnt++] = STARTIDX(node.lbound);
+                    }
+                    else
+                    {
+                        d0 = IntersectBoxF(&r, invdir, node.lbound, isect.uvwt.w);
+                    }
+
+                    if (l1)
+                    {
+                        deferred[cnt++] = STARTIDX(node.rbound);
+                    }
+                    else
+                    {
+                        d1 = IntersectBoxF(&r, invdir, node.rbound, isect.uvwt.w);
+                    }
+
+                    if (d0 > 0 && d1 > 0)
+                    {
+                        bittrail = bittrail << 1;
+                        nodeidx = nodeidx << 1;
+                        bittrail = bittrail ^ 0x1;
+
+                        if (d0 > d1)
+                        {
+                            addr = CHILD(node, 1);
+                            nodeidx = nodeidx ^ 0x1;
+                        }
+                        else
+                        {
+                            addr = CHILD(node, 0);
+                        }
+                        continue;
+                    }
+                    else if (d0 > 0)
+                    {
+                        bittrail = bittrail << 1;
+                        nodeidx = nodeidx << 1;
+                        addr = CHILD(node, 0);
+                        continue;
+                    }
+                    else if (d1 > 0)
+                    {
+                        bittrail = bittrail << 1;
+                        nodeidx = nodeidx << 1;
+                        nodeidx = nodeidx ^ 0x1;
+                        addr = CHILD(node, 1);
+                        continue;
+                    }
+                }
+
+                if (cnt > 0)
+                {
+                    for (int i = 0; i < cnt; ++i)
+                    {
+                        face = faces[deferred[i]];
+                        v1 = vertices[face.idx[0]];
+                        v2 = vertices[face.idx[1]];
+                        v3 = vertices[face.idx[2]];
+
+                        if (IntersectTriangle(&r, v1, v2, v3, &isect))
+                        {
+                            faceidx = deferred[i];
+                        }
+                    }
+
+                    cnt = 0;
+                }
+
+                if (bittrail == 0)
+                {
+                    addr = -1;
+                    continue;
+                }
+
+                int num_levels = 31 - clz(bittrail & -bittrail);
+                bittrail = (bittrail >> num_levels) ^ 0x1;
+                nodeidx = (nodeidx >> num_levels) ^ 0x1;
+
+                int d = displacement[nodeidx / t];
+                addr = hashmap[d + (nodeidx & (t - 1))];
+            }
+
+            if (faceidx != -1)
+            {
+                isect.shapeid = faces[faceidx].shapeidx;
+                isect.primid = faces[faceidx].id;
+            }
 
             // Write data back in case of a hit
             hits[global_id] = isect;
