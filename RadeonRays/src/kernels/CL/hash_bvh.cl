@@ -337,6 +337,31 @@ bool occluded(SceneData const* scenedata, ray const* r)
     return false;
 }
 
+__attribute__((always_inline))
+float IntersectTriangleLight(ray r, float3 v1, float3 v2, float3 v3, float t_max)
+{
+    const float3 e1 = v2 - v1;
+    const float3 e2 = v3 - v1;
+    const float3 s1 = cross(r.d.xyz, e2);
+    const float  invd = native_recip(dot(s1, e1));
+    const float3 d = r.o.xyz - v1;
+    const float  b1 = dot(d, s1) * invd;
+    const float3 s2 = cross(d, e1);
+    const float  b2 = dot(r.d.xyz, s2) * invd;
+    const float temp = dot(e2, s2) * invd;
+    
+    if (b1 < 0.f || b1 > 1.f || b2 < 0.f || b1 + b2 > 1.f
+        || temp < 0.f || temp > t_max)
+    {
+        return t_max;
+    }
+    else
+    {
+        return temp;
+    }
+}
+
+
 __attribute__((reqd_work_group_size(64, 1, 1)))
 __kernel void IntersectClosest(
     // Input
@@ -365,19 +390,21 @@ __kernel void IntersectClosest(
         if (Ray_IsActive(&r))
         {
             // Calculate closest hit
-            Intersection isect;
             //intersect(&scenedata, &r, &isect, displacement, hashmap, t);
             float3 const invdir = native_recip(r.d.xyz);
-            isect.uvwt = make_float4(0.f, 0.f, 0.f, r.o.w);
-            isect.shapeid = -1;
-            isect.primid = -1;
+            float3 const oxinvdir = r.o.xyz * invdir;
+            float t_max = r.o.w;
 
             int bittrail = 0;
             int nodeidx = 1;
             int addr = 0;
             int faceidx = -1;
-            int deferred[3];
-            int cnt = 0;
+            int postponed = -1;
+            //int deferred[3];
+            //int cnt = 0;
+            bool found = false;
+            int p1 = -1;
+            int p2 = -1;
 
             float3 v1, v2, v3;
             Face face;
@@ -385,7 +412,7 @@ __kernel void IntersectClosest(
 
             while (addr > -1)
             {
-                while (addr > -1 && cnt < 2)
+                while (addr > -1 && !found)
                 {
                     node = nodes[addr];
                     bool l0 = LEAFNODE(node.lbound);
@@ -395,20 +422,44 @@ __kernel void IntersectClosest(
 
                     if (l0)
                     {
-                        deferred[cnt++] = STARTIDX(node.lbound);
+                        p1 = STARTIDX(node.lbound);
+                        found = true;
                     }
                     else
                     {
-                        d0 = IntersectBoxF(&r, invdir, node.lbound, isect.uvwt.w);
+                        const float3 f = mad(node.lbound.pmax.xyz, invdir, oxinvdir);
+                        const float3 n = mad(node.lbound.pmin.xyz, invdir, oxinvdir);
+                        const float3 tmax = max(f, n);
+                        const float3 tmin = min(f, n);
+                        const float t1 = amd_min3(tmax.x, tmax.y, tmax.z);
+                        const float t0 = amd_max3(tmin.x, tmin.y, tmin.z);
+                        if (t0 < t1)
+                        {
+                            d0 = t0 > 0.f ? t0 : min(t1, t_max); 
+                        }
                     }
 
                     if (l1)
                     {
-                        deferred[cnt++] = STARTIDX(node.rbound);
+                        if (found)
+                            p2 = STARTIDX(node.rbound);
+                        else
+                            p1 = STARTIDX(node.rbound);
+
+                        found = true;
                     }
                     else
                     {
-                        d1 = IntersectBoxF(&r, invdir, node.rbound, isect.uvwt.w);
+                        const float3 f = mad(node.rbound.pmax.xyz, invdir, oxinvdir);
+                        const float3 n = mad(node.rbound.pmin.xyz, invdir, oxinvdir);
+                        const float3 tmax = max(f, n);
+                        const float3 tmin = min(f, n);
+                        const float t1 = amd_min3(tmax.x, tmax.y, tmax.z);
+                        const float t0 = amd_max3(tmin.x, tmin.y, tmin.z);
+                        if (t0 < t1)
+                        {
+                            d1 = t0 > 0.f ? t0 : min(t1, t_max); 
+                        }
                     }
 
                     if (d0 > 0 && d1 > 0)
@@ -421,10 +472,12 @@ __kernel void IntersectClosest(
                         {
                             addr = CHILD(node, 1);
                             nodeidx = nodeidx ^ 0x1;
+                            postponed = CHILD(node, 0);
                         }
                         else
                         {
                             addr = CHILD(node, 0);
+                            postponed = CHILD(node, 1);
                         }
                         continue;
                     }
@@ -445,22 +498,37 @@ __kernel void IntersectClosest(
                     }
                 }
 
-                if (cnt > 0)
+                if (found)
                 {
-                    for (int i = 0; i < cnt; ++i)
+                    face = faces[p1];
+                    v1 = vertices[face.idx[0]];
+                    v2 = vertices[face.idx[1]];
+                    v3 = vertices[face.idx[2]];
+
+                    float f = IntersectTriangleLight(r, v1, v2, v3, t_max);
+                    if (f < t_max)
                     {
-                        face = faces[deferred[i]];
+                        faceidx = p1;
+                        t_max = f;
+                    }
+
+                    if (p2 != -1)
+                    {
+                        face = faces[p2];
                         v1 = vertices[face.idx[0]];
                         v2 = vertices[face.idx[1]];
                         v3 = vertices[face.idx[2]];
 
-                        if (IntersectTriangle(&r, v1, v2, v3, &isect))
+                        float f = IntersectTriangleLight(r, v1, v2, v3, t_max);
+                        if (f < t_max)
                         {
-                            faceidx = deferred[i];
+                            faceidx = p2;
+                            t_max = f;
                         }
                     }
 
-                    cnt = 0;
+                    p1 = p2 = -1;
+                    found = false;
                 }
 
                 if (bittrail == 0)
@@ -473,18 +541,42 @@ __kernel void IntersectClosest(
                 bittrail = (bittrail >> num_levels) ^ 0x1;
                 nodeidx = (nodeidx >> num_levels) ^ 0x1;
 
+                if (postponed != -1)
+                {
+                    addr = postponed;
+                    postponed = -1;
+                    continue;
+                }
+
                 int d = displacement[nodeidx / t];
                 addr = hashmap[d + (nodeidx & (t - 1))];
             }
 
             if (faceidx != -1)
             {
-                isect.shapeid = faces[faceidx].shapeidx;
-                isect.primid = faces[faceidx].id;
-            }
+                face = faces[p2];
+                hits[global_id].shapeid = face.shapeidx;
+                hits[global_id].primid = face.id;
 
-            // Write data back in case of a hit
-            hits[global_id] = isect;
+                v1 = vertices[face.idx[0]];
+                v2 = vertices[face.idx[1]];
+                v3 = vertices[face.idx[2]];
+
+                const float3 e1 = v2 - v1;
+                const float3 e2 = v3 - v1;
+                const float3 s1 = cross(r.d.xyz, e2);
+                const float  invd = native_recip(dot(s1, e1));
+                const float3 d = r.o.xyz - v1;
+                const float  b1 = dot(d, s1) * invd;
+                const float3 s2 = cross(d, e1);
+                const float  b2 = dot(r.d.xyz, s2) * invd;
+                hits[global_id].uvwt = make_float4(b1, b2, 0.f, t_max);
+            }
+            else
+            {
+                hits[global_id].shapeid = -1;
+                hits[global_id].primid = -1;
+            }
         }
     }
 }
