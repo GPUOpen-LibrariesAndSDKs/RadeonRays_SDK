@@ -506,8 +506,6 @@ IntersectClosestRC(
 
         if (Ray_IsActive(&r))
         {
-            float3 v1, v2, v3;
-            Face face;
             float3 const invdir = native_recip(r.d.xyz);
             float3 const oxinvdir = -r.o.xyz * invdir;
             float t_max = r.o.w;
@@ -516,11 +514,11 @@ IntersectClosestRC(
             int nodeidx = 1;
             int addr = 0;
             int faceidx = -1;
+            //int postponed = -1;
 
-            FatBvhNode node;
             while (addr > -1)
             {
-                node = nodes[addr];
+                FatBvhNode node = nodes[addr];
                 bool l0 = LEAFNODE(node.lbound);
                 bool l1 = LEAFNODE(node.rbound);
                 float d0 = -1.f;
@@ -528,6 +526,8 @@ IntersectClosestRC(
 
                 if (l0)
                 {
+                    Face face;
+                    float3 v1, v2, v3;
                     face = faces[STARTIDX(node.lbound)];
                     v1 = vertices[face.idx[0]];
                     v2 = vertices[face.idx[1]];
@@ -563,6 +563,8 @@ IntersectClosestRC(
 
                 if (l1)
                 {
+                    Face face;
+                    float3 v1, v2, v3;
                     face = faces[STARTIDX(node.rbound)];
                     v1 = vertices[face.idx[0]];
                     v2 = vertices[face.idx[1]];
@@ -606,10 +608,12 @@ IntersectClosestRC(
                     {
                         addr = CHILD(node, 1);
                         nodeidx = nodeidx ^ 0x1;
+                        //postponed = CHILD(node, 0);
                     }
                     else
                     {
                         addr = CHILD(node, 0);
+                        //postponed =  CHILD(node, 1);
                     }
                     continue;
                 }
@@ -639,12 +643,21 @@ IntersectClosestRC(
                 bittrail = (bittrail >> num_levels) ^ 0x1;
                 nodeidx = (nodeidx >> num_levels) ^ 0x1;
 
+               // if (postponed != -1)
+                //{
+                    //addr = postponed;
+                    //postponed = -1;
+                    //continue;
+                //}
+
                 int d = displacement[nodeidx / t];
                 addr = hashmap[d + (nodeidx & (t - 1))];
             }
 
             if (faceidx != -1)
             {
+                Face face;
+                float3 v1, v2, v3;
                 face = faces[faceidx];
                 hits[global_id].shapeid = face.shapeidx;
                 hits[global_id].primid = face.id;
