@@ -624,52 +624,6 @@ __kernel void IntersectAny(
     }
 }
 
-__attribute__((reqd_work_group_size(64, 1, 1)))
-// Version with range check
-__kernel void IntersectClosestRC(
-    __global FatBvhNode const* nodes,   // BVH nodes
-    __global float3 const* vertices, // Scene positional data
-    __global Face const* faces,      // Scene indices
-    __global ShapeData const* shapes,     // Shape data
-    __global ray const* rays,        // Ray workload
-    int offset,                // Offset in rays array
-    __global int const* numrays,     // Number of rays in the workload
-    __global int const* displacement,
-    __global int const* hashmap,
-    int t,
-    __global Intersection* hits
-    )
-{
-    int global_id = get_global_id(0);
-    int local_id = get_local_id(0);
-    int group_id = get_group_id(0);
-
-    // Fill scene data
-    SceneData scenedata =
-    {
-        nodes,
-        vertices,
-        faces,
-        shapes,
-        0
-    };
-
-    // Handle only working subset
-    if (global_id < *numrays)
-    {
-        // Fetch ray
-        ray r = rays[global_id];
-
-        if (Ray_IsActive(&r))
-        {
-            // Calculate closest hit
-            Intersection isect;
-            intersect(&scenedata, &r, &isect, displacement, hashmap, t);
-            // Write data back in case of a hit
-            hits[global_id] = isect;
-        }
-    }
-}
 
 __attribute__((reqd_work_group_size(64, 1, 1)))
 // Version with range check
@@ -715,3 +669,152 @@ __kernel void IntersectAnyRC(
         }
     }
 }
+
+
+
+
+
+
+
+__attribute__((reqd_work_group_size(64, 1, 1)))
+// Version with range check
+__kernel void IntersectClosestRC(
+    __global FatBvhNode const* nodes,   // BVH nodes
+    __global float3 const* vertices, // Scene positional data
+    __global Face const* faces,      // Scene indices
+    __global ShapeData const* shapes,     // Shape data
+    __global ray const* rays,        // Ray workload
+    int offset,                // Offset in rays array
+    __global int const* numrays,     // Number of rays in the workload
+    __global int const* displacement,
+    __global int const* hashmap,
+    int t,
+    __global Intersection* hits
+    )
+{
+    int global_id = get_global_id(0);
+    int local_id = get_local_id(0);
+    int group_id = get_group_id(0);
+
+    // Handle only working subset
+    if (global_id < *numrays)
+    {
+        ray r = rays[global_id];
+
+        if (Ray_IsActive(&r))
+        {
+            Intersection isect;
+            const float3 invdir = native_recip(r.d.xyz);
+            isect.uvwt = make_float4(0.f, 0.f, 0.f, r.o.w);
+            isect.shapeid = -1;
+            isect.primid = -1;
+
+            int bittrail = 0;
+            int nodeidx = 1;
+            int addr = 0;
+            int faceidx = -1;
+
+            FatBvhNode node;
+            while (addr > -1)
+            {
+                node = nodes[addr];
+                bool l0 = LEAFNODE(node.lbound);
+                bool l1 = LEAFNODE(node.rbound);
+                float d0 = -1.f;
+                float d1 = -1.f;
+
+                if (l0)
+                {
+                    float3 v1, v2, v3;
+                    Face face;
+                    face = faces[STARTIDX(node.lbound)];
+                    v1 = vertices[face.idx[0]];
+                    v2 = vertices[face.idx[1]];
+                    v3 = vertices[face.idx[2]];
+                    if (IntersectTriangle(&r, v1, v2, v3, &isect))
+                    {
+                        faceidx = STARTIDX(node.lbound);
+                    }
+                }
+                else
+                {
+                    d0 = IntersectBoxF(&r, invdir, node.lbound, isect.uvwt.w);
+                }
+
+                if (l1)
+                {
+                    float3 v1, v2, v3;
+                    Face face;
+                    face = faces[STARTIDX(node.rbound)];
+                    v1 = vertices[face.idx[0]];
+                    v2 = vertices[face.idx[1]];
+                    v3 = vertices[face.idx[2]];
+
+
+                    if (IntersectTriangle(&r, v1, v2, v3, &isect))
+                    {
+                        faceidx = STARTIDX(node.rbound);
+                    }
+                }
+                else
+                {
+                    d1 = IntersectBoxF(&r, invdir, node.rbound, isect.uvwt.w);
+                }
+
+                if (d0 > 0 && d1 > 0)
+                {
+                    bittrail = bittrail << 1;
+                    nodeidx = nodeidx << 1;
+                    bittrail = bittrail ^ 0x1;
+
+                    if (d0 > d1)
+                    {
+                        addr = CHILD(node, 1);
+                        nodeidx = nodeidx ^ 0x1;
+                    }
+                    else
+                    {
+                        addr = CHILD(node, 0);
+                    }
+                    continue;
+                }
+                else if (d0 > 0)
+                {
+                    bittrail = bittrail << 1;
+                    nodeidx = nodeidx << 1;
+                    addr = CHILD(node, 0);
+                    continue;
+                }
+                else if (d1 > 0)
+                {
+                    bittrail = bittrail << 1;
+                    nodeidx = nodeidx << 1;
+                    nodeidx = nodeidx ^ 0x1;
+                    addr = CHILD(node, 1);
+                    continue;
+                }
+
+                if (bittrail == 0)
+                {
+                    addr = -1;
+                    continue;
+                }
+
+                int num_levels = 31 - clz(bittrail & -bittrail);
+                bittrail = (bittrail >> num_levels) ^ 0x1;
+                nodeidx = (nodeidx >> num_levels) ^ 0x1;
+
+                int d = displacement[nodeidx / t];
+                addr = hashmap[d + (nodeidx & (t - 1))];
+            }
+
+            if (faceidx != -1)
+            {
+                isect.shapeid = faces[faceidx].shapeidx;
+                isect.primid = faces[faceidx].id;
+            }
+        }
+    }
+}
+
+
