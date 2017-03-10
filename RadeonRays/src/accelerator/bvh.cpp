@@ -246,7 +246,7 @@ namespace RadeonRays
     {
         // SAH implementation
         // calc centroids histogram
-        int const kNumBins = 64;
+        int const kNumBins = 256;
         // moving split bin index
         int splitidx = -1;
         // Set SAH to maximum float value as a start

@@ -31,10 +31,10 @@ EXTENSIONS
 /*************************************************************************
 TYPE DEFINITIONS
 **************************************************************************/
-#define STARTIDX(x) (((int)(x.pmin.w)) >> 4)
-#define NUMPRIMS(x) (((int)(x.pmin.w)) & 0xF)
+#define STARTIDX(x) (((int)((x).pmin.w)) >> 4)
+#define NUMPRIMS(x) (((int)((x).pmin.w)) & 0xF)
 #define LEAFNODE(x) (((x).pmin.w) != -1.f)
-#define CHILD(x, i) ((int)x.bounds[i].pmax.w)
+#define CHILD(x, i) ((int)(x).bounds[i].pmax.w)
 #define SHORT_STACK_SIZE 16
 #define WAVEFRONT_SIZE 64
 
@@ -547,13 +547,13 @@ IntersectClosestRC(
                     const float3 tmax = max(f, n);
                     const float3 tmin = min(f, n);
 
-                    #ifndef AMD_MEDIA_OPS
+#ifndef AMD_MEDIA_OPS
                     const float t1 = min(min(tmax.x, min(tmax.y, tmax.z)), t_max);
                     const float t0 = max(max(tmin.x, max(tmin.y, tmin.z)), 0.f);
-                    #else
+#else
                     const float t1 = min(amd_min3(tmax.x, tmax.y, tmax.z), t_max);
                     const float t0 = amd_max3(tmin.x, tmin.y, tmin.z);
-                    #endif
+#endif
 
                     if (t1 >= t0)
                     {
@@ -584,13 +584,13 @@ IntersectClosestRC(
                     const float3 tmax = max(f, n);
                     const float3 tmin = min(f, n);
 
-                    #ifndef AMD_MEDIA_OPS
+#ifndef AMD_MEDIA_OPS
                     const float t1 = min(min(tmax.x, min(tmax.y, tmax.z)), maxt);
                     const float t0 = max(max(tmin.x, max(tmin.y, tmin.z)), 0.f);
-                    #else
+#else
                     const float t1 = min(amd_min3(tmax.x, tmax.y, tmax.z), t_max);
                     const float t0 = amd_max3(tmin.x, tmin.y, tmin.z);
-                    #endif
+#endif
 
                     if (t1 >= t0)
                     {
@@ -598,10 +598,15 @@ IntersectClosestRC(
                     }
                 }
 
-                if (d0 > 0 && d1 > 0)
+                if (d0 > 0 || d1 > 0)
                 {
                     bittrail = bittrail << 1;
                     nodeidx = nodeidx << 1;
+                }
+
+                if (d0 > 0 && d1 > 0)
+                {
+
                     bittrail = bittrail ^ 0x1;
 
                     if (d0 > d1)
@@ -619,15 +624,12 @@ IntersectClosestRC(
                 }
                 else if (d0 > 0)
                 {
-                    bittrail = bittrail << 1;
-                    nodeidx = nodeidx << 1;
                     addr = CHILD(node, 0);
                     continue;
+                    
                 }
                 else if (d1 > 0)
                 {
-                    bittrail = bittrail << 1;
-                    nodeidx = nodeidx << 1;
                     nodeidx = nodeidx ^ 0x1;
                     addr = CHILD(node, 1);
                     continue;
@@ -643,12 +645,12 @@ IntersectClosestRC(
                 bittrail = (bittrail >> num_levels) ^ 0x1;
                 nodeidx = (nodeidx >> num_levels) ^ 0x1;
 
-               // if (postponed != -1)
+                //if (postponed != -1)
                 //{
                     //addr = postponed;
                     //postponed = -1;
                     //continue;
-                //}
+               // }
 
                 int d = displacement[nodeidx / t];
                 addr = hashmap[d + (nodeidx & (t - 1))];
@@ -668,11 +670,11 @@ IntersectClosestRC(
                 const float3 e1 = v2 - v1;
                 const float3 e2 = v3 - v1;
                 const float3 s1 = cross(r.d.xyz, e2);
-                const float  invd = native_recip(dot(s1, e1));
+                const float invd = native_recip(dot(s1, e1));
                 const float3 d = r.o.xyz - v1;
-                const float  b1 = dot(d, s1) * invd;
+                const float b1 = dot(d, s1) * invd;
                 const float3 s2 = cross(d, e1);
-                const float  b2 = dot(r.d.xyz, s2) * invd;
+                const float b2 = dot(r.d.xyz, s2) * invd;
                 hits[global_id].uvwt = make_float4(b1, b2, 0.f, t_max);
             }
             else
