@@ -238,7 +238,6 @@ int IntersectTriangleP(ray const* r, float3 v1, float3 v2, float3 v3)
     return 1;
 }
 
-#define AMD_MEDIA_OPS
 #ifdef AMD_MEDIA_OPS
 #pragma OPENCL EXTENSION cl_amd_media_ops2 : enable
 #endif

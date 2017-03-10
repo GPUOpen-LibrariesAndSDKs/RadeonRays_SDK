@@ -319,8 +319,6 @@ namespace RadeonRays
             translator.Process(*m_bvh);
 
             // Update GPU data
-            // Copy translated nodes first
-            m_gpudata->bvh = m_device->CreateBuffer(translator.nodes_.size() * sizeof(FatNodeBvhTranslator::Node), Calc::BufferType::kRead, &translator.nodes_[0]);
 
             // Create vertex buffer
             {
@@ -384,28 +382,18 @@ namespace RadeonRays
 
             // Create face buffer
             {
-                struct Face
-                {
-                    // Up to 3 indices
-                    int idx[3];
-                    // Shape index
-                    int shapeidx;
-                    // Primitive ID within the mesh
-                    int id;
-                    // Idx count
-                    int cnt;
-                };
+                
 
                 // This number is different from the number of faces for some BVHs 
                 auto numindices = m_bvh->GetNumIndices();
                 // Create face buffer
-                m_gpudata->faces = m_device->CreateBuffer(numindices * sizeof(Face), Calc::BufferType::kRead);
+                m_gpudata->faces = m_device->CreateBuffer(numindices * sizeof(FatNodeBvhTranslator::Face), Calc::BufferType::kRead);
 
                 // Get the pointer to mapped data
-                Face* facedata = nullptr;
+                FatNodeBvhTranslator::Face* facedata = nullptr;
                 Calc::Event* e = nullptr;
 
-                m_device->MapBuffer(m_gpudata->faces, 0, 0, numindices * sizeof(Face), Calc::BufferType::kWrite, (void**)&facedata, &e);
+                m_device->MapBuffer(m_gpudata->faces, 0, 0, numindices * sizeof(FatNodeBvhTranslator::Face), Calc::BufferType::kWrite, (void**)&facedata, &e);
 
                 e->Wait();
                 m_device->DeleteEvent(e);
@@ -453,11 +441,16 @@ namespace RadeonRays
                     facedata[i].id = faceidx;
                 }
 
+                translator.InjectIndices(facedata);
+
                 m_device->UnmapBuffer(m_gpudata->faces, 0, facedata, &e);
 
                 e->Wait();
                 m_device->DeleteEvent(e);
             }
+
+            // Copy translated nodes first
+            m_gpudata->bvh = m_device->CreateBuffer(translator.nodes_.size() * sizeof(FatNodeBvhTranslator::Node), Calc::BufferType::kRead, &translator.nodes_[0]);
 
             // Create shapes buffer
             m_gpudata->shapes = m_device->CreateBuffer(numshapes * sizeof(ShapeData), Calc::BufferType::kRead, &shapedata[0]);

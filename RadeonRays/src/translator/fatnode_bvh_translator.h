@@ -43,6 +43,18 @@ namespace RadeonRays
     class FatNodeBvhTranslator
     {
     public:
+        struct Face
+        {
+            // Up to 3 indices
+            int idx[3];
+            // Shape index
+            int shapeidx;
+            // Primitive ID within the mesh
+            int id;
+            // Idx count
+            int cnt;
+        };
+
         // Constructor
         FatNodeBvhTranslator()
             : nodecnt_(0)
@@ -56,13 +68,33 @@ namespace RadeonRays
         //
         struct Node
         {
-            // Node's bounding box
-            bbox lbound;
-            bbox rbound;
+            union
+            {
+                struct
+                {
+                    // Node's bounding box
+                    bbox lbound;
+                    bbox rbound;
+                };
+
+                struct
+                {
+                    int i1, i2, i3, left;
+                    int shapeid, primid, extra, right;
+                };
+            };
+
+            Node()
+                : lbound()
+                , rbound()
+            {
+
+            }
         };
 
         void Flush();
         void Process(Bvh& bvh);
+        void InjectIndices(Face const* faces);
         //void Process(Bvh const** bvhs, int const* offsets, int numbvhs);
         //void UpdateTopLevel(Bvh const& bvh);
 

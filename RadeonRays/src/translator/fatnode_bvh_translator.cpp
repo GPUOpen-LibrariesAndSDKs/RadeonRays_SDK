@@ -55,8 +55,6 @@ namespace RadeonRays
 
         // Build a hash
         m_hash_map.reset(new PerfectHashMap<int, int>(max_idx_, &indices_[0], &addresses_[0], (int)indices_.size(), -1));
-
-
         std::cout << "Finished hash building\n";
 
 //#define CONSISTENCY_TEST
@@ -67,6 +65,22 @@ namespace RadeonRays
 //            assert(val == addresses_[i]);
 //        }
 //#endif
+    }
+
+    void FatNodeBvhTranslator::InjectIndices(Face const* faces)
+    {
+        for (auto& node : nodes_)
+        {
+            if (node.left == -1)
+            {
+                auto idx = node.i1;
+                node.i1 = faces[idx].idx[0];
+                node.i2 = faces[idx].idx[1];
+                node.i3 = faces[idx].idx[2];
+                node.shapeid = faces[idx].shapeidx;
+                node.primid = faces[idx].id;
+            }
+        }
     }
 
 
@@ -92,36 +106,27 @@ namespace RadeonRays
                 max_idx_ = current.first->index;
             }
 
-            node.lbound = current.first->lc->bounds;
-            if (current.first->lc->type == Bvh::NodeType::kInternal)
+            if (current.first->type == Bvh::NodeType::kInternal)
             {
-                node.lbound.pmin.w = -1.f;
+                node.lbound = current.first->lc->bounds;
+                node.rbound = current.first->rc->bounds;
                 workqueue.push(std::make_pair(current.first->lc, nodecnt_));
-            }
-            else
-            {
-                node.lbound.pmin.w = (float)((current.first->lc->startidx << 4 ) | (current.first->lc->numprims & 0xF));
-            }
-
-            node.rbound = current.first->rc->bounds;
-            if (current.first->rc->type == Bvh::NodeType::kInternal)
-            {
-                node.rbound.pmin.w = -1.f;
                 workqueue.push(std::make_pair(current.first->rc, -nodecnt_));
             }
             else
             {
-                node.rbound.pmin.w = (float)((current.first->rc->startidx << 4) | (current.first->rc->numprims & 0xF));
+                node.left = node.right = -1;
+                node.i1 = current.first->startidx;
             }
 
             if (current.second > 0)
             {
-                nodes_[current.second - 1].lbound.pmax.w = (float)(nodecnt_ - 1);
+                nodes_[current.second - 1].left = nodecnt_ - 1;
             }
-            else if(current.second < 0)
+            else if (current.second < 0)
             {
-                nodes_[-current.second - 1].rbound.pmax.w = (float)(nodecnt_ - 1);
-            }
+                nodes_[-current.second - 1].right = nodecnt_ - 1;
+            }           
         }
 
         return 0;
