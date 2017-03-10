@@ -1,0 +1,24 @@
+newmtl MeshSG1
+illum 4
+Kd 0.50 0.50 0.50
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+Ni 1.00
+newmtl MeshSG3
+illum 4
+Kd 50.00 50.00 50.00
+Ka 1.00 0.00 0.00
+Tf 1.00 1.00 1.00
+Ni 1.00
+newmtl MeshSG5
+illum 4
+Kd 0.00 0.50 1.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+Ni 1.00
+newmtl MeshSG7
+illum 4
+Kd 1.00 0.00 0.50
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+Ni 1.00

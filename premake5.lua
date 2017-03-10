@@ -233,6 +233,13 @@ else
     if fileExists("./Calc/Calc.lua") then
         dofile("./Calc/Calc.lua")
     end
+    
+    if fileExists("./Rpr/Rpr.lua") then
+        dofile("./Rpr/Rpr.lua")
+    end
+    if fileExists("./Test/Test.lua") then
+        dofile("./Test/Test.lua")
+    end
 
     if _OPTIONS["use_opencl"] then
         if fileExists("./CLW/CLW.lua") then

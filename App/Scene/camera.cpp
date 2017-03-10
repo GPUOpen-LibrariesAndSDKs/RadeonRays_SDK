@@ -41,9 +41,17 @@ namespace Baikal
     , m_zcap(0.f, 0.f)
     {
         // Construct camera frame
+        LookAt(eye, at, up);
+    }
+
+    void PerspectiveCamera::LookAt(RadeonRays::float3 const& eye,
+                                    RadeonRays::float3 const& at,
+                                    RadeonRays::float3 const& up)
+    {
+        m_p = eye;
         m_forward = normalize(at - eye);
-        m_right   = cross(m_forward, normalize(up));
-        m_up      = cross(m_right, m_forward);
+        m_right = cross(m_forward, normalize(up));
+        m_up = cross(m_right, m_forward);
     }
     
     // Rotate camera around world Z axis, use for FPS camera
