@@ -71,14 +71,14 @@ namespace RadeonRays
     {
         for (auto& node : nodes_)
         {
-            if (node.left == -1)
+            if (node.s1.left == -1)
             {
-                auto idx = node.i1;
-                node.i1 = faces[idx].idx[0];
-                node.i2 = faces[idx].idx[1];
-                node.i3 = faces[idx].idx[2];
-                node.shapeid = faces[idx].shapeidx;
-                node.primid = faces[idx].id;
+                auto idx = node.s1.i1;
+                node.s1.i1 = faces[idx].idx[0];
+                node.s1.i2 = faces[idx].idx[1];
+                node.s1.i3 = faces[idx].idx[2];
+                node.s1.shapeid = faces[idx].shapeidx;
+                node.s1.primid = faces[idx].id;
             }
         }
     }
@@ -108,24 +108,24 @@ namespace RadeonRays
 
             if (current.first->type == Bvh::NodeType::kInternal)
             {
-                node.lbound = current.first->lc->bounds;
-                node.rbound = current.first->rc->bounds;
+                node.s0.lbound = current.first->lc->bounds;
+                node.s0.rbound = current.first->rc->bounds;
                 workqueue.push(std::make_pair(current.first->lc, nodecnt_));
                 workqueue.push(std::make_pair(current.first->rc, -nodecnt_));
             }
             else
             {
-                node.left = node.right = -1;
-                node.i1 = current.first->startidx;
+                node.s1.left = node.s1.right = -1;
+                node.s1.i1 = current.first->startidx;
             }
 
             if (current.second > 0)
             {
-                nodes_[current.second - 1].left = nodecnt_ - 1;
+                nodes_[current.second - 1].s1.left = nodecnt_ - 1;
             }
             else if (current.second < 0)
             {
-                nodes_[-current.second - 1].right = nodecnt_ - 1;
+                nodes_[-current.second - 1].s1.right = nodecnt_ - 1;
             }           
         }
 

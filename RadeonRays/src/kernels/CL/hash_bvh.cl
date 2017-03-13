@@ -61,20 +61,6 @@ typedef struct
 
 } FatBvhNode;
 
-typedef struct
-{
-    // BVH structure
-    __global FatBvhNode const *nodes;
-    // Scene positional data
-    __global float3 const *vertices;
-    // Scene indices
-    __global Face const *faces;
-    // Shape IDs
-    __global ShapeData const *shapes;
-    // Extra data
-    __global int const *extra;
-} SceneData;
-
 /*************************************************************************
 HELPER FUNCTIONS
 **************************************************************************/
@@ -82,17 +68,17 @@ HELPER FUNCTIONS
 
 
 __attribute__((always_inline)) 
-float IntersectTriangleLight(ray r, float3 v1, float3 v2, float3 v3, float t_max)
+float fast_intersect_triangle(ray r, float3 v1, float3 v2, float3 v3, float t_max)
 {
-    const float3 e1 = v2 - v1;
-    const float3 e2 = v3 - v1;
-    const float3 s1 = cross(r.d.xyz, e2);
-    const float invd = native_recip(dot(s1, e1));
-    const float3 d = r.o.xyz - v1;
-    const float b1 = dot(d, s1) * invd;
-    const float3 s2 = cross(d, e1);
-    const float b2 = dot(r.d.xyz, s2) * invd;
-    const float temp = dot(e2, s2) * invd;
+    float3 const e1 = v2 - v1;
+    float3 const e2 = v3 - v1;
+    float3 const s1 = cross(r.d.xyz, e2);
+    float const invd = native_recip(dot(s1, e1));
+    float3 const d = r.o.xyz - v1;
+    float const b1 = dot(d, s1) * invd;
+    float3 const s2 = cross(d, e1);
+    float const b2 = dot(r.d.xyz, s2) * invd;
+    float const temp = dot(e2, s2) * invd;
 
     if (b1 < 0.f || b1 > 1.f || b2 < 0.f || b1 + b2 > 1.f || temp < 0.f || temp > t_max)
     {
@@ -104,31 +90,53 @@ float IntersectTriangleLight(ray r, float3 v1, float3 v2, float3 v3, float t_max
     }
 }
 
-__attribute__((always_inline))
-float intersect_bbox1(bbox box, float3 invdir, float3 oxinvdir, float t_max)
+__attribute__((always_inline)) 
+float fast_intersect_bbox(bbox box, float3 invdir, float3 oxinvdir, float t_max)
 {
-    const float3 f = mad(box.pmax.xyz, invdir, oxinvdir);
-    const float3 n = mad(box.pmin.xyz, invdir, oxinvdir);
-
-    const float3 tmax = max(f, n);
-    const float3 tmin = min(f, n);
-
-#ifndef AMD_MEDIA_OPS
-    const float t1 = min(min(tmax.x, min(tmax.y, tmax.z)), t_max);
-    const float t0 = max(max(tmin.x, max(tmin.y, tmin.z)), 0.f);
-#else
-    const float t1 = min(amd_min3(tmax.x, tmax.y, tmax.z), t_max);
-    const float t0 = amd_max3(tmin.x, tmin.y, tmin.z);
-#endif
+    float3 const f = mad(box.pmax.xyz, invdir, oxinvdir);
+    float3 const n = mad(box.pmin.xyz, invdir, oxinvdir);
+    float3 const tmax = max(f, n);
+    float3 const tmin = min(f, n);
+    float const t1 = min(amd_min3(tmax.x, tmax.y, tmax.z), t_max);
+    float const t0 = max(amd_max3(tmin.x, tmin.y, tmin.z), 0.f);
 
     if (t1 >= t0)
     {
-        return t0 > 0.f ? t0 : t1;
+        return t1;
     }
     else
     {
         return -1.f;
     }
+}
+
+__attribute__((always_inline)) 
+float2 fast_intersect_bbox1(bbox box, float3 invdir, float3 oxinvdir, float t_max)
+{
+    float3 const f = mad(box.pmax.xyz, invdir, oxinvdir);
+    float3 const n = mad(box.pmin.xyz, invdir, oxinvdir);
+    float3 const tmax = max(f, n);
+    float3 const tmin = min(f, n);
+    float const t1 = min(amd_min3(tmax.x, tmax.y, tmax.z), t_max);
+    float const t0 = max(amd_max3(tmin.x, tmin.y, tmin.z), 0.001f);
+    return make_float2(t0, t1);
+}
+
+__attribute__((always_inline)) 
+float2 triangle_calculate_barycentrics(float3 p, float3 v1, float3 v2, float3 v3)
+{
+    float3 const e1 = v2 - v1;
+    float3 const e2 = v3 - v1;
+    float3 const e = p - v1;
+    float const d00 = dot(e1, e1);
+    float const d01 = dot(e1,e2);
+    float const d11 = dot(e2, e2);
+    float const d20 = dot(e, e1);
+    float const d21 = dot(e, e2);
+    float const denom = d00 * d11 - d01 * d01;
+    float const b1 = (d11 * d20 - d01 * d21) / denom;
+    float const b2 = (d00 * d21 - d01 * d20) / denom;
+    return make_float2(b1, b2);
 }
 
 __attribute__((reqd_work_group_size(64, 1, 1)))
@@ -152,14 +160,6 @@ IntersectClosest(
     int local_id = get_local_id(0);
     int group_id = get_group_id(0);
 
-    SceneData scenedata =
-    {
-        nodes,
-        vertices,
-        faces,
-        shapes,
-        0 };
-
     if (global_id < numrays)
     {
         ray r = rays[global_id];
@@ -178,14 +178,13 @@ IntersectClosest(
             while (addr > -1)
             {
                 FatBvhNode node = nodes[addr];
-
                 if (LEAFNODE(node))
                 {
                     float3 v1, v2, v3;
                     v1 = vertices[node.i1];
                     v2 = vertices[node.i2];
                     v3 = vertices[node.i3];
-                    float f = IntersectTriangleLight(r, v1, v2, v3, t_max);
+                    float const f = fast_intersect_triangle(r, v1, v2, v3, t_max);
                     if (f < t_max)
                     {
                         faceidx = addr;
@@ -194,21 +193,24 @@ IntersectClosest(
                 }
                 else
                 {
-                    float d0 = intersect_bbox1(node.lbound, invdir, oxinvdir, t_max);
-                    float d1 = intersect_bbox1(node.rbound, invdir, oxinvdir, t_max);
+                    float2 s0 = fast_intersect_bbox1(node.lbound, invdir, oxinvdir, t_max);
+                    float2 s1 = fast_intersect_bbox1(node.rbound, invdir, oxinvdir, t_max);
 
-                    if (d0 > 0 || d1 > 0)
+                    bool traverse_c0 = (s0.x <= s0.y);
+                    bool traverse_c1 = (s1.x <= s1.y);
+                    bool c1first = traverse_c1 && (s0.x > s1.x);
+
+                    if (traverse_c0 || traverse_c1)
                     {
                         bittrail = bittrail << 1;
                         nodeidx = nodeidx << 1;
-                    }
 
-                    if (d0 > 0 && d1 > 0)
-                    {
+                        if (traverse_c0 && traverse_c1)
+                        {
+                            bittrail = bittrail ^ 0x1;
+                        }
 
-                        bittrail = bittrail ^ 0x1;
-
-                        if (d0 > d1)
+                        if (c1first || !traverse_c0)
                         {
                             addr = node.right;
                             nodeidx = nodeidx ^ 0x1;
@@ -217,18 +219,7 @@ IntersectClosest(
                         {
                             addr = node.left;
                         }
-                        continue;
-                    }
-                    else if (d0 > 0)
-                    {
-                        addr = node.left;
-                        continue;
 
-                    }
-                    else if (d1 > 0)
-                    {
-                        nodeidx = nodeidx ^ 0x1;
-                        addr = node.right;
                         continue;
                     }
                 }
@@ -250,22 +241,16 @@ IntersectClosest(
             if (faceidx != -1)
             {
                 FatBvhNode node = nodes[faceidx];
-                float3 v1, v2, v3;
+                float3 v1 = vertices[node.i1];
+                float3 v2 = vertices[node.i2];
+                float3 v3 = vertices[node.i3];
+
+                float3 const p = r.o.xyz + r.d.xyz * t_max;
+                float2 const uv = triangle_calculate_barycentrics(p, v1, v2, v3);
+
                 hits[global_id].shapeid = node.shapeid;
                 hits[global_id].primid = node.primid;
-                v1 = vertices[node.i1];
-                v2 = vertices[node.i2];
-                v3 = vertices[node.i3];
-
-                const float3 e1 = v2 - v1;
-                const float3 e2 = v3 - v1;
-                const float3 s1 = cross(r.d.xyz, e2);
-                const float invd = native_recip(dot(s1, e1));
-                const float3 d = r.o.xyz - v1;
-                const float b1 = dot(d, s1) * invd;
-                const float3 s2 = cross(d, e1);
-                const float b2 = dot(r.d.xyz, s2) * invd;
-                hits[global_id].uvwt = make_float4(b1, b2, 0.f, t_max);
+                hits[global_id].uvwt = make_float4(uv.x, uv.y, 0.f, t_max);
             }
             else
             {
@@ -297,15 +282,6 @@ IntersectAny(
     int local_id = get_local_id(0);
     int group_id = get_group_id(0);
 
-    // Fill scene data
-    SceneData scenedata =
-        {
-            nodes,
-            vertices,
-            faces,
-            shapes,
-            0};
-
     if (global_id < numrays)
     {
         ray r = rays[global_id];
@@ -319,18 +295,18 @@ IntersectAny(
             int bittrail = 0;
             int nodeidx = 1;
             int addr = 0;
+            int faceidx = -1;
 
             while (addr > -1)
             {
                 FatBvhNode node = nodes[addr];
-
                 if (LEAFNODE(node))
                 {
                     float3 v1, v2, v3;
                     v1 = vertices[node.i1];
                     v2 = vertices[node.i2];
                     v3 = vertices[node.i3];
-                    float f = IntersectTriangleLight(r, v1, v2, v3, t_max);
+                    float const f = fast_intersect_triangle(r, v1, v2, v3, t_max);
                     if (f < t_max)
                     {
                         hitresults[global_id] = 1;
@@ -339,21 +315,24 @@ IntersectAny(
                 }
                 else
                 {
-                    float d0 = intersect_bbox1(node.lbound, invdir, oxinvdir, t_max);
-                    float d1 = intersect_bbox1(node.rbound, invdir, oxinvdir, t_max);
+                    float2 s0 = fast_intersect_bbox1(node.lbound, invdir, oxinvdir, t_max);
+                    float2 s1 = fast_intersect_bbox1(node.rbound, invdir, oxinvdir, t_max);
 
-                    if (d0 > 0 || d1 > 0)
+                    bool traverse_c0 = (s0.x <= s0.y);
+                    bool traverse_c1 = (s1.x <= s1.y);
+                    bool c1first = traverse_c1 && (s0.x > s1.x);
+
+                    if (traverse_c0 || traverse_c1)
                     {
                         bittrail = bittrail << 1;
                         nodeidx = nodeidx << 1;
-                    }
 
-                    if (d0 > 0 && d1 > 0)
-                    {
+                        if (traverse_c0 && traverse_c1)
+                        {
+                            bittrail = bittrail ^ 0x1;
+                        }
 
-                        bittrail = bittrail ^ 0x1;
-
-                        if (d0 > d1)
+                        if (c1first || !traverse_c0)
                         {
                             addr = node.right;
                             nodeidx = nodeidx ^ 0x1;
@@ -362,18 +341,7 @@ IntersectAny(
                         {
                             addr = node.left;
                         }
-                        continue;
-                    }
-                    else if (d0 > 0)
-                    {
-                        addr = node.left;
-                        continue;
 
-                    }
-                    else if (d1 > 0)
-                    {
-                        nodeidx = nodeidx ^ 0x1;
-                        addr = node.right;
                         continue;
                     }
                 }
@@ -419,19 +387,10 @@ IntersectAnyRC(
     int local_id = get_local_id(0);
     int group_id = get_group_id(0);
 
-    // Fill scene data
-    SceneData scenedata =
-        {
-            nodes,
-            vertices,
-            faces,
-            shapes,
-            0};
-
     // Handle only working subset
     if (global_id < *numrays)
     {
-        ray r = rays[global_id];
+         ray r = rays[global_id];
 
         if (Ray_IsActive(&r))
         {
@@ -442,18 +401,18 @@ IntersectAnyRC(
             int bittrail = 0;
             int nodeidx = 1;
             int addr = 0;
+            int faceidx = -1;
 
             while (addr > -1)
             {
                 FatBvhNode node = nodes[addr];
-
                 if (LEAFNODE(node))
                 {
                     float3 v1, v2, v3;
                     v1 = vertices[node.i1];
                     v2 = vertices[node.i2];
                     v3 = vertices[node.i3];
-                    float f = IntersectTriangleLight(r, v1, v2, v3, t_max);
+                    float const f = fast_intersect_triangle(r, v1, v2, v3, t_max);
                     if (f < t_max)
                     {
                         hitresults[global_id] = 1;
@@ -462,21 +421,24 @@ IntersectAnyRC(
                 }
                 else
                 {
-                    float d0 = intersect_bbox1(node.lbound, invdir, oxinvdir, t_max);
-                    float d1 = intersect_bbox1(node.rbound, invdir, oxinvdir, t_max);
+                    float2 s0 = fast_intersect_bbox1(node.lbound, invdir, oxinvdir, t_max);
+                    float2 s1 = fast_intersect_bbox1(node.rbound, invdir, oxinvdir, t_max);
 
-                    if (d0 > 0 || d1 > 0)
+                    bool traverse_c0 = (s0.x <= s0.y);
+                    bool traverse_c1 = (s1.x <= s1.y);
+                    bool c1first = traverse_c1 && (s0.x > s1.x);
+
+                    if (traverse_c0 || traverse_c1)
                     {
                         bittrail = bittrail << 1;
                         nodeidx = nodeidx << 1;
-                    }
 
-                    if (d0 > 0 && d1 > 0)
-                    {
+                        if (traverse_c0 && traverse_c1)
+                        {
+                            bittrail = bittrail ^ 0x1;
+                        }
 
-                        bittrail = bittrail ^ 0x1;
-
-                        if (d0 > d1)
+                        if (c1first || !traverse_c0)
                         {
                             addr = node.right;
                             nodeidx = nodeidx ^ 0x1;
@@ -485,18 +447,7 @@ IntersectAnyRC(
                         {
                             addr = node.left;
                         }
-                        continue;
-                    }
-                    else if (d0 > 0)
-                    {
-                        addr = node.left;
-                        continue;
 
-                    }
-                    else if (d1 > 0)
-                    {
-                        nodeidx = nodeidx ^ 0x1;
-                        addr = node.right;
                         continue;
                     }
                 }
@@ -562,14 +513,13 @@ IntersectClosestRC(
             while (addr > -1)
             {
                 FatBvhNode node = nodes[addr];
-
                 if (LEAFNODE(node))
                 {
                     float3 v1, v2, v3;
                     v1 = vertices[node.i1];
                     v2 = vertices[node.i2];
                     v3 = vertices[node.i3];
-                    float f = IntersectTriangleLight(r, v1, v2, v3, t_max);
+                    float const f = fast_intersect_triangle(r, v1, v2, v3, t_max);
                     if (f < t_max)
                     {
                         faceidx = addr;
@@ -578,21 +528,24 @@ IntersectClosestRC(
                 }
                 else
                 {
-                    float d0 = intersect_bbox1(node.lbound, invdir, oxinvdir, t_max);
-                    float d1 = intersect_bbox1(node.rbound, invdir, oxinvdir, t_max);
+                    float2 s0 = fast_intersect_bbox1(node.lbound, invdir, oxinvdir, t_max);
+                    float2 s1 = fast_intersect_bbox1(node.rbound, invdir, oxinvdir, t_max);
 
-                    if (d0 > 0 || d1 > 0)
+                    bool traverse_c0 = (s0.x <= s0.y);
+                    bool traverse_c1 = (s1.x <= s1.y);
+                    bool c1first = traverse_c1 && (s0.x > s1.x);
+
+                    if (traverse_c0 || traverse_c1)
                     {
                         bittrail = bittrail << 1;
                         nodeidx = nodeidx << 1;
-                    }
 
-                    if (d0 > 0 && d1 > 0)
-                    {
+                        if (traverse_c0 && traverse_c1)
+                        {
+                            bittrail = bittrail ^ 0x1;
+                        }
 
-                        bittrail = bittrail ^ 0x1;
-
-                        if (d0 > d1)
+                        if (c1first || !traverse_c0)
                         {
                             addr = node.right;
                             nodeidx = nodeidx ^ 0x1;
@@ -601,18 +554,7 @@ IntersectClosestRC(
                         {
                             addr = node.left;
                         }
-                        continue;
-                    }
-                    else if (d0 > 0)
-                    {
-                        addr = node.left;
-                        continue;
 
-                    }
-                    else if (d1 > 0)
-                    {
-                        nodeidx = nodeidx ^ 0x1;
-                        addr = node.right;
                         continue;
                     }
                 }
@@ -634,22 +576,16 @@ IntersectClosestRC(
             if (faceidx != -1)
             {
                 FatBvhNode node = nodes[faceidx];
-                float3 v1, v2, v3;
+                float3 v1 = vertices[node.i1];
+                float3 v2 = vertices[node.i2];
+                float3 v3 = vertices[node.i3];
+
+                float3 const p = r.o.xyz + r.d.xyz * t_max;
+                float2 const uv = triangle_calculate_barycentrics(p, v1, v2, v3);
+
                 hits[global_id].shapeid = node.shapeid;
                 hits[global_id].primid = node.primid;
-                v1 = vertices[node.i1];
-                v2 = vertices[node.i2];
-                v3 = vertices[node.i3];
-
-                const float3 e1 = v2 - v1;
-                const float3 e2 = v3 - v1;
-                const float3 s1 = cross(r.d.xyz, e2);
-                const float invd = native_recip(dot(s1, e1));
-                const float3 d = r.o.xyz - v1;
-                const float b1 = dot(d, s1) * invd;
-                const float3 s2 = cross(d, e1);
-                const float b2 = dot(r.d.xyz, s2) * invd;
-                hits[global_id].uvwt = make_float4(b1, b2, 0.f, t_max);
+                hits[global_id].uvwt = make_float4(uv.x, uv.y, 0.f, t_max);
             }
             else
             {

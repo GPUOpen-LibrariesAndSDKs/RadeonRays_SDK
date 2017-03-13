@@ -75,18 +75,17 @@ namespace RadeonRays
                     // Node's bounding box
                     bbox lbound;
                     bbox rbound;
-                };
+                }s0;
 
                 struct
                 {
                     int i1, i2, i3, left;
                     int shapeid, primid, extra, right;
-                };
+                }s1;
             };
 
             Node()
-                : lbound()
-                , rbound()
+                : s0()
             {
 
             }
