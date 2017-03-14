@@ -19,7 +19,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
-#include "bvh2lstrategy.h"
+#include "intersector_2level.h"
 #include "../accelerator/bvh.h"
 #include "../translator/plain_bvh_translator.h"
 #include "../world/world.h"
@@ -36,7 +36,7 @@ static int const kWorkGroupSize = 64;
 
 namespace RadeonRays
 {
-    struct Bvh2lStrategy::ShapeData
+    struct IntersectorTwoLevel::ShapeData
     {
         // Shape ID
         Id id;
@@ -52,7 +52,7 @@ namespace RadeonRays
         quaternion angularvelocity;
     };
 
-    struct Bvh2lStrategy::Face
+    struct IntersectorTwoLevel::Face
     {
         int idx[3];
         int shadeidx;
@@ -63,7 +63,7 @@ namespace RadeonRays
         int padding[2];
     };
 
-    struct Bvh2lStrategy::GpuData
+    struct IntersectorTwoLevel::GpuData
     {
         // Device
         Calc::Device* device;
@@ -81,8 +81,6 @@ namespace RadeonRays
         Calc::Executable* executable;
         Calc::Function* isect_func;
         Calc::Function* occlude_func;
-        Calc::Function* isect_indirect_func;
-        Calc::Function* occlude_indirect_func;
 
         GpuData(Calc::Device* d)
             : device(d)
@@ -94,8 +92,6 @@ namespace RadeonRays
             , executable(nullptr)
             , isect_func(nullptr)
             , occlude_func(nullptr)
-            , isect_indirect_func(nullptr)
-            , occlude_indirect_func(nullptr)
         {
         }
 
@@ -109,15 +105,13 @@ namespace RadeonRays
             {
                 executable->DeleteFunction(isect_func);
                 executable->DeleteFunction(occlude_func);
-                executable->DeleteFunction(isect_indirect_func);
-                executable->DeleteFunction(occlude_indirect_func);
                 device->DeleteExecutable(executable);
             }
         }
     };
 
 
-    struct Bvh2lStrategy::CpuData
+    struct IntersectorTwoLevel::CpuData
     {
         std::vector<int> mesh_vertices_start_idx;
         std::vector<int> mesh_faces_start_idx;
@@ -128,8 +122,8 @@ namespace RadeonRays
         PlainBvhTranslator translator;
     };
 
-    Bvh2lStrategy::Bvh2lStrategy(Calc::Device* device)
-        : Strategy(device)
+    IntersectorTwoLevel::IntersectorTwoLevel(Calc::Device* device)
+        : Intersector(device)
         , m_gpudata(new GpuData(device))
         , m_cpudata(new CpuData)
     {
@@ -147,7 +141,7 @@ namespace RadeonRays
 
             int numheaders = sizeof(headers) / sizeof(char const*);
 
-            m_gpudata->executable = m_device->CompileExecutable("../RadeonRays/src/kernels/CL/bvh2l.cl", headers, numheaders, buildopts.c_str());
+            m_gpudata->executable = m_device->CompileExecutable("../RadeonRays/src/kernels/CL/intersect_bvh2level_skiplinks.cl", headers, numheaders, buildopts.c_str());
         }
         else
         {
@@ -159,7 +153,7 @@ namespace RadeonRays
 #if USE_OPENCL
         if (device->GetPlatform() == Calc::Platform::kOpenCL)
         {
-            m_gpudata->executable = m_device->CompileExecutable(g_bvh2l_opencl, std::strlen(g_bvh2l_opencl), buildopts.c_str());
+            m_gpudata->executable = m_device->CompileExecutable(g_intersect_bvh2level_skiplinks_opencl, std::strlen(g_intersect_bvh2level_skiplinks_opencl), buildopts.c_str());
         }
 #endif
 
@@ -173,11 +167,9 @@ namespace RadeonRays
 
         m_gpudata->isect_func = m_gpudata->executable->CreateFunction("IntersectClosest2L");
         m_gpudata->occlude_func = m_gpudata->executable->CreateFunction("IntersectAny2L");
-        m_gpudata->isect_indirect_func = m_gpudata->executable->CreateFunction("IntersectClosestRC2L");
-        m_gpudata->occlude_indirect_func = m_gpudata->executable->CreateFunction("IntersectAnyRC2L");
     }
 
-    void Bvh2lStrategy::Preprocess(World const& world)
+    void IntersectorTwoLevel::PreprocessImpl(World const& world)
     {
         // If something has been changed we need to rebuild BVH
         int statechange = world.GetStateChange();
@@ -660,57 +652,9 @@ namespace RadeonRays
         }
     }
 
-    void Bvh2lStrategy::QueryIntersection(std::uint32_t queueidx, Calc::Buffer const* rays, std::uint32_t numrays, Calc::Buffer *hits, Calc::Event const* waitevent, Calc::Event **event) const
+    void IntersectorTwoLevel::Intersect(std::uint32_t queueidx, Calc::Buffer const* rays, Calc::Buffer const* numrays, std::uint32_t maxrays, Calc::Buffer* hits, Calc::Event const* waitevent, Calc::Event** event) const
     {
         auto& func = m_gpudata->isect_func;
-
-        // Set args
-        int arg = 0;
-        int offset = 0;
-
-        func->SetArg(arg++, m_gpudata->bvh);
-        func->SetArg(arg++, m_gpudata->vertices);
-        func->SetArg(arg++, m_gpudata->faces);
-        func->SetArg(arg++, m_gpudata->shapes);
-        func->SetArg(arg++, sizeof(int), &m_gpudata->bvhrootidx);
-        func->SetArg(arg++, rays);
-        func->SetArg(arg++, sizeof(offset), &offset);
-        func->SetArg(arg++, sizeof(numrays), &numrays);
-        func->SetArg(arg++, hits);
-
-        size_t localsize = kWorkGroupSize;
-        size_t globalsize = ((numrays + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
-
-        m_device->Execute(func, queueidx, globalsize, localsize, event);
-    }
-
-    void Bvh2lStrategy::QueryOcclusion(std::uint32_t queueidx, Calc::Buffer const* rays, std::uint32_t numrays, Calc::Buffer *hits, Calc::Event const* waitevent, Calc::Event **event) const
-    {
-        auto& func = m_gpudata->occlude_func;
-
-        // Set args
-        int arg = 0;
-        int offset = 0;
-
-        func->SetArg(arg++, m_gpudata->bvh);
-        func->SetArg(arg++, m_gpudata->vertices);
-        func->SetArg(arg++, m_gpudata->faces);
-        func->SetArg(arg++, m_gpudata->shapes);
-        func->SetArg(arg++, sizeof(int), &m_gpudata->bvhrootidx);
-        func->SetArg(arg++, rays);
-        func->SetArg(arg++, sizeof(offset), &offset);
-        func->SetArg(arg++, sizeof(numrays), &numrays);
-        func->SetArg(arg++, hits);
-
-        size_t localsize = kWorkGroupSize;
-        size_t globalsize = ((numrays + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
-
-        m_device->Execute(func, queueidx, globalsize, localsize, event);
-    }
-
-    void Bvh2lStrategy::QueryIntersection(std::uint32_t queueidx, Calc::Buffer const* rays, Calc::Buffer const* numrays, std::uint32_t maxrays, Calc::Buffer* hits, Calc::Event const* waitevent, Calc::Event** event) const
-    {
-        auto& func = m_gpudata->isect_indirect_func;
 
         // Set args
         int arg = 0;
@@ -732,9 +676,9 @@ namespace RadeonRays
         m_device->Execute(func, queueidx, globalsize, localsize, event);
     }
 
-    void Bvh2lStrategy::QueryOcclusion(std::uint32_t queueidx, Calc::Buffer const* rays, Calc::Buffer const* numrays, std::uint32_t maxrays, Calc::Buffer* hits, Calc::Event const* waitevent, Calc::Event** event) const
+    void IntersectorTwoLevel::Occluded(std::uint32_t queueidx, Calc::Buffer const* rays, Calc::Buffer const* numrays, std::uint32_t maxrays, Calc::Buffer* hits, Calc::Event const* waitevent, Calc::Event** event) const
     {
-        auto& func = m_gpudata->occlude_indirect_func;
+        auto& func = m_gpudata->occlude_func;
 
         // Set args
         int arg = 0;

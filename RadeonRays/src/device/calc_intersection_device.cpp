@@ -29,12 +29,12 @@ THE SOFTWARE.
 
 #include "calc_holder.h"
 
-#include "../strategy/strategy.h"
-#include "../strategy/bvhstrategy.h"
-#include "../strategy/bvh2lstrategy.h"
-#include "../strategy/fatbvhstrategy.h"
-#include "../strategy/hlbvh_strategy.h"
-#include "../strategy/hash_strategy.h"
+#include "../intersector/intersector.h"
+#include "../intersector/intersector_2level.h"
+#include "../intersector/intersector_skip_links.h"
+#include "../intersector/intersector_short_stack.h"
+#include "../intersector/intersector_hlbvh.h"
+#include "../intersector/intersector_bittrail.h"
 #include "../world/world.h"
 #include <iostream>
 
@@ -43,7 +43,7 @@ namespace RadeonRays
     // TODO: handle different BVH strategies, for now hardcoded
     CalcIntersectionDevice::CalcIntersectionDevice(Calc::Calc* calc, Calc::Device* device)
         : m_device(device, [calc](Calc::Device* device) { calc->DeleteDevice(device); })
-        , m_intersector(new BvhStrategy(device))
+        , m_intersector(new IntersectorSkipLinks(device))
         , m_intersector_string("bvh")
     {
         // Initialize event pool
@@ -98,7 +98,7 @@ namespace RadeonRays
         {
             if (m_intersector_string != "bvh2l")
             {
-                m_intersector.reset(new Bvh2lStrategy(m_device.get()));
+                m_intersector.reset(new IntersectorTwoLevel(m_device.get()));
                 m_intersector_string = "bvh2l";
             }
         }
@@ -112,7 +112,7 @@ namespace RadeonRays
                 {
                     if (m_intersector_string != "bvh")
                     {
-                        m_intersector.reset(new BvhStrategy(m_device.get()));
+                        m_intersector.reset(new IntersectorSkipLinks(m_device.get()));
                         m_intersector_string = "bvh";
                     }
                 }
@@ -120,7 +120,7 @@ namespace RadeonRays
                 {
                     if (m_intersector_string != "fatbvh")
                     {
-                        m_intersector.reset(new FatBvhStrategy(m_device.get()));
+                        m_intersector.reset(new IntersectorShortStack(m_device.get()));
                         m_intersector_string = "fatbvh";
                     }
                 }
@@ -128,7 +128,7 @@ namespace RadeonRays
                 {
                     if (m_intersector_string != "hlbvh")
                     {
-                        m_intersector.reset(new HlbvhStrategy(m_device.get()));
+                        m_intersector.reset(new IntersectorHlbvh(m_device.get()));
                         m_intersector_string = "hlbvh";
                     }
                 }
@@ -136,7 +136,7 @@ namespace RadeonRays
                 {
                     if (m_intersector_string != "hashbvh")
                     {
-                        m_intersector.reset(new HashStrategy(m_device.get()));
+                        m_intersector.reset(new IntersectorBitTrail(m_device.get()));
                         m_intersector_string = "hashbvh";
                     }
                 }

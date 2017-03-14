@@ -54,8 +54,8 @@ namespace RadeonRays
         addresses_.resize(nodecnt_);
 
         // Build a hash
-        m_hash_map.reset(new PerfectHashMap<int, int>(max_idx_, &indices_[0], &addresses_[0], (int)indices_.size(), -1));
-        std::cout << "Finished hash building\n";
+        //m_hash_map.reset(new PerfectHashMap<int, int>(max_idx_, &indices_[0], &addresses_[0], (int)indices_.size(), -1));
+        //std::cout << "Finished hash building\n";
 
 //#define CONSISTENCY_TEST
 //#ifdef CONSISTENCY_TEST

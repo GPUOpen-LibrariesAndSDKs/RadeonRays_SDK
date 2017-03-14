@@ -19,12 +19,11 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
-#include "hlbvh_strategy.h"
+#include "intersector_hlbvh.h"
 
 #include "../accelerator/hlbvh.h"
 #include "../primitive/mesh.h"
 #include "../world/world.h"
-
 #include "../translator/plain_bvh_translator.h"
 
 
@@ -40,7 +39,7 @@ static int const kMaxBatchSize = 2048 * 2048;
 
 namespace RadeonRays
 {
-    struct HlbvhStrategy::ShapeData
+    struct IntersectorHlbvh::ShapeData
     {
         // Shape ID
         Id id;
@@ -57,7 +56,7 @@ namespace RadeonRays
         quaternion angularvelocity;
     };
 
-    struct HlbvhStrategy::GpuData
+    struct IntersectorHlbvh::GpuData
     {
         // Device
         Calc::Device* device;
@@ -67,23 +66,18 @@ namespace RadeonRays
         Calc::Buffer* faces;
         // Shape IDs
         Calc::Buffer* shapes;
-        // Counter
-        Calc::Buffer* raycnt;
         // Traversal stack
         Calc::Buffer* stack;
 
         Calc::Executable* executable;
         Calc::Function* isect_func;
         Calc::Function* occlude_func;
-        Calc::Function* isect_indirect_func;
-        Calc::Function* occlude_indirect_func;
 
         GpuData(Calc::Device* d)
             : device(d)
             , vertices(nullptr)
             , faces(nullptr)
             , shapes(nullptr)
-            , raycnt(nullptr)
         {
         }
 
@@ -92,18 +86,15 @@ namespace RadeonRays
             device->DeleteBuffer(vertices);
             device->DeleteBuffer(faces);
             device->DeleteBuffer(shapes);
-            device->DeleteBuffer(raycnt);
             device->DeleteBuffer(stack);
             executable->DeleteFunction(isect_func);
             executable->DeleteFunction(occlude_func);
-            executable->DeleteFunction(isect_indirect_func);
-            executable->DeleteFunction(occlude_indirect_func);
             device->DeleteExecutable(executable);
         }
     };
 
-    HlbvhStrategy::HlbvhStrategy(Calc::Device* device)
-        : Strategy(device)
+    IntersectorHlbvh::IntersectorHlbvh(Calc::Device* device)
+        : Intersector(device)
         , m_gpudata(new GpuData(device))
         , m_bvh(nullptr)
     {
@@ -121,7 +112,7 @@ namespace RadeonRays
 
             int numheaders = sizeof( headers ) / sizeof( char const* );
 
-            m_gpudata->executable = m_device->CompileExecutable( "../RadeonRays/src/kernels/CL/hlbvh.cl", headers, numheaders, buildopts.c_str());
+            m_gpudata->executable = m_device->CompileExecutable( "../RadeonRays/src/kernels/CL/intersect_hlbvh_stack.cl", headers, numheaders, buildopts.c_str());
         }
         else
         {
@@ -132,7 +123,7 @@ namespace RadeonRays
 #if USE_OPENCL
         if (device->GetPlatform() == Calc::Platform::kOpenCL)
         {
-            m_gpudata->executable = m_device->CompileExecutable(g_hlbvh_build_opencl, std::strlen(g_hlbvh_opencl), buildopts.c_str());
+            m_gpudata->executable = m_device->CompileExecutable(g_intersect_hlbvh_stack_opencl, std::strlen(g_intersect_hlbvh_stack_opencl), buildopts.c_str());
         }
 #endif
 
@@ -147,11 +138,9 @@ namespace RadeonRays
 
         m_gpudata->isect_func = m_gpudata->executable->CreateFunction("IntersectClosest");
         m_gpudata->occlude_func = m_gpudata->executable->CreateFunction("IntersectAny");
-        m_gpudata->isect_indirect_func = m_gpudata->executable->CreateFunction("IntersectClosestRC");
-        m_gpudata->occlude_indirect_func = m_gpudata->executable->CreateFunction("IntersectAnyRC");
     }
 
-    void HlbvhStrategy::Preprocess(World const& world)
+    void IntersectorHlbvh::PreprocessImpl(World const& world)
     {
         // If something has been changed we need to rebuild BVH
         if (!m_bvh || world.has_changed())
@@ -161,7 +150,6 @@ namespace RadeonRays
                 m_device->DeleteBuffer(m_gpudata->vertices);
                 m_device->DeleteBuffer(m_gpudata->faces);
                 m_device->DeleteBuffer(m_gpudata->shapes);
-                m_device->DeleteBuffer(m_gpudata->raycnt);
                 m_device->DeleteBuffer(m_gpudata->stack);
             }
             
@@ -332,8 +320,6 @@ namespace RadeonRays
 
             // Create shapes buffer
             m_gpudata->shapes = m_device->CreateBuffer(numshapes * sizeof(ShapeData), Calc::BufferType::kRead, &shapes[0]);
-            // Create helper raycounter buffer
-            m_gpudata->raycnt = m_device->CreateBuffer(sizeof(int), Calc::BufferType::kWrite);
             // Stack
             m_gpudata->stack = m_device->CreateBuffer(kMaxBatchSize*kMaxStackSize, Calc::BufferType::kWrite);
             // Make sure everything is commited
@@ -423,10 +409,11 @@ namespace RadeonRays
         }
     }
 
-    void HlbvhStrategy::QueryIntersection(std::uint32_t queueidx, Calc::Buffer const* rays, std::uint32_t numrays, Calc::Buffer *hits, Calc::Event const* waitevent, Calc::Event **event) const
+
+    void IntersectorHlbvh::Intersect(std::uint32_t queue_idx, Calc::Buffer const* rays, Calc::Buffer const* num_rays, std::uint32_t max_rays, Calc::Buffer* hits, Calc::Event const* wait_event, Calc::Event** event) const
     {
         // Check if we can allocate enough stack memory
-        if (numrays >= kMaxBatchSize)
+        if (max_rays >= kMaxBatchSize)
         {
             throw ExceptionImpl("hlbvh accelerator max batch size exceeded");
         }
@@ -444,20 +431,20 @@ namespace RadeonRays
         func->SetArg(arg++, m_gpudata->shapes);
         func->SetArg(arg++, rays);
         func->SetArg(arg++, sizeof(offset), &offset);
-        func->SetArg(arg++, sizeof(numrays), &numrays);
+        func->SetArg(arg++, num_rays);
         func->SetArg(arg++, hits);
         func->SetArg(arg++, m_gpudata->stack);
 
         size_t localsize = kWorkGroupSize;
-        size_t globalsize = ((numrays + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
+        size_t globalsize = ((max_rays + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
 
-        m_device->Execute(func, queueidx, globalsize, localsize, event);
+        m_device->Execute(func, queue_idx, globalsize, localsize, event);
     }
 
-    void HlbvhStrategy::QueryOcclusion(std::uint32_t queueidx, Calc::Buffer const* rays, std::uint32_t numrays, Calc::Buffer *hits, Calc::Event const* waitevent, Calc::Event **event) const
+    void IntersectorHlbvh::Occluded(std::uint32_t queue_idx, Calc::Buffer const* rays, Calc::Buffer const* num_rays, std::uint32_t max_rays, Calc::Buffer* hits, Calc::Event const* waitevent, Calc::Event** event) const
     {
         // Check if we can allocate enough stack memory
-        if (numrays >= kMaxBatchSize)
+        if (max_rays >= kMaxBatchSize)
         {
             throw ExceptionImpl("hlbvh accelerator max batch size exceeded");
         }
@@ -475,76 +462,14 @@ namespace RadeonRays
         func->SetArg(arg++, m_gpudata->shapes);
         func->SetArg(arg++, rays);
         func->SetArg(arg++, sizeof(offset), &offset);
-        func->SetArg(arg++, sizeof(numrays), &numrays);
+        func->SetArg(arg++, num_rays);
         func->SetArg(arg++, hits);
         func->SetArg(arg++, m_gpudata->stack);
 
         size_t localsize = kWorkGroupSize;
-        size_t globalsize = ((numrays + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
+        size_t globalsize = ((max_rays + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
 
-        m_device->Execute(func, queueidx, globalsize, localsize, event);
-    }
-
-    void HlbvhStrategy::QueryIntersection(std::uint32_t queueidx, Calc::Buffer const* rays, Calc::Buffer const* numrays, std::uint32_t maxrays, Calc::Buffer* hits, Calc::Event const* waitevent, Calc::Event** event) const
-    {
-        // Check if we can allocate enough stack memory
-        if (maxrays >= kMaxBatchSize)
-        {
-            throw ExceptionImpl("hlbvh accelerator max batch size exceeded");
-        }
-
-        auto& func = m_gpudata->isect_indirect_func;
-
-        // Set args
-        int arg = 0;
-        int offset = 0;
-
-        func->SetArg(arg++, m_bvh->GetGpuData().nodes);
-        func->SetArg(arg++, m_bvh->GetGpuData().sorted_bounds);
-        func->SetArg(arg++, m_gpudata->vertices);
-        func->SetArg(arg++, m_gpudata->faces);
-        func->SetArg(arg++, m_gpudata->shapes);
-        func->SetArg(arg++, rays);
-        func->SetArg(arg++, sizeof(offset), &offset);
-        func->SetArg(arg++, numrays);
-        func->SetArg(arg++, hits);
-        func->SetArg(arg++, m_gpudata->stack);
-
-        size_t localsize = kWorkGroupSize;
-        size_t globalsize = ((maxrays + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
-
-        m_device->Execute(func, queueidx, globalsize, localsize, event);
-    }
-
-    void HlbvhStrategy::QueryOcclusion(std::uint32_t queueidx, Calc::Buffer const* rays, Calc::Buffer const* numrays, std::uint32_t maxrays, Calc::Buffer* hits, Calc::Event const* waitevent, Calc::Event** event) const
-    {
-        // Check if we can allocate enough stack memory
-        if (maxrays >= kMaxBatchSize)
-        {
-            throw ExceptionImpl("hlbvh accelerator max batch size exceeded");
-        }
-
-        auto& func = m_gpudata->occlude_indirect_func;
-
-        // Set args
-        int arg = 0;
-        int offset = 0;
-
-        func->SetArg(arg++, m_bvh->GetGpuData().nodes);
-        func->SetArg(arg++, m_bvh->GetGpuData().sorted_bounds);
-        func->SetArg(arg++, m_gpudata->vertices);
-        func->SetArg(arg++, m_gpudata->faces);
-        func->SetArg(arg++, m_gpudata->shapes);
-        func->SetArg(arg++, rays);
-        func->SetArg(arg++, sizeof(offset), &offset);
-        func->SetArg(arg++, numrays);
-        func->SetArg(arg++, hits);
-        func->SetArg(arg++, m_gpudata->stack);
-
-        size_t localsize = kWorkGroupSize;
-        size_t globalsize = ((maxrays + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
-
-        m_device->Execute(func, queueidx, globalsize, localsize, event);
+        m_device->Execute(func, queue_idx, globalsize, localsize, event);
     }
 
 }

@@ -40,7 +40,19 @@ DEFINES
 TYPE DEFINITIONS
 **************************************************************************/
 
-
+typedef struct _ShapeData
+{
+    int id;
+    int bvhidx;
+    int mask;
+    int padding1;
+    float4 m0;
+    float4 m1;
+    float4 m2;
+    float4 m3;
+    float4  linearvelocity;
+    float4  angularvelocity;
+} ShapeData;
 
 #define STARTIDX(x)     (((int)(x->pmin.w)))
 #define SHAPEIDX(x)     (((int)(x.pmin.w)))
@@ -59,6 +71,74 @@ typedef struct
     // Root BVH idx
     int rootidx;
 } SceneData;
+
+float3 transform_point(float3 p, float4 m0, float4 m1, float4 m2, float4 m3)
+{
+    float3 res;
+    res.x = m0.s0 * p.x + m0.s1 * p.y + m0.s2 * p.z + m0.s3;
+    res.y = m1.s0 * p.x + m1.s1 * p.y + m1.s2 * p.z + m1.s3;
+    res.z = m2.s0 * p.x + m2.s1 * p.y + m2.s2 * p.z + m2.s3;
+    return res;
+}
+
+float3 transform_vector(float3 p, float4 m0, float4 m1, float4 m2, float4 m3)
+{
+    float3 res;
+    res.x = m0.s0 * p.x + m0.s1 * p.y + m0.s2 * p.z;
+    res.y = m1.s0 * p.x + m1.s1 * p.y + m1.s2 * p.z;
+    res.z = m2.s0 * p.x + m2.s1 * p.y + m2.s2 * p.z;
+    return res;
+}
+
+ray transform_ray(ray r, float4 m0, float4 m1, float4 m2, float4 m3)
+{
+    ray res;
+    res.o.xyz = transform_point(r.o.xyz, m0, m1, m2, m3);
+    res.d.xyz = transform_vector(r.d.xyz, m0, m1, m2, m3);
+    res.o.w = r.o.w;
+    res.d.w = r.d.w;
+    return res;
+}
+
+float4 quaternion_mul(float4 q1, float4 q2)
+{
+    float4 res;
+    res.x = q1.y*q2.z - q1.z*q2.y + q2.w*q1.x + q1.w*q2.x;
+    res.y = q1.z*q2.x - q1.x*q2.z + q2.w*q1.y + q1.w*q2.y;
+    res.z = q1.x*q2.y - q2.x*q1.y + q2.w*q1.z + q1.w*q2.z;
+    res.w = q1.w*q2.w - q1.x*q2.x - q1.y*q2.y - q1.z*q2.z;
+    return res;
+}
+
+float4 quaternion_conjugate(float4 q)
+{
+    return make_float4(-q.x, -q.y, -q.z, q.w);
+}
+
+float4 quaternion_inverse(float4 q)
+{
+    float sqnorm = q.x*q.x + q.y*q.y + q.z*q.z + q.w*q.w;
+    
+    if (sqnorm != 0.f)
+    {
+        return quaternion_conjugate(q) / sqnorm;
+    }
+    else
+    {
+        return make_float4(0.f, 0.f, 0.f, 1.f);
+    }
+}
+
+void rotate_ray(ray* r, float4 q)
+{
+    float4 qinv = quaternion_inverse(q);
+    float4 v = make_float4(r->o.x, r->o.y, r->o.z, 0);
+    v = quaternion_mul(qinv, quaternion_mul(v, q));
+    r->o.xyz = v.xyz;
+    v = make_float4(r->d.x, r->d.y, r->d.z, 0);
+    v = quaternion_mul(qinv, quaternion_mul(v, q));
+    r->d.xyz = v.xyz;
+}
 
 
 /*************************************************************************

@@ -19,54 +19,33 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
-#pragma once 
+#pragma once
 
 #include "calc.h"
 #include "device.h"
-#include "strategy.h"
+#include "intersector.h"
 #include <memory>
 
 
 namespace RadeonRays
 {
-    class Hlbvh;
+    class Bvh;
 
-    class HlbvhStrategy : public Strategy
+    class IntersectorBitTrail : public Intersector
     {
     public:
-        HlbvhStrategy(Calc::Device* device);
+        IntersectorBitTrail(Calc::Device* device);
 
-        void Preprocess(World const& world) override;
+    private:
+        void PreprocessImpl(World const& world) override;
 
-        void QueryIntersection(std::uint32_t queueidx,
-            Calc::Buffer const* rays,
-            std::uint32_t numrays,
-            Calc::Buffer* hits,
-            Calc::Event const* waitevent,
-            Calc::Event** event) const override;
+        void Intersect(std::uint32_t queue_idx, Calc::Buffer const *rays, Calc::Buffer const *num_rays, 
+            std::uint32_t max_rays, Calc::Buffer *hits, 
+            Calc::Event const *wait_event, Calc::Event **event) const override;
 
-        void QueryOcclusion(std::uint32_t queueidx,
-            Calc::Buffer const* rays,
-            std::uint32_t numrays,
-            Calc::Buffer* hits,
-            Calc::Event const* waitevent,
-            Calc::Event** event) const override;
-
-        void QueryIntersection(std::uint32_t queueidx,
-            Calc::Buffer const* rays,
-            Calc::Buffer const* numrays,
-            std::uint32_t maxrays,
-            Calc::Buffer* hits,
-            Calc::Event const* waitevent,
-            Calc::Event** event) const override;
-
-        void QueryOcclusion(std::uint32_t queueidx,
-            Calc::Buffer const* rays,
-            Calc::Buffer const* numrays,
-            std::uint32_t maxrays,
-            Calc::Buffer* hits,
-            Calc::Event const* waitevent,
-            Calc::Event** event) const override;
+        void Occluded(std::uint32_t queue_idx, Calc::Buffer const *rays, Calc::Buffer const *num_rays, 
+            std::uint32_t max_rays, Calc::Buffer *hits, 
+            Calc::Event const *wait_event, Calc::Event **event) const override;
 
     private:
         struct GpuData;
@@ -75,6 +54,6 @@ namespace RadeonRays
         // Implementation data
         std::unique_ptr<GpuData> m_gpudata;
         // Bvh data structure
-        std::unique_ptr<Hlbvh> m_bvh;
+        std::unique_ptr<Bvh> m_bvh;
     };
 }

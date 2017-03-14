@@ -24,7 +24,6 @@ THE SOFTWARE.
 #include "primitives.h"
 #include "executable.h"
 #include "../except/except.h"
-#include "../strategy/strategy.h"
 #include "calc.h"
 #include "event.h"
 
