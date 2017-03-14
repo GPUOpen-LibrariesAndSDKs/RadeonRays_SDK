@@ -51,8 +51,8 @@ namespace RadeonRays
             int shapeidx;
             // Primitive ID within the mesh
             int id;
-            // Idx count
-            int cnt;
+            // Shape mask
+            int shape_mask;
         };
 
         // Constructor
@@ -73,14 +73,23 @@ namespace RadeonRays
                 struct
                 {
                     // Node's bounding box
-                    bbox lbound;
-                    bbox rbound;
+                    bbox bounds[2];
                 }s0;
 
                 struct
                 {
-                    int i1, i2, i3, left;
-                    int shapeid, primid, extra, right;
+                    // If node is a leaf we keep vertex indices here
+                    int i0, i1, i2;
+                    // Address of a left child
+                    int child0;
+                    // Shape mask
+                    int shape_mask;
+                    // Shape ID
+                    int shape_id;
+                    // Primitive ID
+                    int prim_id;
+                    // Address of a right child
+                    int child1;
                 }s1;
             };
 

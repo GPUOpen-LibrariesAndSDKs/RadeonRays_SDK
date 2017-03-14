@@ -39,22 +39,6 @@ static int const kWorkGroupSize = 64;
 
 namespace RadeonRays
 {
-    struct HashStrategy::ShapeData
-    {
-        // Shape ID
-        Id id;
-        // Index of root bvh node
-        int bvhidx;
-        int mask;
-        int padding1;
-        // Transform
-        matrix minv;
-        // Motion blur data
-        float3 linearvelocity;
-        // Angular veocity (quaternion)
-        quaternion angularvelocity;
-    };
-
     struct HashStrategy::GpuData
     {
         // Device
@@ -63,34 +47,26 @@ namespace RadeonRays
         Calc::Buffer* bvh;
         // Vertex positions
         Calc::Buffer* vertices;
-        // Indices
-        Calc::Buffer* faces;
-        // Shape IDs
-        Calc::Buffer* shapes;
         // Displacement table
         Calc::Buffer* displacement;
         // Hash table
         Calc::Buffer* hashmap;
+        // Hash table
+        Calc::Buffer* count;
         // Displacement table size
         int displacement_size;
 
         Calc::Executable* executable;
         Calc::Function* isect_func;
         Calc::Function* occlude_func;
-        Calc::Function* isect_indirect_func;
-        Calc::Function* occlude_indirect_func;
 
         GpuData(Calc::Device* d)
         : device(d)
                           , bvh(nullptr)
                           , vertices(nullptr)
-                          , faces(nullptr)
-                          , shapes(nullptr)
                           , executable(nullptr)
                           , isect_func(nullptr)
                           , occlude_func(nullptr)
-                          , isect_indirect_func(nullptr)
-                          , occlude_indirect_func(nullptr)
                           , displacement_size(0)
                           , displacement(nullptr)
                           , hashmap(nullptr)
@@ -101,14 +77,10 @@ namespace RadeonRays
         {
             device->DeleteBuffer(bvh);
             device->DeleteBuffer(vertices);
-            device->DeleteBuffer(faces);
-            device->DeleteBuffer(shapes);
             device->DeleteBuffer(displacement);
             device->DeleteBuffer(hashmap);
             executable->DeleteFunction(isect_func);
             executable->DeleteFunction(occlude_func);
-            executable->DeleteFunction(isect_indirect_func);
-            executable->DeleteFunction(occlude_indirect_func);
             device->DeleteExecutable(executable);
         }
     };
@@ -155,10 +127,8 @@ namespace RadeonRays
 
 #endif
 
-        m_gpudata->isect_func = m_gpudata->executable->CreateFunction("IntersectClosest");
-        m_gpudata->occlude_func = m_gpudata->executable->CreateFunction("IntersectAny");
-        m_gpudata->isect_indirect_func = m_gpudata->executable->CreateFunction("IntersectClosestRC");
-        m_gpudata->occlude_indirect_func = m_gpudata->executable->CreateFunction("IntersectAnyRC");
+        m_gpudata->isect_func = m_gpudata->executable->CreateFunction("intersect_main");
+        m_gpudata->occlude_func = m_gpudata->executable->CreateFunction("occluded_main");
     }
 
     void HashStrategy::Preprocess(World const& world)
@@ -171,8 +141,6 @@ namespace RadeonRays
             {
                 m_device->DeleteBuffer(m_gpudata->bvh);
                 m_device->DeleteBuffer(m_gpudata->vertices);
-                m_device->DeleteBuffer(m_gpudata->faces);
-                m_device->DeleteBuffer(m_gpudata->shapes);
             }
 
             int numshapes = (int)world.shapes_.size();
@@ -252,58 +220,45 @@ namespace RadeonRays
 
             // We can't avoild allocating it here, since bounds aren't stored anywhere
             std::vector<bbox> bounds(numfaces);
-            std::vector<ShapeData>  shapedata(numshapes);
 
-            // We handle meshes first collecting their world space bounds
-#pragma omp parallel for
-            for (int i = 0; i < nummeshes; ++i)
-            {
-                Mesh const* mesh = static_cast<Mesh const*>(shapes[i]);
-
-                for (int j = 0; j < mesh->num_faces(); ++j)
-                {
-                    // Here we directly get world space bounds
-                    mesh->GetFaceBounds(j, false, bounds[mesh_faces_start_idx[i] + j]);
-                }
-
-                shapedata[i].id = mesh->GetId();
-                shapedata[i].mask = mesh->GetMask();
-            }
-
-            // Then we handle instances. Need to flatten them into actual geometry.
-#pragma omp parallel for
-            for (int i = nummeshes; i < nummeshes + numinstances; ++i)
-            {
-                Instance const* instance = static_cast<Instance const*>(shapes[i]);
-                Mesh const* mesh = static_cast<Mesh const*>(instance->GetBaseShape());
-
-                // Instance is using its own transform for base shape geometry
-                // so we need to get object space bounds and transform them manually
-                matrix m, minv;
-                instance->GetTransform(m, minv);
-
-                for (int j = 0; j < mesh->num_faces(); ++j)
-                {
-                    bbox tmp;
-                    mesh->GetFaceBounds(j, true, tmp);
-                    bounds[mesh_faces_start_idx[i] + j] = transform_bbox(tmp, m);
-                }
-
-                shapedata[i].id = instance->GetId();
-                shapedata[i].mask = instance->GetMask();
-            }
+            // We handle meshes first collecting their world space bounds 
+#pragma omp parallel for 
+            for (int i = 0; i < nummeshes; ++i) 
+            { 
+                Mesh const* mesh = static_cast<Mesh const*>(shapes[i]); 
+ 
+                for (int j = 0; j < mesh->num_faces(); ++j) 
+                { 
+                    // Here we directly get world space bounds 
+                    mesh->GetFaceBounds(j, false, bounds[mesh_faces_start_idx[i] + j]); 
+                } 
+            } 
+ 
+            // Then we handle instances. Need to flatten them into actual geometry. 
+#pragma omp parallel for 
+            for (int i = nummeshes; i < nummeshes + numinstances; ++i) 
+            { 
+                Instance const* instance = static_cast<Instance const*>(shapes[i]); 
+                Mesh const* mesh = static_cast<Mesh const*>(instance->GetBaseShape()); 
+ 
+                // Instance is using its own transform for base shape geometry 
+                // so we need to get object space bounds and transform them manually 
+                matrix m, minv; 
+                instance->GetTransform(m, minv); 
+ 
+                for (int j = 0; j < mesh->num_faces(); ++j) 
+                { 
+                    bbox tmp; 
+                    mesh->GetFaceBounds(j, true, tmp); 
+                    
+                    bounds[mesh_faces_start_idx[i] + j] = transform_bbox(tmp, m); 
+                } 
+            } 
 
             m_bvh->Build(&bounds[0], numfaces);
 
-#ifdef RR_PROFILE
-            m_bvh->PrintStatistics(std::cout);
-#endif
-
             FatNodeBvhTranslator translator;
             translator.Process(*m_bvh);
-
-            // Update GPU data
-            
 
             // Create vertex buffer
             {
@@ -371,16 +326,7 @@ namespace RadeonRays
                 // This number is different from the number of faces for some BVHs
                 auto numindices = m_bvh->GetNumIndices();
                 // Create face buffer
-                m_gpudata->faces = m_device->CreateBuffer(numindices * sizeof(FatNodeBvhTranslator::Face), Calc::BufferType::kRead);
-
-                // Get the pointer to mapped data
-                FatNodeBvhTranslator::Face* facedata = nullptr;
-                Calc::Event* e = nullptr;
-
-                m_device->MapBuffer(m_gpudata->faces, 0, 0, numindices * sizeof(FatNodeBvhTranslator::Face), Calc::BufferType::kWrite, (void**)&facedata, &e);
-
-                e->Wait();
-                m_device->DeleteEvent(e);
+                std::vector<FatNodeBvhTranslator::Face> facedata(numindices);
 
                 // Here the point is to add mesh starting index to actual index contained within the mesh,
                 // getting absolute index in the buffer.
@@ -421,22 +367,15 @@ namespace RadeonRays
                     facedata[i].idx[2] = myfacedata[faceidx].idx[2] + mystartidx;
 
                     facedata[i].shapeidx = shapes[shapeidx]->GetId();
-                    facedata[i].cnt = 0;
+                    facedata[i].shape_mask = shapes[shapeidx]->GetMask();
                     facedata[i].id = faceidx;
                 }
 
-                translator.InjectIndices(facedata);
-                m_device->UnmapBuffer(m_gpudata->faces, 0, facedata, &e);
-
-                e->Wait();
-                m_device->DeleteEvent(e);
+                translator.InjectIndices(&facedata[0]);
             }
 
             // Copy translated nodes first
             m_gpudata->bvh = m_device->CreateBuffer(translator.nodes_.size() * sizeof(FatNodeBvhTranslator::Node), Calc::BufferType::kRead, &translator.nodes_[0]);
-
-            // Create shapes buffer
-            m_gpudata->shapes = m_device->CreateBuffer(numshapes * sizeof(ShapeData), Calc::BufferType::kRead, &shapedata[0]);
 
             // Create displacement buffer
             auto displacement_size = translator.m_hash_map->displacement_table_size();
@@ -451,6 +390,9 @@ namespace RadeonRays
                 Calc::BufferType::kRead,
                 (void*)translator.m_hash_map->hash_table_ptr());
 
+            // Copy translated nodes first
+            m_gpudata->count = m_device->CreateBuffer(sizeof(int), Calc::BufferType::kRead);
+
             // Make sure everything is commited
             m_device->Finish(0);
         }
@@ -460,17 +402,15 @@ namespace RadeonRays
     {
         auto& func = m_gpudata->isect_func;
 
+        // Write count 
+        m_device->WriteBuffer(m_gpudata->count, 0, 0, sizeof(numrays), &numrays, nullptr);
+
         // Set args
         int arg = 0;
-        int offset = 0;
-
         func->SetArg(arg++, m_gpudata->bvh);
         func->SetArg(arg++, m_gpudata->vertices);
-        func->SetArg(arg++, m_gpudata->faces);
-        func->SetArg(arg++, m_gpudata->shapes);
         func->SetArg(arg++, rays);
-        func->SetArg(arg++, sizeof(offset), &offset);
-        func->SetArg(arg++, sizeof(numrays), &numrays);
+        func->SetArg(arg++, m_gpudata->count);
         func->SetArg(arg++, m_gpudata->displacement);
         func->SetArg(arg++, m_gpudata->hashmap);
         func->SetArg(arg++, sizeof(m_gpudata->displacement_size), &m_gpudata->displacement_size);
@@ -486,17 +426,16 @@ namespace RadeonRays
     {
         auto& func = m_gpudata->occlude_func;
 
+         // Write count 
+        m_device->WriteBuffer(m_gpudata->count, 0, 0, sizeof(numrays), &numrays, nullptr);
+
         // Set args
         int arg = 0;
-        int offset = 0;
 
         func->SetArg(arg++, m_gpudata->bvh);
         func->SetArg(arg++, m_gpudata->vertices);
-        func->SetArg(arg++, m_gpudata->faces);
-        func->SetArg(arg++, m_gpudata->shapes);
         func->SetArg(arg++, rays);
-        func->SetArg(arg++, sizeof(offset), &offset);
-        func->SetArg(arg++, sizeof(numrays), &numrays);
+        func->SetArg(arg++, m_gpudata->count);
         func->SetArg(arg++, m_gpudata->displacement);
         func->SetArg(arg++, m_gpudata->hashmap);
         func->SetArg(arg++, sizeof(m_gpudata->displacement_size), &m_gpudata->displacement_size);
@@ -510,18 +449,14 @@ namespace RadeonRays
 
     void HashStrategy::QueryIntersection(std::uint32_t queueidx, Calc::Buffer const* rays, Calc::Buffer const* numrays, std::uint32_t maxrays, Calc::Buffer* hits, Calc::Event const* waitevent, Calc::Event** event) const
     {
-        auto& func = m_gpudata->isect_indirect_func;
+        auto& func = m_gpudata->isect_func;
 
         // Set args
         int arg = 0;
-        int offset = 0;
 
         func->SetArg(arg++, m_gpudata->bvh);
         func->SetArg(arg++, m_gpudata->vertices);
-        func->SetArg(arg++, m_gpudata->faces);
-        func->SetArg(arg++, m_gpudata->shapes);
         func->SetArg(arg++, rays);
-        func->SetArg(arg++, sizeof(offset), &offset);
         func->SetArg(arg++, numrays);
         func->SetArg(arg++, m_gpudata->displacement);
         func->SetArg(arg++, m_gpudata->hashmap);
@@ -536,18 +471,14 @@ namespace RadeonRays
 
     void HashStrategy::QueryOcclusion(std::uint32_t queueidx, Calc::Buffer const* rays, Calc::Buffer const* numrays, std::uint32_t maxrays, Calc::Buffer* hits, Calc::Event const* waitevent, Calc::Event** event) const
     {
-        auto& func = m_gpudata->occlude_indirect_func;
+        auto& func = m_gpudata->occlude_func;
 
         // Set args
         int arg = 0;
-        int offset = 0;
 
         func->SetArg(arg++, m_gpudata->bvh);
         func->SetArg(arg++, m_gpudata->vertices);
-        func->SetArg(arg++, m_gpudata->faces);
-        func->SetArg(arg++, m_gpudata->shapes);
         func->SetArg(arg++, rays);
-        func->SetArg(arg++, sizeof(offset), &offset);
         func->SetArg(arg++, numrays);
         func->SetArg(arg++, m_gpudata->displacement);
         func->SetArg(arg++, m_gpudata->hashmap);

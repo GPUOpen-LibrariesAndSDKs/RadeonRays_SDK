@@ -71,14 +71,15 @@ namespace RadeonRays
     {
         for (auto& node : nodes_)
         {
-            if (node.s1.left == -1)
+            if (node.s1.child0 == -1)
             {
-                auto idx = node.s1.i1;
-                node.s1.i1 = faces[idx].idx[0];
-                node.s1.i2 = faces[idx].idx[1];
-                node.s1.i3 = faces[idx].idx[2];
-                node.s1.shapeid = faces[idx].shapeidx;
-                node.s1.primid = faces[idx].id;
+                auto idx = node.s1.i0;
+                node.s1.i0 = faces[idx].idx[0];
+                node.s1.i1 = faces[idx].idx[1];
+                node.s1.i2 = faces[idx].idx[2];
+                node.s1.shape_id = faces[idx].shapeidx;
+                node.s1.prim_id = faces[idx].id;
+                node.s1.shape_mask = faces[idx].shape_mask;
             }
         }
     }
@@ -108,24 +109,24 @@ namespace RadeonRays
 
             if (current.first->type == Bvh::NodeType::kInternal)
             {
-                node.s0.lbound = current.first->lc->bounds;
-                node.s0.rbound = current.first->rc->bounds;
+                node.s0.bounds[0] = current.first->lc->bounds;
+                node.s0.bounds[1] = current.first->rc->bounds;
                 workqueue.push(std::make_pair(current.first->lc, nodecnt_));
                 workqueue.push(std::make_pair(current.first->rc, -nodecnt_));
             }
             else
             {
-                node.s1.left = node.s1.right = -1;
-                node.s1.i1 = current.first->startidx;
+                node.s1.child0 = node.s1.child1 = -1;
+                node.s1.i0 = current.first->startidx;
             }
 
             if (current.second > 0)
             {
-                nodes_[current.second - 1].s1.left = nodecnt_ - 1;
+                nodes_[current.second - 1].s1.child0 = nodecnt_ - 1;
             }
             else if (current.second < 0)
             {
-                nodes_[-current.second - 1].s1.right = nodecnt_ - 1;
+                nodes_[-current.second - 1].s1.child1 = nodecnt_ - 1;
             }           
         }
 
