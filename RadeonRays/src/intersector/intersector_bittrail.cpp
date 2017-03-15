@@ -129,7 +129,7 @@ namespace RadeonRays
         m_gpudata->occlude_func = m_gpudata->executable->CreateFunction("occluded_main");
     }
 
-    void IntersectorBitTrail::PreprocessImpl(World const& world)
+    void IntersectorBitTrail::Process(World const& world)
     {
 
         // If something has been changed we need to rebuild BVH

@@ -124,7 +124,7 @@ namespace RadeonRays
         m_gpudata->occlude_func = m_gpudata->executable->CreateFunction("occluded_main");
     }
 
-    void IntersectorSkipLinks::PreprocessImpl(World const& world)
+    void IntersectorSkipLinks::Process(World const& world)
     {
         // If something has been changed we need to rebuild BVH
         if (!m_bvh || world.has_changed() || world.GetStateChange() != ShapeImpl::kStateChangeNone)

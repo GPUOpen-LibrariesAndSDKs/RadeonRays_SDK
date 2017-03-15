@@ -146,7 +146,7 @@ namespace RadeonRays
         try
         {
             // Let intersector to do its preprocessing job
-            m_intersector->Preprocess(world);
+            m_intersector->SetWorld(world);
         }
         catch (Exception& e)
         {

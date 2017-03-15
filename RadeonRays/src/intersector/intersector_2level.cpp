@@ -169,7 +169,7 @@ namespace RadeonRays
         m_gpudata->occlude_func = m_gpudata->executable->CreateFunction("IntersectAny2L");
     }
 
-    void IntersectorTwoLevel::PreprocessImpl(World const& world)
+    void IntersectorTwoLevel::Process(World const& world)
     {
         // If something has been changed we need to rebuild BVH
         int statechange = world.GetStateChange();

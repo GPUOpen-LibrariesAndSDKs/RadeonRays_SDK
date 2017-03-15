@@ -8,9 +8,19 @@ namespace RadeonRays
     {
     }
 
-    void Intersector::Preprocess(World const &world)
+    void Intersector::SetWorld(World const &world)
     {
-        PreprocessImpl(world);
+        Process(world);
+    }
+
+    bool Intersector::IsCompatible(World const& world) const
+    {
+        return IsCompatibleImpl(world);
+    }
+
+    bool Intersector::IsCompatibleImpl(World const& world) const
+    {
+        return true;
     }
 
     void Intersector::QueryIntersection(std::uint32_t queue_idx, Calc::Buffer const *rays, std::uint32_t num_rays,

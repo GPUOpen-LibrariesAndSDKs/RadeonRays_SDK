@@ -140,7 +140,7 @@ namespace RadeonRays
         m_gpudata->occlude_func = m_gpudata->executable->CreateFunction("IntersectAny");
     }
 
-    void IntersectorHlbvh::PreprocessImpl(World const& world)
+    void IntersectorHlbvh::Process(World const& world)
     {
         // If something has been changed we need to rebuild BVH
         if (!m_bvh || world.has_changed())

@@ -19,6 +19,22 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
+/**
+    \file intersect_hlbvh_stack.cl
+    \author Dmitry Kozlov
+    \version 1.0
+    \brief HLBVH build implementation
+
+    IntersectorHlbvh implementation is based on the following paper:
+    "HLBVH: Hierarchical LBVH Construction for Real-Time Ray Tracing"
+    Jacopo Pantaleoni (NVIDIA), David Luebke (NVIDIA), in High Performance Graphics 2010, June 2010
+    https://research.nvidia.com/sites/default/files/publications/HLBVH-final.pdf
+
+    Pros:
+        -Very fast to build and update.
+    Cons:
+        -Poor BVH quality, slow traversal.
+ */
 
  /*************************************************************************
   INCLUDES
