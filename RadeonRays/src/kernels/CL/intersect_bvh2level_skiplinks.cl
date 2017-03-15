@@ -61,45 +61,50 @@ EXTENSIONS
 DEFINES
 **************************************************************************/
 #define PI 3.14159265358979323846f
-
+#define STARTIDX(x)     (((int)(x.pmin.w)))
+#define SHAPEIDX(x)     (((int)(x.pmin.w)))
+#define LEAFNODE(x)     (((x).pmin.w) != -1.f)
+#define NEXT(x)     ((int)((x).pmax.w))
 
 /*************************************************************************
 TYPE DEFINITIONS
 **************************************************************************/
 
-typedef struct _ShapeData
+typedef bbox bvh_node;
+
+typedef struct
 {
+    // Shape ID
     int id;
-    int bvhidx;
+    // Shape BVH index (bottom level)
+    int bvh_idx;
+    // Shape mask
     int mask;
     int padding1;
+    // Transform
     float4 m0;
     float4 m1;
     float4 m2;
     float4 m3;
-    float4  linearvelocity;
-    float4  angularvelocity;
-} ShapeData;
-
-#define STARTIDX(x)     (((int)(x->pmin.w)))
-#define SHAPEIDX(x)     (((int)(x.pmin.w)))
-#define LEAFNODE(x)     (((x).pmin.w) != -1.f)
+    // Motion blur params
+    float4 velocity_linear;
+    float4 velocity_angular;
+} Shape;
 
 typedef struct
 {
-    // BVH structure
-    __global BvhNode*       nodes;
-    // Scene positional data
-    __global float3*        vertices;
-    // Scene indices
-    __global Face*          faces;
-    // Transforms
-    __global ShapeData*     shapedata;
-    // Root BVH idx
-    int rootidx;
-} SceneData;
+    // Vertex indices
+    int idx[3];
+    // Shape maks
+    int shape_mask;
+    // Shape ID
+    int shape_id;
+    // Primitive ID
+    int prim_id;
+} Face;
 
-float3 transform_point(float3 p, float4 m0, float4 m1, float4 m2, float4 m3)
+
+INLINE float3 transform_point(float3 p, float4 m0, float4 m1, float4 m2, float4 m3)
 {
     float3 res;
     res.x = m0.s0 * p.x + m0.s1 * p.y + m0.s2 * p.z + m0.s3;
@@ -108,7 +113,7 @@ float3 transform_point(float3 p, float4 m0, float4 m1, float4 m2, float4 m3)
     return res;
 }
 
-float3 transform_vector(float3 p, float4 m0, float4 m1, float4 m2, float4 m3)
+INLINE float3 transform_vector(float3 p, float4 m0, float4 m1, float4 m2, float4 m3)
 {
     float3 res;
     res.x = m0.s0 * p.x + m0.s1 * p.y + m0.s2 * p.z;
@@ -117,7 +122,7 @@ float3 transform_vector(float3 p, float4 m0, float4 m1, float4 m2, float4 m3)
     return res;
 }
 
-ray transform_ray(ray r, float4 m0, float4 m1, float4 m2, float4 m3)
+INLINE ray transform_ray(ray r, float4 m0, float4 m1, float4 m2, float4 m3)
 {
     ray res;
     res.o.xyz = transform_point(r.o.xyz, m0, m1, m2, m3);
@@ -127,490 +132,318 @@ ray transform_ray(ray r, float4 m0, float4 m1, float4 m2, float4 m3)
     return res;
 }
 
-float4 quaternion_mul(float4 q1, float4 q2)
-{
-    float4 res;
-    res.x = q1.y*q2.z - q1.z*q2.y + q2.w*q1.x + q1.w*q2.x;
-    res.y = q1.z*q2.x - q1.x*q2.z + q2.w*q1.y + q1.w*q2.y;
-    res.z = q1.x*q2.y - q2.x*q1.y + q2.w*q1.z + q1.w*q2.z;
-    res.w = q1.w*q2.w - q1.x*q2.x - q1.y*q2.y - q1.z*q2.z;
-    return res;
-}
 
-float4 quaternion_conjugate(float4 q)
-{
-    return make_float4(-q.x, -q.y, -q.z, q.w);
-}
-
-float4 quaternion_inverse(float4 q)
-{
-    float sqnorm = q.x*q.x + q.y*q.y + q.z*q.z + q.w*q.w;
-    
-    if (sqnorm != 0.f)
-    {
-        return quaternion_conjugate(q) / sqnorm;
-    }
-    else
-    {
-        return make_float4(0.f, 0.f, 0.f, 1.f);
-    }
-}
-
-void rotate_ray(ray* r, float4 q)
-{
-    float4 qinv = quaternion_inverse(q);
-    float4 v = make_float4(r->o.x, r->o.y, r->o.z, 0);
-    v = quaternion_mul(qinv, quaternion_mul(v, q));
-    r->o.xyz = v.xyz;
-    v = make_float4(r->d.x, r->d.y, r->d.z, 0);
-    v = quaternion_mul(qinv, quaternion_mul(v, q));
-    r->d.xyz = v.xyz;
-}
-
-
-/*************************************************************************
-BVH FUNCTIONS
-**************************************************************************/
-//  intersect a ray with leaf BVH node
-bool IntersectLeafClosest(
-    SceneData const* scenedata,
-    BvhNode const* node,
-    ray const* r,                // ray to instersect
-    Intersection* isect          // Intersection structure
+__attribute__((reqd_work_group_size(64, 1, 1)))
+KERNEL void intersect_main(
+    // BVH nodes
+    GLOBAL bvh_node const* restrict nodes,
+    // Vertices
+    GLOBAL float3 const* restrict vertices,
+    // Faces
+    GLOBAL Face const* restrict faces,
+    // Shapes
+    GLOBAL Shape const* restrict shapes,
+    // BVH root index
+    int root_idx,              
+    // Rays
+    GLOBAL ray const* restrict rays,
+    // Number of rays in ray buffer
+    GLOBAL int const* restrict num_rays,
+    // Hits 
+    GLOBAL Intersection* hits
 )
 {
-    float3 v1, v2, v3;
-    Face face;
+    int global_id = get_global_id(0);
 
-    int start = STARTIDX(node);
-    face = scenedata->faces[start];
-    v1 = scenedata->vertices[face.idx[0]];
-    v2 = scenedata->vertices[face.idx[1]];
-    v3 = scenedata->vertices[face.idx[2]];
-
-    if (IntersectTriangle(r, v1, v2, v3, isect))
+    // Handle only working subset
+    if (global_id < *num_rays)
     {
-        isect->primid = face.id;
-        return true;
-    }
+        // Fetch ray
+        ray r = rays[global_id];
 
-    return false;
-}
-
-//  intersect a ray with leaf BVH node
-bool IntersectLeafAny(
-    SceneData const* scenedata,
-    BvhNode const* node,
-    ray const* r                      // ray to instersect
-)
-{
-    float3 v1, v2, v3;
-    Face face;
-
-    int start = STARTIDX(node);
-    face = scenedata->faces[start];
-    v1 = scenedata->vertices[face.idx[0]];
-    v2 = scenedata->vertices[face.idx[1]];
-    v3 = scenedata->vertices[face.idx[2]];
-
-    if (IntersectTriangleP(r, v1, v2, v3))
-    {
-        return true;
-    }
-
-    return false;
-}
-
-
-// intersect Ray against the whole BVH2L structure
-bool IntersectSceneClosest2L(SceneData* scenedata, ray* r, Intersection* isect)
-{
-    // Init intersection
-    isect->uvwt = make_float4(0.f, 0.f, 0.f, r->o.w);
-    isect->shapeid = -1;
-    isect->primid = -1;
-
-    // Precompute invdir for bbox testing
-    float3 invdir = make_float3(1.f, 1.f, 1.f) / r->d.xyz;
-    float3 invdirtop = make_float3(1.f, 1.f, 1.f) / r->d.xyz;
-    // We need to keep original ray around for returns from bottom hierarchy
-    ray topray = *r;
-
-    // Fetch top level BVH index
-    int idx = scenedata->rootidx;
-    // -1 indicates we are traversing top level
-    int topidx = -1;
-    // Current shape id
-    int shapeid = -1;
-    while (idx != -1)
-    {
-        // Try intersecting against current node's bounding box.
-        BvhNode node = scenedata->nodes[idx];
-        if (IntersectBox(r, invdir, node, isect->uvwt.w))
+        if (ray_is_active(&r))
         {
-            if (LEAFNODE(node))
-            {
-                // If this is the leaf it can be either a leaf containing primitives (bottom hierarchy)
-                // or containing another BVH (top level hierarhcy)
-                if (topidx != -1)
-                {
-                    // This is bottom level, so intersect with a primitives
-                    if (IntersectLeafClosest(scenedata, &node, r, isect))
-                    {
-                        // Adjust shapeid as it might be instance
-                        isect->shapeid = shapeid;
-                    }
+            // Precompute invdir for bbox testing
+            float3 invdir = native_recip(r.d.xyz);
+            float3 invdirtop = invdir;
+            float t_max = r.o.w;
 
-                    // And goto next node
-                    idx = (int)(node.pmax.w);
+            // We need to keep original ray around for returns from bottom hierarchy
+            ray top_ray = r;
+
+            // Fetch top level BVH index
+            int addr = root_idx;
+            // Set top index
+            int top_addr = INVALID_IDX;
+            // Current shape ID
+            int shape_id = INVALID_IDX;
+            // Closest shape ID
+            int closest_shape_id = INVALID_IDX;
+            int closest_prim_id = INVALID_IDX;
+            float2 closest_barycentrics;
+
+            while (addr != INVALID_IDX)
+            {
+                // Fetch next node
+                bvh_node node = nodes[addr];
+                // Intersect against bbox
+                float2 s = fast_intersect_bbox1(node, invdir, -r.o.xyz * invdir, t_max);
+
+                if (s.x <= s.y)
+                {
+                    if (LEAFNODE(node))
+                    {
+                        // If this is the leaf it can be either a leaf containing primitives (bottom hierarchy)
+                        // or containing another BVH (top level hierarhcy)
+                        if (top_addr != INVALID_IDX)
+                        {
+                            // Intersect leaf here
+                            //
+                            int const face_idx = STARTIDX(node);
+                            Face const face = faces[face_idx];
+                            float3 const v1 = vertices[face.idx[0]];
+                            float3 const v2 = vertices[face.idx[1]];
+                            float3 const v3 = vertices[face.idx[2]];
+
+                            // Intersect triangle
+                            float const f = fast_intersect_triangle(r, v1, v2, v3, t_max);
+                            // If hit update closest hit distance and index
+                            if (f < t_max)
+                            {
+                                t_max = f;
+                                closest_prim_id = face.prim_id;
+                                closest_shape_id = shape_id;
+
+                                float3 const p = r.o.xyz + r.d.xyz * t_max;
+                                // Calculte barycentric coordinates
+                                closest_barycentrics = triangle_calculate_barycentrics(p, v1, v2, v3);
+                            }
+
+                            // And goto next node
+                            addr = NEXT(node);
+                        }
+                        else
+                        {
+                            // This is top level hierarchy leaf
+                            // Save top node index for return
+                            top_addr = addr;
+                            // Get shape descrition struct index
+                            int shape_idx = SHAPEIDX(node);
+                            // Get shape mask
+                            int shape_mask = shapes[shape_idx].mask;
+                            // Drill into 2nd level BVH only if the geometry is not masked vs current ray
+                            // otherwise skip the subtree
+                            if (ray_get_mask(&r) && shape_mask)
+                            {
+                                // Fetch bottom level BVH index
+                                addr = shapes[shape_idx].bvh_idx;
+                                shape_id = shapes[shape_idx].id;
+
+                                // Fetch BVH transform
+                                float4 wmi0 = shapes[shape_idx].m0;
+                                float4 wmi1 = shapes[shape_idx].m1;
+                                float4 wmi2 = shapes[shape_idx].m2;
+                                float4 wmi3 = shapes[shape_idx].m3;
+
+                                r = transform_ray(r, wmi0, wmi1, wmi2, wmi3);
+                                // Recalc invdir
+                                invdir = native_recip(r.d.xyz);
+                                // And continue traversal of the bottom level BVH
+                                continue;
+                            }
+                            else
+                            {
+                                addr = INVALID_IDX;
+                            }
+                        }
+                    }
+                    // Traverse child nodes otherwise.
+                    else
+                    {
+                        // This is an internal node, proceed to left child (it is at current + 1 index)
+                        addr = addr + 1;
+                    }
                 }
                 else
                 {
-                    // This is top level hierarchy leaf
-                    // Save top node index for return
-                    topidx = idx;
-                    // Get shape descrition struct index
-                    int shapeidx = SHAPEIDX(node);
-                    // Get shape mask
-                    int shapemask = scenedata->shapedata[shapeidx].mask;
-                    // Drill into 2nd level BVH only if the geometry is not masked vs current ray
-                    // otherwise skip the subtree
-                    if (Ray_GetMask(r) && shapemask)
-                    {
-                        // Fetch bottom level BVH index
-                        idx = scenedata->shapedata[shapeidx].bvhidx;
-                        shapeid = scenedata->shapedata[shapeidx].id;
+                    // We missed the node, goto next one
+                    addr = NEXT(node);
+                }
 
-                        // Fetch BVH transform
-                        float4 wmi0 = scenedata->shapedata[shapeidx].m0;
-                        float4 wmi1 = scenedata->shapedata[shapeidx].m1;
-                        float4 wmi2 = scenedata->shapedata[shapeidx].m2;
-                        float4 wmi3 = scenedata->shapedata[shapeidx].m3;
-
-                        // Apply linear motion blur (world coordinates)
-                        //float4 lmv = scenedata->shapedata[shapeidx].linearvelocity;
-                        //float4 amv = scenedata->shapedata[SHAPEDATAIDX(node)].angularvelocity;
-                        //r->o.xyz -= (lmv.xyz*r->d.w);
-                        // Transfrom the ray
-                        *r = transform_ray(*r, wmi0, wmi1, wmi2, wmi3);
-                        // rotate_ray(r, amv);
-                        // Recalc invdir
-                        invdir = make_float3(1.f, 1.f, 1.f) / r->d.xyz;
-                        // And continue traversal of the bottom level BVH
-                        continue;
-                    }
-                    else
-                    {
-                        idx = -1;
-                    }
+                // Here check if we ended up traversing bottom level BVH
+                // in this case idx = -1 and topidx has valid value
+                if (addr == INVALID_IDX && top_addr != INVALID_IDX)
+                {
+                    //  Proceed to next top level node
+                    addr = NEXT(nodes[top_addr]);
+                    // Set topidx
+                    top_addr = INVALID_IDX;
+                    // Restore ray here
+                    r = top_ray;
+                    // Restore invdir
+                    invdir = invdirtop;
                 }
             }
-            // Traverse child nodes otherwise.
+
+            // Check if we have found an intersection
+            if (closest_shape_id != INVALID_IDX)
+            {
+                // Update hit information
+                hits[global_id].shape_id = closest_shape_id;
+                hits[global_id].prim_id = closest_prim_id;
+                hits[global_id].uvwt = make_float4(closest_barycentrics.x, closest_barycentrics.y, 0.f, t_max);
+            }
             else
             {
-                // This is an internal node, proceed to left child (it is at current + 1 index)
-                idx = idx + 1;
+                // Miss here
+                hits[global_id].shape_id = MISS_MARKER;
+                hits[global_id].prim_id = MISS_MARKER;
             }
         }
-        else
-        {
-            // We missed the node, goto next one
-            idx = (int)(node.pmax.w);
-        }
-
-        // Here check if we ended up traversing bottom level BVH
-        // in this case idx = -1 and topidx has valid value
-        if (idx == -1 && topidx != -1)
-        {
-            //  Proceed to next top level node
-            idx = (int)(scenedata->nodes[topidx].pmax.w);
-            // Set topidx
-            topidx = -1;
-            // Restore ray here
-            r->o = topray.o;
-            r->d = topray.d;
-            // Restore invdir
-            invdir = invdirtop;
-        }
     }
-
-    return isect->shapeid >= 0;
 }
 
-// intersect Ray against the whole BVH2L structure
-bool IntersectSceneAny2L(SceneData* scenedata, ray* r)
+__attribute__((reqd_work_group_size(64, 1, 1)))
+KERNEL void occluded_main(
+    // BVH nodes
+    GLOBAL bvh_node const* restrict nodes,
+    // Vertices
+    GLOBAL float3 const* restrict vertices,
+    // Faces
+    GLOBAL Face const* restrict faces,
+    // Shapes
+    GLOBAL Shape const* restrict shapes,
+    // BVH root index
+    int root_idx,
+    // Rays
+    GLOBAL ray const* restrict rays,
+    // Number of rays in ray buffer
+    GLOBAL int const* restrict num_rays,
+    // Hits 
+    GLOBAL int* hits
+)
 {
-    // Precompute invdir for bbox testing
-    float3 invdir = make_float3(1.f, 1.f, 1.f) / r->d.xyz;
-    float3 invdirtop = make_float3(1.f, 1.f, 1.f) / r->d.xyz;
-    // We need to keep original ray around for returns from bottom hierarchy
-    ray topray = *r;
+    int global_id = get_global_id(0);
 
-    // Fetch top level BVH index
-    int idx = scenedata->rootidx;
-    // -1 indicates we are traversing top level
-    int topidx = -1;
-    while (idx != -1)
+    // Handle only working subset
+    if (global_id < *num_rays)
     {
-        // Try intersecting against current node's bounding box.
-        BvhNode node = scenedata->nodes[idx];
-        if (IntersectBox(r, invdir, node, r->o.w))
+        // Fetch ray
+        ray r = rays[global_id];
+
+        if (ray_is_active(&r))
         {
-            if (LEAFNODE(node))
+            // Precompute invdir for bbox testing
+            float3 invdir = native_recip(r.d.xyz);
+            float3 invdirtop = invdir;
+            float const t_max = r.o.w;
+
+            // We need to keep original ray around for returns from bottom hierarchy
+            ray top_ray = r;
+
+            // Fetch top level BVH index
+            int addr = root_idx;
+            // Set top index
+            int top_addr = INVALID_IDX;
+
+            while (addr != INVALID_IDX)
             {
-                // If this is the leaf it can be either a leaf containing primitives (bottom hierarchy)
-                // or containing another BVH (top level hierarhcy)
-                if (topidx != -1)
+                // Fetch next node
+                bvh_node node = nodes[addr];
+                // Intersect against bbox
+                float2 s = fast_intersect_bbox1(node, invdir, -r.o.xyz * invdir, t_max);
+
+                if (s.x <= s.y)
                 {
-                    // This is bottom level, so intersect with a primitives
-                    if (IntersectLeafAny(scenedata, &node, r))
-                        return true;
-                    // And goto next node
-                    idx = (int)(node.pmax.w);
+                    if (LEAFNODE(node))
+                    {
+                        // If this is the leaf it can be either a leaf containing primitives (bottom hierarchy)
+                        // or containing another BVH (top level hierarhcy)
+                        if (top_addr != INVALID_IDX)
+                        {
+                            // Intersect leaf here
+                            //
+                            int const face_idx = STARTIDX(node);
+                            Face const face = faces[face_idx];
+                            float3 const v1 = vertices[face.idx[0]];
+                            float3 const v2 = vertices[face.idx[1]];
+                            float3 const v3 = vertices[face.idx[2]];
+
+                            // Intersect triangle
+                            float const f = fast_intersect_triangle(r, v1, v2, v3, t_max);
+                            // If hit update closest hit distance and index
+                            if (f < t_max)
+                            {
+                                hits[global_id] = HIT_MARKER;
+                                return;
+                            }
+
+                            // And goto next node
+                            addr = NEXT(node);
+                        }
+                        else
+                        {
+                            // This is top level hierarchy leaf
+                            // Save top node index for return
+                            top_addr = addr;
+                            // Get shape descrition struct index
+                            int shape_idx = SHAPEIDX(node);
+                            // Get shape mask
+                            int shape_mask = shapes[shape_idx].mask;
+                            // Drill into 2nd level BVH only if the geometry is not masked vs current ray
+                            // otherwise skip the subtree
+                            if (ray_get_mask(&r) && shape_mask)
+                            {
+                                // Fetch bottom level BVH index
+                                addr = shapes[shape_idx].bvh_idx;
+
+                                // Fetch BVH transform
+                                float4 wmi0 = shapes[shape_idx].m0;
+                                float4 wmi1 = shapes[shape_idx].m1;
+                                float4 wmi2 = shapes[shape_idx].m2;
+                                float4 wmi3 = shapes[shape_idx].m3;
+
+                                r = transform_ray(r, wmi0, wmi1, wmi2, wmi3);
+                                // Recalc invdir
+                                invdir = native_recip(r.d.xyz);
+                                // And continue traversal of the bottom level BVH
+                                continue;
+                            }
+                            else
+                            {
+                                addr = INVALID_IDX;
+                            }
+                        }
+                    }
+                    // Traverse child nodes otherwise.
+                    else
+                    {
+                        // This is an internal node, proceed to left child (it is at current + 1 index)
+                        addr = addr + 1;
+                    }
                 }
                 else
                 {
-                    // This is top level hierarchy leaf
-                    // Save top node index for return
-                    topidx = idx;
-                    // Get shape descrition struct index
-                    int shapeidx = SHAPEIDX(node);
+                    // We missed the node, goto next one
+                    addr = NEXT(node);
+                }
 
-                    // Get shape mask
-                    int shapemask = scenedata->shapedata[shapeidx].mask;
-                    // Drill into 2nd level BVH only if the geometry is not masked vs current ray
-                    // otherwise skip the subtree
-                    if (Ray_GetMask(r) && shapemask)
-                    {
-                        // Fetch bottom level BVH index
-                        idx = scenedata->shapedata[shapeidx].bvhidx;
-
-                        // Fetch BVH transform
-                        float4 wmi0 = scenedata->shapedata[shapeidx].m0;
-                        float4 wmi1 = scenedata->shapedata[shapeidx].m1;
-                        float4 wmi2 = scenedata->shapedata[shapeidx].m2;
-                        float4 wmi3 = scenedata->shapedata[shapeidx].m3;
-
-                        // Apply linear motion blur (world coordinates)
-                        //float4 lmv = scenedata->shapedata[shapeidx].linearvelocity;
-                        //float4 amv = scenedata->shapedata[SHAPEDATAIDX(node)].angularvelocity;
-                        //r->o.xyz -= (lmv.xyz*r->d.w);
-                        // Transfrom the ray
-                        *r = transform_ray(*r, wmi0, wmi1, wmi2, wmi3);
-                        //rotate_ray(r, amv);
-                        // Recalc invdir
-                        invdir = make_float3(1.f, 1.f, 1.f) / r->d.xyz;
-                        // And continue traversal of the bottom level BVH
-                        continue;
-                    }
-                    else
-                    {
-                        // Skip the subtree
-                        idx = -1;
-                    }
+                // Here check if we ended up traversing bottom level BVH
+                // in this case idx = -1 and topidx has valid value
+                if (addr == INVALID_IDX && top_addr != INVALID_IDX)
+                {
+                    //  Proceed to next top level node
+                    addr = NEXT(nodes[top_addr]);
+                    // Set topidx
+                    top_addr = INVALID_IDX;
+                    // Restore ray here
+                    r = top_ray;
+                    // Restore invdir
+                    invdir = invdirtop;
                 }
             }
-            // Traverse child nodes otherwise.
-            else
-            {
-                // This is an internal node, proceed to left child (it is at current + 1 index)
-                idx = idx + 1;
-            }
-        }
-        else
-        {
-            // We missed the node, goto next one
-            idx = (int)(node.pmax.w);
-        }
 
-        // Here check if we ended up traversing bottom level BVH
-        // in this case idx = 0xFFFFFFFF and topidx has valid value
-        if (idx == -1 && topidx != -1)
-        {
-            //  Proceed to next top level node
-            idx = (int)(scenedata->nodes[topidx].pmax.w);
-            // Set topidx
-            topidx = -1;
-            // Restore ray here
-            *r = topray;
-            // Restore invdir
-            invdir = invdirtop;
-        }
-    }
-
-    return false;
-}
-
-
-// 2 level variants
-__attribute__((reqd_work_group_size(64, 1, 1)))
-__kernel void IntersectClosest2L(
-    // Input
-    __global BvhNode* nodes,   // BVH nodes
-    __global float3* vertices, // Scene positional data
-    __global Face* faces,    // Scene indices
-    __global ShapeData* shapedata, // Transforms
-    int rootidx,               // BVH root idx
-    __global ray* rays,        // Ray workload
-    int offset,                // Offset in rays array
-    int numrays,               // Number of rays to process
-    __global Intersection* hits // Hit datas
-)
-{
-
-    int global_id = get_global_id(0);
-
-    // Fill scene data
-    SceneData scenedata =
-    {
-        nodes,
-        vertices,
-        faces,
-        shapedata,
-        rootidx
-    };
-
-    // Handle only working subset
-    if (global_id < numrays)
-    {
-        // Fetch ray
-        int idx = offset + global_id;
-        ray r = rays[idx];
-
-        if (Ray_IsActive(&r))
-        {
-            // Calculate closest hit
-            Intersection isect;
-            IntersectSceneClosest2L(&scenedata, &r, &isect);
-
-            // Write data back in case of a hit
-            hits[idx] = isect;
-        }
-    }
-}
-
-__attribute__((reqd_work_group_size(64, 1, 1)))
-__kernel void IntersectAny2L(
-    // Input
-    __global BvhNode* nodes,   // BVH nodes
-    __global float3* vertices, // Scene positional data
-    __global Face* faces,    // Scene indices
-    __global ShapeData* shapedata, // Transforms
-    int rootidx,               // BVH root idx
-    __global ray* rays,        // Ray workload
-    int offset,                // Offset in rays array
-    int numrays,               // Number of rays to process
-    __global int* hitresults   // Hit results
-)
-{
-    int global_id = get_global_id(0);
-
-    // Fill scene data
-    SceneData scenedata =
-    {
-        nodes,
-        vertices,
-        faces,
-        shapedata,
-        rootidx
-    };
-
-    // Handle only working subset
-    if (global_id < numrays)
-    {
-        // Fetch ray
-        ray r = rays[offset + global_id];
-
-        if (Ray_IsActive(&r))
-        {
-            // Calculate any intersection
-            hitresults[offset + global_id] = IntersectSceneAny2L(&scenedata, &r) ? 1 : -1;
-        }
-    }
-}
-
-__attribute__((reqd_work_group_size(64, 1, 1)))
-// Version with range check
-__kernel void IntersectClosestRC2L(
-    // Input
-    __global BvhNode* nodes,   // BVH nodes
-    __global float3* vertices, // Scene positional data
-    __global Face* faces,    // Scene indices
-    __global ShapeData* shapedata, // Transforms
-    int rootidx,               // BVH root idx
-    __global ray* rays,        // Ray workload
-    __global int* numrays,     // Number of rays in the workload
-    int offset,                // Offset in rays array
-    __global Intersection* hits // Hit datas
-)
-{
-    int global_id = get_global_id(0);
-
-    // Fill scene data
-    SceneData scenedata =
-    {
-        nodes,
-        vertices,
-        faces,
-        shapedata,
-        rootidx
-    };
-
-    // Handle only working subset
-    if (global_id < *numrays)
-    {
-        // Fetch ray
-        int idx = offset + global_id;
-        ray r = rays[idx];
-
-        if (Ray_IsActive(&r))
-        {
-            // Calculate closest hit
-            Intersection isect;
-            IntersectSceneClosest2L(&scenedata, &r, &isect);
-
-            hits[idx] = isect;
-        }
-    }
-}
-
-__attribute__((reqd_work_group_size(64, 1, 1)))
-// Version with range check
-__kernel void IntersectAnyRC2L(
-    // Input
-    __global BvhNode* nodes,   // BVH nodes
-    __global float3* vertices, // Scene positional data
-    __global Face* faces,    // Scene indices
-    __global ShapeData* shapedata, // Transforms
-    int rootidx,               // BVH root idx
-    __global ray* rays,        // Ray workload
-    __global int* numrays,     // Number of rays in the workload
-    int offset,                // Offset in rays array
-    __global int* hitresults   // Hit results
-)
-{
-    int global_id = get_global_id(0);
-
-    // Fill scene data 
-    SceneData scenedata =
-    {
-        nodes,
-        vertices,
-        faces,
-        shapedata,
-        rootidx
-    };
-
-    // Handle only working subset
-    if (global_id < *numrays)
-    {
-        // Fetch ray
-        ray r = rays[offset + global_id];
-
-        if (Ray_IsActive(&r))
-        {
-            // Calculate any intersection
-            hitresults[offset + global_id] = IntersectSceneAny2L(&scenedata, &r) ? 1 : -1;
+            hits[global_id] = MISS_MARKER;
         }
     }
 }

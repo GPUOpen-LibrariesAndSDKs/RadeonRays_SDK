@@ -54,13 +54,14 @@ namespace RadeonRays
 
     struct IntersectorTwoLevel::Face
     {
+        // Up to 3 indices
         int idx[3];
-        int shadeidx;
-        // Primitive ID within the mesh
-        int id;
-        // Idx count
-        int cnt;
-        int padding[2];
+        // Shape maks
+        int shape_mask;
+        // Shape ID
+        int shape_id;
+        // Primitive ID
+        int prim_id;
     };
 
     struct IntersectorTwoLevel::GpuData
@@ -165,8 +166,8 @@ namespace RadeonRays
 #endif
 #endif
 
-        m_gpudata->isect_func = m_gpudata->executable->CreateFunction("IntersectClosest2L");
-        m_gpudata->occlude_func = m_gpudata->executable->CreateFunction("IntersectAny2L");
+        m_gpudata->isect_func = m_gpudata->executable->CreateFunction("intersect_main");
+        m_gpudata->occlude_func = m_gpudata->executable->CreateFunction("occluded_main");
     }
 
     void IntersectorTwoLevel::Process(World const& world)
@@ -421,8 +422,8 @@ namespace RadeonRays
                         facedata[myidx].idx[1] = myfaces[faceidx].idx[1] + startidx;
                         facedata[myidx].idx[2] = myfaces[faceidx].idx[2] + startidx;
 
-                        facedata[myidx].cnt = 3;
-                        facedata[myidx].id = faceidx;
+                        facedata[myidx].shape_id = mesh->GetId();
+                        facedata[myidx].prim_id = faceidx;
                     }
                 }
 
@@ -658,7 +659,6 @@ namespace RadeonRays
 
         // Set args
         int arg = 0;
-        int offset = 0;
 
         func->SetArg(arg++, m_gpudata->bvh);
         func->SetArg(arg++, m_gpudata->vertices);
@@ -667,7 +667,6 @@ namespace RadeonRays
         func->SetArg(arg++, sizeof(int), &m_gpudata->bvhrootidx);
         func->SetArg(arg++, rays);
         func->SetArg(arg++, numrays);
-        func->SetArg(arg++, sizeof(offset), &offset);
         func->SetArg(arg++, hits);
 
         size_t localsize = kWorkGroupSize;
@@ -691,7 +690,6 @@ namespace RadeonRays
         func->SetArg(arg++, sizeof(int), &m_gpudata->bvhrootidx);
         func->SetArg(arg++, rays);
         func->SetArg(arg++, numrays);
-        func->SetArg(arg++, sizeof(offset), &offset);
         func->SetArg(arg++, hits);
 
         size_t localsize = kWorkGroupSize;
