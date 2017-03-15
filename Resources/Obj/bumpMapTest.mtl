@@ -1,0 +1,48 @@
+newmtl clearCoatSG
+illum 4
+Kd 0.75 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Ns fiberglass_2_n.png
+Ni 2.00
+Ks 1.00 1.00 1.00
+Ns 98.00
+
+newmtl light
+illum 4
+Ke 5.50 5.50 5.50
+Kd 2.50 2.50 2.50
+Ka 1.00 0.00 0.00
+Tf 1.00 1.00 1.00
+Ni 1.00
+
+newmtl lambert3SG
+illum 4
+Kd 0.7 0.7 0.7
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd scratched.png
+map_Ks rmap.jpg
+Ni 1.00
+
+newmtl phong4SG
+illum 4
+Kd 0.00 0.7 0.7
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd maniwall.png
+map_Ns maniwallbp1.png
+Ni 2.00
+Ks 1.00 1.00 1.00
+Ns 28.00
+
+newmtl phong5SG
+illum 4
+Kd 0.3 0.3 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd RedCeramicTileColor.png
+map_Ns RedCeramicTile.png
+Ni 2.00
+Ks 1.00 1.00 1.00
+Ns 68.00

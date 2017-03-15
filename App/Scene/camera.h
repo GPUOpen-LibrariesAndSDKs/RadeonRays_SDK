@@ -51,6 +51,10 @@ namespace Baikal
                           RadeonRays::float3 const& at,
                           RadeonRays::float3 const& up);
         
+        // Pass camera position, camera aim, camera up vector
+        void LookAt(RadeonRays::float3 const& eye,
+                    RadeonRays::float3 const& at,
+                    RadeonRays::float3 const& up);
         // Set camera focus distance in meters,
         // this is essentially a distance from the lens to the focal plane.
         // Altering this is similar to rotating the focus ring on real lens.
