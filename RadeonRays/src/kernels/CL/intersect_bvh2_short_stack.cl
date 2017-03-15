@@ -137,7 +137,7 @@ occluded_main(
     // Number of rays in rays buffer
     GLOBAL int const * restrict num_rays,
     // Stack memory
-    GLOBAL int const * restrict stack,
+    GLOBAL int* stack,
     // Hit results: 1 for hit and -1 for miss
     GLOBAL int* hits
     )
@@ -289,7 +289,7 @@ KERNEL void intersect_main(
     // Number of rays in rays buffer
     GLOBAL int const* restrict num_rays,
     // Stack memory
-    GLOBAL int const* restrict stack,
+    GLOBAL int* stack,
     // Hit data
     GLOBAL Intersection* hits)
 {

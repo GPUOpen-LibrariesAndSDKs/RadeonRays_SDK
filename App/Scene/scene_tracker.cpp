@@ -34,7 +34,7 @@ namespace Baikal
         m_api->SetOption("acc.type", "bvh");
         m_api->SetOption("bvh.builder", "sah");
 #else
-        m_api->SetOption("acc.type", "fatbvh");
+        m_api->SetOption("acc.type", "hlbvh");
         m_api->SetOption("bvh.builder", "sah");
 #endif
     }

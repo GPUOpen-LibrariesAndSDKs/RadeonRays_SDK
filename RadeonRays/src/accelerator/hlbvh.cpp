@@ -72,6 +72,7 @@ namespace RadeonRays
         m_gpudata->nodes = m_device->CreateBuffer(2 * numprims * sizeof(Node), Calc::BufferType::kWrite);
         // Bounds
         m_gpudata->bounds = m_device->CreateBuffer(numprims * sizeof(bbox), Calc::BufferType::kWrite);
+        m_gpudata->scene_bound = m_device->CreateBuffer(sizeof(bbox), Calc::BufferType::kRead);
         m_gpudata->sorted_bounds = m_device->CreateBuffer(numprims * sizeof(bbox), Calc::BufferType::kWrite);
         // Propagation flags
         m_gpudata->flags = m_device->CreateBuffer(2 * numprims * sizeof(int), Calc::BufferType::kWrite);
@@ -82,7 +83,7 @@ namespace RadeonRays
 #ifndef RR_EMBED_KERNELS
         if ( m_device->GetPlatform() == Calc::Platform::kOpenCL )
         {
-            m_gpudata->executable = m_device->CompileExecutable( "../RadeonRays/src/kernels/CL/hlbvh_build.cl", nullptr, 0, nullptr );
+            m_gpudata->executable = m_device->CompileExecutable( "../RadeonRays/src/kernels/CL/build_hlbvh.cl", nullptr, 0, nullptr );
         }
 
         else
@@ -95,7 +96,7 @@ namespace RadeonRays
 #if USE_OPENCL
         if (device->GetPlatform() == Calc::Platform::kOpenCL)
         {
-            m_gpudata->executable = m_device->CompileExecutable(g_hlbvh_build_opencl, std::strlen(g_hlbvh_build_opencl), nullptr);
+            m_gpudata->executable = m_device->CompileExecutable(g_build_hlbvh_opencl, std::strlen(g_build_hlbvh_opencl), nullptr);
         }
 #endif
 
@@ -107,9 +108,9 @@ namespace RadeonRays
 #endif
 
 #endif
-        m_gpudata->morton_code_func = m_gpudata->executable->CreateFunction("CalcMortonCode");
-        m_gpudata->build_func = m_gpudata->executable->CreateFunction("BuildHierarchy");
-        m_gpudata->refit_func = m_gpudata->executable->CreateFunction("RefitBounds");
+        m_gpudata->morton_code_func = m_gpudata->executable->CreateFunction("calc_morton_code_main");
+        m_gpudata->build_func = m_gpudata->executable->CreateFunction("emit_hierarchy_main");
+        m_gpudata->refit_func = m_gpudata->executable->CreateFunction("refit_bounds_main");
 
         // Allocate GPU buffers
         AllocateBuffers(INITIAL_TRIANGLE_CAPACITY);
@@ -126,17 +127,17 @@ namespace RadeonRays
     // Build function
     void Hlbvh::Build(bbox const* bounds, int numbounds)
     {
-#ifdef _DEBUG
+//#ifdef _DEBUG
         auto s = std::chrono::high_resolution_clock::now();
-#endif
+//#endif
         BuildImpl(bounds, numbounds);
-#ifdef _DEBUG
+//#ifdef _DEBUG
         m_device->Finish(0);
         // Note, that this is total time spent for setup and construction 
         // including the time spent waiting in the queue.
         auto d = std::chrono::high_resolution_clock::now() - s;
         std::cout << "HLBVH setup + construction CPU time: " << std::chrono::duration_cast<std::chrono::milliseconds>(d).count() << "ms\n";
-#endif
+//#endif
     }
     
     
@@ -160,7 +161,13 @@ namespace RadeonRays
         {
             AllocateBuffers(size);
         }
-        
+
+        // Evaluate scene bouds
+        bbox scene_bound = bbox();
+        for (auto i = 0; i < numbounds; ++i)
+            scene_bound.grow(bounds[i]);
+
+        m_device->WriteBuffer(m_gpudata->scene_bound, 0, 0, sizeof(bbox), &scene_bound, nullptr);
 
         // Write bounds buffer
         {
@@ -192,13 +199,15 @@ namespace RadeonRays
             e->Wait();
             m_device->DeleteEvent(e);
         }
-        
+
         // Calculate Morton codes array
         int arg = 0;
-        m_gpudata->morton_code_func->SetArg(arg++, m_gpudata->morton_codes);
+
         m_gpudata->morton_code_func->SetArg(arg++, m_gpudata->bounds);
         m_gpudata->morton_code_func->SetArg(arg++, sizeof(size), &size);
-        
+        m_gpudata->morton_code_func->SetArg(arg++, m_gpudata->scene_bound);
+        m_gpudata->morton_code_func->SetArg(arg++, m_gpudata->morton_codes);
+
         // Calculate global size
         int globalsize = ((size + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
         
@@ -212,8 +221,8 @@ namespace RadeonRays
         arg = 0;
         m_gpudata->build_func->SetArg(arg++, m_gpudata->sorted_morton_codes);
         m_gpudata->build_func->SetArg(arg++, m_gpudata->bounds);
-        m_gpudata->build_func->SetArg(arg++, sizeof(size), &size);
         m_gpudata->build_func->SetArg(arg++, m_gpudata->sorted_prim_indices);
+        m_gpudata->build_func->SetArg(arg++, sizeof(size), &size);
         m_gpudata->build_func->SetArg(arg++, m_gpudata->nodes);
         m_gpudata->build_func->SetArg(arg++, m_gpudata->sorted_bounds);
         
@@ -234,8 +243,6 @@ namespace RadeonRays
         
         // Launch refit kernel
         m_device->Execute(m_gpudata->refit_func, 0, globalsize, kWorkGroupSize, nullptr);
-
-        
 
         /// DEBUG CODE
         /*std::vector<Node> nodes(size * 2 - 1);

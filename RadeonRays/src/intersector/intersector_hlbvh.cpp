@@ -39,23 +39,6 @@ static int const kMaxBatchSize = 2048 * 2048;
 
 namespace RadeonRays
 {
-    struct IntersectorHlbvh::ShapeData
-    {
-        // Shape ID
-        Id id;
-        // Index of root bvh node
-        int bvhidx;
-        // Shape mask
-        int mask;
-        int padding1;
-        // Transform
-        matrix minv;
-        // Motion blur data
-        float3 linearvelocity;
-        // Angular veocity (quaternion)
-        quaternion angularvelocity;
-    };
-
     struct IntersectorHlbvh::GpuData
     {
         // Device
@@ -64,8 +47,6 @@ namespace RadeonRays
         Calc::Buffer* vertices;
         // Indices
         Calc::Buffer* faces;
-        // Shape IDs
-        Calc::Buffer* shapes;
         // Traversal stack
         Calc::Buffer* stack;
 
@@ -77,7 +58,6 @@ namespace RadeonRays
             : device(d)
             , vertices(nullptr)
             , faces(nullptr)
-            , shapes(nullptr)
         {
         }
 
@@ -85,7 +65,6 @@ namespace RadeonRays
         {
             device->DeleteBuffer(vertices);
             device->DeleteBuffer(faces);
-            device->DeleteBuffer(shapes);
             device->DeleteBuffer(stack);
             executable->DeleteFunction(isect_func);
             executable->DeleteFunction(occlude_func);
@@ -149,7 +128,6 @@ namespace RadeonRays
             {
                 m_device->DeleteBuffer(m_gpudata->vertices);
                 m_device->DeleteBuffer(m_gpudata->faces);
-                m_device->DeleteBuffer(m_gpudata->shapes);
                 m_device->DeleteBuffer(m_gpudata->stack);
             }
             
@@ -178,7 +156,6 @@ namespace RadeonRays
 
             // We can't avoid allocating it here, since bounds aren't stored anywhere
             std::vector<bbox> bounds(numfaces);
-            std::vector<ShapeData> shapes(numshapes);
 
 #pragma omp parallel for
             for (int i = 0; i < numshapes; ++i)
@@ -189,9 +166,6 @@ namespace RadeonRays
                 {
                     mesh->GetFaceBounds(j, false, bounds[mesh_faces_start_idx[i] + j]);
                 }
-
-                shapes[i].id = mesh->GetId();
-                shapes[i].mask = mesh->GetMask();
             }
 
             m_bvh->Build(&bounds[0], numfaces);
@@ -238,88 +212,72 @@ namespace RadeonRays
             }
 
 
-            // Create face buffer
+                // Create face buffer
             {
                 struct Face
                 {
                     // Up to 3 indices
                     int idx[3];
-                    // Shape idx
-                    int shapeidx;
-                    // Primitive ID within the mesh
-                    int id;
-                    // Idx count
-                    int cnt;
+                    // Shape maks
+                    int shape_mask;
+                    // Shape ID
+                    int shape_id;
+                    // Primitive ID
+                    int prim_id;
                 };
 
                 // Create face buffer
+                m_gpudata->faces = m_device->CreateBuffer(numfaces * sizeof(Face), Calc::BufferType::kRead);
+
+                // Get the pointer to mapped data
+                Face* facedata = nullptr;
+                Calc::Event* e = nullptr;
+
+                m_device->MapBuffer(m_gpudata->faces, 0, 0, numfaces * sizeof(Face), Calc::BufferType::kWrite, (void**)&facedata, &e);
+
+                e->Wait();
+                m_device->DeleteEvent(e);
+
+                // Here the point is to add mesh starting index to actual index contained within the mesh,
+                // getting absolute index in the buffer.
+                // Besides that we need to permute the faces accorningly to BVH reordering, whihc
+                // is contained within bvh.primids_
+                for (int i = 0; i < numfaces; ++i)
                 {
-                    struct Face
-                    {
-                        // Up to 3 indices
-                        int idx[3];
-                        // Shape index
-                        int shapeidx;
-                        // Primitive ID within the mesh
-                        int id;
-                        // Idx count
-                        int cnt;
-                    };
+                    int indextolook4 = i;
 
-                    // Create face buffer
-                    m_gpudata->faces = m_device->CreateBuffer(numfaces * sizeof(Face), Calc::BufferType::kRead);
+                    // We need to find a shape corresponding to current face
+                    auto iter = std::upper_bound(mesh_faces_start_idx.cbegin(), mesh_faces_start_idx.cend(), indextolook4);
 
-                    // Get the pointer to mapped data
-                    Face* facedata = nullptr;
-                    Calc::Event* e = nullptr;
+                    // Find the index of the shape
+                    int shapeidx = static_cast<int>(std::distance(mesh_faces_start_idx.cbegin(), iter) - 1);
 
-                    m_device->MapBuffer(m_gpudata->faces, 0, 0, numfaces * sizeof(Face), Calc::BufferType::kWrite, (void**)&facedata, &e);
+                    // Get the mesh directly or out of instance
+                    Mesh const* mesh = static_cast<Mesh const*>(world.shapes_[shapeidx]);
 
-                    e->Wait();
-                    m_device->DeleteEvent(e);
+                    // Get vertex buffer of the current mesh
+                    Mesh::Face const* myfacedata = mesh->GetFaceData();
+                    // Find face idx
+                    int faceidx = indextolook4 - mesh_faces_start_idx[shapeidx];
+                    // Find mesh start idx
+                    int mystartidx = mesh_vertices_start_idx[shapeidx];
 
-                    // Here the point is to add mesh starting index to actual index contained within the mesh,
-                    // getting absolute index in the buffer.
-                    // Besides that we need to permute the faces accorningly to BVH reordering, whihc
-                    // is contained within bvh.primids_
-                    for (int i = 0; i < numfaces; ++i)
-                    {
-                        int indextolook4 = i;
+                    // Copy face data to GPU buffer
+                    facedata[i].idx[0] = myfacedata[faceidx].idx[0] + mystartidx;
+                    facedata[i].idx[1] = myfacedata[faceidx].idx[1] + mystartidx;
+                    facedata[i].idx[2] = myfacedata[faceidx].idx[2] + mystartidx;
 
-                        // We need to find a shape corresponding to current face
-                        auto iter = std::upper_bound(mesh_faces_start_idx.cbegin(), mesh_faces_start_idx.cend(), indextolook4);
-
-                        // Find the index of the shape
-                        int shapeidx = static_cast<int>(std::distance(mesh_faces_start_idx.cbegin(), iter) - 1);
-
-                        // Get the mesh
-                        Mesh const* mesh = static_cast<Mesh const*>(world.shapes_[shapeidx]);
-                        // Get vertex buffer of the current mesh
-                        Mesh::Face const* myfacedata = mesh->GetFaceData();
-                        // Find face idx
-                        int faceidx = indextolook4 - mesh_faces_start_idx[shapeidx];
-                        // Find mesh start idx
-                        int mystartidx = mesh_vertices_start_idx[shapeidx];
-
-                        // Copy face data to GPU buffer
-                        facedata[i].idx[0] = myfacedata[faceidx].idx[0] + mystartidx;
-                        facedata[i].idx[1] = myfacedata[faceidx].idx[1] + mystartidx;
-                        facedata[i].idx[2] = myfacedata[faceidx].idx[2] + mystartidx;
-
-                        facedata[i].shapeidx = shapeidx;
-                        facedata[i].cnt = (myfacedata[faceidx].type_ == Mesh::FaceType::QUAD ? 4 : 3);
-                        facedata[i].id = faceidx;
-                    }
-
-                    m_device->UnmapBuffer(m_gpudata->faces, 0, facedata, &e);
-
-                    e->Wait();
-                    m_device->DeleteEvent(e);
+                    // Optimization: we are putting faceid here
+                    facedata[i].shape_id = mesh->GetId();
+                    facedata[i].shape_mask = mesh->GetMask();
+                    facedata[i].prim_id = faceidx;
                 }
+
+                m_device->UnmapBuffer(m_gpudata->faces, 0, facedata, &e);
+                e->Wait();
+                m_device->DeleteEvent(e);
             }
 
-            // Create shapes buffer
-            m_gpudata->shapes = m_device->CreateBuffer(numshapes * sizeof(ShapeData), Calc::BufferType::kRead, &shapes[0]);
             // Stack
             m_gpudata->stack = m_device->CreateBuffer(kMaxBatchSize*kMaxStackSize, Calc::BufferType::kWrite);
             // Make sure everything is commited
@@ -422,18 +380,15 @@ namespace RadeonRays
 
         // Set args
         int arg = 0;
-        int offset = 0;
 
         func->SetArg(arg++, m_bvh->GetGpuData().nodes);
         func->SetArg(arg++, m_bvh->GetGpuData().sorted_bounds);
         func->SetArg(arg++, m_gpudata->vertices);
         func->SetArg(arg++, m_gpudata->faces);
-        func->SetArg(arg++, m_gpudata->shapes);
         func->SetArg(arg++, rays);
-        func->SetArg(arg++, sizeof(offset), &offset);
         func->SetArg(arg++, num_rays);
-        func->SetArg(arg++, hits);
         func->SetArg(arg++, m_gpudata->stack);
+        func->SetArg(arg++, hits);
 
         size_t localsize = kWorkGroupSize;
         size_t globalsize = ((max_rays + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
@@ -453,18 +408,15 @@ namespace RadeonRays
 
         // Set args
         int arg = 0;
-        int offset = 0;
 
         func->SetArg(arg++, m_bvh->GetGpuData().nodes);
         func->SetArg(arg++, m_bvh->GetGpuData().sorted_bounds);
         func->SetArg(arg++, m_gpudata->vertices);
         func->SetArg(arg++, m_gpudata->faces);
-        func->SetArg(arg++, m_gpudata->shapes);
         func->SetArg(arg++, rays);
-        func->SetArg(arg++, sizeof(offset), &offset);
         func->SetArg(arg++, num_rays);
-        func->SetArg(arg++, hits);
         func->SetArg(arg++, m_gpudata->stack);
+        func->SetArg(arg++, hits);
 
         size_t localsize = kWorkGroupSize;
         size_t globalsize = ((max_rays + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
