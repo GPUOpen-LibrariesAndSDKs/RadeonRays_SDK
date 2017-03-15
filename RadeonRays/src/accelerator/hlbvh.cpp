@@ -53,29 +53,29 @@ namespace RadeonRays
     {
     }
     
-    void Hlbvh::AllocateBuffers(size_t numprims)
+    void Hlbvh::AllocateBuffers(size_t num_prims)
     {
         // * 3 since only triangles are supported just yet
-        m_gpudata->positions = m_device->CreateBuffer(numprims * sizeof(float3), Calc::BufferType::kWrite);
+        m_gpudata->positions = m_device->CreateBuffer(num_prims * sizeof(float3), Calc::BufferType::kWrite);
         // * 3 since 3 vertex indices + 1 material idx
-        m_gpudata->morton_codes = m_device->CreateBuffer(numprims * sizeof(int), Calc::BufferType::kWrite);
+        m_gpudata->morton_codes = m_device->CreateBuffer(num_prims * sizeof(int), Calc::BufferType::kWrite);
         
         
-        std::vector<int> iota(numprims);
+        std::vector<int> iota(num_prims);
         std::iota(iota.begin(), iota.end(), 0);
         
-        m_gpudata->prim_indices = m_device->CreateBuffer(numprims * sizeof(int), Calc::BufferType::kWrite, &iota[0]);
-        m_gpudata->morton_codes = m_device->CreateBuffer(numprims * sizeof(int), Calc::BufferType::kWrite);
-        m_gpudata->sorted_morton_codes = m_device->CreateBuffer(numprims * sizeof(int), Calc::BufferType::kWrite);
-        m_gpudata->sorted_prim_indices = m_device->CreateBuffer(numprims * sizeof(int), Calc::BufferType::kWrite);
+        m_gpudata->prim_indices = m_device->CreateBuffer(num_prims * sizeof(int), Calc::BufferType::kWrite, &iota[0]);
+        m_gpudata->morton_codes = m_device->CreateBuffer(num_prims * sizeof(int), Calc::BufferType::kWrite);
+        m_gpudata->sorted_morton_codes = m_device->CreateBuffer(num_prims * sizeof(int), Calc::BufferType::kWrite);
+        m_gpudata->sorted_prim_indices = m_device->CreateBuffer(num_prims * sizeof(int), Calc::BufferType::kWrite);
         
-        m_gpudata->nodes = m_device->CreateBuffer(2 * numprims * sizeof(Node), Calc::BufferType::kWrite);
+        m_gpudata->nodes = m_device->CreateBuffer(2 * num_prims * sizeof(Node), Calc::BufferType::kWrite);
         // Bounds
-        m_gpudata->bounds = m_device->CreateBuffer(numprims * sizeof(bbox), Calc::BufferType::kWrite);
+        m_gpudata->bounds = m_device->CreateBuffer(num_prims * sizeof(bbox), Calc::BufferType::kWrite);
         m_gpudata->scene_bound = m_device->CreateBuffer(sizeof(bbox), Calc::BufferType::kRead);
-        m_gpudata->sorted_bounds = m_device->CreateBuffer(numprims * sizeof(bbox), Calc::BufferType::kWrite);
+        m_gpudata->sorted_bounds = m_device->CreateBuffer(num_prims * sizeof(bbox), Calc::BufferType::kWrite);
         // Propagation flags
-        m_gpudata->flags = m_device->CreateBuffer(2 * numprims * sizeof(int), Calc::BufferType::kWrite);
+        m_gpudata->flags = m_device->CreateBuffer(2 * num_prims * sizeof(int), Calc::BufferType::kWrite);
     }
     
     void Hlbvh::InitGpuData()
@@ -108,7 +108,7 @@ namespace RadeonRays
 #endif
 
 #endif
-        m_gpudata->morton_code_func = m_gpudata->executable->CreateFunction("calc_morton_code_main");
+        m_gpudata->morton_code_func = m_gpudata->executable->CreateFunction("calculate_morton_code_main");
         m_gpudata->build_func = m_gpudata->executable->CreateFunction("emit_hierarchy_main");
         m_gpudata->refit_func = m_gpudata->executable->CreateFunction("refit_bounds_main");
 
@@ -172,37 +172,25 @@ namespace RadeonRays
         // Write bounds buffer
         {
             bbox* tmp = nullptr;
-            Calc::Event* e = nullptr;
-            m_device->MapBuffer(m_gpudata->bounds, 0, 0, sizeof(bbox) * numbounds, Calc::kMapWrite, (void**)&tmp, &e);
-            e->Wait();
-            m_device->DeleteEvent(e);
-
-
+            m_device->MapBuffer(m_gpudata->bounds, 0, 0, sizeof(bbox) * numbounds, Calc::kMapWrite, (void**)&tmp, nullptr);
+            m_device->Finish(0);
             std::memcpy(tmp, bounds, sizeof(bbox) * numbounds);
-            m_device->UnmapBuffer(m_gpudata->bounds, 0, tmp, &e);
-            e->Wait();
-            m_device->DeleteEvent(e);
+            m_device->UnmapBuffer(m_gpudata->bounds, 0, tmp, nullptr);
+            m_device->Finish(0);
         }
         
         // Initialize flags with zero 
         {
             int* tmp = nullptr;
-            Calc::Event* e = nullptr;
-            m_device->MapBuffer(m_gpudata->flags, 0, 0, sizeof(int) * 2 * numbounds, Calc::kMapWrite, (void**)&tmp, &e);
-            e->Wait();
-            m_device->DeleteEvent(e);
-
+            m_device->MapBuffer(m_gpudata->flags, 0, 0, sizeof(int) * 2 * numbounds, Calc::kMapWrite, (void**)&tmp, nullptr);
+            m_device->Finish(0);
             std::memset(tmp, 0, sizeof(int) * numbounds * 2);
-
-            m_device->UnmapBuffer(m_gpudata->flags, 0, tmp, &e);
-
-            e->Wait();
-            m_device->DeleteEvent(e);
+            m_device->UnmapBuffer(m_gpudata->flags, 0, tmp, nullptr);
+            m_device->Finish(0);
         }
 
         // Calculate Morton codes array
         int arg = 0;
-
         m_gpudata->morton_code_func->SetArg(arg++, m_gpudata->bounds);
         m_gpudata->morton_code_func->SetArg(arg++, sizeof(size), &size);
         m_gpudata->morton_code_func->SetArg(arg++, m_gpudata->scene_bound);
@@ -213,9 +201,14 @@ namespace RadeonRays
         
         // Launch Morton codes kernel
         m_device->Execute(m_gpudata->morton_code_func, 0, globalsize, kWorkGroupSize, nullptr);
+        m_device->Finish(0);
         
         // Sort primitives according to their Morton codes
         m_gpudata->pp->SortRadixInt32(0, m_gpudata->morton_codes, m_gpudata->sorted_morton_codes, m_gpudata->prim_indices, m_gpudata->sorted_prim_indices, size);
+
+        std::vector<int> codes(size);
+        m_device->ReadBuffer(m_gpudata->sorted_prim_indices, 0, 0, sizeof(int) * size, &codes[0], nullptr);
+        m_device->Finish(0);
        
         // Prepare tree construction kernel
         arg = 0;
@@ -243,16 +236,5 @@ namespace RadeonRays
         
         // Launch refit kernel
         m_device->Execute(m_gpudata->refit_func, 0, globalsize, kWorkGroupSize, nullptr);
-
-        /// DEBUG CODE
-        /*std::vector<Node> nodes(size * 2 - 1);
-        context_.ReadBuffer(0, gpudata_->nodes_, &nodes[0], 0, size * 2 - 1).Wait();
-        
-        std::vector<bbox> bnds(size * 2 - 1);
-        context_.ReadBuffer(0, gpudata_->sortedbounds_, &bnds[0], 0, size * 2 - 1).Wait();
-        std::vector<int> flg(size * 2 - 1);
-        context_.ReadBuffer(0, gpudata_->flags_, &flg[0], 0, size * 2 - 1).Wait();*/
-        //primindices_.resize(size);
-        //context_.ReadBuffer(0, gpudata_->sorted_primindices_, &primindices_[0], 0, size).Wait();
     }
 }

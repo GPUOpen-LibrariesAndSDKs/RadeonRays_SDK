@@ -116,9 +116,9 @@ KERNEL void calculate_morton_code_main(
         // Fetch primitive bound
         bbox bound = primitive_bounds[global_id];
         // Calculate center and scene extents
-        float3 const center = 0.5f * (bound.pmax + bound.pmin);
-        float3 const scene_min = scene_bound->pmin;
-        float3 const scene_extents = scene_bound->pmax - scene_bound->pmin;
+        float3 const center = (bound.pmax + bound.pmin).xyz * 0.5f;
+        float3 const scene_min = scene_bound->pmin.xyz;
+        float3 const scene_extents = scene_bound->pmax.xyz - scene_bound->pmin.xyz;
         // Calculate morton code
         morton_codes[global_id] = calculate_morton_code((center - scene_min) / scene_extents);
     }
@@ -128,7 +128,7 @@ KERNEL void calculate_morton_code_main(
 
 // Calculates longest common prefix length of bit representations
 // if  representations are equal we consider sucessive indices
-INLINE int delta(GLOBAL int* morton_codes, int num_prims, int i1, int i2)
+INLINE int delta(GLOBAL int const* morton_codes, int num_prims, int i1, int i2)
 {
     // Select left end
     int left = min(i1, i2);
@@ -215,7 +215,7 @@ INLINE int find_split(GLOBAL int const* restrict morton_codes, int num_prims, in
 // Set parent-child relationship
 KERNEL void emit_hierarchy_main(
     // Sorted Morton codes of the primitives
-    GLBOAL int const* restrict morton_codes,
+    GLOBAL int const* restrict morton_codes,
     // Bounds
     GLOBAL bbox const* restrict bounds,
     // Primitive indices
@@ -263,7 +263,7 @@ KERNEL void emit_hierarchy_main(
 // Propagate bounds up to the root
 KERNEL void refit_bounds_main(
     // Node bounds
-    GLOBAL bbox const* restrict bounds,
+    GLOBAL bbox* bounds,
     // Number of nodes
     int num_prims,
     // Nodes

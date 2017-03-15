@@ -955,7 +955,10 @@ void ScatterKeysAndValues(// Number of bits to shift
             barrier(CLK_LOCAL_MEM_FENCE);
 
             // Reload values back to registers for the second bit pass
-            localkeys = ((__local int4*)keys)[localid];
+            localkeys.x = keys[localid << 2];
+            localkeys.y = keys[(localid << 2) + 1];
+            localkeys.z = keys[(localid << 2) + 2];
+            localkeys.w = keys[(localid << 2) + 3];
 
             // Make sure everything is up to date
             barrier(CLK_LOCAL_MEM_FENCE);
@@ -969,7 +972,10 @@ void ScatterKeysAndValues(// Number of bits to shift
             barrier(CLK_LOCAL_MEM_FENCE);
 
             // Reload values back to registers for the second bit pass
-            localvals = ((__local int4*)keys)[localid];
+            localvals.x = keys[localid << 2];
+            localvals.y = keys[(localid << 2) + 1];
+            localvals.z = keys[(localid << 2) + 2];
+            localvals.w = keys[(localid << 2) + 3];
 
             // Make sure everything is up to date
             barrier(CLK_LOCAL_MEM_FENCE);
