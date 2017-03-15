@@ -26,6 +26,8 @@ THE SOFTWARE.
 #include "Scene/material.h"
 #include "Scene/camera.h"
 #include "Scene/light.h"
+#include "Scene/texture.h"
+#include "Scene/IO/image_io.h"
 #include "CLW/clwoutput.h"
 #include "PT/ptrenderer.h"
 #include "config_manager.h"
@@ -216,9 +218,17 @@ rpr_int rprContextCreateImage(rpr_context context, rpr_image_format const format
     return RPR_ERROR_UNIMPLEMENTED;
 }
 
-rpr_int rprContextCreateImageFromFile(rpr_context context, rpr_char const * path, rpr_image * out_image)
+rpr_int rprContextCreateImageFromFile(rpr_context in_context, rpr_char const * in_path, rpr_image * out_image)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    if (!in_context)
+        return RPR_ERROR_INVALID_CONTEXT;
+    //load texture using oiio
+    ImageIo* oiio = ImageIo::CreateImageIo();
+    Texture* texture = oiio->LoadImage(in_path);
+    *out_image = texture;
+    delete oiio;
+
+    return RPR_SUCCESS;
 }
 
 rpr_int rprContextCreateScene(rpr_context in_context, rpr_scene * out_scene)
@@ -413,13 +423,24 @@ rpr_int rprCameraSetTransform(rpr_camera camera, rpr_bool transpose, rpr_float *
 
 rpr_int rprCameraSetSensorSize(rpr_camera in_camera, rpr_float in_width, rpr_float in_height)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    if (!in_camera)
+        return RPR_ERROR_INVALID_PARAMETER;
+
+    //get camera and set values
+    PerspectiveCamera* camera = static_cast<PerspectiveCamera*>(in_camera);
+    //convedrt meters to mm
+    float2 size = { in_width / 1000.f, in_height / 1000.f };
+    camera->SetSensorSize(size);
+
+    return RPR_SUCCESS;
 }
 
 rpr_int rprCameraLookAt(rpr_camera in_camera, rpr_float posx, rpr_float posy, rpr_float posz, rpr_float atx, rpr_float aty, rpr_float atz, rpr_float upx, rpr_float upy, rpr_float upz)
 {
     if (!in_camera)
         return RPR_ERROR_INVALID_PARAMETER;
+
+    //get camera and set values
     PerspectiveCamera* camera = static_cast<PerspectiveCamera*>(in_camera);
     const float3 pos = { posx, posy, posz };
     const float3 at = { atx, aty, atz };
@@ -538,7 +559,7 @@ rpr_int rprShapeSetDisplacementImage(rpr_shape shape, rpr_image image)
 
 rpr_int rprShapeSetMaterial(rpr_shape in_shape, rpr_material_node in_node)
 {
-    if (!in_shape || !in_node)
+    if (!in_shape)
         return RPR_ERROR_INVALID_PARAMETER;
     Mesh* mesh = static_cast<Mesh*>(in_shape);
     Material* mat = static_cast<Material*>(in_node);
@@ -719,19 +740,49 @@ rpr_int rprDirectionalLightSetShadowSoftness(rpr_light light, rpr_float coeff)
     return RPR_ERROR_UNIMPLEMENTED;
 }
 
-rpr_int rprContextCreateEnvironmentLight(rpr_context context, rpr_light * out_light)
+rpr_int rprContextCreateEnvironmentLight(rpr_context in_context, rpr_light * out_light)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    if (!in_context)
+        return RPR_ERROR_INVALID_CONTEXT;
+    if (!out_light)
+        return RPR_ERROR_INVALID_PARAMETER;
+
+    //cast data
+    Context* context = static_cast<Context*>(in_context);
+    //create ibl
+    ImageBasedLight* ibl = new ImageBasedLight();
+    //result
+    *out_light = ibl;
+
+    return RPR_SUCCESS;
 }
 
-rpr_int rprEnvironmentLightSetImage(rpr_light env_light, rpr_image image)
+rpr_int rprEnvironmentLightSetImage(rpr_light in_env_light, rpr_image in_image)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    if (!in_env_light)
+        return RPR_ERROR_INVALID_PARAMETER;
+    
+    //cast data
+    ImageBasedLight* ibl = static_cast<ImageBasedLight*>(in_env_light);
+    Texture* img = static_cast<Texture*>(in_image);
+    
+    //set image
+    ibl->SetTexture(img);
+
+    return RPR_SUCCESS;
 }
 
-rpr_int rprEnvironmentLightSetIntensityScale(rpr_light env_light, rpr_float intensity_scale)
+rpr_int rprEnvironmentLightSetIntensityScale(rpr_light in_env_light, rpr_float intensity_scale)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    if (!in_env_light)
+        return RPR_ERROR_INVALID_PARAMETER;
+    //cast data
+    ImageBasedLight* ibl = static_cast<ImageBasedLight*>(in_env_light);
+
+    //set data
+    ibl->SetMultiplier(intensity_scale);
+
+    return RPR_SUCCESS;
 }
 
 rpr_int rprEnvironmentLightAttachPortal(rpr_light env_light, rpr_shape portal)
@@ -808,6 +859,8 @@ rpr_int rprSceneAttachShape(rpr_scene in_scene, rpr_shape in_shape)
 {
     if (!in_scene || !in_shape)
         return RPR_ERROR_INVALID_PARAMETER;
+
+    //cast input data
     Scene1* scene = static_cast<Scene1*>(in_scene);
     Mesh* mesh = static_cast<Mesh*>(in_shape);
     scene->AttachShape(mesh);
@@ -815,9 +868,17 @@ rpr_int rprSceneAttachShape(rpr_scene in_scene, rpr_shape in_shape)
     return RPR_SUCCESS;
 }
 
-rpr_int rprSceneDetachShape(rpr_scene in_scene, rpr_shape shape)
+rpr_int rprSceneDetachShape(rpr_scene in_scene, rpr_shape in_shape)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    if (!in_scene || !in_shape)
+        return RPR_ERROR_INVALID_PARAMETER;
+
+    //cast input data
+    Scene1* scene = static_cast<Scene1*>(in_scene);
+    Mesh* mesh = static_cast<Mesh*>(in_shape);
+    scene->DetachShape(mesh);
+
+    return RPR_SUCCESS;
 }
 
 rpr_int rprSceneAttachLight(rpr_scene in_scene, rpr_light in_light)
@@ -971,30 +1032,55 @@ rpr_int rprMaterialSystemCreateNode(rpr_material_system in_matsys, rpr_material_
     if (!in_matsys)
         return RPR_ERROR_INVALID_PARAMETER;
     MaterialSystem* sys = static_cast<MaterialSystem*>(in_matsys);
+    Material* mat = nullptr;
     switch (in_type)
     {
     case RPR_MATERIAL_NODE_DIFFUSE:
-    {
-        Material* mat = new SingleBxdf(SingleBxdf::BxdfType::kLambert);
-        sys->push_back(mat);
+        mat = new SingleBxdf(SingleBxdf::BxdfType::kLambert);
         mat->SetTwoSided(true);
-
-        *out_node = mat;
         break;
-    }
+    case RPR_MATERIAL_NODE_MICROFACET:
+        mat = new SingleBxdf(SingleBxdf::BxdfType::kMicrofacetBeckmann);
+        mat->SetTwoSided(true);
+        break;
+    case RPR_MATERIAL_NODE_IMAGE_TEXTURE:
+        mat = new SingleBxdf(SingleBxdf::BxdfType::kZero);
+        break;
     default:
         return RPR_ERROR_UNIMPLEMENTED;
 
     }
-
+    sys->push_back(mat);
+    *out_node = mat;
     return RPR_SUCCESS;
 }
 
 rpr_int rprMaterialNodeSetInputN(rpr_material_node in_node, rpr_char const * in_input, rpr_material_node in_input_node)
 {
+    if (!in_node || !in_input || !in_input_node)
+        return RPR_ERROR_INVALID_PARAMETER;
+    
+    //cast data
+    SingleBxdf* mat = static_cast<SingleBxdf*>(in_node);
+    SingleBxdf* input_mat = static_cast<SingleBxdf*>(in_input_node);
+    std::string input_name;
+    if (!strcmp(in_input, "color"))
+        input_name = "albedo";
+    else
+        return RPR_ERROR_UNIMPLEMENTED;
 
+    //if input zero - need to get textura from its albedo input
+    if (input_mat->GetBxdfType() == SingleBxdf::BxdfType::kZero)
+    {
+        const Texture* tex = input_mat->GetInputValue("albedo").tex_value;
+        mat->SetInputValue(input_name, tex);
+    }
+    else
+    {
+        mat->SetInputValue(input_name, input_mat);
+    }
 
-    return RPR_ERROR_UNIMPLEMENTED;
+    return RPR_SUCCESS;
 }
 
 rpr_int rprMaterialNodeSetInputF(rpr_material_node in_node, rpr_char const * in_input, rpr_float in_value_x, rpr_float in_value_y, rpr_float in_value_z, rpr_float in_value_w)
@@ -1005,15 +1091,20 @@ rpr_int rprMaterialNodeSetInputF(rpr_material_node in_node, rpr_char const * in_
     SingleBxdf* mat = static_cast<SingleBxdf*>(in_node);
     //collect input
     float4 input = { in_value_x, in_value_y, in_value_z, in_value_w };
-    const std::string name = mat->GetName();
-    if (mat->GetBxdfType() == SingleBxdf::BxdfType::kLambert)
-    {
-        mat->SetInputValue("albedo", input);
-        return RPR_SUCCESS;
-    }
+    std::string input_name;
+    
+    //translate material prop name
+    if (!strcmp(in_input, "color"))
+        input_name = "albedo";
+    else if (!strcmp(in_input, "ior"))
+        input_name = in_input;
+    else if (!strcmp(in_input, "roughness"))
+        input_name = in_input;
+    else
+        return RPR_ERROR_UNIMPLEMENTED;
 
-
-    return RPR_ERROR_UNIMPLEMENTED;
+    mat->SetInputValue(input_name, input);
+    return RPR_SUCCESS;
 }
 
 rpr_int rprMaterialNodeSetInputU(rpr_material_node in_node, rpr_char const * in_input, rpr_uint in_value)
@@ -1021,9 +1112,24 @@ rpr_int rprMaterialNodeSetInputU(rpr_material_node in_node, rpr_char const * in_
     return RPR_ERROR_UNIMPLEMENTED;
 }
 
-rpr_int rprMaterialNodeSetInputImageData(rpr_material_node in_node, rpr_char const * in_input, rpr_image image)
+rpr_int rprMaterialNodeSetInputImageData(rpr_material_node in_node, rpr_char const * in_input, rpr_image in_image)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    if (!in_node || !in_image)
+        return RPR_ERROR_INVALID_PARAMETER;
+    //get material and texture
+    SingleBxdf* mat = static_cast<SingleBxdf*>(in_node);
+    Texture* tex = static_cast<Texture*>(in_image);
+
+    //TODO
+    //zero - should be texture node data indput
+    if (mat->GetBxdfType() != SingleBxdf::BxdfType::kZero && !strcmp(in_input, "data"))
+    {
+        return RPR_ERROR_UNIMPLEMENTED;
+    }
+
+    mat->SetInputValue("albedo", tex);
+
+    return RPR_SUCCESS;
 }
 
 rpr_int rprMaterialNodeGetInfo(rpr_material_node in_node, rpr_material_node_info in_info, size_t in_size, void * in_data, size_t * out_size)

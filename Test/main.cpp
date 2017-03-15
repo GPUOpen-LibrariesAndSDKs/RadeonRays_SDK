@@ -525,26 +525,33 @@ void ComplexRender()
     rpr_material_node diffuse = NULL; status = rprMaterialSystemCreateNode(matsys, RPR_MATERIAL_NODE_DIFFUSE, &diffuse);
     assert(status == RPR_SUCCESS);
 
+    rpr_material_node mat_test = NULL; status = rprMaterialSystemCreateNode(matsys, RPR_MATERIAL_NODE_DIFFUSE, &mat_test);
+    assert(status == RPR_SUCCESS);
+    status = rprMaterialNodeSetInputF(mat_test, "color", 0.9f, 0.9f, 0.f, 1.0f);
+    assert(status == RPR_SUCCESS);
+
     rpr_material_node mfc = NULL; status = rprMaterialSystemCreateNode(matsys, RPR_MATERIAL_NODE_MICROFACET, &mfc);
     assert(status == RPR_SUCCESS);
 
-    status = rprMaterialNodeSetInputF(diffuse, "color", 0.9f, 0.9f, 0.9f, 1.0f);
+    status = rprMaterialNodeSetInputF(diffuse, "color", 0.9f, 0.9f, 0.f, 1.0f);
     assert(status == RPR_SUCCESS);
 
 
-    //rpr_image img = NULL; status = rprContextCreateImageFromFile(context, "../Resources/Textures/scratched.png", &img);
-    //assert(status == RPR_SUCCESS);
-    //status = rprMaterialNodeSetInputImageData(diffuse, "color", img);
-    //assert(status == RPR_SUCCESS);
-    //status = rprMaterialNodeSetInputImageData(mfc, "color", img);
-    //assert(status == RPR_SUCCESS);
-    rpr_image img = NULL; status = rprContextCreateImageFromFile(context, "../Resources/Textures/scratched.png", &img);
+    rpr_image img = NULL; status = rprContextCreateImageFromFile(context, "../Resources/Test/Textures/scratched.png", &img);
+    assert(status == RPR_SUCCESS);
+    status = rprMaterialNodeSetInputImageData(diffuse, "color", img);
+    assert(status == RPR_SUCCESS);
+    status = rprMaterialNodeSetInputImageData(mfc, "color", img);
+    assert(status == RPR_SUCCESS);
+    //rpr_image img = NULL; status = rprContextCreateImageFromFile(context, "../Resources/Test/Textures/scratched.png", &img);
+    //rpr_image img = NULL; status = rprContextCreateImageFromFile(context, "../Resources/Test/Textures/checker2x2Gray.png", &img);
     assert(status == RPR_SUCCESS);
     rpr_material_node materialNodeTexture = NULL; status = rprMaterialSystemCreateNode(matsys, RPR_MATERIAL_NODE_IMAGE_TEXTURE, &materialNodeTexture);
     assert(status == RPR_SUCCESS);
     status = rprMaterialNodeSetInputImageData(materialNodeTexture, "data", img);
     assert(status == RPR_SUCCESS);
     status = rprMaterialNodeSetInputN(diffuse, "color", materialNodeTexture);
+//    status = rprMaterialNodeSetInputF(diffuse, "color", 1,1,0, 0);
     assert(status == RPR_SUCCESS);
     status = rprMaterialNodeSetInputN(mfc, "color", materialNodeTexture);
     assert(status == RPR_SUCCESS);
@@ -566,6 +573,10 @@ void ComplexRender()
 
     status = rprShapeSetMaterial(plane_mesh, diffuse);
     assert(status == RPR_SUCCESS);
+    //status = rprShapeSetMaterial(plane_mesh, mat_test);
+    //assert(status == RPR_SUCCESS);
+    //status = rprShapeSetMaterial(mesh, mat_test);
+    //assert(status == RPR_SUCCESS);
 
     rpr_light light = NULL; status = rprContextCreatePointLight(context, &light);
     assert(status == RPR_SUCCESS);
@@ -582,6 +593,23 @@ void ComplexRender()
     status = rprSceneAttachLight(scene, light);
     assert(status == RPR_SUCCESS);
 
+    //env light
+    rpr_light env_light = NULL; status = rprContextCreateEnvironmentLight(context, &env_light);
+    assert(status == RPR_SUCCESS);
+
+    rpr_image env_img = NULL; status = rprContextCreateImageFromFile(context, "../Resources/Textures/studio015.hdr", &env_img);
+    assert(status == RPR_SUCCESS);
+    status = rprEnvironmentLightSetImage(env_light, env_img);
+    assert(status == RPR_SUCCESS);
+
+
+    status = rprEnvironmentLightSetIntensityScale(env_light, 0.001f);
+    assert(status == RPR_SUCCESS);
+
+    status = rprSceneAttachLight(scene, env_light);
+    assert(status == RPR_SUCCESS);
+
+    //result buffer
     rpr_framebuffer_desc desc;
     desc.fb_width = 800;
     desc.fb_height = 600;
@@ -595,7 +623,7 @@ void ComplexRender()
 
     status = rprFrameBufferClear(frame_buffer);
     assert(status == RPR_SUCCESS);
-    int m_maxIterationRendering = 1;
+    int m_maxIterationRendering = 100;
     for (int i = 0; i < m_maxIterationRendering; ++i)
     {
         status = rprContextRender(context);
