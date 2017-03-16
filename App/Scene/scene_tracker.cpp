@@ -28,15 +28,9 @@ namespace Baikal
         // Create intersection API
         m_api = CreateFromOpenClContext(m_context, id, queue);
 
-        // Do app specific settings
-#ifdef __APPLE__
-        // Apple runtime has known issue with stacked traversal
-        m_api->SetOption("acc.type", "bvh");
-        m_api->SetOption("bvh.builder", "sah");
-#else
         m_api->SetOption("acc.type", "fatbvh");
         m_api->SetOption("bvh.builder", "sah");
-#endif
+
         m_default_material->SetInputValue("albedo", float4(0.5f, 0.6f, 0.5f, 1.f));
     }
 

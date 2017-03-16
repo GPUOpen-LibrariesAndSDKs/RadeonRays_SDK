@@ -64,9 +64,9 @@ int2 make_int2(int x, int y)
 }
 #endif
 
-float4x4 matrix_from_cols(float4 c0, float4 c1, float4 c2, float4 c3)
+matrix4x4 matrix_from_cols(float4 c0, float4 c1, float4 c2, float4 c3)
 {
-    float4x4 m;
+    matrix4x4 m;
     m.m0 = make_float4(c0.x, c1.x, c2.x, c3.x);
     m.m1 = make_float4(c0.y, c1.y, c2.y, c3.y);
     m.m2 = make_float4(c0.z, c1.z, c2.z, c3.z);
@@ -74,9 +74,9 @@ float4x4 matrix_from_cols(float4 c0, float4 c1, float4 c2, float4 c3)
     return m;
 }
 
-float4x4 matrix_from_rows(float4 c0, float4 c1, float4 c2, float4 c3)
+matrix4x4 matrix_from_rows(float4 c0, float4 c1, float4 c2, float4 c3)
 {
-    float4x4 m;
+    matrix4x4 m;
     m.m0 = c0;
     m.m1 = c1;
     m.m2 = c2;
@@ -84,9 +84,9 @@ float4x4 matrix_from_rows(float4 c0, float4 c1, float4 c2, float4 c3)
     return m;
 }
 
-float4x4 matrix_from_rows3(float3 c0, float3 c1, float3 c2)
+matrix4x4 matrix_from_rows3(float3 c0, float3 c1, float3 c2)
 {
-    float4x4 m;
+    matrix4x4 m;
     m.m0.xyz = c0; m.m0.w = 0;
     m.m1.xyz = c1; m.m1.w = 0;
     m.m2.xyz = c2; m.m2.w = 0;
@@ -94,9 +94,9 @@ float4x4 matrix_from_rows3(float3 c0, float3 c1, float3 c2)
     return m;
 }
 
-float4x4 matrix_from_cols3(float3 c0, float3 c1, float3 c2)
+matrix4x4 matrix_from_cols3(float3 c0, float3 c1, float3 c2)
 {
-    float4x4 m;
+    matrix4x4 m;
     m.m0 = make_float4(c0.x, c1.x, c2.x, 0.f);
     m.m1 = make_float4(c0.y, c1.y, c2.y, 0.f);
     m.m2 = make_float4(c0.z, c1.z, c2.z, 0.f);
@@ -104,12 +104,12 @@ float4x4 matrix_from_cols3(float3 c0, float3 c1, float3 c2)
     return m;
 }
 
-float4x4 matrix_transpose(float4x4 m)
+matrix4x4 matrix_transpose(matrix4x4 m)
 {
     return matrix_from_cols(m.m0, m.m1, m.m2, m.m3);
 }
 
-float4 matrix_mul_vector4(float4x4 m, float4 v)
+float4 matrix_mul_vector4(matrix4x4 m, float4 v)
 {
     float4 res;
     res.x = dot(m.m0, v);
@@ -119,7 +119,7 @@ float4 matrix_mul_vector4(float4x4 m, float4 v)
     return res;
 }
 
-float3 matrix_mul_vector3(float4x4 m, float3 v)
+float3 matrix_mul_vector3(matrix4x4 m, float3 v)
 {
     float3 res;
     res.x = dot(m.m0.xyz, v);
@@ -128,7 +128,7 @@ float3 matrix_mul_vector3(float4x4 m, float3 v)
     return res;
 }
 
-float3 matrix_mul_point3(float4x4 m, float3 v)
+float3 matrix_mul_point3(matrix4x4 m, float3 v)
 {
     float3 res;
     res.x = dot(m.m0.xyz, v) + m.m0.w;
