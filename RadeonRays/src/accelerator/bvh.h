@@ -62,8 +62,8 @@ namespace RadeonRays
         // Get reordered prim indices Nodes are pointing to
         virtual int const* GetIndices() const;
 
-        // Get number of indices. 
-        // This number can differ from numbounds passed to Build function for 
+        // Get number of indices.
+        // This number can differ from numbounds passed to Build function for
         // some BVH implementations (like SBVH)
         virtual size_t GetNumIndices() const;
 
@@ -92,6 +92,8 @@ namespace RadeonRays
             bbox centroid_bounds;
             // Level
             int level;
+            // Node index
+            int index;
         };
 
         struct SahSplit
@@ -120,6 +122,9 @@ namespace RadeonRays
         // Node allocator counter, atomic for thread safety
         std::atomic<int> m_nodecnt;
 
+        // Identifiers of leaf primitives
+        std::vector<int> m_packed_indices;
+
         // Bounding box containing all primitives
         bbox m_bounds;
         // Root node
@@ -146,6 +151,8 @@ namespace RadeonRays
         bbox bounds;
         // Type of the node
         NodeType type;
+        // Node index in a complete tree
+        int index;
 
         union
         {
@@ -169,19 +176,19 @@ namespace RadeonRays
     {
     }
 
-    inline int const* Bvh::GetIndices() const 
-    { 
-        return &m_indices[0]; 
+    inline int const* Bvh::GetIndices() const
+    {
+        return &m_packed_indices[0];
     }
 
-    inline size_t Bvh::GetNumIndices() const 
-    { 
-        return m_indices.size(); 
+    inline size_t Bvh::GetNumIndices() const
+    {
+        return m_indices.size();
     }
 
     inline int Bvh::GetHeight() const
-    { 
-        return m_height; 
+    {
+        return m_height;
     }
 }
 

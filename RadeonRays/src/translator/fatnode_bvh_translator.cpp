@@ -35,15 +35,53 @@ namespace RadeonRays
     {
         // WARNING: this is crucial in order for the nodes not to migrate in memory as push_back adds nodes
         nodecnt_ = 0;
+        max_idx_ = -1;
         int newsize = bvh.m_nodecnt;
         nodes_.resize(newsize);
         extra_.resize(newsize);
+        indices_.resize(newsize);
+        addresses_.resize(newsize);
 
         // Check if we have been initialized
         assert(bvh.m_root);
 
         // Process root
         ProcessRootNode(bvh.m_root);
+
+        nodes_.resize(nodecnt_);
+        extra_.resize(nodecnt_);
+        indices_.resize(nodecnt_);
+        addresses_.resize(nodecnt_);
+
+        // Build a hash
+        //m_hash_map.reset(new PerfectHashMap<int, int>(max_idx_, &indices_[0], &addresses_[0], (int)indices_.size(), -1));
+        //std::cout << "Finished hash building\n";
+
+//#define CONSISTENCY_TEST
+//#ifdef CONSISTENCY_TEST
+//        for (int i = 0; i < indices_.size(); ++i)
+//        {
+//            auto val = (*m_hash_map)[indices_[i]];
+//            assert(val == addresses_[i]);
+//        }
+//#endif
+    }
+
+    void FatNodeBvhTranslator::InjectIndices(Face const* faces)
+    {
+        for (auto& node : nodes_)
+        {
+            if (node.s1.child0 == -1)
+            {
+                auto idx = node.s1.i0;
+                node.s1.i0 = faces[idx].idx[0];
+                node.s1.i1 = faces[idx].idx[1];
+                node.s1.i2 = faces[idx].idx[2];
+                node.s1.shape_id = faces[idx].shapeidx;
+                node.s1.prim_id = faces[idx].id;
+                node.s1.shape_mask = faces[idx].shape_mask;
+            }
+        }
     }
 
 
@@ -59,38 +97,37 @@ namespace RadeonRays
             auto current = workqueue.front();
             workqueue.pop();
 
-            Node& node(nodes_[nodecnt_++]);
+            Node& node(nodes_[nodecnt_]);
+            indices_[nodecnt_] = current.first->index;
+            addresses_[nodecnt_] = nodecnt_;
+            ++nodecnt_;
 
-            node.lbound = current.first->lc->bounds;
-            if (current.first->lc->type == Bvh::NodeType::kInternal)
+            if (current.first->index > max_idx_)
             {
-                node.lbound.pmin.w = -1.f;
+                max_idx_ = current.first->index;
+            }
+
+            if (current.first->type == Bvh::NodeType::kInternal)
+            {
+                node.s0.bounds[0] = current.first->lc->bounds;
+                node.s0.bounds[1] = current.first->rc->bounds;
                 workqueue.push(std::make_pair(current.first->lc, nodecnt_));
-            }
-            else
-            {
-                node.lbound.pmin.w = (float)(current.first->lc->startidx);
-            }
-
-            node.rbound = current.first->rc->bounds;
-            if (current.first->rc->type == Bvh::NodeType::kInternal)
-            {
-                node.rbound.pmin.w = -1.f;
                 workqueue.push(std::make_pair(current.first->rc, -nodecnt_));
             }
             else
             {
-                node.rbound.pmin.w = (float)(current.first->rc->startidx);
+                node.s1.child0 = node.s1.child1 = -1;
+                node.s1.i0 = current.first->startidx;
             }
 
             if (current.second > 0)
             {
-                nodes_[current.second - 1].lbound.pmax.w = (float)(nodecnt_ - 1);
+                nodes_[current.second - 1].s1.child0 = nodecnt_ - 1;
             }
-            else if(current.second < 0)
+            else if (current.second < 0)
             {
-                nodes_[-current.second - 1].rbound.pmax.w = (float)(nodecnt_ - 1);
-            }
+                nodes_[-current.second - 1].s1.child1 = nodecnt_ - 1;
+            }           
         }
 
         return 0;

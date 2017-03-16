@@ -46,7 +46,7 @@ namespace Baikal
         static SceneIo* CreateSceneIoObj();
         // Create test scene loader
         static SceneIo* CreateSceneIoTest();
-        
+
         // Constructor
         SceneIo() = default;
         // Destructor

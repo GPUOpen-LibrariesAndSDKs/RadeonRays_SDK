@@ -19,18 +19,54 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
+/**
+    \file build_bvh.cl
+    \author Dmitry Kozlov
+    \version 1.0
+    \brief HLBVH build implementation
 
+    IntersectorHlbvh implementation is based on the following paper:
+    "HLBVH: Hierarchical LBVH Construction for Real-Time Ray Tracing"
+    Jacopo Pantaleoni (NVIDIA), David Luebke (NVIDIA), in High Performance Graphics 2010, June 2010
+    https://research.nvidia.com/sites/default/files/publications/HLBVH-final.pdf
+
+    Pros:
+        -Very fast to build and update.
+    Cons:
+        -Poor BVH quality, slow traversal.
+ */
+/*************************************************************************
+INCLUDES
+**************************************************************************/
+#include <../RadeonRays/src/kernels/CL/common.cl>
+
+/*************************************************************************
+DEFINES
+**************************************************************************/
+#define LEAFIDX(i) ((num_prims-1) + i)
+#define NODEIDX(i) (i)
+// Shortcut for delta evaluation
+#define DELTA(i,j) delta(morton_codes,num_prims,i,j)
+
+/*************************************************************************
+TYPE DEFINITIONS
+**************************************************************************/
 typedef struct
 {
-    float3 pmin;
-    float3 pmax;
-} bbox;
+    int parent;
+    int left;
+    int right;
+    int next;
+} HlbvhNode;
 
+/*************************************************************************
+FUNCTIONS
+**************************************************************************/
 // The following two functions are from
 // http://devblogs.nvidia.com/parallelforall/thinking-parallel-part-iii-tree-construction-gpu/
 // Expands a 10-bit integer into 30 bits
 // by inserting 2 zeros after each bit.
-static unsigned int ExpandBits(unsigned int v)
+INLINE uint expand_bits(uint v)
 {
     v = (v * 0x00010001u) & 0xFF0000FFu;
     v = (v * 0x00000101u) & 0x0F00F00Fu;
@@ -41,39 +77,19 @@ static unsigned int ExpandBits(unsigned int v)
 
 // Calculates a 30-bit Morton code for the
 // given 3D point located within the unit cube [0,1].
-unsigned int CalculateMortonCode(float3 p)
+INLINE uint calculate_morton_code(float3 p)
 {
     float x = min(max(p.x * 1024.0f, 0.0f), 1023.0f);
     float y = min(max(p.y * 1024.0f, 0.0f), 1023.0f);
     float z = min(max(p.z * 1024.0f, 0.0f), 1023.0f);
-    unsigned int xx = ExpandBits((unsigned int)x);
-    unsigned int yy = ExpandBits((unsigned int)y);
-    unsigned int zz = ExpandBits((unsigned int)z);
+    unsigned int xx = expand_bits((uint)x);
+    unsigned int yy = expand_bits((uint)y);
+    unsigned int zz = expand_bits((uint)z);
     return xx * 4 + yy * 2 + zz;
 }
 
-// Assign Morton codes to each of positions
-__kernel void CalcMortonCode(
-    // Centers of primitive bounding boxes
-    __global bbox const* bounds,
-    // Number of primitives
-    int numpositions,
-    // Morton codes
-    __global int* mortoncodes
-    )
-{
-    int globalid = get_global_id(0);
-
-    if (globalid < numpositions)
-    {
-        bbox bound = bounds[globalid];
-        float3 center = 0.5f * (bound.pmax + bound.pmin);
-        mortoncodes[globalid] = CalculateMortonCode(center);
-    }
-}
-
-
-bbox bboxunion(bbox b1, bbox b2)
+// Make a union of two bboxes
+INLINE bbox bbox_union(bbox b1, bbox b2)
 {
     bbox res;
     res.pmin = min(b1.pmin, b2.pmin);
@@ -81,53 +97,68 @@ bbox bboxunion(bbox b1, bbox b2)
     return res;
 }
 
-typedef struct
+// Assign Morton codes to each of positions
+KERNEL void calculate_morton_code_main(
+    // Centers of primitive bounding boxes
+    GLOBAL bbox const* restrict primitive_bounds,
+    // Number of primitives
+    int num_primitive_bounds,
+    // Scene extents
+    GLOBAL bbox const* restrict scene_bound, 
+    // Morton codes
+    GLOBAL int* morton_codes
+    )
 {
-        int parent;
-        int left;
-        int right;
-        int next;
-} HlbvhNode;
+    int global_id = get_global_id(0);
 
-#define LEAFIDX(i) ((numprims-1) + i)
-#define NODEIDX(i) (i)
+    if (global_id < num_primitive_bounds)
+    {
+        // Fetch primitive bound
+        bbox bound = primitive_bounds[global_id];
+        // Calculate center and scene extents
+        float3 const center = (bound.pmax + bound.pmin).xyz * 0.5f;
+        float3 const scene_min = scene_bound->pmin.xyz;
+        float3 const scene_extents = scene_bound->pmax.xyz - scene_bound->pmin.xyz;
+        // Calculate morton code
+        morton_codes[global_id] = calculate_morton_code((center - scene_min) / scene_extents);
+    }
+}
+
+
 
 // Calculates longest common prefix length of bit representations
 // if  representations are equal we consider sucessive indices
-int delta(__global int* mortoncodes, int numprims, int i1, int i2)
+INLINE int delta(GLOBAL int const* morton_codes, int num_prims, int i1, int i2)
 {
     // Select left end
     int left = min(i1, i2);
     // Select right end
     int right = max(i1, i2);
     // This is to ensure the node breaks if the index is out of bounds
-    if (left < 0 || right >= numprims) 
+    if (left < 0 || right >= num_prims) 
     {
         return -1;
     }
     // Fetch Morton codes for both ends
-    int leftcode = mortoncodes[left];
-    int rightcode = mortoncodes[right];
+    int left_code = morton_codes[left];
+    int right_code = morton_codes[right];
 
     // Special handling of duplicated codes: use their indices as a fallback
-    return leftcode != rightcode ? clz(leftcode ^ rightcode) : (32 + clz(left ^ right));
+    return left_code != right_code ? clz(left_code ^ right_code) : (32 + clz(left ^ right));
 }
 
-// Shortcut for delta evaluation
-#define DELTA(i,j) delta(mortoncodes,numprims,i,j)
-
 // Find span occupied by internal node with index idx
-int2 FindSpan(__global int* mortoncodes, int numprims, int idx)
+INLINE int2 find_span(GLOBAL int const* restrict morton_codes, int num_prims, int idx)
 {
     // Find the direction of the range
     int d = sign((float)(DELTA(idx, idx+1) - DELTA(idx, idx-1)));
 
     // Find minimum number of bits for the break on the other side
-    int deltamin = DELTA(idx, idx-d);
+    int delta_min = DELTA(idx, idx-d);
 
     // Search conservative far end
     int lmax = 2;
-    while (DELTA(idx,idx + lmax * d) > deltamin)
+    while (DELTA(idx,idx + lmax * d) > delta_min)
         lmax *= 2;
 
     // Search back to find exact bound
@@ -137,7 +168,7 @@ int2 FindSpan(__global int* mortoncodes, int numprims, int idx)
     do
     {
         t /= 2;
-        if(DELTA(idx, idx + (l + t)*d) > deltamin)
+        if(DELTA(idx, idx + (l + t)*d) > delta_min)
         {
             l = l + t;
         }
@@ -152,28 +183,28 @@ int2 FindSpan(__global int* mortoncodes, int numprims, int idx)
 }
 
 // Find split idx within the span
-int FindSplit(__global int* mortoncodes, int numprims, int2 span)
+INLINE int find_split(GLOBAL int const* restrict morton_codes, int num_prims, int2 span)
 {
     // Fetch codes for both ends
     int left = span.x;
     int right = span.y;
 
     // Calculate the number of identical bits from higher end
-    int numidentical = DELTA(left, right);
+    int num_identical = DELTA(left, right);
 
     do
     {
         // Proposed split
-        int newsplit = (right + left) / 2;
+        int new_split = (right + left) / 2;
 
         // If it has more equal leading bits than left and right accept it
-        if (DELTA(left, newsplit) > numidentical)
+        if (DELTA(left, new_split) > num_identical)
         {
-            left = newsplit;
+            left = new_split;
         }
         else
         {
-            right = newsplit;
+            right = new_split;
         }
     }
     while (right > left + 1);
@@ -182,67 +213,72 @@ int FindSplit(__global int* mortoncodes, int numprims, int2 span)
 }
 
 // Set parent-child relationship
-__kernel void BuildHierarchy(
+KERNEL void emit_hierarchy_main(
     // Sorted Morton codes of the primitives
-    __global int* mortoncodes,
+    GLOBAL int const* restrict morton_codes,
     // Bounds
-    __global bbox* bounds,
+    GLOBAL bbox const* restrict bounds,
     // Primitive indices
-    __global int* indices,
+    GLOBAL int const* restrict indices,
     // Number of primitives
-    int numprims,
+    int num_prims,
     // Nodes
-    __global HlbvhNode* nodes,
+    GLOBAL HlbvhNode* nodes,
     // Leaf bounds
-    __global bbox* boundssorted
+    GLOBAL bbox* bounds_sorted
     )
 {
-    int globalid = get_global_id(0);
+    int global_id = get_global_id(0);
 
     // Set child
-    if (globalid < numprims)
+    if (global_id < num_prims)
     {
-        nodes[LEAFIDX(globalid)].left = nodes[LEAFIDX(globalid)].right = indices[globalid];
-        boundssorted[LEAFIDX(globalid)] = bounds[indices[globalid]];
+        nodes[LEAFIDX(global_id)].left = nodes[LEAFIDX(global_id)].right = indices[global_id];
+        bounds_sorted[LEAFIDX(global_id)] = bounds[indices[global_id]];
     }
     
     // Set internal nodes
-    if (globalid < numprims - 1)
+    if (global_id < num_prims - 1)
     {
         // Find span occupied by the current node
-        int2 range = FindSpan(mortoncodes, numprims, globalid);
+        int2 range = find_span(morton_codes, num_prims, global_id);
 
         // Find split position inside the range
-        int  split = FindSplit(mortoncodes, numprims, range);
+        int  split = find_split(morton_codes, num_prims, range);
 
         // Create child nodes if needed
         int c1idx = (split == range.x) ? LEAFIDX(split) : NODEIDX(split);
         int c2idx = (split + 1 == range.y) ? LEAFIDX(split + 1) : NODEIDX(split + 1);
 
-        nodes[NODEIDX(globalid)].left = c1idx;
-        nodes[NODEIDX(globalid)].right = c2idx;
-        //nodes[NODEIDX(globalid)].next = (range.y + 1 < numprims) ? range.y + 1 : -1;
-        nodes[c1idx].parent = NODEIDX(globalid);
+        nodes[NODEIDX(global_id)].left = c1idx;
+        nodes[NODEIDX(global_id)].right = c2idx;
+        //nodes[NODEIDX(global_id)].next = (range.y + 1 < num_prims) ? range.y + 1 : -1;
+        nodes[c1idx].parent = NODEIDX(global_id);
         //nodes[c1idx].next = c2idx;
-        nodes[c2idx].parent = NODEIDX(globalid);
-        //nodes[c2idx].next = nodes[NODEIDX(globalid)].next;
+        nodes[c2idx].parent = NODEIDX(global_id);
+        //nodes[c2idx].next = nodes[NODEIDX(global_id)].next;
     }
 }
 
 // Propagate bounds up to the root
-__kernel void RefitBounds(__global bbox* bounds,
-                          int numprims,
-                          __global HlbvhNode* nodes,
-                          __global int* flags
-                          )
+KERNEL void refit_bounds_main(
+    // Node bounds
+    GLOBAL bbox* bounds,
+    // Number of nodes
+    int num_prims,
+    // Nodes
+    GLOBAL HlbvhNode* nodes,
+    // Atomic flags
+    GLOBAL int* flags
+)
 {
-    int globalid = get_global_id(0);
+    int global_id = get_global_id(0);
 
     // Start from leaf nodes
-    if (globalid < numprims)
+    if (global_id < num_prims)
     {
         // Get my leaf index
-        int idx = LEAFIDX(globalid);
+        int idx = LEAFIDX(global_id);
 
         do
         {
@@ -260,7 +296,7 @@ __kernel void RefitBounds(__global bbox* bounds,
                 int rc = nodes[idx].right;
 
                 // Calculate bounds
-                bbox b = bboxunion(bounds[lc], bounds[rc]);
+                bbox b = bbox_union(bounds[lc], bounds[rc]);
 
                 // Write bounds
                 bounds[idx] = b;

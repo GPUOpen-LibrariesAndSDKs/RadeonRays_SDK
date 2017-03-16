@@ -1,62 +1,47 @@
 /**********************************************************************
-Copyright (c) 2016 Advanced Micro Devices, Inc. All rights reserved.
+ Copyright (c) 2016 Advanced Micro Devices, Inc. All rights reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+ Permission is hereby granted, free of charge, to any person obtaining a copy
+ of this software and associated documentation files (the "Software"), to deal
+ in the Software without restriction, including without limitation the rights
+ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ copies of the Software, and to permit persons to whom the Software is
+ furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
+ The above copyright notice and this permission notice shall be included in
+ all copies or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-********************************************************************/
-#include "bvhstrategy.h"
+ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ THE SOFTWARE.
+ ********************************************************************/
+#include "intersector_short_stack.h"
 
+#include "calc.h"
+#include "executable.h"
 #include "../accelerator/bvh.h"
 #include "../accelerator/split_bvh.h"
 #include "../primitive/mesh.h"
 #include "../primitive/instance.h"
 #include "../world/world.h"
 
-#include "../translator/plain_bvh_translator.h"
+#include "../translator/fatnode_bvh_translator.h"
+#include "../except/except.h"
 
-#include "device.h"
-#include "executable.h"
 #include <algorithm>
 
-// Preferred work group size for Radeon devices
+ // Preferred work group size for Radeon devices
 static int const kWorkGroupSize = 64;
+static int const kMaxStackSize = 48;
+static int const kMaxBatchSize = 1024 * 1024;
 
 namespace RadeonRays
 {
-    struct BvhStrategy::ShapeData
-    {
-        // Shape ID
-        Id id;
-        // Index of root bvh node
-        int bvhidx;
-        // Shape mask
-        int mask;
-        int padding1;
-
-        // Transform
-        matrix minv;
-        // Motion blur data
-        float3 linearvelocity;
-        // Angular veocity (quaternion)
-        quaternion angularvelocity;
-    };
-
-    struct BvhStrategy::GpuData
+    struct IntersectorShortStack::GpuData
     {
         // Device
         Calc::Device* device;
@@ -64,27 +49,21 @@ namespace RadeonRays
         Calc::Buffer* bvh;
         // Vertex positions
         Calc::Buffer* vertices;
-        // Indices
-        Calc::Buffer* faces;
-        // Shape IDs
-        Calc::Buffer* shapes;
-        // Counter
-        Calc::Buffer* raycnt;
+        // Traversal stack
+        Calc::Buffer* stack;
 
         Calc::Executable* executable;
         Calc::Function* isect_func;
         Calc::Function* occlude_func;
-        Calc::Function* isect_indirect_func;
-        Calc::Function* occlude_indirect_func;
 
         GpuData(Calc::Device* d)
-            : device(d)
-            , bvh(nullptr)
-            , vertices(nullptr)
-            , faces(nullptr)
-            , shapes(nullptr)
-            , raycnt(nullptr)
-            , executable(nullptr)
+        : device(d)
+                          , bvh(nullptr)
+                          , vertices(nullptr)
+                          , stack(nullptr)
+                          , executable(nullptr)
+                          , isect_func(nullptr)
+                          , occlude_func(nullptr)
         {
         }
 
@@ -92,22 +71,15 @@ namespace RadeonRays
         {
             device->DeleteBuffer(bvh);
             device->DeleteBuffer(vertices);
-            device->DeleteBuffer(faces);
-            device->DeleteBuffer(shapes);
-            device->DeleteBuffer(raycnt);
-            if (executable)
-            {
-                executable->DeleteFunction(isect_func);
-                executable->DeleteFunction(occlude_func);
-                executable->DeleteFunction(isect_indirect_func);
-                executable->DeleteFunction(occlude_indirect_func);
-                device->DeleteExecutable(executable);
-            }
+            device->DeleteBuffer(stack);
+            executable->DeleteFunction(isect_func);
+            executable->DeleteFunction(occlude_func);
+            device->DeleteExecutable(executable);
         }
     };
 
-    BvhStrategy::BvhStrategy(Calc::Device* device)
-        : Strategy(device)
+    IntersectorShortStack::IntersectorShortStack(Calc::Device* device)
+        : Intersector(device)
         , m_gpudata(new GpuData(device))
         , m_bvh(nullptr)
     {
@@ -119,45 +91,43 @@ namespace RadeonRays
 #endif
 
 #ifndef RR_EMBED_KERNELS
-        if ( device->GetPlatform() == Calc::Platform::kOpenCL )
+        if (device->GetPlatform() == Calc::Platform::kOpenCL)
         {
             char const* headers[] = { "../RadeonRays/src/kernels/CL/common.cl" };
 
-            int numheaders = sizeof( headers ) / sizeof( char const* );
+            int numheaders = sizeof(headers) / sizeof(char const*);
 
-            m_gpudata->executable = m_device->CompileExecutable( "../RadeonRays/src/kernels/CL/bvh.cl", headers, numheaders, buildopts.c_str());
-        }
+            m_gpudata->executable = m_device->CompileExecutable("../RadeonRays/src/kernels/CL/intersect_bvh2_short_stack.cl", headers, numheaders, buildopts.c_str());
+        } 
         else
         {
-            assert( device->GetPlatform() == Calc::Platform::kVulkan );
-            m_gpudata->executable = m_device->CompileExecutable( "../RadeonRays/src/kernels/GLSL/bvh.comp", nullptr, 0, buildopts.c_str());
+            assert(device->GetPlatform() == Calc::Platform::kVulkan);
+            m_gpudata->executable = m_device->CompileExecutable("../RadeonRays/src/kernels/GLSL/fatbvh.comp", nullptr, 0, buildopts.c_str());
         }
 #else
 #if USE_OPENCL
         if (device->GetPlatform() == Calc::Platform::kOpenCL)
         {
-            m_gpudata->executable = m_device->CompileExecutable(g_bvh_opencl, std::strlen(g_bvh_opencl), buildopts.c_str());
+            m_gpudata->executable = m_device->CompileExecutable(g_intersect_bvh2_short_stack_opencl, std::strlen(g_intersect_bvh2_short_stack_opencl), buildopts.c_str());
         }
 #endif
 
 #if USE_VULKAN
         if (m_gpudata->executable == nullptr && device->GetPlatform() == Calc::Platform::kVulkan)
         {
-            m_gpudata->executable = m_device->CompileExecutable(g_bvh_vulkan, std::strlen(g_bvh_vulkan), buildopts.c_str());
+            m_gpudata->executable = m_device->CompileExecutable(g_fatbvh_vulkan, std::strlen(g_fatbvh_vulkan), buildopts.c_str());
         }
 #endif
+
 #endif
 
-        assert(m_gpudata->executable);
-
-        m_gpudata->isect_func = m_gpudata->executable->CreateFunction("IntersectClosest");
-        m_gpudata->occlude_func = m_gpudata->executable->CreateFunction("IntersectAny");
-        m_gpudata->isect_indirect_func= m_gpudata->executable->CreateFunction("IntersectClosestRC");
-        m_gpudata->occlude_indirect_func = m_gpudata->executable->CreateFunction("IntersectAnyRC");
+        m_gpudata->isect_func = m_gpudata->executable->CreateFunction("intersect_main");
+        m_gpudata->occlude_func = m_gpudata->executable->CreateFunction("occluded_main");
     }
 
-    void BvhStrategy::Preprocess(World const& world)
+    void IntersectorShortStack::Process(World const& world)
     {
+
         // If something has been changed we need to rebuild BVH
         if (!m_bvh || world.has_changed() || world.GetStateChange() != ShapeImpl::kStateChangeNone)
         {
@@ -165,9 +135,14 @@ namespace RadeonRays
             {
                 m_device->DeleteBuffer(m_gpudata->bvh);
                 m_device->DeleteBuffer(m_gpudata->vertices);
-                m_device->DeleteBuffer(m_gpudata->faces);
-                m_device->DeleteBuffer(m_gpudata->shapes);
-                m_device->DeleteBuffer(m_gpudata->raycnt);
+            }
+
+            // Check if we can allocate enough stack memory
+            Calc::DeviceSpec spec;
+            m_device->GetSpec(spec);
+            if (spec.max_alloc_size <= kMaxBatchSize * kMaxStackSize * sizeof(int))
+            {
+                throw ExceptionImpl("fatbvh accelerator can't allocate enough stack memory, try using bvh instead");
             }
 
             int numshapes = (int)world.shapes_.size();
@@ -178,7 +153,6 @@ namespace RadeonRays
             std::vector<int> mesh_vertices_start_idx(numshapes);
             std::vector<int> mesh_faces_start_idx(numshapes);
 
-            // Check options
             auto builder = world.options_.GetOption("bvh.builder");
             auto splits = world.options_.GetOption("bvh.sah.use_splits");
             auto maxdepth = world.options_.GetOption("bvh.sah.max_split_depth");
@@ -203,7 +177,7 @@ namespace RadeonRays
                 use_splits = true;
             }
 
-            m_bvh.reset( use_splits ? 
+            m_bvh.reset(use_splits ?
                 new SplitBvh(traversal_cost, max_split_depth, min_overlap, extra_node_budget) :
                 new Bvh(traversal_cost, use_sah)
             );
@@ -245,9 +219,9 @@ namespace RadeonRays
                 numvertices += mesh->num_vertices();
             }
 
+
             // We can't avoild allocating it here, since bounds aren't stored anywhere
             std::vector<bbox> bounds(numfaces);
-            std::vector<ShapeData> shapedata(numshapes);
 
             // We handle meshes first collecting their world space bounds
 #pragma omp parallel for
@@ -260,9 +234,6 @@ namespace RadeonRays
                     // Here we directly get world space bounds
                     mesh->GetFaceBounds(j, false, bounds[mesh_faces_start_idx[i] + j]);
                 }
-
-                shapedata[i].id = mesh->GetId();
-                shapedata[i].mask = mesh->GetMask();
             }
 
             // Then we handle instances. Need to flatten them into actual geometry.
@@ -283,9 +254,6 @@ namespace RadeonRays
                     mesh->GetFaceBounds(j, true, tmp);
                     bounds[mesh_faces_start_idx[i] + j] = transform_bbox(tmp, m);
                 }
-
-                shapedata[i].id = instance->GetId();
-                shapedata[i].mask = instance->GetMask();
             }
 
             m_bvh->Build(&bounds[0], numfaces);
@@ -294,12 +262,17 @@ namespace RadeonRays
             m_bvh->PrintStatistics(std::cout);
 #endif
 
-            PlainBvhTranslator translator;
+            // Check if the tree height is reasonable
+            if (m_bvh->GetHeight() >= kMaxStackSize)
+            {
+                m_bvh.reset(nullptr);
+                throw ExceptionImpl("fatbvh accelerator can cause stack overflow for this scene, try using bvh instead");
+            }
+
+            FatNodeBvhTranslator translator;
             translator.Process(*m_bvh);
 
             // Update GPU data
-            // Copy translated nodes first
-            m_gpudata->bvh = m_device->CreateBuffer(translator.nodes_.size() * sizeof(PlainBvhTranslator::Node), Calc::BufferType::kRead, &translator.nodes_[0]);
 
             // Create vertex buffer
             {
@@ -309,6 +282,7 @@ namespace RadeonRays
                 // Get the pointer to mapped data
                 float3* vertexdata = nullptr;
                 Calc::Event* e = nullptr;
+
                 m_device->MapBuffer(m_gpudata->vertices, 0, 0, numvertices * sizeof(float3), Calc::MapType::kMapWrite, (void**)&vertexdata, &e);
 
                 e->Wait();
@@ -356,40 +330,16 @@ namespace RadeonRays
                 }
 
                 m_device->UnmapBuffer(m_gpudata->vertices, 0, vertexdata, &e);
-
                 e->Wait();
                 m_device->DeleteEvent(e);
             }
 
             // Create face buffer
             {
-                struct Face
-                {
-                    // Up to 3 indices
-                    int idx[3];
-                    // Shape index
-                    int shapeidx;
-                    // Primitive ID within the mesh
-                    int id;
-                    // Idx count
-                    int cnt;
-
-                    int padding[2];
-                };
-
+                
                 // This number is different from the number of faces for some BVHs 
                 auto numindices = m_bvh->GetNumIndices();
-                // Create face buffer
-                m_gpudata->faces = m_device->CreateBuffer(numindices * sizeof(Face), Calc::BufferType::kRead);
-
-                // Get the pointer to mapped data
-                Face* facedata = nullptr;
-                Calc::Event* e = nullptr;
-
-                m_device->MapBuffer(m_gpudata->faces, 0, 0, numindices * sizeof(Face), Calc::BufferType::kWrite, (void**)&facedata, &e);
-
-                e->Wait();
-                m_device->DeleteEvent(e);
+                std::vector<FatNodeBvhTranslator::Face> facedata(numindices);
 
                 // Here the point is to add mesh starting index to actual index contained within the mesh,
                 // getting absolute index in the buffer.
@@ -429,88 +379,75 @@ namespace RadeonRays
                     facedata[i].idx[1] = myfacedata[faceidx].idx[1] + mystartidx;
                     facedata[i].idx[2] = myfacedata[faceidx].idx[2] + mystartidx;
 
-                    facedata[i].shapeidx = shapeidx;
-                    facedata[i].cnt = 0;
+                    facedata[i].shapeidx = shapes[shapeidx]->GetId();
+                    facedata[i].shape_mask = shapes[shapeidx]->GetMask();
                     facedata[i].id = faceidx;
                 }
 
-                m_device->UnmapBuffer(m_gpudata->faces, 0, facedata, &e);
-
-                e->Wait();
-                m_device->DeleteEvent(e);
+                translator.InjectIndices(&facedata[0]);
             }
 
-            // Create shapes buffer
-            m_gpudata->shapes = m_device->CreateBuffer(numshapes * sizeof(ShapeData), Calc::BufferType::kRead, &shapedata[0]);
-            // Create helper raycounter buffer
-            m_gpudata->raycnt = m_device->CreateBuffer(sizeof(int), Calc::BufferType::kWrite);
+            // Copy translated nodes first
+            m_gpudata->bvh = m_device->CreateBuffer(translator.nodes_.size() * sizeof(FatNodeBvhTranslator::Node), Calc::BufferType::kRead, &translator.nodes_[0]);
+
+            // Stack
+            m_gpudata->stack = m_device->CreateBuffer(kMaxBatchSize*kMaxStackSize, Calc::BufferType::kWrite);
 
             // Make sure everything is commited
             m_device->Finish(0);
         }
     }
 
-    void BvhStrategy::QueryIntersection(std::uint32_t queueidx, Calc::Buffer const* rays, std::uint32_t numrays, Calc::Buffer *hits, Calc::Event const* waitevent, Calc::Event **event) const
+    void IntersectorShortStack::Intersect(std::uint32_t queueidx, Calc::Buffer const* rays, Calc::Buffer const* numrays, std::uint32_t maxrays, Calc::Buffer* hits, Calc::Event const* waitevent, Calc::Event** event) const
     {
+        size_t stack_size = 4 * maxrays * kMaxStackSize; //required stack size, kMaxStackSize * sizeof(int) bytes per ray
+        // Check if we need to relocate memory
+        if (stack_size > m_gpudata->stack->GetSize())
+        {
+            m_device->DeleteBuffer(m_gpudata->stack);
+            m_gpudata->stack = nullptr;
+            m_gpudata->stack = m_device->CreateBuffer(stack_size, Calc::BufferType::kWrite);
+        }
+
         auto& func = m_gpudata->isect_func;
 
         // Set args
         int arg = 0;
-        int offset = 0;
 
         func->SetArg(arg++, m_gpudata->bvh);
         func->SetArg(arg++, m_gpudata->vertices);
-        func->SetArg(arg++, m_gpudata->faces);
-        func->SetArg(arg++, m_gpudata->shapes);
         func->SetArg(arg++, rays);
-        func->SetArg(arg++, sizeof(offset), &offset);
-        func->SetArg(arg++, sizeof(numrays), &numrays);
+        func->SetArg(arg++, numrays);
+        func->SetArg(arg++, m_gpudata->stack);
         func->SetArg(arg++, hits);
 
         size_t localsize = kWorkGroupSize;
-        size_t globalsize = ((numrays + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
+        size_t globalsize = ((maxrays + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
 
         m_device->Execute(func, queueidx, globalsize, localsize, event);
     }
 
-    void BvhStrategy::QueryOcclusion(std::uint32_t queueidx, Calc::Buffer const* rays, std::uint32_t numrays, Calc::Buffer *hits, Calc::Event const* waitevent, Calc::Event **event) const
+    void IntersectorShortStack::Occluded(std::uint32_t queueidx, Calc::Buffer const* rays, Calc::Buffer const* numrays, std::uint32_t maxrays, Calc::Buffer* hits, Calc::Event const* waitevent, Calc::Event** event) const
     {
+        size_t stack_size = 4 * maxrays * kMaxStackSize; //required stack size, kMaxStackSize * sizeof(int) bytes per ray
+        // Check if we need to relocate memory
+        if (stack_size > m_gpudata->stack->GetSize())
+        {
+            m_device->DeleteBuffer(m_gpudata->stack);
+            m_gpudata->stack = nullptr;
+            m_gpudata->stack = m_device->CreateBuffer(stack_size, Calc::BufferType::kWrite);
+        }
+
         auto& func = m_gpudata->occlude_func;
 
-        // Set args
+       // Set args
         int arg = 0;
-        int offset = 0;
 
         func->SetArg(arg++, m_gpudata->bvh);
         func->SetArg(arg++, m_gpudata->vertices);
-        func->SetArg(arg++, m_gpudata->faces);
-        func->SetArg(arg++, m_gpudata->shapes);
         func->SetArg(arg++, rays);
-        func->SetArg(arg++, sizeof(offset), &offset);
-        func->SetArg(arg++, sizeof(numrays), &numrays);
-        func->SetArg(arg++, hits);
-
-        size_t localsize = kWorkGroupSize;
-        size_t globalsize = ((numrays + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
-
-        m_device->Execute(func, queueidx, globalsize, localsize, event);
-    }
-
-    void BvhStrategy::QueryIntersection(std::uint32_t queueidx, Calc::Buffer const* rays, Calc::Buffer const* numrays, std::uint32_t maxrays, Calc::Buffer* hits, Calc::Event const* waitevent, Calc::Event** event) const
-    {
-        auto& func = m_gpudata->isect_indirect_func;
-
-        // Set args
-        int arg = 0;
-        int offset = 0;
-
-        func->SetArg(arg++, m_gpudata->bvh);
-        func->SetArg(arg++, m_gpudata->vertices);
-        func->SetArg(arg++, m_gpudata->faces);
-        func->SetArg(arg++, m_gpudata->shapes);
-        func->SetArg(arg++, rays);
-        func->SetArg(arg++, sizeof(offset), &offset);
         func->SetArg(arg++, numrays);
+        func->SetArg(arg++, m_gpudata->stack);
         func->SetArg(arg++, hits);
 
         size_t localsize = kWorkGroupSize;
@@ -518,28 +455,4 @@ namespace RadeonRays
 
         m_device->Execute(func, queueidx, globalsize, localsize, event);
     }
-
-    void BvhStrategy::QueryOcclusion(std::uint32_t queueidx, Calc::Buffer const* rays, Calc::Buffer const* numrays, std::uint32_t maxrays, Calc::Buffer* hits, Calc::Event const* waitevent, Calc::Event** event) const
-    {
-        auto& func = m_gpudata->occlude_indirect_func;
-
-        // Set args
-        int arg = 0;
-        int offset = 0;
-
-        func->SetArg(arg++, m_gpudata->bvh);
-        func->SetArg(arg++, m_gpudata->vertices);
-        func->SetArg(arg++, m_gpudata->faces);
-        func->SetArg(arg++, m_gpudata->shapes);
-        func->SetArg(arg++, rays);
-        func->SetArg(arg++, sizeof(offset), &offset);
-        func->SetArg(arg++, numrays);
-        func->SetArg(arg++, hits);
-
-        size_t localsize = kWorkGroupSize;
-        size_t globalsize = ((maxrays + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
-
-        m_device->Execute(func, queueidx, globalsize, localsize, event);
-    }
-
 }

@@ -65,6 +65,15 @@ newoption {
     description = "Enable ray masking in intersection kernels"
 }
 
+newoption {
+    trigger     = "rpr",
+    description = "Enable RadeonProRender API lib"
+}
+
+newoption {
+    trigger     = "tutorials",
+    description = "Add tutorials projects"
+}
 
 if not _OPTIONS["use_opencl"] and not _OPTIONS["use_vulkan"] and not _OPTIONS["use_embree"] then
     _OPTIONS["use_opencl"] = 1
@@ -234,11 +243,13 @@ else
         dofile("./Calc/Calc.lua")
     end
     
-    if fileExists("./Rpr/Rpr.lua") then
-        dofile("./Rpr/Rpr.lua")
-    end
-    if fileExists("./Test/Test.lua") then
-        dofile("./Test/Test.lua")
+    if _OPTIONS["rpr"] then
+        if fileExists("./Rpr/Rpr.lua") then
+            dofile("./Rpr/Rpr.lua")
+        end
+        if fileExists("./Test/Test.lua") then
+            dofile("./Test/Test.lua")
+        end
     end
 
     if _OPTIONS["use_opencl"] then
@@ -259,6 +270,12 @@ else
         end
         if fileExists("./UnitTest/UnitTest.lua") then
             dofile("./UnitTest/UnitTest.lua")
+        end
+    end
+
+    if _OPTIONS["tutorials"] then
+        if fileExists("./Tutorials/Tutorials.lua") then
+            dofile("./Tutorials/Tutorials.lua")
         end
     end
 

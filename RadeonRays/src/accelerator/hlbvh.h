@@ -126,6 +126,7 @@ namespace RadeonRays
         // Bounds
         Calc::Buffer* bounds;
         Calc::Buffer* sorted_bounds;
+        Calc::Buffer* scene_bound;
         
         // Atomic flags
         Calc::Buffer*  flags;
@@ -150,6 +151,7 @@ namespace RadeonRays
             device->DeleteBuffer(nodes);
             device->DeleteBuffer(bounds);
             device->DeleteBuffer(sorted_bounds);
+            device->DeleteBuffer(scene_bound);
             device->DeleteBuffer(flags);
         }
     };

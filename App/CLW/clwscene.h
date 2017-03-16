@@ -10,7 +10,7 @@
 namespace Baikal
 {
     using namespace RadeonRays;
-    
+
     enum class CameraType
     {
         kDefault,
@@ -44,7 +44,6 @@ namespace Baikal
 
         int num_lights;
         int envmapidx;
-        float envmapmul;
         CameraType camera_type;
 
         std::vector<RadeonRays::Shape*> isect_shapes;

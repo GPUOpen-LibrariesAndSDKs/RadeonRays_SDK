@@ -29,11 +29,12 @@ THE SOFTWARE.
 
 #include "calc_holder.h"
 
-#include "../strategy/strategy.h"
-#include "../strategy/bvhstrategy.h"
-#include "../strategy/bvh2lstrategy.h"
-#include "../strategy/fatbvhstrategy.h"
-#include "../strategy/hlbvh_strategy.h"
+#include "../intersector/intersector.h"
+#include "../intersector/intersector_2level.h"
+#include "../intersector/intersector_skip_links.h"
+#include "../intersector/intersector_short_stack.h"
+#include "../intersector/intersector_hlbvh.h"
+#include "../intersector/intersector_bittrail.h"
 #include "../world/world.h"
 #include <iostream>
 
@@ -42,7 +43,7 @@ namespace RadeonRays
     // TODO: handle different BVH strategies, for now hardcoded
     CalcIntersectionDevice::CalcIntersectionDevice(Calc::Calc* calc, Calc::Device* device)
         : m_device(device, [calc](Calc::Device* device) { calc->DeleteDevice(device); })
-        , m_intersector(new BvhStrategy(device))
+        , m_intersector(new IntersectorSkipLinks(device))
         , m_intersector_string("bvh")
     {
         // Initialize event pool
@@ -97,7 +98,7 @@ namespace RadeonRays
         {
             if (m_intersector_string != "bvh2l")
             {
-                m_intersector.reset(new Bvh2lStrategy(m_device.get()));
+                m_intersector.reset(new IntersectorTwoLevel(m_device.get()));
                 m_intersector_string = "bvh2l";
             }
         }
@@ -111,7 +112,7 @@ namespace RadeonRays
                 {
                     if (m_intersector_string != "bvh")
                     {
-                        m_intersector.reset(new BvhStrategy(m_device.get()));
+                        m_intersector.reset(new IntersectorSkipLinks(m_device.get()));
                         m_intersector_string = "bvh";
                     }
                 }
@@ -119,7 +120,7 @@ namespace RadeonRays
                 {
                     if (m_intersector_string != "fatbvh")
                     {
-                        m_intersector.reset(new FatBvhStrategy(m_device.get()));
+                        m_intersector.reset(new IntersectorShortStack(m_device.get()));
                         m_intersector_string = "fatbvh";
                     }
                 }
@@ -127,8 +128,16 @@ namespace RadeonRays
                 {
                     if (m_intersector_string != "hlbvh")
                     {
-                        m_intersector.reset(new HlbvhStrategy(m_device.get()));
+                        m_intersector.reset(new IntersectorHlbvh(m_device.get()));
                         m_intersector_string = "hlbvh";
+                    }
+                }
+                else if (acctype == "hashbvh")
+                {
+                    if (m_intersector_string != "hashbvh")
+                    {
+                        m_intersector.reset(new IntersectorBitTrail(m_device.get()));
+                        m_intersector_string = "hashbvh";
                     }
                 }
             }
@@ -137,7 +146,7 @@ namespace RadeonRays
         try
         {
             // Let intersector to do its preprocessing job
-            m_intersector->Preprocess(world);
+            m_intersector->SetWorld(world);
         }
         catch (Exception& e)
         {
@@ -211,7 +220,7 @@ namespace RadeonRays
         {
             Calc::Event* e = nullptr;
             m_device->UnmapBuffer(calc_buffer->GetData(), 0, ptr, &e);
-            
+
             auto holder = CreateEventHolder();
             holder->Set(m_device.get(), e);
             *event = holder;
@@ -236,7 +245,7 @@ namespace RadeonRays
             // event pointer has been provided, so construct holder and return event to the user
             Calc::Event* calc_event = nullptr;
             m_intersector->QueryIntersection(0, ray_buffer, numrays, hit_buffer, e, &calc_event);
-            
+
             auto holder = CreateEventHolder();
             holder->Set(m_device.get(), calc_event);
             *event = holder;
@@ -260,7 +269,7 @@ namespace RadeonRays
             // event pointer has been provided, so construct holder and return event to the user
             Calc::Event* calc_event = nullptr;
             m_intersector->QueryOcclusion(0, ray_buffer, numrays, hit_buffer, e, &calc_event);
-            
+
             auto holder = CreateEventHolder();
             holder->Set(m_device.get(), calc_event);
             *event = holder;
@@ -285,7 +294,7 @@ namespace RadeonRays
             // event pointer has been provided, so construct holder and return event to the user
             Calc::Event* calc_event = nullptr;
             m_intersector->QueryIntersection(0, ray_buffer, numrays_buffer, maxrays, hit_buffer, e, &calc_event);
-            
+
             auto holder = CreateEventHolder();
             holder->Set(m_device.get(), calc_event);
             *event = holder;
@@ -310,7 +319,7 @@ namespace RadeonRays
             // event pointer has been provided, so construct holder and return event to the user
             Calc::Event* calc_event = nullptr;
             m_intersector->QueryOcclusion(0, ray_buffer, numrays_buffer, maxrays, hit_buffer, e, &calc_event);
-            
+
             auto holder = CreateEventHolder();
             holder->Set(m_device.get(), calc_event);
             *event = holder;

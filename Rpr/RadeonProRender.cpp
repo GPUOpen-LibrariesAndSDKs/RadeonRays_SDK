@@ -39,17 +39,6 @@ using namespace Baikal;
 typedef std::vector<Material*> MaterialSystem;
 struct Context
 {
-    ~Context()
-    {
-        for (auto m : meshes)
-            delete m;
-        for (auto s : scenes)
-            delete s;
-    }
-    std::vector<Baikal::Scene1*> scenes;
-    std::vector<Baikal::Mesh*> meshes;
-    std::vector<MaterialSystem> mat_sys;
-
     std::vector<ConfigManager::Config> cfgs;
     Scene1* current_scene;
 };
@@ -64,7 +53,9 @@ rpr_int rprRegisterPlugin(rpr_char const * path)
 rpr_int rprCreateContext(rpr_int api_version, rpr_int * pluginIDs, size_t pluginCount, rpr_creation_flags creation_flags, rpr_context_properties const * props, rpr_char const * cache_path, rpr_context * out_context)
 {
     if (api_version != RPR_API_VERSION)
+    {
         return RPR_ERROR_INVALID_API_VERSION;
+    }
 
     bool interop = creation_flags & RPR_CREATION_FLAGS_ENABLE_GL_INTEROP;
     if (creation_flags & RPR_CREATION_FLAGS_ENABLE_GPU0)
@@ -83,7 +74,10 @@ rpr_int rprCreateContext(rpr_int api_version, rpr_int * pluginIDs, size_t plugin
         *out_context = static_cast<rpr_context>(cont);
     }
     else
+    {
         return RPR_ERROR_UNIMPLEMENTED;
+    }
+
     return RPR_SUCCESS;
 }
 
@@ -110,15 +104,18 @@ rpr_int rprContextGetAOV(rpr_context context, rpr_aov aov, rpr_framebuffer * out
 rpr_int rprContextSetAOV(rpr_context in_context, rpr_aov in_aov, rpr_framebuffer in_frame_buffer)
 {
     if (!in_context || !in_frame_buffer)
+    {
         return RPR_ERROR_INVALID_CONTEXT;
-
+    }
     //prepare
     Context* cont = static_cast<Context*>(in_context);
     Output* buffer = static_cast<Output*>(in_frame_buffer);
 
     //at least one config should be available
     if (cont->cfgs.size() < 1)
+    {
         return RPR_ERROR_INTERNAL_ERROR;
+    }
 
     switch (in_aov)
     {
@@ -148,9 +145,13 @@ rpr_int rprContextSetAOV(rpr_context in_context, rpr_aov in_aov, rpr_framebuffer
 rpr_int rprContextSetScene(rpr_context in_context, rpr_scene in_scene)
 {
     if (!in_context)
+    {
         return RPR_ERROR_INVALID_CONTEXT;
+    }
     if (!in_scene)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
+    }
 
     Context* cont = static_cast<Context*>(in_context);
     Scene1* scene = static_cast<Scene1*>(in_scene);
@@ -193,12 +194,16 @@ rpr_int rprContextSetParameterString(rpr_context context, rpr_char const * name,
 rpr_int rprContextRender(rpr_context in_context)
 {
     if (!in_context)
+    {
         return RPR_ERROR_INVALID_CONTEXT;
+    }
 
     //prepare
     Context* cont = static_cast<Context*>(in_context);
     for (auto& c : cont->cfgs)
+    {
         c.renderer->Render(*cont->current_scene);
+    }
 
     return RPR_SUCCESS;
 }
@@ -221,7 +226,10 @@ rpr_int rprContextCreateImage(rpr_context context, rpr_image_format const format
 rpr_int rprContextCreateImageFromFile(rpr_context in_context, rpr_char const * in_path, rpr_image * out_image)
 {
     if (!in_context)
+    {
         return RPR_ERROR_INVALID_CONTEXT;
+    }
+
     //load texture using oiio
     ImageIo* oiio = ImageIo::CreateImageIo();
     Texture* texture = oiio->LoadImage(in_path);
@@ -234,20 +242,28 @@ rpr_int rprContextCreateImageFromFile(rpr_context in_context, rpr_char const * i
 rpr_int rprContextCreateScene(rpr_context in_context, rpr_scene * out_scene)
 {
     if (!in_context)
+    {
         return RPR_ERROR_INVALID_CONTEXT;
+    }
 
     Context* cont = static_cast<Context*>(in_context);
-    cont->scenes.push_back(new Baikal::Scene1());
-    *out_scene = cont->scenes.back();
+    Scene1* scene = new Scene1();
+    *out_scene = scene;
+
     return RPR_SUCCESS;
 }
 
 rpr_int rprContextCreateInstance(rpr_context in_context, rpr_shape shape, rpr_shape * out_instance)
 {
     if (!in_context)
+    {
         return RPR_ERROR_INVALID_CONTEXT;
+    }
+    
     if (!shape || !out_instance)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
+    }
 
     Context* context = static_cast<Context*>(in_context);
     Mesh* mesh = static_cast<Mesh*>(shape);
@@ -268,7 +284,9 @@ template<typename T, int size = 3> std::vector<T> merge(const T* in_data, size_t
         {
             int index = in_data_stride/sizeof(T) * in_data_indices[f*in_didx_stride / sizeof(rpr_int)];
             for (int s = 0; s < size; ++s)
+            {
                 result.push_back(in_data[index + s]);
+            }
         }
 
         indent += face;
@@ -287,7 +305,9 @@ rpr_int rprContextCreateMesh(rpr_context context,
 {
     Context* ray_context = static_cast<Context*>(context);
     if (!ray_context)
+    {
         return RPR_ERROR_INVALID_CONTEXT;
+    }
 
     //merge data
     std::vector<float> verts = merge(in_vertices, in_num_vertices, in_vertex_stride,
@@ -321,7 +341,9 @@ rpr_int rprContextCreateMesh(rpr_context context,
         }
         //only triangles and quads supported
         else if (face != 3)
+        {
             return RPR_ERROR_UNIMPLEMENTED;
+        }
         indent += face;
     }
 
@@ -332,7 +354,6 @@ rpr_int rprContextCreateMesh(rpr_context context,
     mesh->SetUVs(uvs.data(), uvs.size()/2);
     mesh->SetIndices(inds.data(), inds.size());
 
-    ray_context->meshes.push_back(mesh);
     *out_mesh = mesh;
     return RPR_SUCCESS;
 }
@@ -345,10 +366,12 @@ rpr_int rprContextCreateMeshEx(rpr_context context, rpr_float const * vertices, 
 rpr_int rprContextCreateCamera(rpr_context in_context, rpr_camera * out_camera)
 {
     if (!in_context)
+    {
         return RPR_ERROR_INVALID_CONTEXT;
+    }
 
+    //cast data
     Context* cont = static_cast<Context*>(in_context);
-
     RadeonRays::float3 const eye = { 0.f, 0.f, 0.f };
     RadeonRays::float3 const at = { 0.f , 0.f , -1.f };
     RadeonRays::float3 const up = { 0.f , 1.f , 0.f };
@@ -374,19 +397,22 @@ rpr_int rprContextCreateCamera(rpr_context in_context, rpr_camera * out_camera)
 rpr_int rprContextCreateFrameBuffer(rpr_context in_context, rpr_framebuffer_format const in_format, rpr_framebuffer_desc const * in_fb_desc, rpr_framebuffer * out_fb)
 {
     if (!in_context)
+    {
         return RPR_ERROR_INVALID_CONTEXT;
-
+    }
     //TODO: implement
     if (in_format.type != RPR_COMPONENT_TYPE_FLOAT32 || in_format.num_components != 4)
+    {
         return RPR_ERROR_UNIMPLEMENTED;
-
+    }
     //prepare
     Context* cont = static_cast<Context*>(in_context);
 
     //TODO: implement for several devices
     if (cont->cfgs.size() != 1)
+    {
         return RPR_ERROR_INTERNAL_ERROR;
-    
+    }
     auto& c = cont->cfgs[0];
     Output* out = c.renderer->CreateOutput(in_fb_desc->fb_width, in_fb_desc->fb_height);
     *out_fb = out;
@@ -402,10 +428,13 @@ rpr_int rprCameraGetInfo(rpr_camera camera, rpr_camera_info camera_info, size_t 
 rpr_int rprCameraSetFocalLength(rpr_camera in_camera, rpr_float flength)
 {
     if (!in_camera)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
+    }
 
+    //cast data
     PerspectiveCamera* camera = static_cast<PerspectiveCamera*>(in_camera);
-    //translate m -> mm 
+    //translate meters to mm 
     camera->SetFocalLength(flength / 1000.f);
 
     return RPR_SUCCESS;
@@ -424,7 +453,9 @@ rpr_int rprCameraSetTransform(rpr_camera camera, rpr_bool transpose, rpr_float *
 rpr_int rprCameraSetSensorSize(rpr_camera in_camera, rpr_float in_width, rpr_float in_height)
 {
     if (!in_camera)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
+    }
 
     //get camera and set values
     PerspectiveCamera* camera = static_cast<PerspectiveCamera*>(in_camera);
@@ -438,8 +469,9 @@ rpr_int rprCameraSetSensorSize(rpr_camera in_camera, rpr_float in_width, rpr_flo
 rpr_int rprCameraLookAt(rpr_camera in_camera, rpr_float posx, rpr_float posy, rpr_float posz, rpr_float atx, rpr_float aty, rpr_float atz, rpr_float upx, rpr_float upy, rpr_float upz)
 {
     if (!in_camera)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
-
+    }
     //get camera and set values
     PerspectiveCamera* camera = static_cast<PerspectiveCamera*>(in_camera);
     const float3 pos = { posx, posy, posz };
@@ -453,8 +485,9 @@ rpr_int rprCameraLookAt(rpr_camera in_camera, rpr_float posx, rpr_float posy, rp
 rpr_int rprCameraSetFStop(rpr_camera in_camera, rpr_float fstop)
 {
     if (!in_camera)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
-
+    }
     PerspectiveCamera* camera = static_cast<PerspectiveCamera*>(in_camera);
     //translate m -> to mm
     camera->SetAperture(fstop / 1000.f);
@@ -515,16 +548,22 @@ rpr_int rprImageSetWrap(rpr_image image, rpr_image_wrap_type type)
 rpr_int rprShapeSetTransform(rpr_shape in_shape, rpr_bool transpose, rpr_float const * transform)
 {
     if (!in_shape)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
+    }
 
     Mesh* mesh = static_cast<Mesh*>(in_shape);
     matrix m;
     //fill matrix
     memcpy(m.m, transform, 16  * sizeof(rpr_float));
+
     if (transpose)
+    {
         m.transpose();
-    
-    return RPR_ERROR_UNIMPLEMENTED;
+    }
+
+    mesh->SetTransform(m);
+    return RPR_SUCCESS;
 }
 
 rpr_int rprShapeSetSubdivisionFactor(rpr_shape shape, rpr_uint factor)
@@ -560,7 +599,11 @@ rpr_int rprShapeSetDisplacementImage(rpr_shape shape, rpr_image image)
 rpr_int rprShapeSetMaterial(rpr_shape in_shape, rpr_material_node in_node)
 {
     if (!in_shape)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
+    }
+    
+    //cast data
     Mesh* mesh = static_cast<Mesh*>(in_shape);
     Material* mat = static_cast<Material*>(in_node);
     mesh->SetMaterial(mat);
@@ -623,15 +666,12 @@ rpr_int rprLightSetTransform(rpr_light in_light, rpr_bool in_transpose, rpr_floa
     matrix m;
     memcpy(&m.m00, in_transform, 16 * sizeof(rpr_float));
     if (in_transpose)
+    {
         m = m.transpose();
-    
-    //TODO: fix
-    // apply transform matrix
+    }
+
     light->SetPosition(float3(m.m30, m.m31, m.m32, m.m33));
     light->SetDirection(m * float3(0, 0, -1));
-
-    //light->SetPosition(float3(0,10,0));
-    //light->SetDirection(float3(0, -1, 0));
 
     return RPR_SUCCESS;
 }
@@ -659,10 +699,15 @@ rpr_int rprInstanceGetBaseShape(rpr_shape shape, rpr_shape * out_shape)
 rpr_int rprContextCreatePointLight(rpr_context in_context, rpr_light * out_light)
 {
     if (!in_context)
+    {
         return RPR_ERROR_INVALID_CONTEXT;
+    }
     if (!out_light)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
+    }
 
+    //cast data
     Context* cont = static_cast<Context*>(in_context);
     PointLight* light = new PointLight();
     *out_light = light;
@@ -673,7 +718,9 @@ rpr_int rprContextCreatePointLight(rpr_context in_context, rpr_light * out_light
 rpr_int rprPointLightSetRadiantPower3f(rpr_light in_light, rpr_float in_r, rpr_float in_g, rpr_float in_b)
 {
     if (!in_light)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
+    }
     //prepare
     PointLight* light = static_cast<PointLight*>(in_light);
     float3 radiant_power = { in_r, in_g, in_b };
@@ -686,9 +733,13 @@ rpr_int rprPointLightSetRadiantPower3f(rpr_light in_light, rpr_float in_r, rpr_f
 rpr_int rprContextCreateSpotLight(rpr_context in_context, rpr_light * out_light)
 {
     if (!in_context)
+    {
         return RPR_ERROR_INVALID_CONTEXT;
+    }
     if (!out_light)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
+    }
 
     Context* cont = static_cast<Context*>(in_context);
     SpotLight* light = new SpotLight();
@@ -700,7 +751,9 @@ rpr_int rprContextCreateSpotLight(rpr_context in_context, rpr_light * out_light)
 rpr_int rprSpotLightSetRadiantPower3f(rpr_light in_light, rpr_float in_r, rpr_float in_g, rpr_float in_b)
 {
     if (!in_light)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
+    }
     //prepare
     SpotLight* light = static_cast<SpotLight*>(in_light);
     float3 radiant_power = { in_r, in_g, in_b };
@@ -713,7 +766,9 @@ rpr_int rprSpotLightSetRadiantPower3f(rpr_light in_light, rpr_float in_r, rpr_fl
 rpr_int rprSpotLightSetConeShape(rpr_light in_light, rpr_float in_iangle, rpr_float in_oangle)
 {
     if (!in_light)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
+    }
     //prepare
     SpotLight* light = static_cast<SpotLight*>(in_light);
     float2 angle = {in_iangle, in_oangle};
@@ -743,9 +798,13 @@ rpr_int rprDirectionalLightSetShadowSoftness(rpr_light light, rpr_float coeff)
 rpr_int rprContextCreateEnvironmentLight(rpr_context in_context, rpr_light * out_light)
 {
     if (!in_context)
+    {
         return RPR_ERROR_INVALID_CONTEXT;
+    }
     if (!out_light)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
+    }
 
     //cast data
     Context* context = static_cast<Context*>(in_context);
@@ -760,8 +819,10 @@ rpr_int rprContextCreateEnvironmentLight(rpr_context in_context, rpr_light * out
 rpr_int rprEnvironmentLightSetImage(rpr_light in_env_light, rpr_image in_image)
 {
     if (!in_env_light)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
-    
+    }
+
     //cast data
     ImageBasedLight* ibl = static_cast<ImageBasedLight*>(in_env_light);
     Texture* img = static_cast<Texture*>(in_image);
@@ -775,10 +836,12 @@ rpr_int rprEnvironmentLightSetImage(rpr_light in_env_light, rpr_image in_image)
 rpr_int rprEnvironmentLightSetIntensityScale(rpr_light in_env_light, rpr_float intensity_scale)
 {
     if (!in_env_light)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
+    }
+    
     //cast data
     ImageBasedLight* ibl = static_cast<ImageBasedLight*>(in_env_light);
-
     //set data
     ibl->SetMultiplier(intensity_scale);
 
@@ -858,7 +921,9 @@ rpr_int rprSceneClear(rpr_scene scene)
 rpr_int rprSceneAttachShape(rpr_scene in_scene, rpr_shape in_shape)
 {
     if (!in_scene || !in_shape)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
+    }
 
     //cast input data
     Scene1* scene = static_cast<Scene1*>(in_scene);
@@ -871,7 +936,9 @@ rpr_int rprSceneAttachShape(rpr_scene in_scene, rpr_shape in_shape)
 rpr_int rprSceneDetachShape(rpr_scene in_scene, rpr_shape in_shape)
 {
     if (!in_scene || !in_shape)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
+    }
 
     //cast input data
     Scene1* scene = static_cast<Scene1*>(in_scene);
@@ -884,12 +951,13 @@ rpr_int rprSceneDetachShape(rpr_scene in_scene, rpr_shape in_shape)
 rpr_int rprSceneAttachLight(rpr_scene in_scene, rpr_light in_light)
 {
     if (!in_scene || !in_light)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
+    }
 
     //prepare
     Scene1* scene = static_cast<Scene1*>(in_scene);
     Light* light = static_cast<Light*>(in_light);
-
     //attach
     scene->AttachLight(light);
 
@@ -899,7 +967,9 @@ rpr_int rprSceneAttachLight(rpr_scene in_scene, rpr_light in_light)
 rpr_int rprSceneDetachLight(rpr_scene in_scene, rpr_light in_light)
 {
     if (!in_scene || !in_light)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
+    }
 
     //prepare
     Scene1* scene = static_cast<Scene1*>(in_scene);
@@ -938,7 +1008,9 @@ rpr_int rprSceneGetBackgroundImage(rpr_scene scene, rpr_image * out_image)
 rpr_int rprSceneSetCamera(rpr_scene in_scene, rpr_camera in_camera)
 {
     if (!in_scene)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
+    }
 
     Scene1* scene = static_cast<Scene1*>(in_scene);
     PerspectiveCamera* cam = static_cast<PerspectiveCamera*>(in_camera);
@@ -961,18 +1033,23 @@ rpr_int rprFrameBufferGetInfo(rpr_framebuffer framebuffer, rpr_framebuffer_info 
 rpr_int rprFrameBufferClear(rpr_framebuffer in_frame_buffer)
 {
     if (!in_frame_buffer)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
+    }
 
     //prepare
     ClwOutput* buff = static_cast<ClwOutput*>(in_frame_buffer);
     buff->Clear(float3(0.f,0.f,0.f,0.f));
+
     return RPR_SUCCESS;
 }
 
 rpr_int rprFrameBufferSaveToFile(rpr_framebuffer in_frame_buffer, rpr_char const * file_path)
 {
     if (!in_frame_buffer)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
+    }
 
     Output* buff = static_cast<Output*>(in_frame_buffer);
     OIIO_NAMESPACE_USING;
@@ -984,6 +1061,7 @@ rpr_int rprFrameBufferSaveToFile(rpr_framebuffer in_frame_buffer, rpr_char const
     std::vector<float3> data(tempbuf);
 
     for (auto y = 0; y < height; ++y)
+    {
         for (auto x = 0; x < width; ++x)
         {
 
@@ -994,6 +1072,7 @@ rpr_int rprFrameBufferSaveToFile(rpr_framebuffer in_frame_buffer, rpr_char const
             tempbuf[y * width + x].y = std::pow(tempbuf[y * width + x].y, 1.f / 2.2f);
             tempbuf[y * width + x].z = std::pow(tempbuf[y * width + x].z, 1.f / 2.2f);
         }
+    }
 
     ImageOutput* out = ImageOutput::create(file_path);
 
@@ -1019,19 +1098,28 @@ rpr_int rprContextResolveFrameBuffer(rpr_context context, rpr_framebuffer src_fr
 rpr_int rprContextCreateMaterialSystem(rpr_context in_context, rpr_material_system_type type, rpr_material_system * out_matsys)
 {
     if (!in_context)
+    {
         return RPR_ERROR_INVALID_CONTEXT;
+    }
 
+    //cast data
     Context* cont = static_cast<Context*>(in_context);
-    cont->mat_sys.push_back(MaterialSystem());
-    *out_matsys = &cont->mat_sys.back();
+    MaterialSystem* mat_sys = new MaterialSystem();
+    *out_matsys = mat_sys;
+
     return RPR_SUCCESS;
 }
 
 rpr_int rprMaterialSystemCreateNode(rpr_material_system in_matsys, rpr_material_node_type in_type, rpr_material_node * out_node)
 {
     if (!in_matsys)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
+    }
+    //cast data
     MaterialSystem* sys = static_cast<MaterialSystem*>(in_matsys);
+
+    //create material
     Material* mat = nullptr;
     switch (in_type)
     {
@@ -1044,31 +1132,45 @@ rpr_int rprMaterialSystemCreateNode(rpr_material_system in_matsys, rpr_material_
         mat->SetTwoSided(true);
         break;
     case RPR_MATERIAL_NODE_IMAGE_TEXTURE:
+        //TODO fix using kZero material for texture
         mat = new SingleBxdf(SingleBxdf::BxdfType::kZero);
+        break;
+    case RPR_MATERIAL_NODE_REFLECTION:
+        mat = new SingleBxdf(SingleBxdf::BxdfType::kIdealReflect);
+        mat->SetTwoSided(true);
+        break;
+    case RPR_MATERIAL_NODE_REFRACTION:
+        mat = new SingleBxdf(SingleBxdf::BxdfType::kIdealRefract);
+        mat->SetTwoSided(true);
         break;
     default:
         return RPR_ERROR_UNIMPLEMENTED;
-
     }
     sys->push_back(mat);
     *out_node = mat;
+    
     return RPR_SUCCESS;
 }
 
 rpr_int rprMaterialNodeSetInputN(rpr_material_node in_node, rpr_char const * in_input, rpr_material_node in_input_node)
 {
     if (!in_node || !in_input || !in_input_node)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
-    
+    }
+
     //cast data
     SingleBxdf* mat = static_cast<SingleBxdf*>(in_node);
     SingleBxdf* input_mat = static_cast<SingleBxdf*>(in_input_node);
     std::string input_name;
     if (!strcmp(in_input, "color"))
+    {
         input_name = "albedo";
+    }
     else
+    {
         return RPR_ERROR_UNIMPLEMENTED;
-
+    }
     //if input zero - need to get textura from its albedo input
     if (input_mat->GetBxdfType() == SingleBxdf::BxdfType::kZero)
     {
@@ -1086,8 +1188,10 @@ rpr_int rprMaterialNodeSetInputN(rpr_material_node in_node, rpr_char const * in_
 rpr_int rprMaterialNodeSetInputF(rpr_material_node in_node, rpr_char const * in_input, rpr_float in_value_x, rpr_float in_value_y, rpr_float in_value_z, rpr_float in_value_w)
 {
     if (!in_node)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
-
+    }
+    //cast data
     SingleBxdf* mat = static_cast<SingleBxdf*>(in_node);
     //collect input
     float4 input = { in_value_x, in_value_y, in_value_z, in_value_w };
@@ -1095,13 +1199,21 @@ rpr_int rprMaterialNodeSetInputF(rpr_material_node in_node, rpr_char const * in_
     
     //translate material prop name
     if (!strcmp(in_input, "color"))
+    {
         input_name = "albedo";
+    }
     else if (!strcmp(in_input, "ior"))
+    {
         input_name = in_input;
+    }
     else if (!strcmp(in_input, "roughness"))
+    {
         input_name = in_input;
+    }
     else
+    {
         return RPR_ERROR_UNIMPLEMENTED;
+    }
 
     mat->SetInputValue(input_name, input);
     return RPR_SUCCESS;
@@ -1115,7 +1227,9 @@ rpr_int rprMaterialNodeSetInputU(rpr_material_node in_node, rpr_char const * in_
 rpr_int rprMaterialNodeSetInputImageData(rpr_material_node in_node, rpr_char const * in_input, rpr_image in_image)
 {
     if (!in_node || !in_image)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
+    }
     //get material and texture
     SingleBxdf* mat = static_cast<SingleBxdf*>(in_node);
     Texture* tex = static_cast<Texture*>(in_image);

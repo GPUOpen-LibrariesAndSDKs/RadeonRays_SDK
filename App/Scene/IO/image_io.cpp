@@ -51,7 +51,7 @@ namespace Baikal
         
         auto fmt = GetTextureForemat(spec);
         char* texturedata = nullptr;
-        
+
         if (fmt == Texture::Format::kRgba8)
         {
             auto size = spec.width * spec.height * spec.depth * 4;

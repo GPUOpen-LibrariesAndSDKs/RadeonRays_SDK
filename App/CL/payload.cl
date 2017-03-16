@@ -24,7 +24,7 @@ THE SOFTWARE.
 
 /// Camera descriptor
 ///
-typedef struct _Camera
+typedef struct
     {
         // Camera coordinate frame
         float3 forward;
@@ -46,7 +46,7 @@ typedef struct _Camera
     } Camera;
 
 // Shape description
-typedef struct _Shape
+typedef struct
 {
     // Shape starting index
     int startidx;
@@ -141,7 +141,7 @@ enum LightType
     kIbl
 };
 
-typedef struct _Light
+typedef struct
 {
     int type;
 
@@ -162,7 +162,6 @@ typedef struct _Light
             int texdiffuse;
             float multiplier;
         };
-
 
         // Spot
         struct

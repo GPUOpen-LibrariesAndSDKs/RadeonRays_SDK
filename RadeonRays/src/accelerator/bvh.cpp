@@ -31,6 +31,8 @@ THE SOFTWARE.
 
 namespace RadeonRays
 {
+    static int constexpr kMaxPrimitivesPerLeaf = 1;
+
     static bool is_nan(float v)
     {
         return v != v;
@@ -69,6 +71,7 @@ namespace RadeonRays
 
         Node* node = AllocateNode();
         node->bounds = req.bounds;
+        node->index = req.index;
 
         // Create leaf node if we have enough prims
         if (req.numprims < 2)
@@ -77,21 +80,24 @@ namespace RadeonRays
             primitive_mutex_.lock();
 #endif
             node->type = kLeaf;
-            node->startidx = req.startidx;
+            node->startidx = static_cast<int>(m_packed_indices.size());
             node->numprims = req.numprims;
+
+            for (auto i = 0U; i < req.numprims; ++i)
+            {
+                m_packed_indices.push_back(primindices[req.startidx + i]);
+            }
 #ifdef USE_TBB
             primitive_mutex_.unlock();
 #endif
         }
         else
         {
-            node->type = kInternal;
-
             // Choose the maximum extent
             int axis = req.centroid_bounds.maxdim();
             float border = req.centroid_bounds.center()[axis];
 
-            if (m_usesah && req.level < 10)
+            if (m_usesah)
             {
                 SahSplit ss = FindSahSplit(req, bounds, centroids, primindices);
 
@@ -99,8 +105,25 @@ namespace RadeonRays
                 {
                     axis = ss.dim;
                     border = ss.split;
+
+                    if (req.numprims < ss.sah && req.numprims < kMaxPrimitivesPerLeaf)
+                    {
+                        node->type = kLeaf;
+                        node->startidx = static_cast<int>(m_packed_indices.size());
+                        node->numprims = req.numprims;
+
+                        for (auto i = 0U; i < req.numprims; ++i)
+                        {
+                            m_packed_indices.push_back(primindices[req.startidx + i]);
+                        }
+
+                        if (req.ptr) *req.ptr = node;
+                        return;
+                    }
                 }
             }
+
+            node->type = kInternal;
 
             // Start partitioning and updating extents for children at the same time
             bbox leftbounds, rightbounds, leftcentroid_bounds, rightcentroid_bounds;
@@ -182,7 +205,7 @@ namespace RadeonRays
 
                 splitidx = first;
             }
-            
+
             if (splitidx == req.startidx || splitidx == req.startidx + req.numprims)
             {
                 splitidx = req.startidx + (req.numprims >> 1);
@@ -201,9 +224,9 @@ namespace RadeonRays
             }
 
             // Left request
-            SplitRequest leftrequest = { req.startidx, splitidx - req.startidx, &node->lc, leftbounds, leftcentroid_bounds, req.level + 1 };
+            SplitRequest leftrequest = { req.startidx, splitidx - req.startidx, &node->lc, leftbounds, leftcentroid_bounds, req.level + 1, (req.index << 1) };
             // Right request
-            SplitRequest rightrequest = { splitidx, req.numprims - (splitidx - req.startidx), &node->rc, rightbounds, rightcentroid_bounds, req.level + 1 };
+            SplitRequest rightrequest = { splitidx, req.numprims - (splitidx - req.startidx), &node->rc, rightbounds, rightcentroid_bounds, req.level + 1, (req.index << 1) + 1 };
 
             {
                 // Put those to stack
@@ -223,7 +246,7 @@ namespace RadeonRays
     {
         // SAH implementation
         // calc centroids histogram
-        int const kNumBins = 64;
+        int const kNumBins = 128;
         // moving split bin index
         int splitidx = -1;
         // Set SAH to maximum float value as a start
@@ -299,7 +322,7 @@ namespace RadeonRays
             int  rightcount = req.numprims;
 
             // Start best SAH search
-            // i is current split candidate (split between i and i + 1) 
+            // i is current split candidate (split between i and i + 1)
             float sahtmp = 0.f;
             for (int i = 0; i < kNumBins - 1; ++i)
             {
@@ -315,7 +338,7 @@ namespace RadeonRays
                 {
                     split.dim = axis;
                     splitidx = i;
-                    sah = sahtmp;
+                    split.sah = sah = sahtmp;
                 }
             }
         }
@@ -348,7 +371,7 @@ namespace RadeonRays
             centroids[i] = c;
         }
 
-        SplitRequest init = { 0, numbounds, nullptr, m_bounds, centroid_bounds, 0 };
+        SplitRequest init = { 0, numbounds, nullptr, m_bounds, centroid_bounds, 0, 1 };
 
 #ifdef USE_BUILD_STACK
         std::stack<SplitRequest> stack;
@@ -474,8 +497,3 @@ namespace RadeonRays
     }
 
 }
-
-
-
-
-
