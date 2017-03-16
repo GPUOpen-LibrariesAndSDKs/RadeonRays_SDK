@@ -65,6 +65,10 @@ newoption {
     description = "Enable ray masking in intersection kernels"
 }
 
+newoption {
+    trigger     = "rpr",
+    description = "Enable RadeonProRender API lib"
+}
 
 if not _OPTIONS["use_opencl"] and not _OPTIONS["use_vulkan"] and not _OPTIONS["use_embree"] then
     _OPTIONS["use_opencl"] = 1
@@ -234,11 +238,13 @@ else
         dofile("./Calc/Calc.lua")
     end
     
-    if fileExists("./Rpr/Rpr.lua") then
-        dofile("./Rpr/Rpr.lua")
-    end
-    if fileExists("./Test/Test.lua") then
-        dofile("./Test/Test.lua")
+    if _OPTIONS["rpr"] then
+        if fileExists("./Rpr/Rpr.lua") then
+            dofile("./Rpr/Rpr.lua")
+        end
+        if fileExists("./Test/Test.lua") then
+            dofile("./Test/Test.lua")
+        end
     end
 
     if _OPTIONS["use_opencl"] then
