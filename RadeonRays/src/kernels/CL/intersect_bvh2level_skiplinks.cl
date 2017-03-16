@@ -61,8 +61,8 @@ EXTENSIONS
 DEFINES
 **************************************************************************/
 #define PI 3.14159265358979323846f
-#define STARTIDX(x)     (((int)(x.pmin.w)))
-#define SHAPEIDX(x)     (((int)(x.pmin.w)))
+#define STARTIDX(x)     (((int)(x.pmin.w)) >> 4)
+#define SHAPEIDX(x)     (((int)(x.pmin.w)) >> 4)
 #define LEAFNODE(x)     (((x).pmin.w) != -1.f)
 #define NEXT(x)     ((int)((x).pmax.w))
 
@@ -233,7 +233,7 @@ KERNEL void intersect_main(
                             int shape_mask = shapes[shape_idx].mask;
                             // Drill into 2nd level BVH only if the geometry is not masked vs current ray
                             // otherwise skip the subtree
-                            if (ray_get_mask(&r) && shape_mask)
+                            //if (ray_get_mask(&r) && shape_mask)
                             {
                                 // Fetch bottom level BVH index
                                 addr = shapes[shape_idx].bvh_idx;
@@ -251,10 +251,10 @@ KERNEL void intersect_main(
                                 // And continue traversal of the bottom level BVH
                                 continue;
                             }
-                            else
+                            /*else
                             {
                                 addr = INVALID_IDX;
-                            }
+                            }*/
                         }
                     }
                     // Traverse child nodes otherwise.
