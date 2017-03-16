@@ -66,6 +66,11 @@ newoption {
 }
 
 newoption {
+    trigger     = "rpr",
+    description = "Enable RadeonProRender API lib"
+}
+
+newoption {
     trigger     = "tutorials",
     description = "Add tutorials projects"
 }
@@ -238,11 +243,13 @@ else
         dofile("./Calc/Calc.lua")
     end
     
-    if fileExists("./Rpr/Rpr.lua") then
-        dofile("./Rpr/Rpr.lua")
-    end
-    if fileExists("./Test/Test.lua") then
-        dofile("./Test/Test.lua")
+    if _OPTIONS["rpr"] then
+        if fileExists("./Rpr/Rpr.lua") then
+            dofile("./Rpr/Rpr.lua")
+        end
+        if fileExists("./Test/Test.lua") then
+            dofile("./Test/Test.lua")
+        end
     end
 
     if _OPTIONS["use_opencl"] then
