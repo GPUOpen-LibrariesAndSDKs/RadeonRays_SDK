@@ -202,7 +202,7 @@ void Scene_FillDifferentialGeometry(// Scene
 
 
 // Calculate tangent transform matrices inside differential geometry
-void DifferentialGeometry_CalculateTangentTransforms(DifferentialGeometry* diffgeo)
+INLINE void DifferentialGeometry_CalculateTangentTransforms(DifferentialGeometry* diffgeo)
 {
     diffgeo->world_to_tangent = matrix_from_rows3(diffgeo->dpdu, diffgeo->n, diffgeo->dpdv);
 
@@ -219,7 +219,7 @@ void DifferentialGeometry_CalculateTangentTransforms(DifferentialGeometry* diffg
 }
 
 // Sample light index
-int Scene_SampleLight(Scene const* scene, float sample, float* pdf)
+INLINE int Scene_SampleLight(Scene const* scene, float sample, float* pdf)
 {
     int num_lights = scene->num_lights;
     int light_idx = clamp((int)(sample * num_lights), 0, num_lights - 1);
