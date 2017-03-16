@@ -20,9 +20,6 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
-
-
-
 #include <../App/CL/common.cl>
 #include <../App/CL/ray.cl>
 #include <../App/CL/isect.cl>
@@ -71,7 +68,7 @@ __kernel void ShadeVolume(
     // Textures
     TEXTURE_ARG_LIST,
     // Environment texture index
-    int envmapidx,
+    int env_light_idx,
     // Emissives
     __global Light const* lights,
     // Number of emissive objects
@@ -112,7 +109,7 @@ __kernel void ShadeVolume(
         materialids,
         materials,
         lights,
-        envmapidx,
+        env_light_idx,
         num_lights
     };
 
@@ -251,7 +248,7 @@ __kernel void ShadeSurface(
     // Textures
     TEXTURE_ARG_LIST,
     // Environment texture index
-    int envmapidx,
+    int env_light_idx,
     // Emissives
     __global Light const* lights,
     // Number of emissive objects
@@ -292,7 +289,7 @@ __kernel void ShadeSurface(
         materialids,
         materials,
         lights,
-        envmapidx,
+        env_light_idx,
         num_lights
     };
 
@@ -330,7 +327,7 @@ __kernel void ShadeSurface(
 
         // Fill surface data
         DifferentialGeometry diffgeo;
-        DifferentialGeometry_Fill(&scene, &isect, &diffgeo);
+        Scene_FillDifferentialGeometry(&scene, &isect,&diffgeo);
 
         // Check if we are hitting from the inside
         float ngdotwi = dot(diffgeo.ng, wi);
@@ -523,7 +520,7 @@ __kernel void ShadeBackgroundEnvMap(
     // Number of rays
     int numrays,
     __global Light const* lights,
-    int envmapidx,
+    int env_light_idx,
     // Textures
     TEXTURE_ARG_LIST,
     // Environment texture index
@@ -540,12 +537,12 @@ __kernel void ShadeBackgroundEnvMap(
         int pixelidx = pixelindices[globalid];
 
         // In case of a miss
-        if (isects[globalid].shapeid < 0 && envmapidx != -1)
+        if (isects[globalid].shapeid < 0 && env_light_idx != -1)
         {
             // Multiply by throughput
             int volidx = paths[pixelidx].volume;
 
-            Light light = lights[envmapidx];
+            Light light = lights[env_light_idx];
 
             if (volidx == -1)
                 output[pixelidx].xyz += light.multiplier * Texture_SampleEnvMap(rays[globalid].d.xyz, TEXTURE_ARGS_IDX(light.tex));
@@ -716,7 +713,7 @@ __kernel void ShadeMiss(
     // Number of rays
     __global int const* numrays,
     __global Light const* lights,
-    int envmapidx,
+    int env_light_idx,
     // Textures
     TEXTURE_ARG_LIST,
     __global Path const* paths,
@@ -736,7 +733,7 @@ __kernel void ShadeMiss(
         // In case of a miss
         if (isects[globalid].shapeid < 0 && Path_IsAlive(path))
         {
-            Light light = lights[envmapidx];
+            Light light = lights[env_light_idx];
 
             float3 t = Path_GetThroughput(path);
             output[pixelidx].xyz += REASONABLE_RADIANCE(light.multiplier * Texture_SampleEnvMap(rays[globalid].d.xyz, TEXTURE_ARGS_IDX(light.tex)) * t);
