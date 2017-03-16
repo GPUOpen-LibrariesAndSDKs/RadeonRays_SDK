@@ -599,7 +599,11 @@ rpr_int rprShapeSetDisplacementImage(rpr_shape shape, rpr_image image)
 rpr_int rprShapeSetMaterial(rpr_shape in_shape, rpr_material_node in_node)
 {
     if (!in_shape)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
+    }
+    
+    //cast data
     Mesh* mesh = static_cast<Mesh*>(in_shape);
     Material* mat = static_cast<Material*>(in_node);
     mesh->SetMaterial(mat);
@@ -662,15 +666,12 @@ rpr_int rprLightSetTransform(rpr_light in_light, rpr_bool in_transpose, rpr_floa
     matrix m;
     memcpy(&m.m00, in_transform, 16 * sizeof(rpr_float));
     if (in_transpose)
+    {
         m = m.transpose();
-    
-    //TODO: fix
-    // apply transform matrix
+    }
+
     light->SetPosition(float3(m.m30, m.m31, m.m32, m.m33));
     light->SetDirection(m * float3(0, 0, -1));
-
-    //light->SetPosition(float3(0,10,0));
-    //light->SetDirection(float3(0, -1, 0));
 
     return RPR_SUCCESS;
 }
@@ -698,10 +699,15 @@ rpr_int rprInstanceGetBaseShape(rpr_shape shape, rpr_shape * out_shape)
 rpr_int rprContextCreatePointLight(rpr_context in_context, rpr_light * out_light)
 {
     if (!in_context)
+    {
         return RPR_ERROR_INVALID_CONTEXT;
+    }
     if (!out_light)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
+    }
 
+    //cast data
     Context* cont = static_cast<Context*>(in_context);
     PointLight* light = new PointLight();
     *out_light = light;
@@ -712,7 +718,9 @@ rpr_int rprContextCreatePointLight(rpr_context in_context, rpr_light * out_light
 rpr_int rprPointLightSetRadiantPower3f(rpr_light in_light, rpr_float in_r, rpr_float in_g, rpr_float in_b)
 {
     if (!in_light)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
+    }
     //prepare
     PointLight* light = static_cast<PointLight*>(in_light);
     float3 radiant_power = { in_r, in_g, in_b };
@@ -725,9 +733,13 @@ rpr_int rprPointLightSetRadiantPower3f(rpr_light in_light, rpr_float in_r, rpr_f
 rpr_int rprContextCreateSpotLight(rpr_context in_context, rpr_light * out_light)
 {
     if (!in_context)
+    {
         return RPR_ERROR_INVALID_CONTEXT;
+    }
     if (!out_light)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
+    }
 
     Context* cont = static_cast<Context*>(in_context);
     SpotLight* light = new SpotLight();
@@ -739,7 +751,9 @@ rpr_int rprContextCreateSpotLight(rpr_context in_context, rpr_light * out_light)
 rpr_int rprSpotLightSetRadiantPower3f(rpr_light in_light, rpr_float in_r, rpr_float in_g, rpr_float in_b)
 {
     if (!in_light)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
+    }
     //prepare
     SpotLight* light = static_cast<SpotLight*>(in_light);
     float3 radiant_power = { in_r, in_g, in_b };
@@ -752,7 +766,9 @@ rpr_int rprSpotLightSetRadiantPower3f(rpr_light in_light, rpr_float in_r, rpr_fl
 rpr_int rprSpotLightSetConeShape(rpr_light in_light, rpr_float in_iangle, rpr_float in_oangle)
 {
     if (!in_light)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
+    }
     //prepare
     SpotLight* light = static_cast<SpotLight*>(in_light);
     float2 angle = {in_iangle, in_oangle};
@@ -782,9 +798,13 @@ rpr_int rprDirectionalLightSetShadowSoftness(rpr_light light, rpr_float coeff)
 rpr_int rprContextCreateEnvironmentLight(rpr_context in_context, rpr_light * out_light)
 {
     if (!in_context)
+    {
         return RPR_ERROR_INVALID_CONTEXT;
+    }
     if (!out_light)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
+    }
 
     //cast data
     Context* context = static_cast<Context*>(in_context);
@@ -799,8 +819,10 @@ rpr_int rprContextCreateEnvironmentLight(rpr_context in_context, rpr_light * out
 rpr_int rprEnvironmentLightSetImage(rpr_light in_env_light, rpr_image in_image)
 {
     if (!in_env_light)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
-    
+    }
+
     //cast data
     ImageBasedLight* ibl = static_cast<ImageBasedLight*>(in_env_light);
     Texture* img = static_cast<Texture*>(in_image);
@@ -814,10 +836,12 @@ rpr_int rprEnvironmentLightSetImage(rpr_light in_env_light, rpr_image in_image)
 rpr_int rprEnvironmentLightSetIntensityScale(rpr_light in_env_light, rpr_float intensity_scale)
 {
     if (!in_env_light)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
+    }
+    
     //cast data
     ImageBasedLight* ibl = static_cast<ImageBasedLight*>(in_env_light);
-
     //set data
     ibl->SetMultiplier(intensity_scale);
 
@@ -897,7 +921,9 @@ rpr_int rprSceneClear(rpr_scene scene)
 rpr_int rprSceneAttachShape(rpr_scene in_scene, rpr_shape in_shape)
 {
     if (!in_scene || !in_shape)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
+    }
 
     //cast input data
     Scene1* scene = static_cast<Scene1*>(in_scene);
@@ -910,7 +936,9 @@ rpr_int rprSceneAttachShape(rpr_scene in_scene, rpr_shape in_shape)
 rpr_int rprSceneDetachShape(rpr_scene in_scene, rpr_shape in_shape)
 {
     if (!in_scene || !in_shape)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
+    }
 
     //cast input data
     Scene1* scene = static_cast<Scene1*>(in_scene);
@@ -923,12 +951,13 @@ rpr_int rprSceneDetachShape(rpr_scene in_scene, rpr_shape in_shape)
 rpr_int rprSceneAttachLight(rpr_scene in_scene, rpr_light in_light)
 {
     if (!in_scene || !in_light)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
+    }
 
     //prepare
     Scene1* scene = static_cast<Scene1*>(in_scene);
     Light* light = static_cast<Light*>(in_light);
-
     //attach
     scene->AttachLight(light);
 
@@ -938,7 +967,9 @@ rpr_int rprSceneAttachLight(rpr_scene in_scene, rpr_light in_light)
 rpr_int rprSceneDetachLight(rpr_scene in_scene, rpr_light in_light)
 {
     if (!in_scene || !in_light)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
+    }
 
     //prepare
     Scene1* scene = static_cast<Scene1*>(in_scene);
@@ -977,7 +1008,9 @@ rpr_int rprSceneGetBackgroundImage(rpr_scene scene, rpr_image * out_image)
 rpr_int rprSceneSetCamera(rpr_scene in_scene, rpr_camera in_camera)
 {
     if (!in_scene)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
+    }
 
     Scene1* scene = static_cast<Scene1*>(in_scene);
     PerspectiveCamera* cam = static_cast<PerspectiveCamera*>(in_camera);
@@ -1000,18 +1033,23 @@ rpr_int rprFrameBufferGetInfo(rpr_framebuffer framebuffer, rpr_framebuffer_info 
 rpr_int rprFrameBufferClear(rpr_framebuffer in_frame_buffer)
 {
     if (!in_frame_buffer)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
+    }
 
     //prepare
     ClwOutput* buff = static_cast<ClwOutput*>(in_frame_buffer);
     buff->Clear(float3(0.f,0.f,0.f,0.f));
+
     return RPR_SUCCESS;
 }
 
 rpr_int rprFrameBufferSaveToFile(rpr_framebuffer in_frame_buffer, rpr_char const * file_path)
 {
     if (!in_frame_buffer)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
+    }
 
     Output* buff = static_cast<Output*>(in_frame_buffer);
     OIIO_NAMESPACE_USING;
@@ -1023,6 +1061,7 @@ rpr_int rprFrameBufferSaveToFile(rpr_framebuffer in_frame_buffer, rpr_char const
     std::vector<float3> data(tempbuf);
 
     for (auto y = 0; y < height; ++y)
+    {
         for (auto x = 0; x < width; ++x)
         {
 
@@ -1033,6 +1072,7 @@ rpr_int rprFrameBufferSaveToFile(rpr_framebuffer in_frame_buffer, rpr_char const
             tempbuf[y * width + x].y = std::pow(tempbuf[y * width + x].y, 1.f / 2.2f);
             tempbuf[y * width + x].z = std::pow(tempbuf[y * width + x].z, 1.f / 2.2f);
         }
+    }
 
     ImageOutput* out = ImageOutput::create(file_path);
 
@@ -1058,19 +1098,28 @@ rpr_int rprContextResolveFrameBuffer(rpr_context context, rpr_framebuffer src_fr
 rpr_int rprContextCreateMaterialSystem(rpr_context in_context, rpr_material_system_type type, rpr_material_system * out_matsys)
 {
     if (!in_context)
+    {
         return RPR_ERROR_INVALID_CONTEXT;
+    }
 
+    //cast data
     Context* cont = static_cast<Context*>(in_context);
     MaterialSystem* mat_sys = new MaterialSystem();
     *out_matsys = mat_sys;
+
     return RPR_SUCCESS;
 }
 
 rpr_int rprMaterialSystemCreateNode(rpr_material_system in_matsys, rpr_material_node_type in_type, rpr_material_node * out_node)
 {
     if (!in_matsys)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
+    }
+    //cast data
     MaterialSystem* sys = static_cast<MaterialSystem*>(in_matsys);
+
+    //create material
     Material* mat = nullptr;
     switch (in_type)
     {
@@ -1099,23 +1148,29 @@ rpr_int rprMaterialSystemCreateNode(rpr_material_system in_matsys, rpr_material_
     }
     sys->push_back(mat);
     *out_node = mat;
+    
     return RPR_SUCCESS;
 }
 
 rpr_int rprMaterialNodeSetInputN(rpr_material_node in_node, rpr_char const * in_input, rpr_material_node in_input_node)
 {
     if (!in_node || !in_input || !in_input_node)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
-    
+    }
+
     //cast data
     SingleBxdf* mat = static_cast<SingleBxdf*>(in_node);
     SingleBxdf* input_mat = static_cast<SingleBxdf*>(in_input_node);
     std::string input_name;
     if (!strcmp(in_input, "color"))
+    {
         input_name = "albedo";
+    }
     else
+    {
         return RPR_ERROR_UNIMPLEMENTED;
-
+    }
     //if input zero - need to get textura from its albedo input
     if (input_mat->GetBxdfType() == SingleBxdf::BxdfType::kZero)
     {
@@ -1133,8 +1188,10 @@ rpr_int rprMaterialNodeSetInputN(rpr_material_node in_node, rpr_char const * in_
 rpr_int rprMaterialNodeSetInputF(rpr_material_node in_node, rpr_char const * in_input, rpr_float in_value_x, rpr_float in_value_y, rpr_float in_value_z, rpr_float in_value_w)
 {
     if (!in_node)
+    {
         return RPR_ERROR_INVALID_PARAMETER;
-
+    }
+    //cast data
     SingleBxdf* mat = static_cast<SingleBxdf*>(in_node);
     //collect input
     float4 input = { in_value_x, in_value_y, in_value_z, in_value_w };
@@ -1142,13 +1199,21 @@ rpr_int rprMaterialNodeSetInputF(rpr_material_node in_node, rpr_char const * in_
     
     //translate material prop name
     if (!strcmp(in_input, "color"))
+    {
         input_name = "albedo";
+    }
     else if (!strcmp(in_input, "ior"))
+    {
         input_name = in_input;
+    }
     else if (!strcmp(in_input, "roughness"))
+    {
         input_name = in_input;
+    }
     else
+    {
         return RPR_ERROR_UNIMPLEMENTED;
+    }
 
     mat->SetInputValue(input_name, input);
     return RPR_SUCCESS;
