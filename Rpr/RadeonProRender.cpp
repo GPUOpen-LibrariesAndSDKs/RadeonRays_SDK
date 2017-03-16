@@ -39,6 +39,7 @@ using namespace Baikal;
 typedef std::vector<Material*> MaterialSystem;
 struct Context
 {
+    Context(): current_scene(nullptr){};
     std::vector<ConfigManager::Config> cfgs;
     Scene1* current_scene;
 };
@@ -86,9 +87,40 @@ rpr_int rprContextSetActivePlugin(rpr_context context, rpr_int pluginID)
     return RPR_ERROR_UNIMPLEMENTED;
 }
 
-rpr_int rprContextGetInfo(rpr_context context, rpr_context_info context_info, size_t size, void * data, size_t * size_ret)
+rpr_int rprContextGetInfo(rpr_context in_context, rpr_context_info in_context_info, size_t in_size, void * out_data, size_t * out_size_ret)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    if (!in_context)
+    {
+        return RPR_ERROR_INVALID_CONTEXT;
+    }
+
+    //cast dat
+    Context* context = static_cast<Context*>(in_context);
+
+    switch (in_context_info)
+    {
+    case RPR_CONTEXT_RENDER_STATISTICS:
+        if (out_data)
+        {
+            //TODO more statistics
+            rpr_render_statistics* rs = static_cast<rpr_render_statistics*>(out_data);
+            for (const auto& cfg : context->cfgs)
+            {
+                rs->gpumem_usage += context->cfgs[0].renderer->m_vidmemws;
+                rs->gpumem_total += context->cfgs[0].renderer->m_vidmemws;
+                rs->gpumem_max_allocation += context->cfgs[0].renderer->m_vidmemws;
+            }
+        }
+        if (out_size_ret)
+        {
+            *out_size_ret = sizeof(rpr_render_statistics);
+        }
+        break;
+    default:
+        return RPR_ERROR_UNIMPLEMENTED;
+
+    }
+    return RPR_SUCCESS;
 }
 
 rpr_int rprContextGetParameterInfo(rpr_context context, int param_idx, rpr_parameter_info parameter_info, size_t size, void * data, size_t * size_ret)
@@ -268,7 +300,18 @@ rpr_int rprContextCreateInstance(rpr_context in_context, rpr_shape shape, rpr_sh
     Context* context = static_cast<Context*>(in_context);
     Mesh* mesh = static_cast<Mesh*>(shape);
 
-    return RPR_ERROR_UNIMPLEMENTED;
+    //TODO replace by instance
+    Mesh* instance = new Mesh();
+
+    //copy data
+    instance->SetIndices(mesh->GetIndices(), mesh->GetNumIndices());
+    instance->SetVertices(mesh->GetVertices(), mesh->GetNumIndices());
+    instance->SetNormals(mesh->GetNormals(), mesh->GetNumNormals());
+    instance->SetUVs(mesh->GetUVs(), mesh->GetNumUVs());
+    
+    *out_instance = instance;
+
+    return RPR_SUCCESS;
 }
 
 template<typename T, int size = 3> std::vector<T> merge(const T* in_data, size_t in_data_num, rpr_int in_data_stride,
@@ -294,7 +337,7 @@ template<typename T, int size = 3> std::vector<T> merge(const T* in_data, size_t
     return result;
 }
 
-rpr_int rprContextCreateMesh(rpr_context context, 
+rpr_int rprContextCreateMesh(rpr_context in_context, 
                             rpr_float const * in_vertices, size_t in_num_vertices, rpr_int in_vertex_stride,
                             rpr_float const * in_normals, size_t in_num_normals, rpr_int in_normal_stride,
                             rpr_float const * in_texcoords, size_t in_num_texcoords, rpr_int in_texcoord_stride,
@@ -303,8 +346,8 @@ rpr_int rprContextCreateMesh(rpr_context context,
                             rpr_int const * in_texcoord_indices, rpr_int in_tidx_stride,
                             rpr_int const * in_num_face_vertices, size_t in_num_faces, rpr_shape * out_mesh)
 {
-    Context* ray_context = static_cast<Context*>(context);
-    if (!ray_context)
+    Context* context = static_cast<Context*>(in_context);
+    if (!context)
     {
         return RPR_ERROR_INVALID_CONTEXT;
     }
@@ -355,6 +398,7 @@ rpr_int rprContextCreateMesh(rpr_context context,
     mesh->SetIndices(inds.data(), inds.size());
 
     *out_mesh = mesh;
+
     return RPR_SUCCESS;
 }
 

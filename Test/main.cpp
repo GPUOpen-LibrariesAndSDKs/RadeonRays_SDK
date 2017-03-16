@@ -328,9 +328,9 @@ void SimpleRenderTest()
     }
     status = rprFrameBufferSaveToFile(frame_buffer, "SimpleRenderTest_f2.jpg");
     assert(status == RPR_SUCCESS);
-    //rpr_render_statistics rs;
-    //status = rprContextGetInfo(context, RPR_CONTEXT_RENDER_STATISTICS, sizeof(rpr_render_statistics), &rs, NULL);
-    //assert(status == RPR_SUCCESS);
+    rpr_render_statistics rs;
+    status = rprContextGetInfo(context, RPR_CONTEXT_RENDER_STATISTICS, sizeof(rpr_render_statistics), &rs, NULL);
+    assert(status == RPR_SUCCESS);
 
     //cleanup
     status = rprSceneDetachLight(scene, light);
@@ -450,7 +450,6 @@ void ComplexRenderTest()
 
     assert(status == RPR_SUCCESS);
 
-
     rpr_shape plane_mesh = NULL; status = rprContextCreateMesh(context,
         (rpr_float const*)&plane[0], 4, sizeof(vertex),
         (rpr_float const*)((char*)&plane[0] + sizeof(rpr_float) * 3), 4, sizeof(vertex),
@@ -460,15 +459,13 @@ void ComplexRenderTest()
         (rpr_int const*)indices, sizeof(rpr_int),
         num_face_vertices, 2, &plane_mesh);
 
-    //TODO add instance
-    //rpr_shape mesh1 = NULL; status = rprContextCreateInstance(context, mesh, &mesh1);
-    //assert(status == RPR_SUCCESS);
+    rpr_shape mesh1 = NULL; status = rprContextCreateInstance(context, mesh, &mesh1);
+    assert(status == RPR_SUCCESS);
 
+    //translate cubes
     matrix m = translation(float3(-2, 1, 0));
-
-    //status = rprShapeSetTransform(mesh1, true, &m.m00);
-    //assert(status == RPR_SUCCESS);
-
+    status = rprShapeSetTransform(mesh1, true, &m.m00);
+    assert(status == RPR_SUCCESS);
     matrix m1 = translation(float3(2, 1, 0)) * rotation_y(0.5);
     status = rprShapeSetTransform(mesh, true, &m1.m00);
     assert(status == RPR_SUCCESS);
@@ -476,8 +473,8 @@ void ComplexRenderTest()
     //attach shapes
     status = rprSceneAttachShape(scene, mesh);
     assert(status == RPR_SUCCESS);
-    //status = rprSceneAttachShape(scene, mesh1);
-    //assert(status == RPR_SUCCESS);
+    status = rprSceneAttachShape(scene, mesh1);
+    assert(status == RPR_SUCCESS);
     status = rprSceneAttachShape(scene, plane_mesh);
     assert(status == RPR_SUCCESS);
     
@@ -503,7 +500,6 @@ void ComplexRenderTest()
     assert(status == RPR_SUCCESS);
     status = rprMaterialNodeSetInputF(diffuse, "color", 0.9f, 0.9f, 0.f, 1.0f);
     assert(status == RPR_SUCCESS);
-
     rpr_image img = NULL; status = rprContextCreateImageFromFile(context, "../Resources/Textures/scratched.png", &img);
     assert(status == RPR_SUCCESS);
     status = rprMaterialNodeSetInputImageData(diffuse, "color", img);
@@ -517,8 +513,8 @@ void ComplexRenderTest()
 
     status = rprShapeSetMaterial(mesh, diffuse);
     assert(status == RPR_SUCCESS);
-    //status = rprShapeSetMaterial(mesh1, diffuse);
-    //assert(status == RPR_SUCCESS);
+    status = rprShapeSetMaterial(mesh1, diffuse);
+    assert(status == RPR_SUCCESS);
     status = rprShapeSetMaterial(plane_mesh, diffuse);
     assert(status == RPR_SUCCESS);
 
@@ -559,7 +555,7 @@ void ComplexRenderTest()
 
     //cleanup
     FR_MACRO_CLEAN_SHAPE_RELEASE(mesh, scene);
-    //FR_MACRO_CLEAN_SHAPE_RELEASE(mesh1, scene);
+    FR_MACRO_CLEAN_SHAPE_RELEASE(mesh1, scene);
     FR_MACRO_CLEAN_SHAPE_RELEASE(plane_mesh, scene);
     FR_MACRO_SAFE_FRDELETE(img);
     FR_MACRO_SAFE_FRDELETE(materialNodeTexture);
@@ -878,12 +874,32 @@ void EnvLightClearTest()
     assert(status == RPR_SUCCESS);
 }
 
+void MemoryStatistics()
+{
+    rpr_render_statistics rs;
+    rs.gpumem_usage = 0;
+    rs.gpumem_total = 0;
+    rs.gpumem_max_allocation = 0;
+
+    rpr_int status = RPR_SUCCESS;
+    rpr_context	context;
+    status = rprCreateContext(RPR_API_VERSION, nullptr, 0, RPR_CREATION_FLAGS_ENABLE_GPU0, NULL, NULL, &context);
+    assert(status == RPR_SUCCESS);
+    status = rprContextGetInfo(context, RPR_CONTEXT_RENDER_STATISTICS, sizeof(rpr_render_statistics), &rs, NULL);
+    assert(status == RPR_SUCCESS);
+
+    assert(rs.gpumem_usage == 0);
+    assert(rs.gpumem_total == 0);
+    assert(rs.gpumem_max_allocation == 0);
+}
+
 int main(int argc, char* argv[])
 {
     MeshCreationTest();
     SimpleRenderTest();
     ComplexRenderTest();
     EnvLightClearTest();
+    MemoryStatistics();
 
     return 0;
 }
