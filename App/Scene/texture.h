@@ -54,46 +54,66 @@ namespace Baikal
             kRgba16,
             kRgba32
         };
-        
+
         // Constructor
+        Texture();
         // Note, that texture takes ownership of its data array
-        Texture(char const* data, RadeonRays::int2 size, Format format);
+        Texture(char* data, RadeonRays::int2 size, Format format);
         // Destructor (the data is destroyed as well)
-        virtual ~Texture();
-        
+        virtual ~Texture() = default;
+
+        // Set data
+        void SetData(char* data, RadeonRays::int2 size, Format format);
+
         // Get texture dimensions
-        virtual RadeonRays::int2 GetSize() const;
+        RadeonRays::int2 GetSize() const;
         // Get texture raw data
-        virtual char const* GetData() const;
+        char const* GetData() const;
         // Get texture format
-        virtual Format GetFormat() const;
+        Format GetFormat() const;
         // Get data size in bytes
-        virtual std::size_t GetSizeInBytes() const;
-        
+        std::size_t GetSizeInBytes() const;
+
         // Disallow copying
         Texture(Texture const&) = delete;
         Texture& operator = (Texture const&) = delete;
-    
+
     private:
         // Image data
-        std::unique_ptr<char const[]> m_data;
+        std::unique_ptr<char[]> m_data;
         // Image dimensions
         RadeonRays::int2 m_size;
         // Format
         Format m_format;
     };
-    
-    inline Texture::Texture(char const* data, RadeonRays::int2 size, Format format)
+
+    inline Texture::Texture()
+        : m_data(new char[16])
+        , m_size(2,2)
+        , m_format(Format::kRgba8)
+    {
+        // Create checkerboard by default
+        m_data[0] = m_data[1] = m_data[2] = m_data[3] = (char)0xFF;
+        m_data[4] = m_data[5] = m_data[6] = m_data[7] = (char)0x00;
+        m_data[8] = m_data[9] = m_data[10] = m_data[11] = (char)0xFF;
+        m_data[12] = m_data[13] = m_data[14] = m_data[15] = (char)0x00;
+    }
+
+    inline Texture::Texture(char* data, RadeonRays::int2 size, Format format)
     : m_data(data)
     , m_size(size)
     , m_format(format)
     {
     }
-    
-    inline Texture::~Texture()
+
+    inline void Texture::SetData(char* data, RadeonRays::int2 size, Format format)
     {
+        m_data.reset(data);
+        m_size = size;
+        m_format = format;
+        SetDirty(true);
     }
-    
+
     inline RadeonRays::int2 Texture::GetSize() const
     {
         return m_size;
