@@ -19,6 +19,7 @@ namespace Baikal
 {
     SceneTracker::SceneTracker(CLWContext context, int devidx)
         : m_context(context)
+        , m_default_material(new SingleBxdf(SingleBxdf::BxdfType::kLambert))
     {
         // Get raw CL data out of CLW context
         cl_device_id id = m_context.GetDevice(devidx).GetID();
@@ -36,6 +37,7 @@ namespace Baikal
         m_api->SetOption("acc.type", "fatbvh");
         m_api->SetOption("bvh.builder", "sah");
 #endif
+        m_default_material->SetInputValue("albedo", float4(0.5f, 0.6f, 0.5f, 1.f));
     }
 
     SceneTracker::~SceneTracker()
@@ -64,11 +66,12 @@ namespace Baikal
         std::unique_ptr<Iterator> shape_iter(scene.CreateShapeIterator());
         std::unique_ptr<Iterator> light_iter(scene.CreateLightIterator());
 
+        auto default_material = m_default_material.get();
         // Collect materials from shapes first
         mat_collector.Collect(shape_iter.get(),
             // This function adds all materials to resulting map
             // recursively via Material dependency API
-            [](void const* item) -> std::set<void const*>
+            [default_material](void const* item) -> std::set<void const*>
         {
             // Resulting material set
             std::set<void const*> mats;
@@ -78,6 +81,12 @@ namespace Baikal
             // Get material from current shape
             auto shape = reinterpret_cast<Shape const*>(item);
             auto material = shape->GetMaterial();
+
+            // If shape does not have a material, use default one
+            if (!material)
+            {
+                material = default_material;
+            }
 
             // Push to stack as an initializer
             material_stack.push(material);
@@ -513,7 +522,14 @@ namespace Baikal
             shapes[num_shapes_written] = shape;
             ++num_shapes_written;
 
-            auto matidx = mat_collector.GetItemIndex(mesh->GetMaterial());
+            // Check if mesh has a material and use default if not
+            auto material = mesh->GetMaterial();
+            if (!material)
+            {
+                material = m_default_material.get();
+            }
+
+            auto matidx = mat_collector.GetItemIndex(material);
             std::fill(matids + num_matids_written, matids + num_matids_written + mesh_num_indices / 3, matidx);
 
             num_matids_written += mesh_num_indices / 3;

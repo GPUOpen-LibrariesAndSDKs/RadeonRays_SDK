@@ -22,7 +22,7 @@ namespace Baikal
     struct ClwScene
     {
         #include "CL/payload.cl"
-        
+
         CLWBuffer<RadeonRays::float3> vertices;
         CLWBuffer<RadeonRays::float3> normals;
         CLWBuffer<RadeonRays::float2> uvs;
@@ -38,7 +38,7 @@ namespace Baikal
         CLWBuffer<char> texturedata;
 
         CLWBuffer<Camera> camera;
-        
+
         std::unique_ptr<Bundle> material_bundle;
         std::unique_ptr<Bundle> texture_bundle;
 
