@@ -590,8 +590,39 @@ namespace Calc
     {
     public:
         PrimitivesClw(CLWContext context)
-            : m_pp(context)
         {
+            std::string buildopts = "";
+            
+            buildopts.append(" -cl-mad-enable -cl-fast-relaxed-math -cl-std=CL1.2 -I . ");
+            
+            bool isamd = context.GetDevice(0).GetVendor().find("AMD") != std::string::npos ||
+            context.GetDevice(0).GetVendor().find("Advanced Micro Devices") != std::string::npos;
+            
+            bool has_mediaops = context.GetDevice(0).GetExtensions().find("cl_amd_media_ops2") != std::string::npos;
+            
+            if (isamd)
+            {
+                buildopts.append(" -D AMD ");
+            }
+            
+            if (has_mediaops)
+            {
+                buildopts.append(" -D AMD_MEDIA_OPS ");
+            }
+            
+            buildopts.append(
+#if defined(__APPLE__)
+                             "-D APPLE "
+#elif defined(_WIN32) || defined (WIN32)
+                             "-D WIN32 "
+#elif defined(__linux__)
+                             "-D __linux__ "
+#else
+                             ""
+#endif
+                             );
+            
+            m_pp = CLWParallelPrimitives(context, buildopts.c_str());
         }
 
         void SortRadixInt32(std::uint32_t queueidx, Buffer const* from_key, Buffer* to_key, Buffer const* from_value, Buffer* to_value, std::size_t size) override

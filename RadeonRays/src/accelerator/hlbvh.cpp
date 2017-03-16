@@ -80,6 +80,7 @@ namespace RadeonRays
     
     void Hlbvh::InitGpuData()
     {
+        
 #ifndef RR_EMBED_KERNELS
         if ( m_device->GetPlatform() == Calc::Platform::kOpenCL )
         {
