@@ -85,6 +85,8 @@ namespace Baikal
         void UpdateMaterials(Scene1 const& scene, Collector& mat_collector, Collector& tex_collector, ClwScene& out) const;
         // Update texture data only.
         void UpdateTextures(Scene1 const& scene, Collector& mat_collector, Collector& tex_collector, ClwScene& out) const;
+        // Update intersection API
+        void UpdateIntersector(Scene1 const& scene, ClwScene& out) const;
         // Write out single material at data pointer.
         // Collectors are required to convert texture and material pointers into indices.
         void WriteMaterial(Material const* material, Collector& mat_collector, Collector& tex_collector, void* data) const;

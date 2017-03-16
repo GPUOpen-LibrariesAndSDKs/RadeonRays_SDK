@@ -30,6 +30,7 @@
 
 #include "math/float3.h"
 #include "math/float2.h"
+#include "math/matrix.h"
 #include <memory>
 #include <string>
 
@@ -55,13 +56,18 @@ namespace Baikal
         // Get and set material
         void SetMaterial(Material const* material);
         Material const* GetMaterial() const;
-        
+
+        void SetTransform(RadeonRays::matrix const& t);
+        RadeonRays::matrix GetTransform() const;
+
         // Forbidden stuff
         Shape(Shape const&) = delete;
         Shape& operator = (Shape const&) = delete;
     
     private:
         Material const* m_material;
+
+        RadeonRays::matrix m_transform;
     };
     
     /**
@@ -131,6 +137,16 @@ namespace Baikal
     inline Material const* Shape::GetMaterial() const
     {
         return m_material;
+    }
+
+    inline void Shape::SetTransform(RadeonRays::matrix const& t)
+    {
+        m_transform = t;
+    }
+
+    inline RadeonRays::matrix Shape::GetTransform() const
+    {
+        return m_transform;
     }
 }
 

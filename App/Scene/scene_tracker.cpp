@@ -213,9 +213,6 @@ namespace Baikal
             if (dirty & Scene1::kCamera || camera_changed)
             {
                 UpdateCamera(scene, mat_collector, tex_collector, out);
-
-                // Drop camera dirty flag
-                camera->SetDirty(false);
             }
 
             {
@@ -247,14 +244,6 @@ namespace Baikal
                 if (dirty & Scene1::kLights || lights_changed)
                 {
                     UpdateLights(scene, mat_collector, tex_collector, out);
-
-                    // Drop dirty flags for lights
-                    for (light_iter->Reset(); light_iter->IsValid(); light_iter->Next())
-                    {
-                        auto light = light_iter->ItemAs<Light const>();
-
-                        light->SetDirty(false);
-                    }
                 }
             }
 
@@ -286,13 +275,11 @@ namespace Baikal
                 {
                     UpdateShapes(scene, mat_collector, tex_collector, out);
 
-                    // Drop shape dirty flags
-                    for (;shape_iter->IsValid(); shape_iter->Next())
-                    {
-                        auto shape = shape_iter->ItemAs<Shape const>();
+                    // Recreate intersector shapes
+                    UpdateIntersector(scene, out);
 
-                        shape->SetDirty(false);
-                    }
+                    // Attach shapes to API
+                    ReloadIntersector(scene, out);
                 }
             }
 
@@ -343,6 +330,55 @@ namespace Baikal
         }
     }
 
+    void SceneTracker::UpdateIntersector(Scene1 const& scene, ClwScene& out) const
+    {
+        // Detach and delete all shapes
+        for (auto& shape : out.isect_shapes)
+        {
+            m_api->DetachShape(shape);
+            m_api->DeleteShape(shape);
+        }
+
+        // Clear shapes cache
+        out.isect_shapes.clear();
+
+        // Create new shapes
+        std::unique_ptr<Iterator> shape_iter(scene.CreateShapeIterator());
+
+        if (!shape_iter->IsValid())
+        {
+            throw std::runtime_error("No shapes in the scene");
+        }
+
+        int id = 1;
+        for (; shape_iter->IsValid(); shape_iter->Next())
+        {
+            auto mesh = shape_iter->ItemAs<Mesh const>();
+
+            auto shape = m_api->CreateMesh(
+                // Vertices starting from the first one
+                (float*)mesh->GetVertices(),
+                // Number of vertices
+                static_cast<int>(mesh->GetNumVertices()),
+                // Stride
+                sizeof(float3),
+                // TODO: make API signature const
+                reinterpret_cast<int const*>(mesh->GetIndices()),
+                // Index stride
+                0,
+                // All triangles
+                nullptr,
+                // Number of primitives
+                static_cast<int>(mesh->GetNumIndices() / 3)
+            );
+
+            auto transform = mesh->GetTransform();
+            shape->SetTransform(transform, inverse(transform));
+            shape->SetId(id++);
+            out.isect_shapes.push_back(shape);
+        }
+    }
+
     void SceneTracker::UpdateCamera(Scene1 const& scene, Collector& mat_collector, Collector& tex_collector, ClwScene& out) const
     {
         // TODO: support different camera types here
@@ -371,6 +407,9 @@ namespace Baikal
 
         // Unmap camera buffer
         m_context.UnmapBuffer(0, out.camera, data);
+
+        // Drop camera dirty flag
+        camera->SetDirty(false);
     }
 
     void SceneTracker::UpdateShapes(Scene1 const& scene, Collector& mat_collector, Collector& tex_collector, ClwScene& out) const
@@ -474,6 +513,9 @@ namespace Baikal
             std::fill(matids + num_matids_written, matids + num_matids_written + mesh_num_indices / 3, matidx);
 
             num_matids_written += mesh_num_indices / 3;
+
+            // Drop dirty flas
+            mesh->SetDirty(false);
         }
 
         m_context.UnmapBuffer(0, out.vertices, vertices);
@@ -545,54 +587,12 @@ namespace Baikal
 
         UpdateTextures(scene, mat_collector, tex_collector, out);
 
-
-        //Volume vol =
+        UpdateIntersector(scene, out);
 
         // Temporary code
         ClwScene::Volume vol = {(ClwScene::VolumeType)1, (ClwScene::PhaseFunction)0, 0, 0, {0.09f, 0.09f, 0.09f}, {0.1f, 0.1f, 0.1f}, {0.0f, 0.0f, 0.0f}};
 
         out.volumes = m_context.CreateBuffer<ClwScene::Volume>(1, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &vol);
-
-        std::unique_ptr<Iterator> shape_iter(scene.CreateShapeIterator());
-
-        // Enumerate all shapes in the scene
-        // and submit to RadeonRays API
-        int id = 1;
-        for (;shape_iter->IsValid(); shape_iter->Next())
-        {
-            RadeonRays::Shape* shape = nullptr;
-
-            auto mesh = shape_iter->ItemAs<Mesh const>();
-
-            shape = m_api->CreateMesh(
-                                      // Vertices starting from the first one
-                                      (float*)mesh->GetVertices(),
-                                      // Number of vertices
-                                      static_cast<int>(mesh->GetNumVertices()),
-                                      // Stride
-                                      sizeof(float3),
-                                      // TODO: make API signature const
-                                      reinterpret_cast<int const*>(mesh->GetIndices()),
-                                      // Index stride
-                                      0,
-                                      // All triangles
-                                      nullptr,
-                                      // Number of primitives
-                                      static_cast<int>(mesh->GetNumIndices() / 3)
-                                      );
-
-            // TODO: support this
-
-            //shape->SetLinearVelocity(scene.shapes_[i].linearvelocity);
-
-            //shape->SetAngularVelocity(scene.shapes_[i].angularvelocity);
-
-            //shape->SetTransform(scene.shapes_[i].m, inverse(scene.shapes_[i].m));
-
-            shape->SetId(id++);
-
-            out.isect_shapes.push_back(shape);
-        }
     }
 
     void SceneTracker::ReloadIntersector(Scene1 const& scene, ClwScene& inout) const
@@ -1015,7 +1015,8 @@ namespace Baikal
         {
             for (;light_iter->IsValid(); light_iter->Next())
             {
-                WriteLight(scene, light_iter->ItemAs<Light const>(), tex_collector, lights + num_lights_written);
+                auto light = light_iter->ItemAs<Light const>();
+                WriteLight(scene, light, tex_collector, lights + num_lights_written);
                 ++num_lights_written;
 
                 // TODO: temporary code
@@ -1025,6 +1026,8 @@ namespace Baikal
                 {
                     out.envmapidx = num_lights_written - 1;
                 }
+
+                light->SetDirty(false);
             }
         }
 
