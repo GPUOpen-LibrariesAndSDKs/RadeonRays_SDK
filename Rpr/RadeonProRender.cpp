@@ -36,7 +36,7 @@ THE SOFTWARE.
 using namespace RadeonRays;
 using namespace Baikal;
 
-typedef std::vector<Material*> MaterialSystem;
+typedef std::vector<rpr_material_node> MaterialSystem;
 struct Context
 {
     Context(): current_scene(nullptr){};
@@ -1164,34 +1164,45 @@ rpr_int rprMaterialSystemCreateNode(rpr_material_system in_matsys, rpr_material_
     MaterialSystem* sys = static_cast<MaterialSystem*>(in_matsys);
 
     //create material
-    Material* mat = nullptr;
+    rpr_material_node node = nullptr;
     switch (in_type)
     {
     case RPR_MATERIAL_NODE_DIFFUSE:
-        mat = new SingleBxdf(SingleBxdf::BxdfType::kLambert);
+    {
+        SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kLambert);
         mat->SetTwoSided(true);
+        node = mat;
         break;
+    }
     case RPR_MATERIAL_NODE_MICROFACET:
-        mat = new SingleBxdf(SingleBxdf::BxdfType::kMicrofacetBeckmann);
+    {
+        SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kMicrofacetBeckmann);
         mat->SetTwoSided(true);
+        node = mat;
         break;
+    }
     case RPR_MATERIAL_NODE_IMAGE_TEXTURE:
-        //TODO fix using kZero material for texture
-        mat = new SingleBxdf(SingleBxdf::BxdfType::kZero);
+        node = new Texture();
         break;
     case RPR_MATERIAL_NODE_REFLECTION:
-        mat = new SingleBxdf(SingleBxdf::BxdfType::kIdealReflect);
+    {
+        SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kIdealReflect);
         mat->SetTwoSided(true);
+        node = mat;
         break;
+    }
     case RPR_MATERIAL_NODE_REFRACTION:
-        mat = new SingleBxdf(SingleBxdf::BxdfType::kIdealRefract);
+    { 
+        SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kIdealRefract);
         mat->SetTwoSided(true);
+        node = mat;
         break;
+    }
     default:
         return RPR_ERROR_UNIMPLEMENTED;
     }
-    sys->push_back(mat);
-    *out_node = mat;
+    sys->push_back(node);
+    *out_node = node;
     
     return RPR_SUCCESS;
 }
@@ -1205,7 +1216,12 @@ rpr_int rprMaterialNodeSetInputN(rpr_material_node in_node, rpr_char const * in_
 
     //cast data
     SingleBxdf* mat = static_cast<SingleBxdf*>(in_node);
-    SingleBxdf* input_mat = static_cast<SingleBxdf*>(in_input_node);
+    //in_node cab be Texture(RPR_MATERIAL_NODE_IMAGE_TEXTURE case) or material
+    SceneObject* input_node = static_cast<SceneObject*>(in_input_node);
+    Texture* input_tex = dynamic_cast<Texture*>(input_node);
+    SingleBxdf* input_mat = dynamic_cast<SingleBxdf*>(input_node);
+    
+    //convert input name
     std::string input_name;
     if (!strcmp(in_input, "color"))
     {
@@ -1215,15 +1231,18 @@ rpr_int rprMaterialNodeSetInputN(rpr_material_node in_node, rpr_char const * in_
     {
         return RPR_ERROR_UNIMPLEMENTED;
     }
-    //if input zero - need to get textura from its albedo input
-    if (input_mat->GetBxdfType() == SingleBxdf::BxdfType::kZero)
+
+    if (input_tex)
     {
-        const Texture* tex = input_mat->GetInputValue("albedo").tex_value;
-        mat->SetInputValue(input_name, tex);
+        mat->SetInputValue(input_name, input_tex);
+    }
+    else if(input_mat)
+    {
+        mat->SetInputValue(input_name, input_mat);
     }
     else
     {
-        mat->SetInputValue(input_name, input_mat);
+        return RPR_ERROR_INVALID_PARAMETER_TYPE;
     }
 
     return RPR_SUCCESS;
@@ -1275,17 +1294,41 @@ rpr_int rprMaterialNodeSetInputImageData(rpr_material_node in_node, rpr_char con
         return RPR_ERROR_INVALID_PARAMETER;
     }
     //get material and texture
-    SingleBxdf* mat = static_cast<SingleBxdf*>(in_node);
+    SceneObject* node = static_cast<SceneObject*>(in_node);
+    //in_node can be material or Texture(RPR_MATERIAL_NODE_IMAGE_TEXTURE case)
+    SingleBxdf* mat = dynamic_cast<SingleBxdf*>(node);
+    Texture* image_mat = dynamic_cast<Texture*>(node);
+
     Texture* tex = static_cast<Texture*>(in_image);
 
-    //TODO
-    //zero - should be texture node data indput
-    if (mat->GetBxdfType() != SingleBxdf::BxdfType::kZero && !strcmp(in_input, "data"))
+    if (mat)
     {
-        return RPR_ERROR_UNIMPLEMENTED;
+        std::string name;
+        if (!strcmp("color", in_input))
+        {
+            name = "albedo";
+        }
+        else
+        {
+            return RPR_ERROR_UNIMPLEMENTED;
+        }
+        mat->SetInputValue(name, tex);
+    }
+    else if (image_mat)
+    {
+        //shpuld be "data" tag for RPR_MATERIAL_NODE_IMAGE_TEXTURE
+        if (strcmp(in_input, "data"))
+            return RPR_ERROR_INVALID_TAG;
+        //allocate and copy data for texture
+        char* tex_data = new char[tex->GetSizeInBytes()];
+        memcpy(tex_data, tex->GetData(), tex->GetSizeInBytes());
+        image_mat->SetData(tex_data, tex->GetSize(), tex->GetFormat());
+    }
+    else
+    {
+        return RPR_ERROR_INVALID_PARAMETER;
     }
 
-    mat->SetInputValue("albedo", tex);
 
     return RPR_SUCCESS;
 }
