@@ -25,31 +25,29 @@ THE SOFTWARE.
 #include "../App/CL/utils.cl"
 #include "../App/CL/payload.cl"
 
-typedef struct _Scene
-    {
-        // Vertices
-        __global float3 const* vertices;
-        // Normals
-        __global float3 const* normals;
-        // UVs
-        __global float2 const* uvs;
-        // Indices
-        __global int const* indices;
-        // Shapes
-        __global Shape const* shapes;
-        // Material IDs
-        __global int const* materialids;
-        // Materials
-        __global Material const* materials;
-        // Emissive objects
-        __global Light const* lights;
-        // Envmap idx
-        int envmapidx;
-        // Envmap multiplier
-        float envmapmul;
-        // Number of emissive objects
-        int num_lights;
-    } Scene;
+typedef struct
+{
+    // Vertices
+    __global float3 const* vertices;
+    // Normals
+    __global float3 const* normals;
+    // UVs
+    __global float2 const* uvs;
+    // Indices
+    __global int const* indices;
+    // Shapes
+    __global Shape const* shapes;
+    // Material IDs
+    __global int const* materialids;
+    // Materials
+    __global Material const* materials;
+    // Emissive objects
+    __global Light const* lights;
+    // Envmap idx
+    int envmapidx;
+    // Number of emissive objects
+    int num_lights;
+} Scene;
 
 /// Fill DifferentialGeometry structure based on intersection info from RadeonRays
 void DifferentialGeometry_Fill(// Scene
@@ -128,8 +126,6 @@ void DifferentialGeometry_Fill(// Scene
         diffgeo->dpdu = normalize(GetOrthoVector(diffgeo->n));
         diffgeo->dpdv = normalize(cross(diffgeo->n, diffgeo->dpdu));
     }
-
-
 
     // Fix all to be orthogonal
     //diffgeo->dpdv = normalize(cross(diffgeo->ng, diffgeo->dpdu));

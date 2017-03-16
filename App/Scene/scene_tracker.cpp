@@ -1008,6 +1008,9 @@ namespace Baikal
 
         std::unique_ptr<Iterator> light_iter(scene.CreateLightIterator());
 
+        // Disable IBL by default
+        out.envmapidx = -1;
+
         // Serialize
         {
             for (;light_iter->IsValid(); light_iter->Next())
@@ -1020,8 +1023,7 @@ namespace Baikal
                 auto ibl = dynamic_cast<ImageBasedLight const*>(light_iter->ItemAs<Light const>());
                 if (ibl)
                 {
-                    out.envmapmul = ibl->GetMultiplier();
-                    out.envmapidx = tex_collector.GetItemIndex(ibl->GetTexture());
+                    out.envmapidx = num_lights_written - 1;
                 }
             }
         }
