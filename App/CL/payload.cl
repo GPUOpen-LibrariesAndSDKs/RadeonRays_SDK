@@ -22,6 +22,7 @@ THE SOFTWARE.
 #ifndef PAYLOAD_CL
 #define PAYLOAD_CL
 
+// Matrix
 typedef struct
 {
     float4 m0;
@@ -30,25 +31,24 @@ typedef struct
     float4 m3;
 } float4x4;
 
-/// Camera descriptor
-///
+// Camera
 typedef struct
     {
-        // Camera coordinate frame
+        // Coordinate frame
         float3 forward;
         float3 right;
         float3 up;
+        // Position
         float3 p;
 
         // Image plane width & height in current units
         float2 dim;
-
         // Near and far Z
         float2 zcap;
         // Focal lenght
         float focal_length;
-        // Camera aspect ratio
-        float aspect;
+        // Camera aspect_ratio ratio
+        float aspect_ratio;
         float focus_distance;
         float aperture;
     } Camera;

@@ -409,7 +409,7 @@ namespace Baikal
         data->right = camera->GetRightVector();
         data->p = camera->GetPosition();
         data->aperture = camera->GetAperture();
-        data->aspect = camera->GetAspectRatio();
+        data->aspect_ratio = camera->GetAspectRatio();
         data->dim = camera->GetSensorSize();
         data->focal_length = camera->GetFocalLength();
         data->focus_distance = camera->GetFocusDistance();
