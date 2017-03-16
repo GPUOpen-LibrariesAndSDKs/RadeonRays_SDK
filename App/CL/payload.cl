@@ -22,6 +22,14 @@ THE SOFTWARE.
 #ifndef PAYLOAD_CL
 #define PAYLOAD_CL
 
+typedef struct
+{
+    float4 m0;
+    float4 m1;
+    float4 m2;
+    float4 m3;
+} float4x4;
+
 /// Camera descriptor
 ///
 typedef struct
@@ -61,10 +69,7 @@ typedef struct
     // Angular velocity
     float4 angularvelocity;
     // Transform in row major format
-    float4 m0;
-    float4 m1;
-    float4 m2;
-    float4 m3;
+    float4x4 transform;
 } Shape;
 
 
@@ -234,21 +239,6 @@ typedef
         int extra;
     } Texture;
 
-typedef struct __matrix
-{
-    union
-    {
-        struct
-        {
-            float4 m0;
-            float4 m1;
-            float4 m2;
-            float4 m3;
-        } rows;
-
-        float m[16];
-    };
-} matrix;
 
 // Hit data
 typedef struct _DifferentialGeometry
@@ -266,8 +256,8 @@ typedef struct _DifferentialGeometry
     float3 dpdv;
     float  area;
 
-    matrix world_to_tangent;
-    matrix tangent_to_world;
+    float4x4 world_to_tangent;
+    float4x4 tangent_to_world;
 
     // Material
     Material mat;
