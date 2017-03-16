@@ -10,7 +10,7 @@
 namespace Baikal
 {
     using namespace RadeonRays;
-    
+
     enum class CameraType
     {
         kDefault,

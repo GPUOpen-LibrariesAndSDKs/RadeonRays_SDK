@@ -556,12 +556,14 @@ rpr_int rprShapeSetTransform(rpr_shape in_shape, rpr_bool transpose, rpr_float c
     matrix m;
     //fill matrix
     memcpy(m.m, transform, 16  * sizeof(rpr_float));
+
     if (transpose)
     {
         m.transpose();
     }
 
-    return RPR_ERROR_UNIMPLEMENTED;
+    mesh->SetTransform(m);
+    return RPR_SUCCESS;
 }
 
 rpr_int rprShapeSetSubdivisionFactor(rpr_shape shape, rpr_uint factor)
