@@ -42,7 +42,7 @@ namespace Baikal
     class Material;
     class Light;
     class Texture;
-    
+
 
     /**
      \brief Tracks changes of a scene and serialized data into GPU memory when needed.
@@ -106,8 +106,9 @@ namespace Baikal
         RadeonRays::IntersectionApi* m_api;
         // Current scene
         mutable Scene1 const* m_current_scene;
-
         // Scene cache map (CPU scene -> GPU scene mapping)
         mutable std::map<Scene1 const*, ClwScene> m_scene_cache;
+        // Default material
+        std::unique_ptr<Material> m_default_material;
     };
 }

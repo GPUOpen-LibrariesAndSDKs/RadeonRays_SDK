@@ -169,7 +169,7 @@ __kernel void ShadeVolume(
         float3 le = Light_Sample(light_idx, &scene, &dg, TEXTURE_ARGS, Sampler_Sample2D(&sampler, SAMPLER_ARGS), &wo, &pdf);
 
         // Generate shadow ray
-        float shadow_ray_length = 0.999f * length(wo);
+        float shadow_ray_length = length(wo);
         Ray_Init(shadowrays + globalid, dg.p, normalize(wo), shadow_ray_length, 0.f, 0xFFFFFFFF);
 
         // Evaluate volume transmittion along the shadow ray (it is incorrect if the light source is outside of the
@@ -443,9 +443,10 @@ __kernel void ShadeSurface(
         if (NON_BLACK(radiance))
         {
             // Generate shadow ray
-            float shadow_ray_length = 0.9999f * (1.f - CRAZY_LOW_DISTANCE) * length(wo);
-            float3 shadow_ray_dir = normalize(wo);
             float3 shadow_ray_o = diffgeo.p + CRAZY_LOW_DISTANCE * s * diffgeo.ng;
+            float3 temp = diffgeo.p + wo - shadow_ray_o;
+            float3 shadow_ray_dir = normalize(temp);
+            float shadow_ray_length = length(temp);
             int shadow_ray_mask = 0xFFFFFFFF;
 
             Ray_Init(shadowrays + globalid, shadow_ray_o, shadow_ray_dir, shadow_ray_length, 0.f, shadow_ray_mask);

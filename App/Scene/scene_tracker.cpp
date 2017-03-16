@@ -18,7 +18,8 @@ using namespace RadeonRays;
 namespace Baikal
 {
     SceneTracker::SceneTracker(CLWContext context, int devidx)
-    : m_context(context)
+        : m_context(context)
+        , m_default_material(new SingleBxdf(SingleBxdf::BxdfType::kLambert))
     {
         // Get raw CL data out of CLW context
         cl_device_id id = m_context.GetDevice(devidx).GetID();
@@ -36,6 +37,7 @@ namespace Baikal
         m_api->SetOption("acc.type", "fatbvh");
         m_api->SetOption("bvh.builder", "sah");
 #endif
+        m_default_material->SetInputValue("albedo", float4(0.5f, 0.6f, 0.5f, 1.f));
     }
 
     SceneTracker::~SceneTracker()
@@ -64,47 +66,54 @@ namespace Baikal
         std::unique_ptr<Iterator> shape_iter(scene.CreateShapeIterator());
         std::unique_ptr<Iterator> light_iter(scene.CreateLightIterator());
 
+        auto default_material = m_default_material.get();
         // Collect materials from shapes first
         mat_collector.Collect(shape_iter.get(),
-                              // This function adds all materials to resulting map
-                              // recursively via Material dependency API
-                              [](void const* item) -> std::set<void const*>
-                              {
-                                  // Resulting material set
-                                  std::set<void const*> mats;
-                                  // Material stack
-                                  std::stack<Material const*> material_stack;
+            // This function adds all materials to resulting map
+            // recursively via Material dependency API
+            [default_material](void const* item) -> std::set<void const*>
+        {
+            // Resulting material set
+            std::set<void const*> mats;
+            // Material stack
+            std::stack<Material const*> material_stack;
 
-                                  // Get material from current shape
-                                  auto shape = reinterpret_cast<Shape const*>(item);
-                                  auto material = shape->GetMaterial();
+            // Get material from current shape
+            auto shape = reinterpret_cast<Shape const*>(item);
+            auto material = shape->GetMaterial();
 
-                                  // Push to stack as an initializer
-                                  material_stack.push(material);
+            // If shape does not have a material, use default one
+            if (!material)
+            {
+                material = default_material;
+            }
 
-                                  // Drain the stack
-                                  while (!material_stack.empty())
-                                  {
-                                      // Get current material
-                                      Material const* m = material_stack.top();
-                                      material_stack.pop();
+            // Push to stack as an initializer
+            material_stack.push(material);
 
-                                      // Emplace into the set
-                                      mats.emplace(m);
+            // Drain the stack
+            while (!material_stack.empty())
+            {
+                // Get current material
+                Material const* m = material_stack.top();
+                material_stack.pop();
 
-                                      // Create dependency iterator
-                                      std::unique_ptr<Iterator> mat_iter(m->CreateMaterialIterator());
+                // Emplace into the set
+                mats.emplace(m);
 
-                                      // Push all dependencies into the stack
-                                      for (;mat_iter->IsValid(); mat_iter->Next())
-                                      {
-                                          material_stack.push(mat_iter->ItemAs<Material const>());
-                                      }
-                                  }
+                // Create dependency iterator
+                std::unique_ptr<Iterator> mat_iter(m->CreateMaterialIterator());
 
-                                  // Return resulting set
-                                  return mats;
-                              });
+                // Push all dependencies into the stack
+                for (; mat_iter->IsValid(); mat_iter->Next())
+                {
+                    material_stack.push(mat_iter->ItemAs<Material const>());
+                }
+            }
+
+            // Return resulting set
+            return mats;
+        });
 
         // Commit stuff (we can iterate over it after commit has happened)
         mat_collector.Commit();
@@ -115,48 +124,48 @@ namespace Baikal
 
         // Collect textures from materials
         tex_collector.Collect(mat_iter.get(),
-                              [](void const* item) -> std::set<void const*>
-                              {
-                                  // Texture set
-                                  std::set<void const*> textures;
+            [](void const* item) -> std::set<void const*>
+        {
+            // Texture set
+            std::set<void const*> textures;
 
-                                  auto material = reinterpret_cast<Material const*>(item);
+            auto material = reinterpret_cast<Material const*>(item);
 
-                                  // Create texture dependency iterator
-                                  std::unique_ptr<Iterator> tex_iter(material->CreateTextureIterator());
+            // Create texture dependency iterator
+            std::unique_ptr<Iterator> tex_iter(material->CreateTextureIterator());
 
-                                  // Emplace all dependent textures
-                                  for (;tex_iter->IsValid(); tex_iter->Next())
-                                  {
-                                      textures.emplace(tex_iter->ItemAs<Texture const>());
-                                  }
+            // Emplace all dependent textures
+            for (; tex_iter->IsValid(); tex_iter->Next())
+            {
+                textures.emplace(tex_iter->ItemAs<Texture const>());
+            }
 
-                                  // Return resulting set
-                                  return textures;
-                              });
+            // Return resulting set
+            return textures;
+        });
 
 
         // Collect textures from lights
         tex_collector.Collect(light_iter.get(),
-                              [](void const* item) -> std::set<void const*>
-                              {
-                                  // Resulting set
-                                  std::set<void const*> textures;
+            [](void const* item) -> std::set<void const*>
+        {
+            // Resulting set
+            std::set<void const*> textures;
 
-                                  auto light = reinterpret_cast<Light const*>(item);
+            auto light = reinterpret_cast<Light const*>(item);
 
-                                  // Create texture dependency iterator
-                                  std::unique_ptr<Iterator> tex_iter(light->CreateTextureIterator());
+            // Create texture dependency iterator
+            std::unique_ptr<Iterator> tex_iter(light->CreateTextureIterator());
 
-                                  // Emplace all dependent textures
-                                  for (;tex_iter->IsValid(); tex_iter->Next())
-                                  {
-                                      textures.emplace(tex_iter->ItemAs<Texture const>());
-                                  }
+            // Emplace all dependent textures
+            for (; tex_iter->IsValid(); tex_iter->Next())
+            {
+                textures.emplace(tex_iter->ItemAs<Texture const>());
+            }
 
-                                  // Return resulting set
-                                  return textures;
-                              });
+            // Return resulting set
+            return textures;
+        });
 
         // Commit textures
         tex_collector.Commit();
@@ -183,10 +192,10 @@ namespace Baikal
 
             // Drop dirty flags for materials
             mat_collector.Finalize([](void const* item)
-                                   {
-                                       auto material = reinterpret_cast<Material const*>(item);
-                                       material->SetDirty(false);
-                                   });
+            {
+                auto material = reinterpret_cast<Material const*>(item);
+                material->SetDirty(false);
+            });
 
             // Return the scene
             return res.first->second;
@@ -227,7 +236,7 @@ namespace Baikal
                 // Check if light parameters have been changed
                 bool lights_changed = false;
 
-                for (;light_iter->IsValid(); light_iter->Next())
+                for (; light_iter->IsValid(); light_iter->Next())
                 {
                     auto light = light_iter->ItemAs<Light const>();
 
@@ -258,7 +267,7 @@ namespace Baikal
                 // Check if shape parameters have been changed
                 bool shapes_changed = false;
 
-                for (;shape_iter->IsValid(); shape_iter->Next())
+                for (; shape_iter->IsValid(); shape_iter->Next())
                 {
                     auto shape = shape_iter->ItemAs<Shape const>();
 
@@ -286,12 +295,12 @@ namespace Baikal
             // We are passing material dirty state detection function in there.
             if (!out.material_bundle ||
                 mat_collector.NeedsUpdate(out.material_bundle.get(),
-                                          [](void const* material)->bool
-                                          {
-                                              auto mat = reinterpret_cast<Material const*>(material);
-                                              return mat->IsDirty();
-                                          }
-                                          ))
+                    [](void const* ptr)->bool
+            {
+                auto mat = reinterpret_cast<Material const*>(ptr);
+                return mat->IsDirty();
+            }
+                ))
             {
                 UpdateMaterials(scene, mat_collector, tex_collector, out);
             }
@@ -299,7 +308,9 @@ namespace Baikal
             // If textures need an update, do it.
             if (tex_collector.GetNumItems() > 0 && (
                 !out.texture_bundle ||
-                tex_collector.NeedsUpdate(out.texture_bundle.get(), [](void const*){return false;})))
+                tex_collector.NeedsUpdate(out.texture_bundle.get(), [](void const* ptr) {
+                auto tex = reinterpret_cast<Texture const*>(ptr); 
+                return tex->IsDirty(); })))
             {
                 UpdateTextures(scene, mat_collector, tex_collector, out);
             }
@@ -319,10 +330,10 @@ namespace Baikal
 
             // Clear material dirty flags
             mat_collector.Finalize([](void const* item)
-                                   {
-                                       auto material = reinterpret_cast<Material const*>(item);
-                                       material->SetDirty(false);
-                                   });
+            {
+                auto material = reinterpret_cast<Material const*>(item);
+                material->SetDirty(false);
+            });
 
             // Return the scene
             return out;
@@ -398,7 +409,7 @@ namespace Baikal
         data->right = camera->GetRightVector();
         data->p = camera->GetPosition();
         data->aperture = camera->GetAperture();
-        data->aspect=camera->GetAspectRatio();
+        data->aspect = camera->GetAspectRatio();
         data->dim = camera->GetSensorSize();
         data->focal_length = camera->GetFocalLength();
         data->focus_distance = camera->GetFocusDistance();
@@ -428,7 +439,7 @@ namespace Baikal
         std::unique_ptr<Iterator> shape_iter(scene.CreateShapeIterator());
 
         // Calculate array sizes upfront
-        for (;shape_iter->IsValid(); shape_iter->Next())
+        for (; shape_iter->IsValid(); shape_iter->Next())
         {
             auto mesh = shape_iter->ItemAs<Mesh const>();
 
@@ -462,7 +473,7 @@ namespace Baikal
         m_context.MapBuffer(0, out.shapes, CL_MAP_WRITE, &shapes).Wait();
 
         shape_iter->Reset();
-        for (;shape_iter->IsValid(); shape_iter->Next())
+        for (; shape_iter->IsValid(); shape_iter->Next())
         {
             // TODO: support instances here
             auto mesh = shape_iter->ItemAs<Mesh const>();
@@ -511,7 +522,14 @@ namespace Baikal
             shapes[num_shapes_written] = shape;
             ++num_shapes_written;
 
-            auto matidx = mat_collector.GetItemIndex(mesh->GetMaterial());
+            // Check if mesh has a material and use default if not
+            auto material = mesh->GetMaterial();
+            if (!material)
+            {
+                material = m_default_material.get();
+            }
+
+            auto matidx = mat_collector.GetItemIndex(material);
             std::fill(matids + num_matids_written, matids + num_matids_written + mesh_num_indices / 3, matidx);
 
             num_matids_written += mesh_num_indices / 3;
@@ -530,40 +548,40 @@ namespace Baikal
 
     void SceneTracker::UpdateMaterials(Scene1 const& scene, Collector& mat_collector, Collector& tex_collector, ClwScene& out) const
     {
-            // Get new buffer size
-            std::size_t mat_buffer_size = mat_collector.GetNumItems();
+        // Get new buffer size
+        std::size_t mat_buffer_size = mat_collector.GetNumItems();
 
-            // Recreate material buffer if it needs resize
-            if (mat_buffer_size > out.materials.GetElementCount())
+        // Recreate material buffer if it needs resize
+        if (mat_buffer_size > out.materials.GetElementCount())
+        {
+            // Create material buffer
+            out.materials = m_context.CreateBuffer<ClwScene::Material>(mat_buffer_size, CL_MEM_READ_ONLY);
+        }
+
+        ClwScene::Material* materials = nullptr;
+        std::size_t num_materials_written = 0;
+
+        // Map GPU materials buffer
+        m_context.MapBuffer(0, out.materials, CL_MAP_WRITE, &materials).Wait();
+
+        // Serialize
+        {
+            // Update material bundle first to be able to track differences
+            out.material_bundle.reset(mat_collector.CreateBundle());
+
+            // Create material iterator
+            std::unique_ptr<Iterator> mat_iter(mat_collector.CreateIterator());
+
+            // Iterate and serialize
+            for (; mat_iter->IsValid(); mat_iter->Next())
             {
-                // Create material buffer
-                out.materials = m_context.CreateBuffer<ClwScene::Material>(mat_buffer_size, CL_MEM_READ_ONLY);
+                WriteMaterial(mat_iter->ItemAs<Material const>(), mat_collector, tex_collector, materials + num_materials_written);
+                ++num_materials_written;
             }
+        }
 
-            ClwScene::Material* materials = nullptr;
-            std::size_t num_materials_written = 0;
-
-            // Map GPU materials buffer
-            m_context.MapBuffer(0, out.materials, CL_MAP_WRITE, &materials).Wait();
-
-            // Serialize
-            {
-                // Update material bundle first to be able to track differences
-                out.material_bundle.reset(mat_collector.CreateBundle());
-
-                // Create material iterator
-                std::unique_ptr<Iterator> mat_iter(mat_collector.CreateIterator());
-
-                // Iterate and serialize
-                for (;mat_iter->IsValid(); mat_iter->Next())
-                {
-                    WriteMaterial(mat_iter->ItemAs<Material const>(), mat_collector, tex_collector, materials + num_materials_written);
-                    ++num_materials_written;
-                }
-            }
-
-            // Unmap material buffer
-            m_context.UnmapBuffer(0, out.materials, materials);
+        // Unmap material buffer
+        m_context.UnmapBuffer(0, out.materials, materials);
     }
 
     void SceneTracker::RecompileFull(Scene1 const& scene, Collector& mat_collector, Collector& tex_collector, ClwScene& out) const
@@ -592,7 +610,7 @@ namespace Baikal
         UpdateIntersector(scene, out);
 
         // Temporary code
-        ClwScene::Volume vol = {(ClwScene::VolumeType)1, (ClwScene::PhaseFunction)0, 0, 0, {0.09f, 0.09f, 0.09f}, {0.1f, 0.1f, 0.1f}, {0.0f, 0.0f, 0.0f}};
+        ClwScene::Volume vol = { (ClwScene::VolumeType)1, (ClwScene::PhaseFunction)0, 0, 0, {0.09f, 0.09f, 0.09f}, {0.1f, 0.1f, 0.1f}, {0.0f, 0.0f, 0.0f} };
 
         out.volumes = m_context.CreateBuffer<ClwScene::Volume>(1, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &vol);
     }
@@ -642,7 +660,7 @@ namespace Baikal
         std::unique_ptr<Iterator> tex_iter(tex_collector.CreateIterator());
 
         // Iterate and serialize
-        for (;tex_iter->IsValid(); tex_iter->Next())
+        for (; tex_iter->IsValid(); tex_iter->Next())
         {
             auto tex = tex_iter->ItemAs<Texture const>();
 
@@ -672,7 +690,7 @@ namespace Baikal
         m_context.MapBuffer(0, out.texturedata, CL_MAP_WRITE, &data).Wait();
 
         // Write texture data for all textures
-        for (;tex_iter->IsValid(); tex_iter->Next())
+        for (; tex_iter->IsValid(); tex_iter->Next())
         {
             auto tex = tex_iter->ItemAs<Texture const>();
 
@@ -693,26 +711,26 @@ namespace Baikal
         {
             switch (bxdf->GetBxdfType())
             {
-                case SingleBxdf::BxdfType::kZero: return ClwScene::Bxdf::kZero;
-                case SingleBxdf::BxdfType::kLambert: return ClwScene::Bxdf::kLambert;
-                case SingleBxdf::BxdfType::kEmissive: return ClwScene::Bxdf::kEmissive;
-                case SingleBxdf::BxdfType::kPassthrough: return ClwScene::Bxdf::kPassthrough;
-                case SingleBxdf::BxdfType::kTranslucent: return ClwScene::Bxdf::kTranslucent;
-                case SingleBxdf::BxdfType::kIdealReflect: return ClwScene::Bxdf::kIdealReflect;
-                case SingleBxdf::BxdfType::kIdealRefract: return ClwScene::Bxdf::kIdealRefract;
-                case SingleBxdf::BxdfType::kMicrofacetGGX: return ClwScene::Bxdf::kMicrofacetGGX;
-                case SingleBxdf::BxdfType::kMicrofacetBeckmann: return ClwScene::Bxdf::kMicrofacetBeckmann;
-                case SingleBxdf::BxdfType::kMicrofacetRefractionGGX: return ClwScene::Bxdf::kMicrofacetRefractionGGX;
-                case SingleBxdf::BxdfType::kMicrofacetRefractionBeckmann: return ClwScene::Bxdf::kMicrofacetRefractionBeckmann;
+            case SingleBxdf::BxdfType::kZero: return ClwScene::Bxdf::kZero;
+            case SingleBxdf::BxdfType::kLambert: return ClwScene::Bxdf::kLambert;
+            case SingleBxdf::BxdfType::kEmissive: return ClwScene::Bxdf::kEmissive;
+            case SingleBxdf::BxdfType::kPassthrough: return ClwScene::Bxdf::kPassthrough;
+            case SingleBxdf::BxdfType::kTranslucent: return ClwScene::Bxdf::kTranslucent;
+            case SingleBxdf::BxdfType::kIdealReflect: return ClwScene::Bxdf::kIdealReflect;
+            case SingleBxdf::BxdfType::kIdealRefract: return ClwScene::Bxdf::kIdealRefract;
+            case SingleBxdf::BxdfType::kMicrofacetGGX: return ClwScene::Bxdf::kMicrofacetGGX;
+            case SingleBxdf::BxdfType::kMicrofacetBeckmann: return ClwScene::Bxdf::kMicrofacetBeckmann;
+            case SingleBxdf::BxdfType::kMicrofacetRefractionGGX: return ClwScene::Bxdf::kMicrofacetRefractionGGX;
+            case SingleBxdf::BxdfType::kMicrofacetRefractionBeckmann: return ClwScene::Bxdf::kMicrofacetRefractionBeckmann;
             }
         }
         else if (auto mat = dynamic_cast<MultiBxdf const*>(material))
         {
             switch (mat->GetType())
             {
-                case MultiBxdf::Type::kMix: return ClwScene::Bxdf::kMix;
-                case MultiBxdf::Type::kLayered: return ClwScene::Bxdf::kLayered;
-                case MultiBxdf::Type::kFresnelBlend: return ClwScene::Bxdf::kFresnelBlend;
+            case MultiBxdf::Type::kMix: return ClwScene::Bxdf::kMix;
+            case MultiBxdf::Type::kLayered: return ClwScene::Bxdf::kLayered;
+            case MultiBxdf::Type::kFresnelBlend: return ClwScene::Bxdf::kFresnelBlend;
             }
         }
         else
@@ -733,84 +751,149 @@ namespace Baikal
 
         switch (type)
         {
-            case ClwScene::Bxdf::kZero:
-                clw_material->kx = RadeonRays::float4();
-                break;
+        case ClwScene::Bxdf::kZero:
+            clw_material->kx = RadeonRays::float4();
+            break;
 
             // We need to convert roughness for the following materials
-            case ClwScene::Bxdf::kMicrofacetGGX:
-            case ClwScene::Bxdf::kMicrofacetBeckmann:
-            case ClwScene::Bxdf::kMicrofacetRefractionGGX:
-            case ClwScene::Bxdf::kMicrofacetRefractionBeckmann:
+        case ClwScene::Bxdf::kMicrofacetGGX:
+        case ClwScene::Bxdf::kMicrofacetBeckmann:
+        case ClwScene::Bxdf::kMicrofacetRefractionGGX:
+        case ClwScene::Bxdf::kMicrofacetRefractionBeckmann:
+        {
+            Material::InputValue value = material->GetInputValue("roughness");
+
+            if (value.type == Material::InputType::kFloat4)
             {
-                Material::InputValue value = material->GetInputValue("roughness");
-
-                if (value.type == Material::InputType::kFloat4)
-                {
-                    clw_material->ns = value.float_value.x;
-                    clw_material->nsmapidx = -1;
-                }
-                else if (value.type == Material::InputType::kTexture)
-                {
-                    clw_material->nsmapidx = value.tex_value ? tex_collector.GetItemIndex(value.tex_value) : -1;
-                }
-                else
-                {
-                    // TODO: should not happen
-                    assert(false);
-                }
-
-                // Intentionally missing break here
+                clw_material->ns = value.float_value.x;
+                clw_material->nsmapidx = -1;
+            }
+            else if (value.type == Material::InputType::kTexture)
+            {
+                clw_material->nsmapidx = value.tex_value ? tex_collector.GetItemIndex(value.tex_value) : -1;
+            }
+            else
+            {
+                // TODO: should not happen
+                assert(false);
             }
 
-            // For the rest we need to conver albedo, normal map, fresnel factor, ior
-            case ClwScene::Bxdf::kLambert:
-            case ClwScene::Bxdf::kEmissive:
-            case ClwScene::Bxdf::kPassthrough:
-            case ClwScene::Bxdf::kTranslucent:
-            case ClwScene::Bxdf::kIdealRefract:
-            case ClwScene::Bxdf::kIdealReflect:
+            // Intentionally missing break here
+        }
+
+        // For the rest we need to conver albedo, normal map, fresnel factor, ior
+        case ClwScene::Bxdf::kLambert:
+        case ClwScene::Bxdf::kEmissive:
+        case ClwScene::Bxdf::kPassthrough:
+        case ClwScene::Bxdf::kTranslucent:
+        case ClwScene::Bxdf::kIdealRefract:
+        case ClwScene::Bxdf::kIdealReflect:
+        {
+            Material::InputValue value = material->GetInputValue("albedo");
+
+            if (value.type == Material::InputType::kFloat4)
             {
-                Material::InputValue value = material->GetInputValue("albedo");
+                clw_material->kx = value.float_value;
+                clw_material->kxmapidx = -1;
+            }
+            else if (value.type == Material::InputType::kTexture)
+            {
+                clw_material->kxmapidx = value.tex_value ? tex_collector.GetItemIndex(value.tex_value) : -1;
+            }
+            else
+            {
+                // TODO: should not happen
+                assert(false);
+            }
 
-                if (value.type == Material::InputType::kFloat4)
-                {
-                    clw_material->kx = value.float_value;
-                    clw_material->kxmapidx = -1;
-                }
-                else if (value.type == Material::InputType::kTexture)
-                {
-                    clw_material->kxmapidx = value.tex_value ? tex_collector.GetItemIndex(value.tex_value) : -1;
-                }
-                else
-                {
-                    // TODO: should not happen
-                    assert(false);
-                }
+            value = material->GetInputValue("normal");
 
-                value = material->GetInputValue("normal");
+            if (value.type == Material::InputType::kTexture)
+            {
+                clw_material->nmapidx = value.tex_value ? tex_collector.GetItemIndex(value.tex_value) : -1;
+            }
+            else
+            {
+                clw_material->nmapidx = -1;
+            }
+
+            value = material->GetInputValue("fresnel");
+
+            if (value.type == Material::InputType::kFloat4)
+            {
+                clw_material->fresnel = value.float_value.x > 0 ? 1.f : 0.f;
+            }
+            else
+            {
+                clw_material->fresnel = 0.f;
+            }
+
+            value = material->GetInputValue("ior");
+
+            if (value.type == Material::InputType::kFloat4)
+            {
+                clw_material->ni = value.float_value.x;
+            }
+            else
+            {
+                clw_material->ni = 1.f;
+            }
+
+            value = material->GetInputValue("roughness");
+
+            if (value.type == Material::InputType::kFloat4)
+            {
+                clw_material->ns = value.float_value.x;
+            }
+            else
+            {
+                clw_material->ns = 0.99f;
+            }
+
+            break;
+        }
+
+        // For compound materials we need to convert dependencies
+        // and weights.
+        case ClwScene::Bxdf::kMix:
+        case ClwScene::Bxdf::kFresnelBlend:
+        {
+            Material::InputValue value0 = material->GetInputValue("base_material");
+            Material::InputValue value1 = material->GetInputValue("top_material");
+
+            if (value0.type == Material::InputType::kMaterial &&
+                value1.type == Material::InputType::kMaterial)
+            {
+                clw_material->brdfbaseidx = mat_collector.GetItemIndex(value0.mat_value);
+                clw_material->brdftopidx = mat_collector.GetItemIndex(value1.mat_value);
+            }
+            else
+            {
+                // Should not happen
+                assert(false);
+            }
+
+            if (type == ClwScene::Bxdf::kMix)
+            {
+                clw_material->fresnel = 0.f;
+
+                Material::InputValue value = material->GetInputValue("weight");
 
                 if (value.type == Material::InputType::kTexture)
                 {
-                    clw_material->nmapidx = value.tex_value ? tex_collector.GetItemIndex(value.tex_value) : -1;
+                    clw_material->nsmapidx = tex_collector.GetItemIndex(value.tex_value);
                 }
                 else
                 {
-                    clw_material->nmapidx = -1;
+                    clw_material->nsmapidx = -1;
+                    clw_material->ns = value.float_value.x;
                 }
+            }
+            else
+            {
+                clw_material->fresnel = 1.f;
 
-                value = material->GetInputValue("fresnel");
-
-                if (value.type == Material::InputType::kFloat4)
-                {
-                    clw_material->fresnel = value.float_value.x > 0 ? 1.f : 0.f;
-                }
-                else
-                {
-                    clw_material->fresnel = 0.f;
-                }
-
-                value = material->GetInputValue("ior");
+                Material::InputValue value = material->GetInputValue("ior");
 
                 if (value.type == Material::InputType::kFloat4)
                 {
@@ -818,79 +901,14 @@ namespace Baikal
                 }
                 else
                 {
-                    clw_material->ni = 1.f;
-                }
-
-                value = material->GetInputValue("roughness");
-
-                if (value.type == Material::InputType::kFloat4)
-                {
-                    clw_material->ns = value.float_value.x;
-                }
-                else
-                {
-                    clw_material->ns = 0.99f;
-                }
-
-                break;
-            }
-
-            // For compound materials we need to convert dependencies
-            // and weights.
-            case ClwScene::Bxdf::kMix:
-            case ClwScene::Bxdf::kFresnelBlend:
-            {
-                Material::InputValue value0 = material->GetInputValue("base_material");
-                Material::InputValue value1 = material->GetInputValue("top_material");
-
-                if (value0.type == Material::InputType::kMaterial &&
-                    value1.type == Material::InputType::kMaterial)
-                {
-                    clw_material->brdfbaseidx = mat_collector.GetItemIndex(value0.mat_value);
-                    clw_material->brdftopidx = mat_collector.GetItemIndex(value1.mat_value);
-                }
-                else
-                {
                     // Should not happen
                     assert(false);
                 }
-
-                if (type == ClwScene::Bxdf::kMix)
-                {
-                    clw_material->fresnel = 0.f;
-
-                    Material::InputValue value = material->GetInputValue("weight");
-
-                    if (value.type == Material::InputType::kTexture)
-                    {
-                        clw_material->nsmapidx = tex_collector.GetItemIndex(value.tex_value);
-                    }
-                    else
-                    {
-                        clw_material->nsmapidx = -1;
-                        clw_material->ns = value.float_value.x;
-                    }
-                }
-                else
-                {
-                    clw_material->fresnel = 1.f;
-
-                    Material::InputValue value = material->GetInputValue("ior");
-
-                    if (value.type == Material::InputType::kFloat4)
-                    {
-                        clw_material->ni = value.float_value.x;
-                    }
-                    else
-                    {
-                        // Should not happen
-                        assert(false);
-                    }
-                }
             }
+        }
 
-            default:
-                break;
+        default:
+            break;
         }
 
         material->SetDirty(false);
@@ -932,62 +950,62 @@ namespace Baikal
 
         switch (type)
         {
-            case ClwScene::kPoint:
+        case ClwScene::kPoint:
+        {
+            clw_light->p = light->GetPosition();
+            clw_light->intensity = light->GetEmittedRadiance();
+            break;
+        }
+
+        case ClwScene::kDirectional:
+        {
+            clw_light->d = light->GetDirection();
+            clw_light->intensity = light->GetEmittedRadiance();
+            break;
+        }
+
+        case ClwScene::kSpot:
+        {
+            clw_light->p = light->GetPosition();
+            clw_light->d = light->GetDirection();
+            clw_light->intensity = light->GetEmittedRadiance();
+
+            auto cone_shape = static_cast<SpotLight const*>(light)->GetConeShape();
+            clw_light->ia = cone_shape.x;
+            clw_light->oa = cone_shape.y;
+            break;
+        }
+
+        case ClwScene::kIbl:
+        {
+            // TODO: support this
+            clw_light->multiplier = static_cast<ImageBasedLight const*>(light)->GetMultiplier();
+            auto tex = static_cast<ImageBasedLight const*>(light)->GetTexture();
+            clw_light->tex = tex_collector.GetItemIndex(tex);
+            clw_light->texdiffuse = clw_light->tex;
+            break;
+        }
+
+        case ClwScene::kArea:
+        {
+            // TODO: optimize this linear search
+            auto shape = static_cast<AreaLight const*>(light)->GetShape();
+
+            std::size_t idx = 0;
+            for (auto iter = scene.CreateShapeIterator(); iter->IsValid(); iter->Next(), ++idx)
             {
-                clw_light->p = light->GetPosition();
-                clw_light->intensity = light->GetEmittedRadiance();
-                break;
+                if (iter->ItemAs<Shape const>() == shape)
+                    break;
             }
 
-            case ClwScene::kDirectional:
-            {
-                clw_light->d = light->GetDirection();
-                clw_light->intensity = light->GetEmittedRadiance();
-                break;
-            }
-
-            case ClwScene::kSpot:
-            {
-                clw_light->p = light->GetPosition();
-                clw_light->d = light->GetDirection();
-                clw_light->intensity = light->GetEmittedRadiance();
-
-                auto cone_shape = static_cast<SpotLight const*>(light)->GetConeShape();
-                clw_light->ia = cone_shape.x;
-                clw_light->oa = cone_shape.y;
-                break;
-            }
-
-            case ClwScene::kIbl:
-            {
-                // TODO: support this
-                clw_light->multiplier = static_cast<ImageBasedLight const*>(light)->GetMultiplier();
-                auto tex = static_cast<ImageBasedLight const*>(light)->GetTexture();
-                clw_light->tex = tex_collector.GetItemIndex(tex);
-                clw_light->texdiffuse = clw_light->tex;
-                break;
-            }
-
-            case ClwScene::kArea:
-            {
-                // TODO: optimize this linear search
-                auto shape = static_cast<AreaLight const*>(light)->GetShape();
-
-                std::size_t idx = 0;
-                for (auto iter = scene.CreateShapeIterator(); iter->IsValid(); iter->Next(), ++idx)
-                {
-                    if (iter->ItemAs<Shape const>() == shape)
-                        break;
-                }
-
-                clw_light->shapeidx = static_cast<int>(idx);
-                clw_light->primidx = static_cast<int>(static_cast<AreaLight const*>(light)->GetPrimitiveIdx());
-                break;
-            }
+            clw_light->shapeidx = static_cast<int>(idx);
+            clw_light->primidx = static_cast<int>(static_cast<AreaLight const*>(light)->GetPrimitiveIdx());
+            break;
+        }
 
 
-            default:
-                assert(false);
+        default:
+            assert(false);
             break;
         }
     }
@@ -1015,7 +1033,7 @@ namespace Baikal
 
         // Serialize
         {
-            for (;light_iter->IsValid(); light_iter->Next())
+            for (; light_iter->IsValid(); light_iter->Next())
             {
                 auto light = light_iter->ItemAs<Light const>();
                 WriteLight(scene, light, tex_collector, lights + num_lights_written);
@@ -1044,10 +1062,10 @@ namespace Baikal
     {
         switch (texture->GetFormat())
         {
-            case Texture::Format::kRgba8: return ClwScene::TextureFormat::RGBA8;
-            case Texture::Format::kRgba16: return ClwScene::TextureFormat::RGBA16;
-            case Texture::Format::kRgba32: return ClwScene::TextureFormat::RGBA32;
-            default: return ClwScene::TextureFormat::RGBA8;
+        case Texture::Format::kRgba8: return ClwScene::TextureFormat::RGBA8;
+        case Texture::Format::kRgba16: return ClwScene::TextureFormat::RGBA16;
+        case Texture::Format::kRgba32: return ClwScene::TextureFormat::RGBA32;
+        default: return ClwScene::TextureFormat::RGBA8;
         }
     }
 
