@@ -207,7 +207,7 @@ namespace RadeonRays
         if (n->type == Bvh::kLeaf)
         {
             int startidx = n->startidx;
-            extra = startidx;
+            extra = (startidx << 4) | (n->numprims & 0xF);
             node.bounds.pmin.w = -1.f;
         }
         else
@@ -230,7 +230,7 @@ namespace RadeonRays
         if (n->type == Bvh::kLeaf)
         {
             int startidx = n->startidx + offset;
-            extra = startidx;
+            extra = (startidx << 4) | (n->numprims & 0xF);
             node.bounds.pmin.w = -1.f;
         }
         else

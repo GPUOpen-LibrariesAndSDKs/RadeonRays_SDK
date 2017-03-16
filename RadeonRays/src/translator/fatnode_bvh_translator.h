@@ -31,16 +31,30 @@ THE SOFTWARE.
 #include "math/quaternion.h"
 #include "math/float3.h"
 
+#include "../util/perfect_hash_map.h"
+
 namespace RadeonRays
 {
     /// Fatnode translator transforms regular binary BVH into the form where:
     /// * Each node contains bounding boxes of its children
     /// * Both children follow parent node in the layuot (breadth first)
     /// * No parent informantion is stored for the node => stacked traversal only
-    /// 
+    ///
     class FatNodeBvhTranslator
     {
     public:
+        struct Face
+        {
+            // Up to 3 indices
+            int idx[3];
+            // Shape index
+            int shapeidx;
+            // Primitive ID within the mesh
+            int id;
+            // Shape mask
+            int shape_mask;
+        };
+
         // Constructor
         FatNodeBvhTranslator()
             : nodecnt_(0)
@@ -54,21 +68,53 @@ namespace RadeonRays
         //
         struct Node
         {
-            // Node's bounding box
-            bbox lbound;
-            bbox rbound;
+            union
+            {
+                struct
+                {
+                    // Node's bounding box
+                    bbox bounds[2];
+                }s0;
+
+                struct
+                {
+                    // If node is a leaf we keep vertex indices here
+                    int i0, i1, i2;
+                    // Address of a left child
+                    int child0;
+                    // Shape mask
+                    int shape_mask;
+                    // Shape ID
+                    int shape_id;
+                    // Primitive ID
+                    int prim_id;
+                    // Address of a right child
+                    int child1;
+                }s1;
+            };
+
+            Node()
+                : s0()
+            {
+
+            }
         };
 
         void Flush();
         void Process(Bvh& bvh);
+        void InjectIndices(Face const* faces);
         //void Process(Bvh const** bvhs, int const* offsets, int numbvhs);
         //void UpdateTopLevel(Bvh const& bvh);
 
         std::vector<Node> nodes_;
-        std::vector<int>  extra_;
-        std::vector<int>  roots_;
+        std::vector<int> extra_;
+        std::vector<int> roots_;
+        std::vector<int> indices_;
+        std::vector<int> addresses_;
         int nodecnt_;
         int root_;
+        std::unique_ptr<PerfectHashMap<int, int>> m_hash_map;
+        int max_idx_;
 
     private:
         int ProcessRootNode(Bvh::Node const* node);

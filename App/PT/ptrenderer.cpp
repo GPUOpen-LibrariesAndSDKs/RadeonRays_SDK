@@ -194,17 +194,14 @@ namespace Baikal
             m_context.FillBuffer(0, m_render_data->hits, 0, m_render_data->hits.GetElementCount());
 
             // Intersect ray batch
-            //Event* e = nullptr;
             api->QueryIntersection(m_render_data->fr_rays[pass & 0x1], m_render_data->fr_hitcount, maxrays, m_render_data->fr_intersections, nullptr, nullptr);
-            //e->Wait();
-            //m_api->DeleteEvent(e);
 
             // Apply scattering
             EvaluateVolume(clwscene, pass);
 
             if (pass > 0 && clwscene.envmapidx > -1)
             {
-                ShadeBackground(clwscene, pass);
+                ShadeMiss(clwscene, pass);
             }
 
             // Convert intersections to predicates
@@ -212,10 +209,6 @@ namespace Baikal
 
             // Compact batch
             m_render_data->pp.Compact(0, m_render_data->hits, m_render_data->iota, m_render_data->compacted_indices, m_render_data->hitcount);
-
-            /*int cnt = 0;
-            m_context.ReadBuffer(0, m_render_data->hitcount[0], &cnt, 1).Wait();
-            std::cout << "Pass " << pass << " Alive " << cnt << "\n";*/
 
             // Advance indices to keep pixel indices up to date
             RestorePixelIndices(pass);
@@ -228,12 +221,10 @@ namespace Baikal
 
             // Shade missing rays
             if (pass == 0)
-                ShadeMiss(clwscene, pass);
+                ShadeBackground(clwscene, pass);
 
             // Intersect shadow rays
             api->QueryOcclusion(m_render_data->fr_shadowrays, m_render_data->fr_hitcount, maxrays, m_render_data->fr_shadowhits, nullptr, nullptr);
-            //e->Wait();
-            //m_api->DeleteEvent(e);
 
             // Gather light samples and account for visibility
             GatherLightSamples(clwscene, pass);
@@ -377,7 +368,6 @@ namespace Baikal
         shadekernel.SetArg(argc++, scene.textures);
         shadekernel.SetArg(argc++, scene.texturedata);
         shadekernel.SetArg(argc++, scene.envmapidx);
-        shadekernel.SetArg(argc++, scene.envmapmul);
         shadekernel.SetArg(argc++, scene.lights);
         shadekernel.SetArg(argc++, scene.num_lights);
         shadekernel.SetArg(argc++, rand_uint());
@@ -421,7 +411,6 @@ namespace Baikal
         shadekernel.SetArg(argc++, scene.textures);
         shadekernel.SetArg(argc++, scene.texturedata);
         shadekernel.SetArg(argc++, scene.envmapidx);
-        shadekernel.SetArg(argc++, scene.envmapmul);
         shadekernel.SetArg(argc++, scene.lights);
         shadekernel.SetArg(argc++, scene.num_lights);
         shadekernel.SetArg(argc++, rand_uint());
@@ -473,10 +462,10 @@ namespace Baikal
         }
     }
 
-    void PtRenderer::ShadeMiss(ClwScene const& scene, int pass)
+    void PtRenderer::ShadeBackground(ClwScene const& scene, int pass)
     {
         // Fetch kernel
-        CLWKernel misskernel = m_render_data->program.GetKernel("ShadeMiss");
+        CLWKernel misskernel = m_render_data->program.GetKernel("ShadeBackgroundEnvMap");
 
         int numrays = m_output->width() * m_output->height();
 
@@ -486,9 +475,10 @@ namespace Baikal
         misskernel.SetArg(argc++, m_render_data->intersections);
         misskernel.SetArg(argc++, m_render_data->pixelindices[(pass + 1) & 0x1]);
         misskernel.SetArg(argc++, numrays);
+        misskernel.SetArg(argc++, scene.lights);
+        misskernel.SetArg(argc++, scene.envmapidx);
         misskernel.SetArg(argc++, scene.textures);
         misskernel.SetArg(argc++, scene.texturedata);
-        misskernel.SetArg(argc++, scene.envmapidx);
         misskernel.SetArg(argc++, m_render_data->paths);
         misskernel.SetArg(argc++, scene.volumes);
         misskernel.SetArg(argc++, m_output->data());
@@ -575,10 +565,10 @@ namespace Baikal
     }
 
     // Shade background
-    void PtRenderer::ShadeBackground(ClwScene const& scene, int pass)
+    void PtRenderer::ShadeMiss(ClwScene const& scene, int pass)
     {
         // Fetch kernel
-        CLWKernel misskernel = m_render_data->program.GetKernel("ShadeBackground");
+        CLWKernel misskernel = m_render_data->program.GetKernel("ShadeMiss");
 
         //int numrays = m_output->width() * m_output->height();
 
@@ -588,11 +578,10 @@ namespace Baikal
         misskernel.SetArg(argc++, m_render_data->intersections);
         misskernel.SetArg(argc++, m_render_data->pixelindices[(pass + 1) & 0x1]);
         misskernel.SetArg(argc++, m_render_data->hitcount);
+        misskernel.SetArg(argc++, scene.lights);
+        misskernel.SetArg(argc++, scene.envmapidx);
         misskernel.SetArg(argc++, scene.textures);
         misskernel.SetArg(argc++, scene.texturedata);
-        misskernel.SetArg(argc++, scene.envmapidx);
-        misskernel.SetArg(argc++, scene.envmapmul);
-        misskernel.SetArg(argc++, scene.num_lights);
         misskernel.SetArg(argc++, m_render_data->paths);
         misskernel.SetArg(argc++, scene.volumes);
         misskernel.SetArg(argc++, m_output->data());

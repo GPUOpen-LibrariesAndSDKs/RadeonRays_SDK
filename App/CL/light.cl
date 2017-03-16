@@ -71,7 +71,7 @@ float3 EnvironmentLight_GetLe(// Light
     // Sample envmap
     *wo *= 100000.f;
     //
-    return scene->envmapmul * Texture_SampleEnvMap(normalize(*wo), TEXTURE_ARGS_IDX(scene->envmapidx));
+    return light->multiplier * Texture_SampleEnvMap(normalize(*wo), TEXTURE_ARGS_IDX(light->multiplier));
 }
 
 /// Sample direction to the light
@@ -100,7 +100,7 @@ float3 EnvironmentLight_Sample(// Light
     *pdf = fabs(dot(dg->n, normalize(d))) / PI;
 
     // Sample envmap
-    return scene->envmapmul * Texture_SampleEnvMap(d, TEXTURE_ARGS_IDX(scene->envmapidx));
+    return light->multiplier * Texture_SampleEnvMap(d, TEXTURE_ARGS_IDX(light->multiplier));
 }
 
 /// Get PDF for a given direction

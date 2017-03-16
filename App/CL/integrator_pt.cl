@@ -72,8 +72,6 @@ __kernel void ShadeVolume(
     TEXTURE_ARG_LIST,
     // Environment texture index
     int envmapidx,
-    // Envmap multiplier
-    float envmapmul,
     // Emissives
     __global Light const* lights,
     // Number of emissive objects
@@ -115,7 +113,6 @@ __kernel void ShadeVolume(
         materials,
         lights,
         envmapidx,
-        envmapmul,
         num_lights
     };
 
@@ -255,8 +252,6 @@ __kernel void ShadeSurface(
     TEXTURE_ARG_LIST,
     // Environment texture index
     int envmapidx,
-    // Envmap multiplier
-    float envmapmul,
     // Emissives
     __global Light const* lights,
     // Number of emissive objects
@@ -298,7 +293,6 @@ __kernel void ShadeSurface(
         materials,
         lights,
         envmapidx,
-        envmapmul,
         num_lights
     };
 
@@ -339,8 +333,8 @@ __kernel void ShadeSurface(
         DifferentialGeometry_Fill(&scene, &isect, &diffgeo);
 
         // Check if we are hitting from the inside
-		float ngdotwi = dot(diffgeo.ng, wi);
-        bool backfacing =  ngdotwi < 0.f;
+        float ngdotwi = dot(diffgeo.ng, wi);
+        bool backfacing = ngdotwi < 0.f;
 
         // Select BxDF
         Material_Select(&scene, wi, &sampler, TEXTURE_ARGS, SAMPLER_ARGS, &diffgeo);
@@ -361,7 +355,7 @@ __kernel void ShadeSurface(
                     float bxdflightpdf = denom > 0.f ? (ld * ld / denom / num_lights) : 0.f;
                     weight = BalanceHeuristic(1, extra.x, 1, bxdflightpdf);
                 }
-                
+
                 {
                     // In this case we hit after an application of MIS process at previous step.
                     // That means BRDF weight has been already applied.
@@ -375,20 +369,20 @@ __kernel void ShadeSurface(
 
             lightsamples[globalid] = 0.f;
             return;
-        } 
+        }
 
 
         float s = Bxdf_IsBtdf(&diffgeo) ? (-sign(ngdotwi)) : 1.f;
         if (backfacing && !Bxdf_IsBtdf(&diffgeo))
         {
-             //Reverse normal and tangents in this case
-             //but not for BTDFs, since BTDFs rely
-             //on normal direction in order to arrange
-             //indices of refraction
+            //Reverse normal and tangents in this case
+            //but not for BTDFs, since BTDFs rely
+            //on normal direction in order to arrange
+            //indices of refraction
             diffgeo.n = -diffgeo.n;
             diffgeo.dpdu = -diffgeo.dpdu;
             diffgeo.dpdv = -diffgeo.dpdv;
-			s = -s;
+            s = -s;
         }
 
 
@@ -402,12 +396,12 @@ __kernel void ShadeSurface(
 
         // Check if we need to apply normal map
         //ApplyNormalMap(&diffgeo, TEXTURE_ARGS);
-		DifferentialGeometry_ApplyBumpMap(&diffgeo, TEXTURE_ARGS);
+        DifferentialGeometry_ApplyBumpMap(&diffgeo, TEXTURE_ARGS);
 
-		//DifferentialGeometry_ApplyNormalMap(&diffgeo, TEXTURE_ARGS);
+        //DifferentialGeometry_ApplyNormalMap(&diffgeo, TEXTURE_ARGS);
         DifferentialGeometry_CalculateTangentTransforms(&diffgeo);
 
-		float ndotwi = fabs(dot(diffgeo.n, wi));
+        float ndotwi = fabs(dot(diffgeo.n, wi));
 
         float lightpdf = 0.f;
         float bxdflightpdf = 0.f;
@@ -466,7 +460,7 @@ __kernel void ShadeSurface(
             }
 
             // And write the light sample
-			lightsamples[globalid] = REASONABLE_RADIANCE(radiance);
+            lightsamples[globalid] = REASONABLE_RADIANCE(radiance);
         }
         else
         {
@@ -519,7 +513,7 @@ __kernel void ShadeSurface(
 }
 
 ///< Illuminate missing rays
-__kernel void ShadeMiss(
+__kernel void ShadeBackgroundEnvMap(
     // Ray batch
     __global ray const* rays,
     // Intersection data
@@ -528,11 +522,11 @@ __kernel void ShadeMiss(
     __global int const* pixelindices,
     // Number of rays
     int numrays,
+    __global Light const* lights,
+    int envmapidx,
     // Textures
     TEXTURE_ARG_LIST,
     // Environment texture index
-    int envmapidx,
-    //
     __global Path const* paths,
     __global Volume const* volumes,
     // Output values
@@ -546,16 +540,18 @@ __kernel void ShadeMiss(
         int pixelidx = pixelindices[globalid];
 
         // In case of a miss
-        if (isects[globalid].shapeid < 0)
+        if (isects[globalid].shapeid < 0 && envmapidx != -1)
         {
             // Multiply by throughput
             int volidx = paths[pixelidx].volume;
 
+            Light light = lights[envmapidx];
+
             if (volidx == -1)
-                output[pixelidx].xyz += Texture_SampleEnvMap(rays[globalid].d.xyz, TEXTURE_ARGS_IDX(envmapidx));
+                output[pixelidx].xyz += light.multiplier * Texture_SampleEnvMap(rays[globalid].d.xyz, TEXTURE_ARGS_IDX(light.tex));
             else
             {
-                output[pixelidx].xyz += Texture_SampleEnvMap(rays[globalid].d.xyz, TEXTURE_ARGS_IDX(envmapidx)) *
+                output[pixelidx].xyz += light.multiplier * Texture_SampleEnvMap(rays[globalid].d.xyz, TEXTURE_ARGS_IDX(light.tex)) *
                     Volume_Transmittance(&volumes[volidx], &rays[globalid], rays[globalid].o.w);
 
                 output[pixelidx].xyz += Volume_Emission(&volumes[volidx], &rays[globalid], rays[globalid].o.w);
@@ -710,7 +706,7 @@ __kernel void FilterPathStream(
 }
 
 ///< Illuminate missing rays
-__kernel void ShadeBackground(
+__kernel void ShadeMiss(
     // Ray batch
     __global ray const* rays,
     // Intersection data
@@ -719,13 +715,10 @@ __kernel void ShadeBackground(
     __global int const* pixelindices,
     // Number of rays
     __global int const* numrays,
+    __global Light const* lights,
+    int envmapidx,
     // Textures
     TEXTURE_ARG_LIST,
-    // Environment texture index
-    int envmapidx,
-    float envmapmul,
-    //
-    int num_lights,
     __global Path const* paths,
     __global Volume const* volumes,
     // Output values
@@ -743,8 +736,10 @@ __kernel void ShadeBackground(
         // In case of a miss
         if (isects[globalid].shapeid < 0 && Path_IsAlive(path))
         {
+            Light light = lights[envmapidx];
+
             float3 t = Path_GetThroughput(path);
-            output[pixelidx].xyz += REASONABLE_RADIANCE(envmapmul * Texture_SampleEnvMap(rays[globalid].d.xyz, TEXTURE_ARGS_IDX(envmapidx)) * t);
+            output[pixelidx].xyz += REASONABLE_RADIANCE(light.multiplier * Texture_SampleEnvMap(rays[globalid].d.xyz, TEXTURE_ARGS_IDX(light.tex)) * t);
         }
     }
 }

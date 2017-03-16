@@ -33,7 +33,7 @@ THE SOFTWARE.
 
 namespace RadeonRays
 {
-    class Strategy;
+    class Intersector;
     struct CalcEventHolder;
 
     ///< The class represents Calc based intersection device.
@@ -72,7 +72,7 @@ namespace RadeonRays
         void      ReleaseEventHolder(CalcEventHolder* e) const;
 
         std::unique_ptr<Calc::Device, std::function<void(Calc::Device*)>> m_device;
-        std::unique_ptr<Strategy> m_intersector;
+        std::unique_ptr<Intersector> m_intersector;
         std::string m_intersector_string;
 
         // Initial number of events in the pool
