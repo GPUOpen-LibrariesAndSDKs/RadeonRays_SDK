@@ -430,7 +430,6 @@ __kernel void ShadeSurface(
             lightbxdfpdf = Bxdf_GetPdf(&diffgeo, wi, normalize(lightwo), TEXTURE_ARGS);
             lightweight = Light_IsSingular(&scene.lights[light_idx]) ? 1.f : BalanceHeuristic(1, lightpdf, 1, lightbxdfpdf);
 
-
             // Apply MIS to account for both
             if (NON_BLACK(le) && lightpdf > 0.0f && !Bxdf_IsSingular(&diffgeo))
             {
@@ -444,10 +443,10 @@ __kernel void ShadeSurface(
         if (NON_BLACK(radiance))
         {
             // Generate shadow ray
-            float shadow_ray_length = 0.999f * (1.f - CRAZY_LOW_DISTANCE) * length(wo);
+            float shadow_ray_length = 0.9999f * (1.f - CRAZY_LOW_DISTANCE) * length(wo);
             float3 shadow_ray_dir = normalize(wo);
             float3 shadow_ray_o = diffgeo.p + CRAZY_LOW_DISTANCE * s * diffgeo.ng;
-            int shadow_ray_mask = Bxdf_IsSingular(&diffgeo) ? 0xFFFFFFFF : 0x0000FFFF;
+            int shadow_ray_mask = 0xFFFFFFFF;
 
             Ray_Init(shadowrays + globalid, shadow_ray_o, shadow_ray_dir, shadow_ray_length, 0.f, shadow_ray_mask);
 

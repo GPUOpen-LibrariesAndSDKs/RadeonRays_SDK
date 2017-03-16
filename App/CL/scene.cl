@@ -49,6 +49,61 @@ typedef struct
     int num_lights;
 } Scene;
 
+void Scene_GetTriangle(Scene const* scene, int shape_idx, int prim_idx, float3* v0, float3* v1, float3* v2)
+{
+    // Extract shape data
+    Shape shape = scene->shapes[shape_idx];
+
+    // Fetch indices starting from startidx and offset by primid
+    int i0 = scene->indices[shape.startidx + 3 * prim_idx];
+    int i1 = scene->indices[shape.startidx + 3 * prim_idx + 1];
+    int i2 = scene->indices[shape.startidx + 3 * prim_idx + 2];
+
+    // Fetch positions and transform to world space
+    *v0 = matrix_mul_point3(shape.transform, scene->vertices[shape.startvtx + i0]);
+    *v1 = matrix_mul_point3(shape.transform, scene->vertices[shape.startvtx + i1]);
+    *v2 = matrix_mul_point3(shape.transform, scene->vertices[shape.startvtx + i2]);
+}
+
+void Scene_InterpolateAttributes(Scene const* scene, int shape_idx, int prim_idx, float2 uv, float3* p, float3* n, float2* tx, float* area)
+{
+    // Extract shape data
+    Shape shape = scene->shapes[shape_idx];
+
+    // Fetch indices starting from startidx and offset by primid
+    int i0 = scene->indices[shape.startidx + 3 * prim_idx];
+    int i1 = scene->indices[shape.startidx + 3 * prim_idx + 1];
+    int i2 = scene->indices[shape.startidx + 3 * prim_idx + 2];
+
+    // Fetch normals
+    float3 n0 = scene->normals[shape.startvtx + i0];
+    float3 n1 = scene->normals[shape.startvtx + i1];
+    float3 n2 = scene->normals[shape.startvtx + i2];
+
+    // Fetch positions and transform to world space
+    float3 v0 = matrix_mul_point3(shape.transform, scene->vertices[shape.startvtx + i0]);
+    float3 v1 = matrix_mul_point3(shape.transform, scene->vertices[shape.startvtx + i1]);
+    float3 v2 = matrix_mul_point3(shape.transform, scene->vertices[shape.startvtx + i2]);
+
+    // Fetch UVs
+    float2 uv0 = scene->uvs[shape.startvtx + i0];
+    float2 uv1 = scene->uvs[shape.startvtx + i1];
+    float2 uv2 = scene->uvs[shape.startvtx + i2];
+
+    // Calculate barycentric position and normal
+    *p = (1.f - uv.x - uv.y) * v0 + uv.x * v1 + uv.y * v2;
+    *n = normalize(matrix_mul_vector3(shape.transform, (1.f - uv.x - uv.y) * n0 + uv.x * n1 + uv.y * n2));
+    *tx = (1.f - uv.x - uv.y) * uv0 + uv.x * uv1 + uv.y * uv2;
+    *area = 0.5f * length(cross(v2 - v0, v1 - v0));
+}
+
+
+int Scene_GetMaterialIndex(Scene const* scene, int shape_idx, int prim_idx)
+{
+    Shape shape = scene->shapes[shape_idx];
+    return scene->materialids[shape.startidx / 3 + prim_idx];
+}
+
 /// Fill DifferentialGeometry structure based on intersection info from RadeonRays
 void DifferentialGeometry_Fill(// Scene
                               Scene const* scene,
@@ -67,8 +122,6 @@ void DifferentialGeometry_Fill(// Scene
 
     // Extract shape data
     Shape shape = scene->shapes[shapeid];
-    //float3 linearvelocity = shape.linearvelocity;
-    //float4 angularvelocity = shape.angularvelocity;
 
     // Fetch indices starting from startidx and offset by primid
     int i0 = scene->indices[shape.startidx + 3 * primid];
@@ -80,10 +133,10 @@ void DifferentialGeometry_Fill(// Scene
     float3 n1 = scene->normals[shape.startvtx + i1];
     float3 n2 = scene->normals[shape.startvtx + i2];
 
-    // Fetch positions
-    float3 v0 = scene->vertices[shape.startvtx + i0];
-    float3 v1 = scene->vertices[shape.startvtx + i1];
-    float3 v2 = scene->vertices[shape.startvtx + i2];
+    // Fetch positions and transform to world space
+    float3 v0 = matrix_mul_point3(shape.transform, scene->vertices[shape.startvtx + i0]);
+    float3 v1 = matrix_mul_point3(shape.transform, scene->vertices[shape.startvtx + i1]);
+    float3 v2 = matrix_mul_point3(shape.transform, scene->vertices[shape.startvtx + i2]);
 
     // Fetch UVs
     float2 uv0 = scene->uvs[shape.startvtx + i0];
@@ -91,10 +144,10 @@ void DifferentialGeometry_Fill(// Scene
     float2 uv2 = scene->uvs[shape.startvtx + i2];
 
     // Calculate barycentric position and normal
-    diffgeo->n = normalize(transform_vector((1.f - uv.x - uv.y) * n0 + uv.x * n1 + uv.y * n2, shape.m0, shape.m1, shape.m2, shape.m3));
-    diffgeo->p = transform_point((1.f - uv.x - uv.y) * v0 + uv.x * v1 + uv.y * v2, shape.m0, shape.m1, shape.m2, shape.m3);
+    float3 n = (1.f - uv.x - uv.y) * n0 + uv.x * n1 + uv.y * n2;
+    diffgeo->n = normalize(matrix_mul_vector3(shape.transform, n));
+    diffgeo->p = (1.f - uv.x - uv.y) * v0 + uv.x * v1 + uv.y * v2;
     diffgeo->uv = (1.f - uv.x - uv.y) * uv0 + uv.x * uv1 + uv.y * uv2;
-
     diffgeo->ng = normalize(cross(v1 - v0, v2 - v0));
 
     if (dot(diffgeo->ng, diffgeo->n) < 0.f)
@@ -110,8 +163,8 @@ void DifferentialGeometry_Fill(// Scene
     float dv1 = uv0.y - uv2.y;
     float dv2 = uv1.y - uv2.y;
 
-    float3 dp1 = v0 - v2;
-    float3 dp2 = v1 - v2;
+    float3 dp1 = v2 - v0;
+    float3 dp2 = v1 - v0;
 
     float det = du1 * dv2 - dv1 * du2;
 
@@ -127,15 +180,7 @@ void DifferentialGeometry_Fill(// Scene
         diffgeo->dpdv = normalize(cross(diffgeo->n, diffgeo->dpdu));
     }
 
-    // Fix all to be orthogonal
-    //diffgeo->dpdv = normalize(cross(diffgeo->ng, diffgeo->dpdu));
-    //diffgeo->dpdu = normalize(cross(diffgeo->dpdv, diffgeo->ng));
-
-    float3 p0 = transform_point(v0, shape.m0, shape.m1, shape.m2, shape.m3);
-    float3 p1 = transform_point(v1, shape.m0, shape.m1, shape.m2, shape.m3);
-    float3 p2 = transform_point(v2, shape.m0, shape.m1, shape.m2, shape.m3);
-
-    diffgeo->area = 0.5f * length(cross(p2 - p0, p2 - p1));
+    diffgeo->area = 0.5f * length(cross(v2 - v0, v1 - v0));
 }
 
 void DifferentialGeometry_CalculateTangentTransforms(DifferentialGeometry* diffgeo)
@@ -145,18 +190,18 @@ void DifferentialGeometry_CalculateTangentTransforms(DifferentialGeometry* diffg
         diffgeo->n,
         diffgeo->dpdv);
 
-    diffgeo->world_to_tangent.rows.m0.w = -dot(diffgeo->dpdu, diffgeo->p);
-    diffgeo->world_to_tangent.rows.m1.w = -dot(diffgeo->n, diffgeo->p);
-    diffgeo->world_to_tangent.rows.m2.w = -dot(diffgeo->dpdv, diffgeo->p);
+    diffgeo->world_to_tangent.m0.w = -dot(diffgeo->dpdu, diffgeo->p);
+    diffgeo->world_to_tangent.m1.w = -dot(diffgeo->n, diffgeo->p);
+    diffgeo->world_to_tangent.m2.w = -dot(diffgeo->dpdv, diffgeo->p);
 
     diffgeo->tangent_to_world = matrix_from_cols3(
-        diffgeo->world_to_tangent.rows.m0.xyz,
-        diffgeo->world_to_tangent.rows.m1.xyz,
-        diffgeo->world_to_tangent.rows.m2.xyz);
+        diffgeo->world_to_tangent.m0.xyz,
+        diffgeo->world_to_tangent.m1.xyz,
+        diffgeo->world_to_tangent.m2.xyz);
 
-    diffgeo->tangent_to_world.rows.m0.w = diffgeo->p.x;
-    diffgeo->tangent_to_world.rows.m1.w = diffgeo->p.y;
-    diffgeo->tangent_to_world.rows.m2.w = diffgeo->p.z;
+    diffgeo->tangent_to_world.m0.w = diffgeo->p.x;
+    diffgeo->tangent_to_world.m1.w = diffgeo->p.y;
+    diffgeo->tangent_to_world.m2.w = diffgeo->p.z;
 }
 
 int Scene_SampleLight(Scene const* scene, float sample, float* pdf)

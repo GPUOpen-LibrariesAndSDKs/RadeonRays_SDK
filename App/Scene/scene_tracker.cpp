@@ -15,7 +15,6 @@
 
 using namespace RadeonRays;
 
-
 namespace Baikal
 {
     SceneTracker::SceneTracker(CLWContext context, int devidx)
@@ -487,10 +486,13 @@ namespace Baikal
             shape.startvtx = static_cast<int>(num_vertices_written);
             shape.numvertices = static_cast<int>(mesh_num_vertices);
             shape.startidx = static_cast<int>(num_indices_written);
-            shape.m0 = float4(1.0f, 0.f, 0.f, 0.f);
-            shape.m1 = float4(0.0f, 1.f, 0.f, 0.f);
-            shape.m2 = float4(0.0f, 0.f, 1.f, 0.f);
-            shape.m3 = float4(0.0f, 0.f, 0.f, 1.f);
+
+            RadeonRays::matrix transform = mesh->GetTransform();
+            shape.transform.m0 = { transform.m00, transform.m01, transform.m02, transform.m03 };
+            shape.transform.m1 = { transform.m10, transform.m11, transform.m12, transform.m13 };
+            shape.transform.m2 = { transform.m20, transform.m21, transform.m22, transform.m23 };
+            shape.transform.m3 = { transform.m30, transform.m31, transform.m32, transform.m33 };
+
             shape.linearvelocity = float3(0.0f, 0.f, 0.f);
             shape.angularvelocity = float3(0.f, 0.f, 0.f, 1.f);
 
