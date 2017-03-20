@@ -22,25 +22,33 @@ THE SOFTWARE.
 #ifndef PAYLOAD_CL
 #define PAYLOAD_CL
 
-/// Camera descriptor
-///
+// Matrix
+typedef struct
+{
+    float4 m0;
+    float4 m1;
+    float4 m2;
+    float4 m3;
+} matrix4x4;
+
+// Camera
 typedef struct
     {
-        // Camera coordinate frame
+        // Coordinate frame
         float3 forward;
         float3 right;
         float3 up;
+        // Position
         float3 p;
 
         // Image plane width & height in current units
         float2 dim;
-
         // Near and far Z
         float2 zcap;
         // Focal lenght
         float focal_length;
-        // Camera aspect ratio
-        float aspect;
+        // Camera aspect_ratio ratio
+        float aspect_ratio;
         float focus_distance;
         float aperture;
     } Camera;
@@ -54,17 +62,14 @@ typedef struct
     int numprims;
     // Start vertex
     int startvtx;
-    // Number of vertices
-    int numvertices;
+    // Start material idx
+    int start_material_idx;
     // Linear motion vector
     float3 linearvelocity;
     // Angular velocity
     float4 angularvelocity;
     // Transform in row major format
-    float4 m0;
-    float4 m1;
-    float4 m2;
-    float4 m3;
+    matrix4x4 transform;
 } Shape;
 
 
@@ -234,21 +239,6 @@ typedef
         int extra;
     } Texture;
 
-typedef struct __matrix
-{
-    union
-    {
-        struct
-        {
-            float4 m0;
-            float4 m1;
-            float4 m2;
-            float4 m3;
-        } rows;
-
-        float m[16];
-    };
-} matrix;
 
 // Hit data
 typedef struct _DifferentialGeometry
@@ -266,8 +256,8 @@ typedef struct _DifferentialGeometry
     float3 dpdv;
     float  area;
 
-    matrix world_to_tangent;
-    matrix tangent_to_world;
+    matrix4x4 world_to_tangent;
+    matrix4x4 tangent_to_world;
 
     // Material
     Material mat;

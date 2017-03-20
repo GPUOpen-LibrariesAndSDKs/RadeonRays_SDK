@@ -681,7 +681,6 @@ namespace RadeonRays
 
         // Set args
         int arg = 0;
-        int offset = 0;
 
         func->SetArg(arg++, m_gpudata->bvh);
         func->SetArg(arg++, m_gpudata->vertices);

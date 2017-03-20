@@ -5,6 +5,7 @@
 #include "../material.h"
 #include "../light.h"
 #include "../texture.h"
+#include "math/mathutils.h"
 
 #include <vector>
 
@@ -278,7 +279,14 @@ namespace Baikal
             auto mesh = CreateSphere(64, 32, 2.f, float3(0.f, 2.2f, 0.f));
             scene->AttachShape(mesh);
             scene->AttachAutoreleaseObject(mesh);
-            
+
+            auto instance = new Instance(mesh);
+            scene->AttachShape(instance);
+            scene->AttachAutoreleaseObject(instance);
+
+            matrix t = RadeonRays::translation(float3(5.f, 0.f, 5.f));
+            instance->SetTransform(t);
+
             SingleBxdf* green = new SingleBxdf(SingleBxdf::BxdfType::kLambert);
             green->SetInputValue("albedo", 2.f * float4(0.1f, 0.2f, 0.1f, 1.f));
             

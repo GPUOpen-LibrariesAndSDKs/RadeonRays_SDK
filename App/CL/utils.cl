@@ -64,151 +64,77 @@ int2 make_int2(int x, int y)
 }
 #endif
 
-float matrix_get(matrix m, int i, int j)
+matrix4x4 matrix_from_cols(float4 c0, float4 c1, float4 c2, float4 c3)
 {
-    return m.m[i * 4 + j];
-}
-
-matrix matrix_from_cols(float4 c0, float4 c1, float4 c2, float4 c3)
-{
-    matrix m;
-    m.rows.m0 = make_float4(c0.x, c1.x, c2.x, c3.x);
-    m.rows.m1 = make_float4(c0.y, c1.y, c2.y, c3.y);
-    m.rows.m2 = make_float4(c0.z, c1.z, c2.z, c3.z);
-    m.rows.m3 = make_float4(c0.w, c1.w, c2.w, c3.w);
+    matrix4x4 m;
+    m.m0 = make_float4(c0.x, c1.x, c2.x, c3.x);
+    m.m1 = make_float4(c0.y, c1.y, c2.y, c3.y);
+    m.m2 = make_float4(c0.z, c1.z, c2.z, c3.z);
+    m.m3 = make_float4(c0.w, c1.w, c2.w, c3.w);
     return m;
 }
 
-matrix matrix_from_rows(float4 c0, float4 c1, float4 c2, float4 c3)
+matrix4x4 matrix_from_rows(float4 c0, float4 c1, float4 c2, float4 c3)
 {
-    matrix m;
-    m.rows.m0 = c0;
-    m.rows.m1 = c1;
-    m.rows.m2 = c2;
-    m.rows.m3 = c3;
+    matrix4x4 m;
+    m.m0 = c0;
+    m.m1 = c1;
+    m.m2 = c2;
+    m.m3 = c3;
     return m;
 }
 
-matrix matrix_from_rows3(float3 c0, float3 c1, float3 c2)
+matrix4x4 matrix_from_rows3(float3 c0, float3 c1, float3 c2)
 {
-    matrix m;
-    m.rows.m0.xyz = c0; m.rows.m0.w = 0;
-    m.rows.m1.xyz = c1; m.rows.m1.w = 0;
-    m.rows.m2.xyz = c2; m.rows.m2.w = 0;
-    m.rows.m3 = make_float4(0.f, 0.f, 0.f, 1.f);
+    matrix4x4 m;
+    m.m0.xyz = c0; m.m0.w = 0;
+    m.m1.xyz = c1; m.m1.w = 0;
+    m.m2.xyz = c2; m.m2.w = 0;
+    m.m3 = make_float4(0.f, 0.f, 0.f, 1.f);
     return m;
 }
 
-matrix matrix_from_cols3(float3 c0, float3 c1, float3 c2)
+matrix4x4 matrix_from_cols3(float3 c0, float3 c1, float3 c2)
 {
-    matrix m;
-    m.rows.m0 = make_float4(c0.x, c1.x, c2.x, 0.f);
-    m.rows.m1 = make_float4(c0.y, c1.y, c2.y, 0.f);
-    m.rows.m2 = make_float4(c0.z, c1.z, c2.z, 0.f);
-    m.rows.m3 = make_float4(0.f, 0.f, 0.f, 1.f);
+    matrix4x4 m;
+    m.m0 = make_float4(c0.x, c1.x, c2.x, 0.f);
+    m.m1 = make_float4(c0.y, c1.y, c2.y, 0.f);
+    m.m2 = make_float4(c0.z, c1.z, c2.z, 0.f);
+    m.m3 = make_float4(0.f, 0.f, 0.f, 1.f);
     return m;
 }
 
-matrix matrix_transpose(matrix m)
+matrix4x4 matrix_transpose(matrix4x4 m)
 {
-    return matrix_from_cols(m.rows.m0, m.rows.m1, m.rows.m2, m.rows.m3);
+    return matrix_from_cols(m.m0, m.m1, m.m2, m.m3);
 }
 
-float4 matrix_mul_vector4(matrix m, float4 v)
+float4 matrix_mul_vector4(matrix4x4 m, float4 v)
 {
     float4 res;
-    res.x = dot(m.rows.m0, v);
-    res.y = dot(m.rows.m1, v);
-    res.z = dot(m.rows.m2, v);
-    res.w = dot(m.rows.m3, v);
+    res.x = dot(m.m0, v);
+    res.y = dot(m.m1, v);
+    res.z = dot(m.m2, v);
+    res.w = dot(m.m3, v);
     return res;
 }
 
-float3 matrix_mul_vector3(matrix m, float3 v)
+float3 matrix_mul_vector3(matrix4x4 m, float3 v)
 {
     float3 res;
-    res.x = dot(m.rows.m0.xyz, v);
-    res.y = dot(m.rows.m1.xyz, v);
-    res.z = dot(m.rows.m2.xyz, v);
+    res.x = dot(m.m0.xyz, v);
+    res.y = dot(m.m1.xyz, v);
+    res.z = dot(m.m2.xyz, v);
     return res;
 }
 
-float3 matrix_mul_point3(matrix m, float3 v)
+float3 matrix_mul_point3(matrix4x4 m, float3 v)
 {
     float3 res;
-    res.x = dot(m.rows.m0.xyz, v) + m.rows.m0.w;
-    res.y = dot(m.rows.m1.xyz, v) + m.rows.m1.w;
-    res.z = dot(m.rows.m2.xyz, v) + m.rows.m2.w;
+    res.x = dot(m.m0.xyz, v) + m.m0.w;
+    res.y = dot(m.m1.xyz, v) + m.m1.w;
+    res.z = dot(m.m2.xyz, v) + m.m2.w;
     return res;
-}
-
-
-
-
-
-/// Transform point with transformation matrix.
-/// m0...m3 are matrix rows
-float3 transform_point(float3 p, float4 m0, float4 m1, float4 m2, float4 m3)
-{
-    float3 res;
-    res.x = m0.s0 * p.x + m0.s1 * p.y + m0.s2 * p.z + m0.s3;
-    res.y = m1.s0 * p.x + m1.s1 * p.y + m1.s2 * p.z + m1.s3;
-    res.z = m2.s0 * p.x + m2.s1 * p.y + m2.s2 * p.z + m2.s3;
-    return res;
-}
-
-/// Transform vector with transformation matrix (no translation involved)
-/// m0...m3 are matrix rows
-float3 transform_vector(float3 p, float4 m0, float4 m1, float4 m2, float4 m3)
-{
-    float3 res;
-    res.x = m0.s0 * p.x + m0.s1 * p.y + m0.s2 * p.z;
-    res.y = m1.s0 * p.x + m1.s1 * p.y + m1.s2 * p.z;
-    res.z = m2.s0 * p.x + m2.s1 * p.y + m2.s2 * p.z;
-    return res;
-}
-
-/// Multiply two quaternions
-float4 quaternion_mul(float4 q1, float4 q2)
-{
-    float4 res;
-    res.x = q1.y*q2.z - q1.z*q2.y + q2.w*q1.x + q1.w*q2.x;
-    res.y = q1.z*q2.x - q1.x*q2.z + q2.w*q1.y + q1.w*q2.y;
-    res.z = q1.x*q2.y - q2.x*q1.y + q2.w*q1.z + q1.w*q2.z;
-    res.w = q1.w*q2.w - q1.x*q2.x - q1.y*q2.y - q1.z*q2.z;
-    return res;
-}
-
-/// Calculate conjugate quaternion
-float4 quaternion_conjugate(float4 q)
-{
-    return make_float4(-q.x, -q.y, -q.z, q.w);
-}
-
-
-/// Inverse quaternion
-float4 quaternion_inverse(float4 q)
-{
-    float sqnorm = q.x*q.x + q.y*q.y + q.z*q.z + q.w*q.w;
-
-    /// Check if it is singular
-    if (sqnorm != 0.f)
-    {
-        return quaternion_conjugate(q) / sqnorm;
-    }
-    else
-    {
-        return make_float4(0.f, 0.f, 0.f, 1.f);
-    }
-}
-
-/// Rotate a vector using quaternion
-float3 rotate_vector(float3 v, float4 q)
-{
-    // The formula is v' = q * v * q_inv;
-    float4 qinv = quaternion_inverse(q);
-    float4 vv = make_float4(v.x, v.y, v.z, 0);
-    return quaternion_mul(q, quaternion_mul(vv, qinv)).xyz;
 }
 
 /// Linearly interpolate between two values

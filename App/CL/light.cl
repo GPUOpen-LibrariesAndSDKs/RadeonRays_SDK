@@ -144,45 +144,24 @@ float3 AreaLight_GetLe(// Emissive object
     int shapeidx = light->shapeidx;
     int primidx = light->primidx;
 
-    // Extract shape data
-    Shape shape = scene->shapes[shapeidx];
-
-    // Fetch indices starting from startidx and offset by primid
-    int i0 = scene->indices[shape.startidx + 3 * primidx];
-    int i1 = scene->indices[shape.startidx + 3 * primidx + 1];
-    int i2 = scene->indices[shape.startidx + 3 * primidx + 2];
-
-    // Fetch normals
-    float3 n0 = scene->normals[shape.startvtx + i0];
-    float3 n1 = scene->normals[shape.startvtx + i1];
-    float3 n2 = scene->normals[shape.startvtx + i2];
-
-    // Fetch positions
-    float3 v0 = scene->vertices[shape.startvtx + i0];
-    float3 v1 = scene->vertices[shape.startvtx + i1];
-    float3 v2 = scene->vertices[shape.startvtx + i2];
-
-    // Fetch UVs
-    float2 uv0 = scene->uvs[shape.startvtx + i0];
-    float2 uv1 = scene->uvs[shape.startvtx + i1];
-    float2 uv2 = scene->uvs[shape.startvtx + i2];
-
-
-    // Intersect ray against this area light
+    float v0, v1, v2;
+    Scene_GetTriangleVertices(scene, shapeidx, primidx, &v0, &v1, &v2);
 
     float a, b;
     if (IntersectTriangle(&r, v0, v1, v2, &a, &b))
     {
-        float3 n = normalize(transform_vector((1.f - a - b) * n0 + a * n1 + b * n2, shape.m0, shape.m1, shape.m2, shape.m3));
-        float3 p = transform_point((1.f - a - b) * v0 + a * v1 + b * v2, shape.m0, shape.m1, shape.m2, shape.m3);
-        float2 tx = (1.f - a - b) * uv0 + a * uv1 + b * uv2;
+        float3 n;
+        float3 p;
+        float2 tx;
+        float area;
+        Scene_InterpolateAttributes(scene, shapeidx, primidx, make_float2(a, b), &p, &n, &tx, &area);
 
         float3 d = p - dg->p;
         float  ld = length(d);
         *wo = p - dg->p;
 
-        int matidx = scene->materialids[shape.startidx / 3 + primidx];
-        Material mat = scene->materials[matidx];
+        int mat_idx = Scene_GetMaterialIndex(scene, shapeidx, primidx);
+        Material mat = scene->materials[mat_idx];
 
         const float3 ke = Texture_GetValue3f(mat.kx.xyz, tx, TEXTURE_ARGS_IDX(mat.kxmapidx));
         float ndotv = dot(n, -(normalize(d)));
@@ -213,29 +192,6 @@ float3 AreaLight_Sample(// Emissive object
     int shapeidx = light->shapeidx;
     int primidx = light->primidx;
 
-    // Extract shape data
-    Shape shape = scene->shapes[shapeidx];
-
-    // Fetch indices starting from startidx and offset by primid
-    int i0 = scene->indices[shape.startidx + 3 * primidx];
-    int i1 = scene->indices[shape.startidx + 3 * primidx + 1];
-    int i2 = scene->indices[shape.startidx + 3 * primidx + 2];
-
-    // Fetch normals
-    float3 n0 = scene->normals[shape.startvtx + i0];
-    float3 n1 = scene->normals[shape.startvtx + i1];
-    float3 n2 = scene->normals[shape.startvtx + i2];
-
-    // Fetch positions
-    float3 v0 = scene->vertices[shape.startvtx + i0];
-    float3 v1 = scene->vertices[shape.startvtx + i1];
-    float3 v2 = scene->vertices[shape.startvtx + i2];
-
-    // Fetch UVs
-    float2 uv0 = scene->uvs[shape.startvtx + i0];
-    float2 uv1 = scene->uvs[shape.startvtx + i1];
-    float2 uv2 = scene->uvs[shape.startvtx + i2];
-
     // Generate sample on triangle
     float r0 = sample.x;
     float r1 = sample.y;
@@ -245,16 +201,17 @@ float3 AreaLight_Sample(// Emissive object
     uv.x = native_sqrt(r0) * (1.f - r1);
     uv.y = native_sqrt(r0) * r1;
 
-    // Calculate barycentric position and normal
-    float3 n = normalize((1.f - uv.x - uv.y) * n0 + uv.x * n1 + uv.y * n2);
-    float3 p = (1.f - uv.x - uv.y) * v0 + uv.x * v1 + uv.y * v2;
-    float2 tx = (1.f - uv.x - uv.y) * uv0 + uv.x * uv1 + uv.y * uv2;
+    float3 n;
+    float3 p;
+    float2 tx;
+    float area;
+    Scene_InterpolateAttributes(scene, shapeidx, primidx, uv, &p, &n, &tx, &area);
 
     *wo = p - dg->p;
-    *pdf = 1.f / (length(cross(v2 - v0, v2 - v1)) * 0.5f);
+    *pdf = 1.f / area;
 
-    int matidx = scene->materialids[shape.startidx / 3 + primidx];
-    Material mat = scene->materials[matidx];
+    int mat_idx = Scene_GetMaterialIndex(scene, shapeidx, primidx);
+    Material mat = scene->materials[mat_idx];
 
     const float3 ke = Texture_GetValue3f(mat.kx.xyz, tx, TEXTURE_ARGS_IDX(mat.kxmapidx));
 
@@ -294,38 +251,21 @@ float AreaLight_GetPdf(// Emissive object
     int shapeidx = light->shapeidx;
     int primidx = light->primidx;
 
-    // Extract shape data
-    Shape shape = scene->shapes[shapeidx];
-
-    // Fetch indices starting from startidx and offset by primid
-    int i0 = scene->indices[shape.startidx + 3 * primidx];
-    int i1 = scene->indices[shape.startidx + 3 * primidx + 1];
-    int i2 = scene->indices[shape.startidx + 3 * primidx + 2];
-
-    // Fetch normals
-    float3 n0 = scene->normals[shape.startvtx + i0];
-    float3 n1 = scene->normals[shape.startvtx + i1];
-    float3 n2 = scene->normals[shape.startvtx + i2];
-
-    // Fetch positions
-    float3 v0 = scene->vertices[shape.startvtx + i0];
-    float3 v1 = scene->vertices[shape.startvtx + i1];
-    float3 v2 = scene->vertices[shape.startvtx + i2];
+    float v0, v1, v2;
+    Scene_GetTriangleVertices(scene, shapeidx, primidx, &v0, &v1, &v2);
 
     // Intersect ray against this area light
     float a, b;
     if (IntersectTriangle(&r, v0, v1, v2, &a, &b))
     {
-        float3 n = normalize(transform_vector((1.f - a - b) * n0 + a * n1 + b * n2, shape.m0, shape.m1, shape.m2, shape.m3));
-        float3 p = transform_point((1.f - a - b) * v0 + a * v1 + b * v2, shape.m0, shape.m1, shape.m2, shape.m3);
+        float3 n;
+        float3 p;
+        float2 tx;
+        float area;
+        Scene_InterpolateAttributes(scene, shapeidx, primidx, make_float2(a, b), &p, &n, &tx, &area);
+
         float3 d = p - dg->p;
         float  ld = length(d);
-
-        float3 p0 = transform_point(v0, shape.m0, shape.m1, shape.m2, shape.m3);
-        float3 p1 = transform_point(v1, shape.m0, shape.m1, shape.m2, shape.m3);
-        float3 p2 = transform_point(v2, shape.m0, shape.m1, shape.m2, shape.m3);
-
-        float area = 0.5f * length(cross(p2 - p0, p2 - p1));
         float denom = (fabs(dot(normalize(d), dg->n)) * area);
 
         return denom > 0.f ? ld * ld / denom : 0.f;
