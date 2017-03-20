@@ -122,7 +122,7 @@ INLINE void Scene_InterpolateAttributes(Scene const* scene, int shape_idx, int p
 INLINE int Scene_GetMaterialIndex(Scene const* scene, int shape_idx, int prim_idx)
 {
     Shape shape = scene->shapes[shape_idx];
-    return scene->materialids[shape.startidx / 3 + prim_idx];
+    return scene->materialids[shape.start_material_idx + prim_idx];
 }
 
 /// Fill DifferentialGeometry structure based on intersection info from RadeonRays

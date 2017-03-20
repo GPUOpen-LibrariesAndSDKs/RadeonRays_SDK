@@ -62,8 +62,8 @@ typedef struct
     int numprims;
     // Start vertex
     int startvtx;
-    // Number of vertices
-    int numvertices;
+    // Start material idx
+    int start_material_idx;
     // Linear motion vector
     float3 linearvelocity;
     // Angular velocity

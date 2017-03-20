@@ -14,26 +14,26 @@ namespace Baikal
     using ShapeList = std::vector<Shape const*>;
     using LightList = std::vector<Light const*>;
     using AutoreleasePool = std::set<SceneObject const*>;
-    
+
     // Internal data
     struct Scene1::SceneImpl
     {
         ShapeList m_shapes;
         LightList m_lights;
         Camera const* m_camera;
-        
+
         DirtyFlags m_dirty_flags;
-        
+
         AutoreleasePool m_autorelease_pool;
     };
-    
+
     Scene1::Scene1()
     : m_impl(new SceneImpl)
     {
         m_impl->m_camera = nullptr;
         ClearDirtyFlags();
     }
-    
+
     Scene1::~Scene1()
     {
         for(auto& i : m_impl->m_autorelease_pool)
@@ -41,37 +41,37 @@ namespace Baikal
             delete i;
         }
     }
-    
+
     Scene1::DirtyFlags Scene1::GetDirtyFlags() const
     {
         return m_impl->m_dirty_flags;
     }
-    
+
     void Scene1::ClearDirtyFlags() const
     {
         m_impl->m_dirty_flags = 0;
     }
-    
+
     void Scene1::SetDirtyFlag(DirtyFlags flag) const
     {
         m_impl->m_dirty_flags = m_impl->m_dirty_flags | flag;
     }
-    
+
     void Scene1::SetCamera(Camera const* camera)
     {
         m_impl->m_camera = camera;
         SetDirtyFlag(kCamera);
     }
-    
+
     Camera const* Scene1::GetCamera() const
     {
         return m_impl->m_camera;
     }
-    
+
     void Scene1::AttachLight(Light const* light)
     {
         assert(light);
-        
+
         // Check if the light is already in the scene
         LightList::const_iterator citer =  std::find(m_impl->m_lights.cbegin(), m_impl->m_lights.cend(), light);
         
@@ -79,11 +79,11 @@ namespace Baikal
         if (citer == m_impl->m_lights.cend())
         {
             m_impl->m_lights.push_back(light);
-            
+
             SetDirtyFlag(kLights);
         }
     }
-    
+
     void Scene1::DetachLight(Light const* light)
     {
         // Check if the light is in the scene
@@ -97,12 +97,12 @@ namespace Baikal
             SetDirtyFlag(kLights);
         }
     }
-    
+
     std::size_t Scene1::GetNumLights() const
     {
         return m_impl->m_lights.size();
     }
-    
+
     Iterator* Scene1::CreateShapeIterator() const
     {
         return new IteratorImpl<ShapeList::const_iterator>(m_impl->m_shapes.begin(), m_impl->m_shapes.end());
