@@ -31,6 +31,7 @@ THE SOFTWARE.
 #include "PT/ptrenderer.h"
 #include "config_manager.h"
 #include "OpenImageIO/imageio.h"
+#include "math/mathutils.h"
 
 using namespace RadeonRays;
 using namespace Baikal;
@@ -47,7 +48,7 @@ struct Context
 
 rpr_int rprRegisterPlugin(rpr_char const * path)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    return RPR_ERROR_UNSUPPORTED;
 }
 
 rpr_int rprCreateContext(rpr_int api_version, rpr_int * pluginIDs, size_t pluginCount, rpr_creation_flags creation_flags, rpr_context_properties const * props, rpr_char const * cache_path, rpr_context * out_context)
@@ -57,7 +58,7 @@ rpr_int rprCreateContext(rpr_int api_version, rpr_int * pluginIDs, size_t plugin
         return RPR_ERROR_INVALID_API_VERSION;
     }
 
-    bool interop = creation_flags & RPR_CREATION_FLAGS_ENABLE_GL_INTEROP;
+    bool interop = (creation_flags & RPR_CREATION_FLAGS_ENABLE_GL_INTEROP);
     if (creation_flags & RPR_CREATION_FLAGS_ENABLE_GPU0)
     {
         Context* cont = new Context();
@@ -83,7 +84,7 @@ rpr_int rprCreateContext(rpr_int api_version, rpr_int * pluginIDs, size_t plugin
 
 rpr_int rprContextSetActivePlugin(rpr_context context, rpr_int pluginID)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    return RPR_ERROR_UNSUPPORTED;
 }
 
 rpr_int rprContextGetInfo(rpr_context in_context, rpr_context_info in_context_info, size_t in_size, void * out_data, size_t * out_size_ret)
@@ -169,7 +170,7 @@ rpr_int rprContextSetAOV(rpr_context in_context, rpr_aov in_aov, rpr_framebuffer
     case RPR_AOV_SHADING_NORMAL:
     case RPR_AOV_UV:
     case RPR_AOV_WORLD_COORDINATE:
-        return RPR_ERROR_UNIMPLEMENTED;
+        return RPR_ERROR_UNSUPPORTED;
     default:
         //TODO: add other AOV
         return RPR_ERROR_INVALID_PARAMETER;
@@ -280,7 +281,7 @@ rpr_int rprContextRenderTile(rpr_context context, rpr_uint xmin, rpr_uint xmax, 
 
 rpr_int rprContextClearMemory(rpr_context context)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    return RPR_ERROR_UNSUPPORTED;
 }
 
 rpr_int rprContextCreateImage(rpr_context in_context, rpr_image_format const in_format, rpr_image_desc const * in_image_desc, void const * in_data, rpr_image * out_image)
@@ -471,7 +472,7 @@ rpr_int rprContextCreateMesh(rpr_context in_context,
 
 rpr_int rprContextCreateMeshEx(rpr_context context, rpr_float const * vertices, size_t num_vertices, rpr_int vertex_stride, rpr_float const * normals, size_t num_normals, rpr_int normal_stride, rpr_int const * perVertexFlag, size_t num_perVertexFlags, rpr_int perVertexFlag_stride, rpr_int numberOfTexCoordLayers, rpr_float const ** texcoords, size_t * num_texcoords, rpr_int * texcoord_stride, rpr_int const * vertex_indices, rpr_int vidx_stride, rpr_int const * normal_indices, rpr_int nidx_stride, rpr_int const ** texcoord_indices, rpr_int * tidx_stride, rpr_int const * num_face_vertices, size_t num_faces, rpr_shape * out_mesh)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    return RPR_ERROR_UNSUPPORTED;
 }
 
 rpr_int rprContextCreateCamera(rpr_context in_context, rpr_camera * out_camera)
@@ -919,18 +920,49 @@ rpr_int rprSpotLightSetConeShape(rpr_light in_light, rpr_float in_iangle, rpr_fl
     return RPR_SUCCESS;
 }
 
-rpr_int rprContextCreateDirectionalLight(rpr_context context, rpr_light * out_light)
+rpr_int rprContextCreateDirectionalLight(rpr_context in_context, rpr_light * out_light)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    if (!in_context)
+    {
+        return RPR_ERROR_INVALID_CONTEXT;
+    }
+    if (!out_light)
+    {
+        return RPR_ERROR_INVALID_PARAMETER;
+    }
+
+    //cast
+    Context* cont = static_cast<Context*>(in_context);
+    Light* light = new DirectionalLight();
+    *out_light = light;
+
+    return RPR_SUCCESS;
 }
 
-rpr_int rprDirectionalLightSetRadiantPower3f(rpr_light light, rpr_float r, rpr_float g, rpr_float b)
+rpr_int rprDirectionalLightSetRadiantPower3f(rpr_light in_light, rpr_float in_r, rpr_float in_g, rpr_float in_b)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    if (!in_light)
+    {
+        return RPR_ERROR_INVALID_PARAMETER;
+    }
+    //prepare
+    DirectionalLight* light = static_cast<DirectionalLight*>(in_light);
+    float3 radiant_power = { in_r, in_g, in_b };
+
+    light->SetEmittedRadiance(radiant_power);
+
+    return RPR_SUCCESS;
 }
 
-rpr_int rprDirectionalLightSetShadowSoftness(rpr_light light, rpr_float coeff)
+rpr_int rprDirectionalLightSetShadowSoftness(rpr_light in_light, rpr_float in_coeff)
 {
+    if (!in_light)
+    {
+        return RPR_ERROR_INVALID_PARAMETER;
+    }
+    //prepare
+    DirectionalLight* light = static_cast<DirectionalLight*>(in_light);
+
     return RPR_ERROR_UNIMPLEMENTED;
 }
 
@@ -1047,9 +1079,89 @@ rpr_int rprIESLightSetImageFromIESdata(rpr_light env_light, rpr_char const * ies
     return RPR_ERROR_UNIMPLEMENTED;
 }
 
-rpr_int rprLightGetInfo(rpr_light light, rpr_light_info info, size_t size, void * data, size_t * size_ret)
+rpr_int rprLightGetInfo(rpr_light in_light, rpr_light_info in_info, size_t in_size, void * out_data, size_t * out_size_ret)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    if (!in_light)
+    {
+        return RPR_ERROR_INVALID_PARAMETER;
+    }
+
+    //cast data
+    Light* light = static_cast<Light*>(in_light);
+    switch (in_info)
+    {
+    case RPR_LIGHT_TYPE:
+    {
+        int* data = static_cast<int*>(out_data);
+        if (data && in_size < sizeof(int))
+        {
+            return RPR_ERROR_INVALID_PARAMETER;
+        }
+        if (out_size_ret)
+        {
+            *out_size_ret = sizeof(int);
+        }
+        if (data)
+        {
+            //check light type
+            if (dynamic_cast<PointLight*>(light))
+            {
+                *data = RPR_LIGHT_TYPE_POINT;
+            }
+            else if (dynamic_cast<DirectionalLight*>(light))
+            {
+                *data = RPR_LIGHT_TYPE_DIRECTIONAL;
+            }
+            else if (dynamic_cast<SpotLight*>(light))
+            {
+                *data = RPR_LIGHT_TYPE_SPOT;
+            }
+            else if (dynamic_cast<ImageBasedLight*>(light))
+            {
+                *data = RPR_LIGHT_TYPE_ENVIRONMENT;
+            }
+            else
+            {
+                //TODO: add RPR_LIGHT_TYPE_SKY and RPR_LIGHT_TYPE_IES
+                return RPR_ERROR_INVALID_LIGHT;
+            }
+        }
+        break;
+    }
+    case RPR_LIGHT_TRANSFORM:
+    {
+        float *data = static_cast<float*>(out_data);
+        if (data && in_size < sizeof(matrix))
+        {
+            return RPR_ERROR_INVALID_PARAMETER;
+        }
+        if (out_size_ret)
+        {
+            *out_size_ret = sizeof(matrix);
+        }
+        if (data)
+        {
+            float3 pos = light->GetPosition();
+            float3 dir = light->GetDirection();
+            //angle between -z axis and direction
+            float angle = acos(dot(dir, float3(0.f, 0.f, -1.f, 0.f)));
+            float3 axis = cross(dir, float3(0.f, 0.f, -1.f, 0.f));
+            if (axis.sqnorm() < std::numeric_limits<float>::min())
+            {
+                //rotate around x axis
+                axis = float3(1.f, 0.f, 0.f, 0.f);
+            }
+            matrix rot = rotation(axis, angle);
+            matrix m = translation(pos) * rot;
+            memcpy(data, &m.m[0], sizeof(matrix));
+        }
+        break;
+    }
+    default:
+        return RPR_ERROR_INVALID_PARAMETER;
+    }
+
+    return RPR_SUCCESS;
 }
 
 rpr_int rprSceneClear(rpr_scene in_scene)
@@ -1305,6 +1417,8 @@ rpr_int rprMaterialSystemCreateNode(rpr_material_system in_matsys, rpr_material_
     switch (in_type)
     {
     case RPR_MATERIAL_NODE_DIFFUSE:
+    case RPR_MATERIAL_NODE_WARD:
+    case RPR_MATERIAL_NODE_ORENNAYAR:
     {
         SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kLambert);
         mat->SetTwoSided(true);
@@ -1313,15 +1427,18 @@ rpr_int rprMaterialSystemCreateNode(rpr_material_system in_matsys, rpr_material_
     }
     case RPR_MATERIAL_NODE_MICROFACET:
     {
-        SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kMicrofacetBeckmann);
+        SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kMicrofacetGGX);
         mat->SetTwoSided(true);
         node = mat;
         break;
     }
-    case RPR_MATERIAL_NODE_IMAGE_TEXTURE:
-    case RPR_MATERIAL_NODE_NORMAL_MAP:
-        node = new Texture();
+    case RPR_MATERIAL_NODE_MICROFACET_REFRACTION:
+    {
+        SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kMicrofacetRefractionGGX);
+        mat->SetTwoSided(true);
+        node = mat;
         break;
+    }
     case RPR_MATERIAL_NODE_REFLECTION:
     {
         SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kIdealReflect);
@@ -1338,18 +1455,24 @@ rpr_int rprMaterialSystemCreateNode(rpr_material_system in_matsys, rpr_material_
     }
     case RPR_MATERIAL_NODE_STANDARD:
     {
-        SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kZero);
-        mat->SetTwoSided(true);
-        node = mat;
-        break;
-    }
-    case RPR_MATERIAL_NODE_FRESNEL:
-    {
         //TODO: fix
         SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kLambert);
         mat->SetTwoSided(true);
         node = mat;
         break;
+    }
+    case RPR_MATERIAL_NODE_DIFFUSE_REFRACTION:
+    {
+        SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kTranslucent);
+        mat->SetTwoSided(true);
+        node = mat;
+        break;
+    }
+    case RPR_MATERIAL_NODE_FRESNEL_SCHLICK:
+    case RPR_MATERIAL_NODE_FRESNEL:
+    {
+        //TODO: fix
+        return RPR_ERROR_UNIMPLEMENTED;
     }
     case RPR_MATERIAL_NODE_EMISSIVE:
     {
@@ -1358,8 +1481,41 @@ rpr_int rprMaterialSystemCreateNode(rpr_material_system in_matsys, rpr_material_
         node = mat;
         break;
     }
+    case RPR_MATERIAL_NODE_BLEND:
+    {
+        MultiBxdf* mat = new MultiBxdf(MultiBxdf::Type::kMix);
+        mat->SetTwoSided(true);
+        mat->SetInputValue("weight", 0.5f);
+        node = mat;
+        break;
+    }
+    case RPR_MATERIAL_NODE_TRANSPARENT:
+    case RPR_MATERIAL_NODE_PASSTHROUGH:
+    {
+        SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kPassthrough);
+        mat->SetTwoSided(true);
+        node = mat;
+        break;
+    }
+    case RPR_MATERIAL_NODE_ADD:
+    case RPR_MATERIAL_NODE_ARITHMETIC:
+    case RPR_MATERIAL_NODE_BLEND_VALUE:
+    case RPR_MATERIAL_NODE_VOLUME:
+    case RPR_MATERIAL_NODE_INPUT_LOOKUP:
+        return RPR_ERROR_UNSUPPORTED;
+        break;
+    case RPR_MATERIAL_NODE_NORMAL_MAP:
+    case RPR_MATERIAL_NODE_IMAGE_TEXTURE:
+    case RPR_MATERIAL_NODE_NOISE2D_TEXTURE:
+    case RPR_MATERIAL_NODE_DOT_TEXTURE:
+    case RPR_MATERIAL_NODE_GRADIENT_TEXTURE:
+    case RPR_MATERIAL_NODE_CHECKER_TEXTURE:
+    case RPR_MATERIAL_NODE_CONSTANT_TEXTURE:
+    case RPR_MATERIAL_NODE_BUMP_MAP:
+        node = new Texture();
+        break;
     default:
-        return RPR_ERROR_UNIMPLEMENTED;
+        return RPR_ERROR_INVALID_PARAMETER_TYPE;
     }
     sys->push_back(node);
     *out_node = node;
@@ -1381,6 +1537,8 @@ rpr_int rprMaterialNodeSetInputN(rpr_material_node in_node, rpr_char const * in_
     Texture* input_tex = dynamic_cast<Texture*>(input_node);
     SingleBxdf* input_mat = dynamic_cast<SingleBxdf*>(input_node);
     
+    //TODO: move to wrap
+    //TODO: handle RPR_MATERIAL_NODE_BLEND
     //convert input name
     std::string input_name;
     if (!strcmp(in_input, "color"))
