@@ -20,7 +20,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
 #include "RadeonProRender.h"
-#include "radeon_rays.h"
 #include "Scene/scene1.h"
 #include "Scene/shape.h"
 #include "Scene/material.h"
@@ -372,17 +371,11 @@ rpr_int rprContextCreateInstance(rpr_context in_context, rpr_shape shape, rpr_sh
     }
 
     Context* context = static_cast<Context*>(in_context);
-    Mesh* mesh = static_cast<Mesh*>(shape);
+    Baikal::Shape* mesh = static_cast<Baikal::Shape*>(shape);
 
     //TODO: replace by instance
-    Mesh* instance = new Mesh();
-
-    //copy data
-    instance->SetIndices(mesh->GetIndices(), mesh->GetNumIndices());
-    instance->SetVertices(mesh->GetVertices(), mesh->GetNumIndices());
-    instance->SetNormals(mesh->GetNormals(), mesh->GetNumNormals());
-    instance->SetUVs(mesh->GetUVs(), mesh->GetNumUVs());
-    
+    Instance* instance = new Instance(mesh);
+        
     *out_instance = instance;
 
     return RPR_SUCCESS;
