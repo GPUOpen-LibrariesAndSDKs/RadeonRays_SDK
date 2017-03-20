@@ -437,6 +437,9 @@ namespace Baikal
 
         // Clear shapes cache
         out.isect_shapes.clear();
+        // Only visible shapes are attached to the API.
+        // So excluded meshes are pushed into isect_shapes, but
+        // not to visible_shapes.
         out.visible_shapes.clear();
 
         // Create new shapes
@@ -447,14 +450,20 @@ namespace Baikal
             throw std::runtime_error("No shapes in the scene");
         }
 
+        // Split all shapes into meshes and instances sets.
         std::set<Mesh const*> meshes;
+        // Excluded shapes are shapes which are not in the scene,
+        // but references by at least one instance.
         std::set<Mesh const*> excluded_meshes;
         std::set<Instance const*> instances;
         SplitMeshesAndInstances(shape_iter.get(), meshes, instances, excluded_meshes);
 
-        // Create meshes
+        // Keep shape->rr shape association for 
+        // instance base shape lookup.
         std::map<Shape const*, RadeonRays::Shape*> rr_shapes;
 
+        // Start from ID 1
+        // Handle meshes
         int id = 1;
         for (auto& iter : meshes)
         {
@@ -514,7 +523,7 @@ namespace Baikal
             rr_shapes[mesh] = shape;
         }
 
-        // Create instances
+        // Handle instances
         for (auto& iter: instances)
         {
             auto instance = iter;
@@ -579,15 +588,17 @@ namespace Baikal
 
         std::unique_ptr<Iterator> shape_iter(scene.CreateShapeIterator());
 
-        // Sort shapes into meshes and instances sets
+        // Sort shapes into meshes and instances sets.
         std::set<Mesh const*> meshes;
+        // Excluded meshes are meshes which are not in the scene, 
+        // but are references by at least one instance.
         std::set<Mesh const*> excluded_meshes;
         std::set<Instance const*> instances;
         SplitMeshesAndInstances(shape_iter.get(), meshes, instances, excluded_meshes);
 
         // Calculate GPU array sizes. Do that only for meshes,
         // since instances do not occupy space in vertex buffers.
-        // However instane still has its own material ids.
+        // However instances still have their own material ids.
         for (auto& iter : meshes)
         {
             auto mesh = iter;
@@ -599,6 +610,7 @@ namespace Baikal
             num_material_ids += mesh->GetNumIndices() / 3;
         }
 
+        // Excluded meshes still occupy space in vertex buffers.
         for (auto& iter : excluded_meshes)
         {
             auto mesh = iter;
@@ -610,6 +622,7 @@ namespace Baikal
             num_material_ids += mesh->GetNumIndices() / 3;
         }
 
+        // Instances only occupy material IDs space.
         for (auto& iter : instances)
         {
             auto instance = iter;
@@ -623,6 +636,7 @@ namespace Baikal
         out.uvs = m_context.CreateBuffer<float2>(num_uvs, CL_MEM_READ_ONLY);
         out.indices = m_context.CreateBuffer<int>(num_indices, CL_MEM_READ_ONLY);
 
+        // Total number of entries in shapes GPU array
         auto num_shapes = meshes.size() + excluded_meshes.size() + instances.size();
         out.shapes = m_context.CreateBuffer<ClwScene::Shape>(num_shapes, CL_MEM_READ_ONLY);
         out.materialids = m_context.CreateBuffer<int>(num_material_ids, CL_MEM_READ_ONLY);
@@ -642,7 +656,9 @@ namespace Baikal
         m_context.MapBuffer(0, out.materialids, CL_MAP_WRITE, &matids);
         m_context.MapBuffer(0, out.shapes, CL_MAP_WRITE, &shapes).Wait();
 
-        // Keep associated shapes data for instance look up
+        // Keep associated shapes data for instance look up.
+        // We retrieve data from here while serializing instances,
+        // using base shape lookup.
         std::map<Mesh const*, ClwScene::Shape> shape_data;
         // Handle meshes
         for (auto& iter : meshes)
@@ -710,6 +726,8 @@ namespace Baikal
             mesh->SetDirty(false);
         }
 
+        // Excluded shapes are handled in almost the same way
+        // except materials.
         for (auto& iter : excluded_meshes)
         {
             auto mesh = iter;
@@ -759,7 +777,7 @@ namespace Baikal
 
             shapes[num_shapes_written++] = shape;
 
-            // We do not need materials for excluded shapes, we never shade them
+            // We do not need materials for excluded shapes, we never shade them.
             std::fill(matids + num_matids_written, matids + num_matids_written + mesh_num_indices / 3, -1);
 
             num_matids_written += mesh_num_indices / 3;
@@ -777,14 +795,14 @@ namespace Baikal
             auto transform = instance->GetTransform();
             auto mesh_num_indices = base_shape->GetNumIndices();
 
-            // Here shape_data is guaranteed to contain 
+            // Here shape_data is guaranteed to contain
             // info for base_shape since we have serialized it
             // above in a different pass.
             ClwScene::Shape shape = shape_data[base_shape];
-            // Instance has its own material part
-            shape.start_material_idx = num_matids_written;
+            // Instance has its own material part.
+            shape.start_material_idx = static_cast<int>(num_matids_written);
 
-            // Instance has its own transform
+            // Instance has its own transform.
             shape.transform.m0 = { transform.m00, transform.m01, transform.m02, transform.m03 };
             shape.transform.m1 = { transform.m10, transform.m11, transform.m12, transform.m13 };
             shape.transform.m2 = { transform.m20, transform.m21, transform.m22, transform.m23 };
@@ -795,6 +813,7 @@ namespace Baikal
 
             shapes[num_shapes_written++] = shape;
 
+            // If instance do not have a material, use default one.
             if (!material)
             {
                 material = m_default_material.get();
@@ -1008,6 +1027,8 @@ namespace Baikal
         {
             return ClwScene::Bxdf::kZero;
         }
+
+        return ClwScene::Bxdf::kZero;
     }
 
     void SceneTracker::WriteMaterial(Material const* material, Collector& mat_collector, Collector& tex_collector, void* data) const
@@ -1307,12 +1328,11 @@ namespace Baikal
                 WriteLight(scene, light, tex_collector, lights + num_lights_written);
                 ++num_lights_written;
 
-                // TODO: temporary code
                 // Find and update IBL idx
                 auto ibl = dynamic_cast<ImageBasedLight const*>(light_iter->ItemAs<Light const>());
                 if (ibl)
                 {
-                    out.envmapidx = num_lights_written - 1;
+                    out.envmapidx = static_cast<int>(num_lights_written - 1);
                 }
 
                 light->SetDirty(false);
@@ -1321,7 +1341,7 @@ namespace Baikal
 
         m_context.UnmapBuffer(0, out.lights, lights);
 
-        out.num_lights = num_lights_written;
+        out.num_lights = static_cast<int>(num_lights_written);
     }
 
 
