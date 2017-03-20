@@ -128,8 +128,13 @@ rpr_int rprContextGetParameterInfo(rpr_context context, int param_idx, rpr_param
     return RPR_ERROR_UNIMPLEMENTED;
 }
 
-rpr_int rprContextGetAOV(rpr_context context, rpr_aov aov, rpr_framebuffer * out_fb)
+rpr_int rprContextGetAOV(rpr_context in_context, rpr_aov in_aov, rpr_framebuffer * out_fb)
 {
+    if (!in_context)
+    {
+        return RPR_ERROR_INVALID_CONTEXT;
+    }
+
     return RPR_ERROR_UNIMPLEMENTED;
 }
 
@@ -279,9 +284,49 @@ rpr_int rprContextClearMemory(rpr_context context)
     return RPR_ERROR_UNIMPLEMENTED;
 }
 
-rpr_int rprContextCreateImage(rpr_context context, rpr_image_format const format, rpr_image_desc const * image_desc, void const * data, rpr_image * out_image)
+rpr_int rprContextCreateImage(rpr_context in_context, rpr_image_format const in_format, rpr_image_desc const * in_image_desc, void const * in_data, rpr_image * out_image)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    if (!in_context)
+    {
+        return RPR_ERROR_INVALID_CONTEXT;
+    }
+
+    //cast data
+    Context* context = static_cast<Context*>(in_context);
+    
+    //TODO: fix only 4 components data supported
+    if (in_format.num_components != 4)
+        return RPR_ERROR_UNIMPLEMENTED;
+    
+    //tex size
+    int2 tex_size(in_image_desc->image_width, in_image_desc->image_height);
+    
+    //texture takes ownership of its data array
+    //so need to copy input data
+    int data_size = in_format.num_components * tex_size.x * tex_size.y;
+    Texture::Format data_format = Texture::Format::kRgba8;
+    switch (in_format.type)
+    {
+    case RPR_COMPONENT_TYPE_UINT8:
+        break;
+    case RPR_COMPONENT_TYPE_FLOAT16:
+        data_size *= 2;
+        data_format = Texture::Format::kRgba16;
+        break;
+    case RPR_COMPONENT_TYPE_FLOAT32:
+        data_size *= 4;
+        data_format = Texture::Format::kRgba32;
+        break;
+    default:
+        return RPR_ERROR_INVALID_PARAMETER;
+    }
+
+    char* data = new char[data_size];
+    memcpy(data, in_data, data_size);
+    Texture* tex = new Texture(data, tex_size, data_format);
+    *out_image = tex;
+
+    return RPR_SUCCESS;
 }
 
 rpr_int rprContextCreateImageFromFile(rpr_context in_context, rpr_char const * in_path, rpr_image * out_image)

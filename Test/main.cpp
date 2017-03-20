@@ -15,14 +15,22 @@ namespace
 {
     //control how many frames to render in tests for resulting image
     int kRenderIterations = 100;
-    //default structure for vertex data
-    struct vertex
+    //default structure for Vertex data
+    struct Vertex
     {
         rpr_float pos[3];
         rpr_float norm[3];
         rpr_float tex[2];
     };
 
+    //multi texture Vertex
+    struct VertexMT
+    {
+        rpr_float pos[3];
+        rpr_float norm[3];
+        rpr_float tex0[2];
+        rpr_float tex1[2];
+    };
     rpr_shape CreateSphere(rpr_context context, std::uint32_t lat, std::uint32_t lon, float r, RadeonRays::float3 const& c)
     {
         auto num_verts = (lat - 2) * lon + 2;
@@ -111,14 +119,14 @@ namespace
 
 void MeshCreationTest()
 {
-    struct vertex
+    struct Vertex
     {
         rpr_float pos[3];
         rpr_float norm[3];
         rpr_float tex[2];
     };
 
-    vertex quad[] =
+    Vertex quad[] =
     {
         { -1.0f, 1.0f, -1.0f, 0.f, 1.f, 0.f, 0.0f, 0.0f },
         { 1.0f, 1.0f, -1.0f, 0.f, 1.f, 0.f, 1.0f, 0.0f },
@@ -143,9 +151,9 @@ void MeshCreationTest()
     assert(status == RPR_SUCCESS);
 
     rpr_shape quad_mesh = NULL; status = rprContextCreateMesh(context,
-        (rpr_float const*)&quad[0], 24, sizeof(vertex),
-        (rpr_float const*)((char*)&quad[0] + sizeof(rpr_float) * 3), 24, sizeof(vertex),
-        (rpr_float const*)((char*)&quad[0] + sizeof(rpr_float) * 6), 24, sizeof(vertex),
+        (rpr_float const*)&quad[0], 24, sizeof(Vertex),
+        (rpr_float const*)((char*)&quad[0] + sizeof(rpr_float) * 3), 24, sizeof(Vertex),
+        (rpr_float const*)((char*)&quad[0] + sizeof(rpr_float) * 6), 24, sizeof(Vertex),
         (rpr_int const*)indices, sizeof(rpr_int),
         (rpr_int const*)indices, sizeof(rpr_int),
         (rpr_int const*)indices, sizeof(rpr_int),
@@ -169,7 +177,7 @@ void SimpleRenderTest()
     rpr_scene scene = NULL; status = rprContextCreateScene(context, &scene);
     assert(status == RPR_SUCCESS);
 
-    vertex cube[] =
+    Vertex cube[] =
     {
         { -1.0f, 1.0f, -1.0f, 0.f, 1.f, 0.f, 0.0f, 0.0f },
         { 1.0f, 1.0f, -1.0f, 0.f, 1.f, 0.f, 1.0f, 0.0f },
@@ -202,7 +210,7 @@ void SimpleRenderTest()
         { -1.0f, 1.0f, 1.0f , 0.f, 0.f, 1.f,0.0f, 1.0f },
     };
 
-    vertex plane[] =
+    Vertex plane[] =
     {
         { -5.f, 0.f, -5.f, 0.f, 1.f, 0.f, 0.f, 0.f },
         { -5.f, 0.f,  5.f, 0.f, 1.f, 0.f, 0.f, 1.f },
@@ -256,9 +264,9 @@ void SimpleRenderTest()
     
     //plane mesh
     rpr_shape plane_mesh = NULL; status = rprContextCreateMesh(context,
-        (rpr_float const*)&plane[0], 4, sizeof(vertex),
-        (rpr_float const*)((char*)&plane[0] + sizeof(rpr_float) * 3), 4, sizeof(vertex),
-        (rpr_float const*)((char*)&plane[0] + sizeof(rpr_float) * 6), 4, sizeof(vertex),
+        (rpr_float const*)&plane[0], 4, sizeof(Vertex),
+        (rpr_float const*)((char*)&plane[0] + sizeof(rpr_float) * 3), 4, sizeof(Vertex),
+        (rpr_float const*)((char*)&plane[0] + sizeof(rpr_float) * 6), 4, sizeof(Vertex),
         (rpr_int const*)indices, sizeof(rpr_int),
         (rpr_int const*)indices, sizeof(rpr_int),
         (rpr_int const*)indices, sizeof(rpr_int),
@@ -367,14 +375,14 @@ void ComplexRenderTest()
     rpr_scene scene = NULL; status = rprContextCreateScene(context, &scene);
     assert(status == RPR_SUCCESS);
 
-    struct vertex
+    struct Vertex
     {
         rpr_float pos[3];
         rpr_float norm[3];
         rpr_float tex[2];
     };
 
-    vertex cube[] =
+    Vertex cube[] =
     {
         { -1.0f, 1.0f, -1.0f, 0.f, 1.f, 0.f, 0.0f, 0.0f },
         { 1.0f, 1.0f, -1.0f, 0.f, 1.f, 0.f, 1.0f, 0.0f },
@@ -407,7 +415,7 @@ void ComplexRenderTest()
         { -1.0f, 1.0f, 1.0f , 0.f, 0.f, 1.f,0.0f, 1.0f },
     };
 
-    vertex plane[] =
+    Vertex plane[] =
     {
         { -15.f, 0.f, -15.f, 0.f, 1.f, 0.f, 0.f, 0.f },
         { -15.f, 0.f,  15.f, 0.f, 1.f, 0.f, 0.f, 1.f },
@@ -442,9 +450,9 @@ void ComplexRenderTest()
     };
 
     rpr_shape mesh = NULL; status = rprContextCreateMesh(context,
-        (rpr_float const*)&cube[0], 24, sizeof(vertex),
-        (rpr_float const*)((char*)&cube[0] + sizeof(rpr_float) * 3), 24, sizeof(vertex),
-        (rpr_float const*)((char*)&cube[0] + sizeof(rpr_float) * 6), 24, sizeof(vertex),
+        (rpr_float const*)&cube[0], 24, sizeof(Vertex),
+        (rpr_float const*)((char*)&cube[0] + sizeof(rpr_float) * 3), 24, sizeof(Vertex),
+        (rpr_float const*)((char*)&cube[0] + sizeof(rpr_float) * 6), 24, sizeof(Vertex),
         (rpr_int const*)indices, sizeof(rpr_int),
         (rpr_int const*)indices, sizeof(rpr_int),
         (rpr_int const*)indices, sizeof(rpr_int),
@@ -453,9 +461,9 @@ void ComplexRenderTest()
     assert(status == RPR_SUCCESS);
 
     rpr_shape plane_mesh = NULL; status = rprContextCreateMesh(context,
-        (rpr_float const*)&plane[0], 4, sizeof(vertex),
-        (rpr_float const*)((char*)&plane[0] + sizeof(rpr_float) * 3), 4, sizeof(vertex),
-        (rpr_float const*)((char*)&plane[0] + sizeof(rpr_float) * 6), 4, sizeof(vertex),
+        (rpr_float const*)&plane[0], 4, sizeof(Vertex),
+        (rpr_float const*)((char*)&plane[0] + sizeof(rpr_float) * 3), 4, sizeof(Vertex),
+        (rpr_float const*)((char*)&plane[0] + sizeof(rpr_float) * 6), 4, sizeof(Vertex),
         (rpr_int const*)indices, sizeof(rpr_int),
         (rpr_int const*)indices, sizeof(rpr_int),
         (rpr_int const*)indices, sizeof(rpr_int),
@@ -591,14 +599,14 @@ void EnvLightClearTest()
     status = rprContextSetScene(context, scene);
     assert(status == RPR_SUCCESS);
 
-    struct vertex
+    struct Vertex
     {
         rpr_float pos[3];
         rpr_float norm[3];
         rpr_float tex[2];
     };
 
-    vertex cube[] =
+    Vertex cube[] =
     {
         { -1.0f, 1.0f, -1.0f, 0.f, 1.f, 0.f, 0.0f, 0.0f },
         { 1.0f, 1.0f, -1.0f, 0.f, 1.f, 0.f, 1.0f, 0.0f },
@@ -631,7 +639,7 @@ void EnvLightClearTest()
         { -1.0f, 1.0f, 1.0f , 0.f, 0.f, 1.f,0.0f, 1.0f },
     };
 
-    vertex plane[] =
+    Vertex plane[] =
     {
         { -500.f, 0.f, -500.f, 0.f, 1.f, 0.f, 0.f, 0.f },
         { -500.f, 0.f,  500.f, 0.f, 1.f, 0.f, 0.f, 1.f },
@@ -689,9 +697,9 @@ void EnvLightClearTest()
 
     //plane mesh
     rpr_shape plane_mesh = NULL; status = rprContextCreateMesh(context,
-        (rpr_float const*)&plane[0], 4, sizeof(vertex),
-        (rpr_float const*)((char*)&plane[0] + sizeof(rpr_float) * 3), 4, sizeof(vertex),
-        (rpr_float const*)((char*)&plane[0] + sizeof(rpr_float) * 6), 4, sizeof(vertex),
+        (rpr_float const*)&plane[0], 4, sizeof(Vertex),
+        (rpr_float const*)((char*)&plane[0] + sizeof(rpr_float) * 3), 4, sizeof(Vertex),
+        (rpr_float const*)((char*)&plane[0] + sizeof(rpr_float) * 6), 4, sizeof(Vertex),
         (rpr_int const*)indices, sizeof(rpr_int),
         (rpr_int const*)indices, sizeof(rpr_int),
         (rpr_int const*)indices, sizeof(rpr_int),
@@ -829,14 +837,14 @@ void DefaultMaterialTest()
     rpr_scene scene = NULL; status = rprContextCreateScene(context, &scene);
     assert(status == RPR_SUCCESS);
 
-    struct vertex
+    struct Vertex
     {
         rpr_float pos[3];
         rpr_float norm[3];
         rpr_float tex[2];
     };
 
-    vertex quad[] =
+    Vertex quad[] =
     {
         { -5.0f, -1.0f, -5.0f, 0.f, 1.f, 0.f, 0.f, 0.f },
         { 5.0f, -1.0f, -5.0f, 0.f, 1.f,  0.f, 1.f, 0.f },
@@ -858,9 +866,9 @@ void DefaultMaterialTest()
 
     //plane mesh
     rpr_shape mesh = NULL; status = rprContextCreateMesh(context,
-        (rpr_float const*)&quad[0], 4, sizeof(vertex),
-        (rpr_float const*)((char*)&quad[0] + sizeof(rpr_float) * 3), 4, sizeof(vertex),
-        (rpr_float const*)((char*)&quad[0] + sizeof(rpr_float) * 6), 4, sizeof(vertex),
+        (rpr_float const*)&quad[0], 4, sizeof(Vertex),
+        (rpr_float const*)((char*)&quad[0] + sizeof(rpr_float) * 3), 4, sizeof(Vertex),
+        (rpr_float const*)((char*)&quad[0] + sizeof(rpr_float) * 6), 4, sizeof(Vertex),
         (rpr_int const*)indices, sizeof(rpr_int),
         (rpr_int const*)indices, sizeof(rpr_int),
         (rpr_int const*)indices, sizeof(rpr_int),
@@ -947,14 +955,14 @@ void NullShaderTest()
     status = rprContextSetScene(context, scene);
     assert(status == RPR_SUCCESS);
 
-    struct vertex
+    struct Vertex
     {
         rpr_float pos[3];
         rpr_float norm[3];
         rpr_float tex[2];
     };
 
-    vertex quad[] =
+    Vertex quad[] =
     {
         { -5.0f, -1.0f, -5.0f, 0.f, 1.f, 0.f, 0.f, 0.f },
         { 5.0f, -1.0f, -5.0f, 0.f, 1.f,  0.f, 1.f, 0.f },
@@ -976,9 +984,9 @@ void NullShaderTest()
 
     //plane mesh
     rpr_shape mesh = NULL; status = rprContextCreateMesh(context,
-        (rpr_float const*)&quad[0], 4, sizeof(vertex),
-        (rpr_float const*)((char*)&quad[0] + sizeof(rpr_float) * 3), 4, sizeof(vertex),
-        (rpr_float const*)((char*)&quad[0] + sizeof(rpr_float) * 6), 4, sizeof(vertex),
+        (rpr_float const*)&quad[0], 4, sizeof(Vertex),
+        (rpr_float const*)((char*)&quad[0] + sizeof(rpr_float) * 3), 4, sizeof(Vertex),
+        (rpr_float const*)((char*)&quad[0] + sizeof(rpr_float) * 6), 4, sizeof(Vertex),
         (rpr_int const*)indices, sizeof(rpr_int),
         (rpr_int const*)indices, sizeof(rpr_int),
         (rpr_int const*)indices, sizeof(rpr_int),
@@ -1090,14 +1098,14 @@ void TiledRender()
     status = rprContextSetScene(context, scene);
     assert(status == RPR_SUCCESS);
 
-    struct vertex
+    struct Vertex
     {
         rpr_float pos[3];
         rpr_float norm[3];
         rpr_float tex[2];
     };
 
-    vertex cube[] =
+    Vertex cube[] =
     {
         { -1.0f, 1.0f, -1.0f, 0.f, 1.f, 0.f, 0.0f, 0.0f },
         { 1.0f, 1.0f, -1.0f, 0.f, 1.f, 0.f, 1.0f, 0.0f },
@@ -1130,7 +1138,7 @@ void TiledRender()
         { -1.0f, 1.0f, 1.0f , 0.f, 0.f, 1.f,0.0f, 1.0f },
     };
 
-    vertex plane[] =
+    Vertex plane[] =
     {
         { -500.f, 0.f, -500.f, 0.f, 1.f, 0.f, 0.f, 0.f },
         { -500.f, 0.f,  500.f, 0.f, 1.f, 0.f, 0.f, 1.f },
@@ -1166,9 +1174,9 @@ void TiledRender()
 
     //meshes
     rpr_shape mesh = NULL; status = rprContextCreateMesh(context,
-        (rpr_float const*)&cube[0], 24, sizeof(vertex),
-        (rpr_float const*)((char*)&cube[0] + sizeof(rpr_float) * 3), 24, sizeof(vertex),
-        (rpr_float const*)((char*)&cube[0] + sizeof(rpr_float) * 6), 24, sizeof(vertex),
+        (rpr_float const*)&cube[0], 24, sizeof(Vertex),
+        (rpr_float const*)((char*)&cube[0] + sizeof(rpr_float) * 3), 24, sizeof(Vertex),
+        (rpr_float const*)((char*)&cube[0] + sizeof(rpr_float) * 6), 24, sizeof(Vertex),
         (rpr_int const*)indices, sizeof(rpr_int),
         (rpr_int const*)indices, sizeof(rpr_int),
         (rpr_int const*)indices, sizeof(rpr_int),
@@ -1181,9 +1189,9 @@ void TiledRender()
     assert(status == RPR_SUCCESS);
 
     rpr_shape plane_mesh = NULL; status = rprContextCreateMesh(context,
-        (rpr_float const*)&plane[0], 4, sizeof(vertex),
-        (rpr_float const*)((char*)&plane[0] + sizeof(rpr_float) * 3), 4, sizeof(vertex),
-        (rpr_float const*)((char*)&plane[0] + sizeof(rpr_float) * 6), 4, sizeof(vertex),
+        (rpr_float const*)&plane[0], 4, sizeof(Vertex),
+        (rpr_float const*)((char*)&plane[0] + sizeof(rpr_float) * 3), 4, sizeof(Vertex),
+        (rpr_float const*)((char*)&plane[0] + sizeof(rpr_float) * 6), 4, sizeof(Vertex),
         (rpr_int const*)indices, sizeof(rpr_int),
         (rpr_int const*)indices, sizeof(rpr_int),
         (rpr_int const*)indices, sizeof(rpr_int),
@@ -1287,7 +1295,7 @@ void test_feature_cameraDOF()
     float o = -7.0f;
     float x = 0.6f;
 
-    vertex meshVertices[] =
+    Vertex meshVertices[] =
     {
         { -1.0f*x,   (0.0f + 0.5f)*c,  0.0f + o,    0.0f, 0.0f, 1.0f,    0.0f, 0.0f },//0
         { 1.0f*x,    (0.0f + 0.5f)*c,   0.0f + o,    0.0f, 0.0f, 1.0f,    1.0f, 0.0f },//1
@@ -1347,9 +1355,9 @@ void test_feature_cameraDOF()
 
     //mesh
     rpr_shape mesh = 0; status = rprContextCreateMesh(context,
-                                                    (rpr_float const*)&meshVertices[0], sizeof(meshVertices) / sizeof(meshVertices[0]), sizeof(vertex),
-                                                    (rpr_float const*)((char*)&meshVertices[0] + sizeof(rpr_float) * 3), sizeof(meshVertices) / sizeof(meshVertices[0]), sizeof(vertex),
-                                                    (rpr_float const*)((char*)&meshVertices[0] + sizeof(rpr_float) * 6), sizeof(meshVertices) / sizeof(meshVertices[0]), sizeof(vertex),
+                                                    (rpr_float const*)&meshVertices[0], sizeof(meshVertices) / sizeof(meshVertices[0]), sizeof(Vertex),
+                                                    (rpr_float const*)((char*)&meshVertices[0] + sizeof(rpr_float) * 3), sizeof(meshVertices) / sizeof(meshVertices[0]), sizeof(Vertex),
+                                                    (rpr_float const*)((char*)&meshVertices[0] + sizeof(rpr_float) * 6), sizeof(meshVertices) / sizeof(meshVertices[0]), sizeof(Vertex),
                                                     (rpr_int const*)indices, sizeof(rpr_int),
                                                     (rpr_int const*)indices, sizeof(rpr_int),
                                                     (rpr_int const*)indices, sizeof(rpr_int),
@@ -1426,18 +1434,345 @@ void test_feature_cameraDOF()
 
 }
 
+void test_feature_ContextImageFromData()
+{
+    rpr_int status = RPR_SUCCESS;
+    
+    //create context and scene
+    rpr_context	context;
+    status = rprCreateContext(RPR_API_VERSION, nullptr, 0, RPR_CREATION_FLAGS_ENABLE_GPU0, NULL, NULL, &context);
+    rpr_material_system matsys = NULL;
+    status = rprContextCreateMaterialSystem(context, 0, &matsys);
+    assert(status == RPR_SUCCESS);
+    rpr_scene scene = NULL;
+    status = rprContextCreateScene(context, &scene);
+    assert(status == RPR_SUCCESS);
+    status = rprContextSetScene(context, scene);
+    assert(status == RPR_SUCCESS);
+
+    //texture
+    rpr_image_format imageFormat;
+    memset(&imageFormat, 0, sizeof(imageFormat));
+    imageFormat.num_components = 4;
+    imageFormat.type = RPR_COMPONENT_TYPE_FLOAT32;
+    rpr_image_desc imageDesc;
+    memset(&imageDesc, 0, sizeof(imageDesc));
+    imageDesc.image_depth = 1;
+    imageDesc.image_width = 32;
+    imageDesc.image_height = 32;
+    imageDesc.image_row_pitch = imageDesc.image_width * sizeof(float) * 4;
+    imageDesc.image_slice_pitch = imageDesc.image_width * imageDesc.image_height * sizeof(float) * 4;
+    std::vector<float> dataImage(imageDesc.image_width  *  imageDesc.image_height * 4);
+
+    //first : fill texture with red
+    for (rpr_uint y = 0; y<imageDesc.image_height; y++)
+    {
+        for (rpr_uint x = 0; x<imageDesc.image_width; x++)
+        {
+            dataImage[x * 4 + y*imageDesc.image_width * 4 + 0] = 1.0f; // R
+            dataImage[x * 4 + y*imageDesc.image_width * 4 + 1] = 0.0f; // G
+            dataImage[x * 4 + y*imageDesc.image_width * 4 + 2] = 0.0f; // B
+            dataImage[x * 4 + y*imageDesc.image_width * 4 + 3] = 1.0f; // A
+        }
+    }
+
+    //second step : draw a square
+    for (rpr_uint y = 10; y<imageDesc.image_height; y++)
+    {
+        for (rpr_uint x = 10; x<imageDesc.image_width; x++)
+        {
+            dataImage[x * 4 + y*imageDesc.image_width * 4 + 0] = 0.0f; // R
+            dataImage[x * 4 + y*imageDesc.image_width * 4 + 1] = 0.7f; // G
+            dataImage[x * 4 + y*imageDesc.image_width * 4 + 2] = 0.2f; // B
+            dataImage[x * 4 + y*imageDesc.image_width * 4 + 3] = 1.0f; // A
+        }
+    }
+
+    //first point is blue
+    dataImage[0] = 0.0f;
+    dataImage[1] = 0.0f;
+    dataImage[2] = 1.0f;
+    dataImage[3] = 1.0f;
+
+    //last point is yellow
+    dataImage[imageDesc.image_width * imageDesc.image_height * 4 - 4] = 1.0f;
+    dataImage[imageDesc.image_width * imageDesc.image_height * 4 - 3] = 1.0f;
+    dataImage[imageDesc.image_width * imageDesc.image_height * 4 - 2] = 0.0f;
+    dataImage[imageDesc.image_width * imageDesc.image_height * 4 - 1] = 1.0f;
+
+    rpr_image imageBuilt = NULL; status = rprContextCreateImage(context, imageFormat, &imageDesc, dataImage.data(), &imageBuilt);
+    assert(status == RPR_SUCCESS);
+    //free memory
+    std::vector<float>().swap(dataImage);
+
+    //mesh
+    Vertex meshVertices[] = { { -2.0f, 2.0f, 0.0f, 0.0f, 0.0f, +1.0f, 0.0f, 0.0f },
+    { 2.0f, 2.0f, 0.0f, 0.0f, 0.0f, +1.0f, 1.0f, 0.0f },
+    { 2.0f, -2.0f, 0.0f, 0.0f, 0.0f, +1.0f, 1.0f, 1.0f },
+    { -2.0f, -2.0f, 0.0f, 0.0f, 0.0f, +1.0f, 0.0f, 1.0f }, };
+    rpr_int indices[] = { 3, 2, 1, 0, };
+    rpr_int num_face_vertices[] = { 4, };
+
+    rpr_shape mesh = 0;
+    status = rprContextCreateMesh(context,
+        (rpr_float const*)&meshVertices[0], 4, sizeof(Vertex),
+        (rpr_float const*)((char*)&meshVertices[0] + sizeof(rpr_float) * 3), 4, sizeof(Vertex),
+        (rpr_float const*)((char*)&meshVertices[0] + sizeof(rpr_float) * 6), 4, sizeof(Vertex),
+        (rpr_int const*)indices, sizeof(rpr_int),
+        (rpr_int const*)indices, sizeof(rpr_int),
+        (rpr_int const*)indices, sizeof(rpr_int),
+        num_face_vertices, 1, &mesh);
+    assert(status == RPR_SUCCESS);
+    status = rprSceneAttachShape(scene, mesh);
+    assert(status == RPR_SUCCESS);
+
+    //materials
+    rpr_material_node textureNormalMap = NULL; status = rprMaterialSystemCreateNode(matsys, RPR_MATERIAL_NODE_IMAGE_TEXTURE, &textureNormalMap);
+    assert(status == RPR_SUCCESS);
+    status = rprMaterialNodeSetInputImageData(textureNormalMap, "data", imageBuilt);
+    assert(status == RPR_SUCCESS);
+    rpr_material_node diffuseSphere = NULL; status = rprMaterialSystemCreateNode(matsys, RPR_MATERIAL_NODE_DIFFUSE, &diffuseSphere);
+    assert(status == RPR_SUCCESS);
+    status = rprMaterialNodeSetInputN(diffuseSphere, "color", textureNormalMap);
+    assert(status == RPR_SUCCESS);
+    status = rprShapeSetMaterial(mesh, diffuseSphere);
+    assert(status == RPR_SUCCESS);
+
+    //camera
+    rpr_camera camera = NULL; status = rprContextCreateCamera(context, &camera);
+    assert(status == RPR_SUCCESS);
+    status = rprCameraLookAt(camera, 0, 0, 7, 0, 0, 0, 0, 1, 0);
+    assert(status == RPR_SUCCESS);
+    status = rprSceneSetCamera(scene, camera);
+    assert(status == RPR_SUCCESS);
+
+    //light
+    rpr_light light = NULL; status = rprContextCreatePointLight(context, &light);
+    assert(status == RPR_SUCCESS);
+    matrix lightm = translation(float3(0, 0, 4)) * rotation_z(3.14f);
+    status = rprLightSetTransform(light, true, &lightm.m00);
+    assert(status == RPR_SUCCESS);
+    status = rprPointLightSetRadiantPower3f(light, 40, 40, 40);
+    assert(status == RPR_SUCCESS);
+    status = rprSceneAttachLight(scene, light);
+    assert(status == RPR_SUCCESS);
+
+    //output
+    rpr_framebuffer_desc desc;
+    desc.fb_width = 800;
+    desc.fb_height = 600;
+    rpr_framebuffer_format fmt = { 4, RPR_COMPONENT_TYPE_FLOAT32 };
+    rpr_framebuffer frame_buffer = NULL; status = rprContextCreateFrameBuffer(context, fmt, &desc, &frame_buffer);
+    assert(status == RPR_SUCCESS);
+    status = rprContextSetAOV(context, RPR_AOV_COLOR, frame_buffer);
+    assert(status == RPR_SUCCESS);
+    status = rprFrameBufferClear(frame_buffer);
+    assert(status == RPR_SUCCESS);
+
+    //render
+    for (rpr_uint i = 0; i < kRenderIterations; ++i)
+    {
+        status = rprContextRender(context);
+        assert(status == RPR_SUCCESS);
+    }
+    rprFrameBufferSaveToFile(frame_buffer, "feature_ContextImageFromData.png");
+
+    //cleanup
+    FR_MACRO_SAFE_FRDELETE(textureNormalMap);
+    status = rprObjectDelete(imageBuilt);
+    assert(status == RPR_SUCCESS);
+    status = rprObjectDelete(frame_buffer); frame_buffer = NULL;
+    assert(status == RPR_SUCCESS);
+    status = rprSceneDetachLight(scene, light);
+    assert(status == RPR_SUCCESS);
+    status = rprObjectDelete(light); light = NULL;
+    assert(status == RPR_SUCCESS);
+    status = rprSceneSetCamera(scene, NULL);
+    assert(status == RPR_SUCCESS);
+    status = rprObjectDelete(camera); camera = NULL;
+    assert(status == RPR_SUCCESS);
+    FR_MACRO_CLEAN_SHAPE_RELEASE(mesh, scene);
+    status = rprObjectDelete(diffuseSphere);
+    assert(status == RPR_SUCCESS);
+    status = rprObjectDelete(scene); scene = NULL;
+    assert(status == RPR_SUCCESS);
+    status = rprObjectDelete(matsys); matsys = NULL;
+    assert(status == RPR_SUCCESS);
+}
+
+void test_feature_multiUV()
+{
+    rpr_int status = RPR_SUCCESS;
+
+    //create context and scene
+    rpr_context	context;
+    status = rprCreateContext(RPR_API_VERSION, nullptr, 0, RPR_CREATION_FLAGS_ENABLE_GPU0, NULL, NULL, &context);
+    assert(status == RPR_SUCCESS);
+    rpr_material_system matsys = NULL;
+    status = rprContextCreateMaterialSystem(context, 0, &matsys);
+    assert(status == RPR_SUCCESS);
+    rpr_scene scene = NULL; status = rprContextCreateScene(context, &scene);
+    assert(status == RPR_SUCCESS);
+    status = rprContextSetScene(context, scene);
+    assert(status == RPR_SUCCESS);
+
+    //textures
+    rpr_image image_input_a = NULL; status = rprContextCreateImageFromFile(context, "../Resources/Textures/texTest.png", &image_input_a);
+    assert(status == RPR_SUCCESS);
+    rpr_image image_input_b = NULL; status = rprContextCreateImageFromFile(context, "../Resources/Textures/alpha.png", &image_input_b);
+    assert(status == RPR_SUCCESS);
+    rpr_material_node materialNodeTexture = NULL; status = rprMaterialSystemCreateNode(matsys, RPR_MATERIAL_NODE_IMAGE_TEXTURE, &materialNodeTexture);
+    assert(status == RPR_SUCCESS);
+    status = rprMaterialNodeSetInputImageData(materialNodeTexture, "data", image_input_a);
+    assert(status == RPR_SUCCESS);
+
+    rpr_material_node uv_node = NULL;
+    status = rprMaterialSystemCreateNode(matsys, RPR_MATERIAL_NODE_INPUT_LOOKUP, &uv_node);
+    assert(status == RPR_SUCCESS);
+    status = rprMaterialNodeSetInputU(uv_node, "value", RPR_MATERIAL_NODE_LOOKUP_UV);
+    assert(status == RPR_SUCCESS);
+
+
+    rpr_material_node diffuseSphere = NULL; status = rprMaterialSystemCreateNode(matsys, RPR_MATERIAL_NODE_DIFFUSE, &diffuseSphere);
+    assert(status == RPR_SUCCESS);
+    status = rprMaterialNodeSetInputN(diffuseSphere, "color", uv_node   /*  materialNodeTexture */);
+    assert(status == RPR_SUCCESS);
+
+    VertexMT meshVertices[] =
+    {
+        { -2.0f, 2.0f, 0.0f,    0.0f, 0.0f, +1.0f,    0.0f, 0.0f ,    1.0f, 1.0f },
+        { 2.0f, 2.0f, 0.0f,    0.0f, 0.0f, +1.0f,    1.0f, 0.0f ,    0.0f, 1.0f },
+        { 2.0f, -2.0f, 0.0f ,  0.0f, 0.0f, +1.0f,    1.0f, 1.0f ,    0.0f, 0.0f },
+        { -2.0f, -2.0f, 0.0f , 0.0f, 0.0f, +1.0f,    0.0f, 1.0f ,    1.0f, 0.0f },
+    };
+    rpr_int indices[] =
+    {
+        3,2,1,0,
+    };
+    rpr_int num_face_vertices[] =
+    {
+        4,
+    };
+
+    //TODO: codestyle
+    unsigned int meshVertices_nbOfElement = sizeof(meshVertices) / sizeof(meshVertices[0]);
+    unsigned int num_face_vertices_nbOfElement = sizeof(num_face_vertices) / sizeof(num_face_vertices[0]);
+    rpr_shape mesh = 0;
+
+    const rpr_float* texcoords[] = { (rpr_float const*)((char*)&meshVertices[0] + sizeof(rpr_float) * 6), (rpr_float const*)((char*)&meshVertices[0] + sizeof(rpr_float) * 8) };
+    size_t num_texcoords[] = { meshVertices_nbOfElement,  meshVertices_nbOfElement };
+    rpr_int texcoord_stride[] = { sizeof(VertexMT)   ,   sizeof(VertexMT) };
+    const rpr_int*   texcoord_indices_[] = { indices,   indices };
+    rpr_int tidx_stride_[] = { sizeof(rpr_int)   ,sizeof(rpr_int) };
+
+    status = rprContextCreateMeshEx(context,
+        (rpr_float const*)&meshVertices[0], meshVertices_nbOfElement, sizeof(VertexMT),
+        (rpr_float const*)((char*)&meshVertices[0] + sizeof(rpr_float) * 3), meshVertices_nbOfElement, sizeof(VertexMT),
+        nullptr, 0, 0,
+        2,
+        texcoords, num_texcoords, texcoord_stride,
+        (rpr_int const*)indices, sizeof(rpr_int),
+        (rpr_int const*)indices, sizeof(rpr_int),
+
+        texcoord_indices_, tidx_stride_,
+
+        num_face_vertices, num_face_vertices_nbOfElement, &mesh);
+    assert(status == RPR_SUCCESS);
+
+    status = rprSceneAttachShape(scene, mesh);
+    assert(status == RPR_SUCCESS);
+
+
+    status = rprShapeSetMaterial(mesh, diffuseSphere);
+    assert(status == RPR_SUCCESS);
+
+    rpr_camera camera = NULL; status = rprContextCreateCamera(context, &camera);
+    assert(status == RPR_SUCCESS);
+
+    status = rprCameraLookAt(camera, 0, 0, 7, 0, 0, 0, 0, 1, 0);
+    assert(status == RPR_SUCCESS);
+
+    status = rprSceneSetCamera(scene, camera);
+    assert(status == RPR_SUCCESS);
+
+
+    //light
+    rpr_light light = NULL; status = rprContextCreatePointLight(context, &light);
+    assert(status == RPR_SUCCESS);
+    matrix lightm = translation(float3(0, 0, 4)) * rotation_z(3.14f);
+    status = rprLightSetTransform(light, true, &lightm.m00);
+    assert(status == RPR_SUCCESS);
+    status = rprPointLightSetRadiantPower3f(light, 60, 60, 60);
+    assert(status == RPR_SUCCESS);
+    status = rprSceneAttachLight(scene, light);
+    assert(status == RPR_SUCCESS);
+
+    rpr_framebuffer_desc desc;
+    desc.fb_width = 800;
+    desc.fb_height = 600;
+
+    rpr_framebuffer_format fmt = { 4, RPR_COMPONENT_TYPE_FLOAT32 };
+    rpr_framebuffer frame_buffer = NULL; status = rprContextCreateFrameBuffer(context, fmt, &desc, &frame_buffer);
+    assert(status == RPR_SUCCESS);
+    status = rprContextSetAOV(context, RPR_AOV_COLOR, frame_buffer); assert(status == RPR_SUCCESS);
+
+    status = rprFrameBufferClear(frame_buffer); assert(status == RPR_SUCCESS);
+    for (rpr_uint i = 0; i < kRenderIterations; ++i)
+    {
+        status = rprContextRender(context);
+        assert(status == RPR_SUCCESS);
+    }
+    rprFrameBufferSaveToFile(frame_buffer, "feature_multiUV_0.png");
+
+
+    status = rprMaterialNodeSetInputU(uv_node, "value", RPR_MATERIAL_NODE_LOOKUP_UV1);
+    assert(status == RPR_SUCCESS);
+
+    status = rprFrameBufferClear(frame_buffer); assert(status == RPR_SUCCESS);
+    for (rpr_uint i = 0; i < kRenderIterations; ++i)
+    {
+        status = rprContextRender(context);
+        assert(status == RPR_SUCCESS);
+    }
+    rprFrameBufferSaveToFile(frame_buffer, "feature_multiUV_1.png");
+
+    status = rprObjectDelete(image_input_a); image_input_a = NULL;
+    assert(status == RPR_SUCCESS);
+    status = rprObjectDelete(image_input_b); image_input_b = NULL;
+    assert(status == RPR_SUCCESS);
+    status = rprObjectDelete(frame_buffer); frame_buffer = NULL;
+    assert(status == RPR_SUCCESS);
+    status = rprSceneDetachLight(scene, light);
+    assert(status == RPR_SUCCESS);
+    status = rprObjectDelete(light); light = NULL;
+    assert(status == RPR_SUCCESS);
+    status = rprSceneSetCamera(scene, NULL);
+    assert(status == RPR_SUCCESS);
+    status = rprObjectDelete(camera); camera = NULL;
+    assert(status == RPR_SUCCESS);
+    FR_MACRO_CLEAN_SHAPE_RELEASE(mesh, scene);
+    status = rprObjectDelete(diffuseSphere);
+    assert(status == RPR_SUCCESS);
+    status = rprObjectDelete(scene); scene = NULL;
+    assert(status == RPR_SUCCESS);
+    status = rprObjectDelete(matsys); matsys = NULL;
+    assert(status == RPR_SUCCESS);
+}
+
 int main(int argc, char* argv[])
 {
-    MeshCreationTest();
-    SimpleRenderTest();
-    ComplexRenderTest();
-    EnvLightClearTest();
-    MemoryStatistics();
-    DefaultMaterialTest();
-    NullShaderTest();
-//    TiledRender();
-    test_feature_cameraDOF();
-//    RunObjViewer(argc, argv);
+    //MeshCreationTest();
+    //SimpleRenderTest();
+    //ComplexRenderTest();
+    //EnvLightClearTest();
+    //MemoryStatistics();
+    //DefaultMaterialTest();
+    //NullShaderTest();
+    //TiledRender();
+    //test_feature_cameraDOF();
+    //RunObjViewer(argc, argv);
+    //test_feature_ContextImageFromData();
+    //test_feature_multiUV();
 
     return 0;
 }
