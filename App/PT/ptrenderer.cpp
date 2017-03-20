@@ -327,15 +327,16 @@ namespace Baikal
         CLWKernel genkernel = m_render_data->program.GetKernel(kernel_name);
 
         // Set kernel parameters
-        genkernel.SetArg(0, scene.camera);
-        genkernel.SetArg(1, m_output->width());
-        genkernel.SetArg(2, m_output->height());
-        genkernel.SetArg(3, (int)rand_uint());
-        genkernel.SetArg(4, m_render_data->rays[0]);
-        genkernel.SetArg(5, m_render_data->random);
-        genkernel.SetArg(6, m_render_data->sobolmat);
-        genkernel.SetArg(7, m_framecnt);
-        genkernel.SetArg(8, m_render_data->paths);
+        int argc = 0;
+        genkernel.SetArg(argc++, scene.camera);
+        genkernel.SetArg(argc++, m_output->width());
+        genkernel.SetArg(argc++, m_output->height());
+        genkernel.SetArg(argc++, (int)rand_uint());
+        genkernel.SetArg(argc++, m_framecnt);
+        genkernel.SetArg(argc++, m_render_data->rays[0]);
+        genkernel.SetArg(argc++, m_render_data->random);
+        genkernel.SetArg(argc++, m_render_data->sobolmat);
+        genkernel.SetArg(argc++, m_render_data->paths);
 
         // Run generation kernel
         {

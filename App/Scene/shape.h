@@ -52,18 +52,18 @@ namespace Baikal
         Shape();
         // Destructor
         virtual ~Shape() = 0;
-        
+
         // Get and set material
         void SetMaterial(Material const* material);
         Material const* GetMaterial() const;
 
+        // Get and set transform
         void SetTransform(RadeonRays::matrix const& t);
         RadeonRays::matrix GetTransform() const;
 
         // Forbidden stuff
         Shape(Shape const&) = delete;
         Shape& operator = (Shape const&) = delete;
-    
     private:
         Material const* m_material;
 
@@ -102,7 +102,7 @@ namespace Baikal
         void SetUVs(float const* uvs, std::size_t num_uvs);
         std::size_t GetNumUVs() const;
         RadeonRays::float2 const* GetUVs() const;
-        
+
         // Forbidden stuff
         Mesh(Mesh const&) = delete;
         Mesh& operator = (Mesh const&) = delete;
@@ -121,12 +121,10 @@ namespace Baikal
     
     inline Shape::~Shape()
     {
-        
     }
     
     inline Shape::Shape() : m_material(nullptr)
     {
-        
     }
     
     inline void Shape::SetMaterial(Material const* material)
@@ -147,6 +145,43 @@ namespace Baikal
     inline RadeonRays::matrix Shape::GetTransform() const
     {
         return m_transform;
+    }
+
+    /**
+    \brief Instance class.
+
+    Instance references some mesh, but might have different transform and material.
+    */
+    class Instance : public Shape
+    {
+    public:
+        Instance(Shape const* base_shape = nullptr);
+
+        // Get and set base shape
+        void SetBaseShape(Shape const* base_shape);
+        Shape const* GetBaseShape() const;
+
+        // Forbidden stuff
+        Instance(Instance const&) = delete;
+        Instance& operator = (Instance const&) = delete;
+
+    private:
+        Shape const* m_base_shape;
+    };
+
+    inline Instance::Instance(Shape const* base_shape)
+        : m_base_shape(base_shape)
+    {
+    }
+
+    inline void Instance::SetBaseShape(Shape const* base_shape)
+    {
+        m_base_shape = base_shape;
+    }
+
+    inline Shape const* Instance::GetBaseShape() const
+    {
+        return m_base_shape;
     }
 }
 

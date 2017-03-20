@@ -145,7 +145,7 @@ float3 AreaLight_GetLe(// Emissive object
     int primidx = light->primidx;
 
     float v0, v1, v2;
-    Scene_GetTriangle(scene, shapeidx, primidx, &v0, &v1, &v2);
+    Scene_GetTriangleVertices(scene, shapeidx, primidx, &v0, &v1, &v2);
 
     float a, b;
     if (IntersectTriangle(&r, v0, v1, v2, &a, &b))
@@ -252,7 +252,7 @@ float AreaLight_GetPdf(// Emissive object
     int primidx = light->primidx;
 
     float v0, v1, v2;
-    Scene_GetTriangle(scene, shapeidx, primidx, &v0, &v1, &v2);
+    Scene_GetTriangleVertices(scene, shapeidx, primidx, &v0, &v1, &v2);
 
     // Intersect ray against this area light
     float a, b;

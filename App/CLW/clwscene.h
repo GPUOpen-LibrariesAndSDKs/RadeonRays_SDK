@@ -47,5 +47,6 @@ namespace Baikal
         CameraType camera_type;
 
         std::vector<RadeonRays::Shape*> isect_shapes;
+        std::vector<RadeonRays::Shape*> visible_shapes;
     };
 }

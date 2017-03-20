@@ -22,6 +22,14 @@ THE SOFTWARE.
 #ifndef COMMON_CL
 #define COMMON_CL
 
+#define PI 3.14159265358979323846f
+#define KERNEL __kernel
+#define GLOBAL __global
+#define INLINE __attribute__((always_inline))
+#define HIT_MARKER 1
+#define MISS_MARKER -1
+#define INVALID_IDX -1
+
 #define CRAZY_LOW_THROUGHPUT 0.0f
 #define CRAZY_HIGH_RADIANCE 3.f
 #define CRAZY_HIGH_DISTANCE 1000000.f

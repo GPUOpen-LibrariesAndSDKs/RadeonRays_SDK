@@ -12,6 +12,8 @@
 #include <chrono>
 #include <memory>
 #include <stack>
+#include <vector>
+#include <array>
 
 using namespace RadeonRays;
 
@@ -28,15 +30,9 @@ namespace Baikal
         // Create intersection API
         m_api = CreateFromOpenClContext(m_context, id, queue);
 
-        // Do app specific settings
-#ifdef __APPLE__
-        // Apple runtime has known issue with stacked traversal
-        m_api->SetOption("acc.type", "bvh");
-        m_api->SetOption("bvh.builder", "sah");
-#else
         m_api->SetOption("acc.type", "fatbvh");
         m_api->SetOption("bvh.builder", "sah");
-#endif
+
         m_default_material->SetInputValue("albedo", float4(0.5f, 0.6f, 0.5f, 1.f));
     }
 
@@ -309,35 +305,125 @@ namespace Baikal
             if (tex_collector.GetNumItems() > 0 && (
                 !out.texture_bundle ||
                 tex_collector.NeedsUpdate(out.texture_bundle.get(), [](void const* ptr) {
-                auto tex = reinterpret_cast<Texture const*>(ptr); 
+                auto tex = reinterpret_cast<Texture const*>(ptr);
                 return tex->IsDirty(); })))
             {
                 UpdateTextures(scene, mat_collector, tex_collector, out);
             }
 
-            // Set current scene
-            if (m_current_scene != &scene)
-            {
-                // If we are changing current scene need
-                // to reload the intersector
-                ReloadIntersector(scene, out);
+                // Set current scene
+                if (m_current_scene != &scene)
+                {
+                    // If we are changing current scene need
+                    // to reload the intersector
+                    ReloadIntersector(scene, out);
 
-                m_current_scene = &scene;
+                    m_current_scene = &scene;
+                }
+
+                // Make sure to clear dirty flags
+                scene.ClearDirtyFlags();
+
+                // Clear material dirty flags
+                mat_collector.Finalize([](void const* item)
+                {
+                    auto material = reinterpret_cast<Material const*>(item);
+                    material->SetDirty(false);
+                });
+
+                // Return the scene
+                return out;
+        }
+    }
+
+    static void SplitMeshesAndInstances(Iterator* shape_iter, std::set<Mesh const*>& meshes, std::set<Instance const*>& instances, std::set<Mesh const*>& excluded_meshes)
+    {
+        // Clear all sets
+        meshes.clear();
+        instances.clear();
+        excluded_meshes.clear();
+
+        // Prepare instance check lambda
+        auto is_instance = [](Shape const* shape)
+        {
+            if (dynamic_cast<Instance const*>(shape))
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        };
+
+        auto instance_cast = [](Shape const* shape)
+        {
+            return dynamic_cast<Instance const*>(shape);
+        };
+
+        for (; shape_iter->IsValid(); shape_iter->Next())
+        {
+            auto shape = shape_iter->ItemAs<Shape const>();
+
+            if (!is_instance(shape))
+            {
+                meshes.emplace(static_cast<Mesh const*>(shape));
+            }
+            else
+            {
+                instances.emplace(static_cast<Instance const*>(shape));
+            }
+        }
+
+        for (auto& i : instances)
+        {
+            auto base_mesh = static_cast<Mesh const*>(i->GetBaseShape());
+            if (meshes.find(base_mesh) == meshes.cend())
+            {
+                excluded_meshes.emplace(base_mesh);
+            }
+        }
+    }
+
+    static std::size_t GetShapeIdx(Iterator* shape_iter, Shape const* shape)
+    {
+        std::set<Mesh const*> meshes;
+        std::set<Mesh const*> excluded_meshes;
+        std::set<Instance const*> instances;
+        SplitMeshesAndInstances(shape_iter, meshes, instances, excluded_meshes);
+
+        std::size_t idx = 0;
+        for (auto& i : meshes)
+        {
+            if (i == shape)
+            {
+                return idx;
             }
 
-            // Make sure to clear dirty flags
-            scene.ClearDirtyFlags();
-
-            // Clear material dirty flags
-            mat_collector.Finalize([](void const* item)
-            {
-                auto material = reinterpret_cast<Material const*>(item);
-                material->SetDirty(false);
-            });
-
-            // Return the scene
-            return out;
+            ++idx;
         }
+
+        for (auto& i : excluded_meshes)
+        {
+            if (i == shape)
+            {
+                return idx;
+            }
+
+            ++idx;
+        }
+
+        for (auto& i : instances)
+        {
+            if (i == shape)
+            {
+                return idx;
+            }
+
+            ++idx;
+        }
+
+        return -1;
     }
 
     void SceneTracker::UpdateIntersector(Scene1 const& scene, ClwScene& out) const
@@ -351,6 +437,7 @@ namespace Baikal
 
         // Clear shapes cache
         out.isect_shapes.clear();
+        out.visible_shapes.clear();
 
         // Create new shapes
         std::unique_ptr<Iterator> shape_iter(scene.CreateShapeIterator());
@@ -360,10 +447,18 @@ namespace Baikal
             throw std::runtime_error("No shapes in the scene");
         }
 
+        std::set<Mesh const*> meshes;
+        std::set<Mesh const*> excluded_meshes;
+        std::set<Instance const*> instances;
+        SplitMeshesAndInstances(shape_iter.get(), meshes, instances, excluded_meshes);
+
+        // Create meshes
+        std::map<Shape const*, RadeonRays::Shape*> rr_shapes;
+
         int id = 1;
-        for (; shape_iter->IsValid(); shape_iter->Next())
+        for (auto& iter : meshes)
         {
-            auto mesh = shape_iter->ItemAs<Mesh const>();
+            auto mesh = iter;
 
             auto shape = m_api->CreateMesh(
                 // Vertices starting from the first one
@@ -386,6 +481,51 @@ namespace Baikal
             shape->SetTransform(transform, inverse(transform));
             shape->SetId(id++);
             out.isect_shapes.push_back(shape);
+            out.visible_shapes.push_back(shape);
+            rr_shapes[mesh] = shape;
+        }
+
+        // Handle excluded meshes
+        for (auto& iter : excluded_meshes)
+        {
+            auto mesh = iter;
+
+            auto shape = m_api->CreateMesh(
+                // Vertices starting from the first one
+                (float*)mesh->GetVertices(),
+                // Number of vertices
+                static_cast<int>(mesh->GetNumVertices()),
+                // Stride
+                sizeof(float3),
+                // TODO: make API signature const
+                reinterpret_cast<int const*>(mesh->GetIndices()),
+                // Index stride
+                0,
+                // All triangles
+                nullptr,
+                // Number of primitives
+                static_cast<int>(mesh->GetNumIndices() / 3)
+            );
+
+            auto transform = mesh->GetTransform();
+            shape->SetTransform(transform, inverse(transform));
+            shape->SetId(id++);
+            out.isect_shapes.push_back(shape);
+            rr_shapes[mesh] = shape;
+        }
+
+        // Create instances
+        for (auto& iter: instances)
+        {
+            auto instance = iter;
+            auto rr_mesh = rr_shapes[instance->GetBaseShape()];
+            auto shape = m_api->CreateInstance(rr_mesh);
+
+            auto transform = instance->GetTransform();
+            shape->SetTransform(transform, inverse(transform));
+            shape->SetId(id++);
+            out.isect_shapes.push_back(shape);
+            out.visible_shapes.push_back(shape);
         }
     }
 
@@ -409,7 +549,7 @@ namespace Baikal
         data->right = camera->GetRightVector();
         data->p = camera->GetPosition();
         data->aperture = camera->GetAperture();
-        data->aspect = camera->GetAspectRatio();
+        data->aspect_ratio = camera->GetAspectRatio();
         data->dim = camera->GetSensorSize();
         data->focal_length = camera->GetFocalLength();
         data->focus_distance = camera->GetFocusDistance();
@@ -428,6 +568,7 @@ namespace Baikal
         std::size_t num_normals = 0;
         std::size_t num_uvs = 0;
         std::size_t num_indices = 0;
+        std::size_t num_material_ids = 0;
 
         std::size_t num_vertices_written = 0;
         std::size_t num_normals_written = 0;
@@ -438,15 +579,42 @@ namespace Baikal
 
         std::unique_ptr<Iterator> shape_iter(scene.CreateShapeIterator());
 
-        // Calculate array sizes upfront
-        for (; shape_iter->IsValid(); shape_iter->Next())
+        // Sort shapes into meshes and instances sets
+        std::set<Mesh const*> meshes;
+        std::set<Mesh const*> excluded_meshes;
+        std::set<Instance const*> instances;
+        SplitMeshesAndInstances(shape_iter.get(), meshes, instances, excluded_meshes);
+
+        // Calculate GPU array sizes. Do that only for meshes,
+        // since instances do not occupy space in vertex buffers.
+        // However instane still has its own material ids.
+        for (auto& iter : meshes)
         {
-            auto mesh = shape_iter->ItemAs<Mesh const>();
+            auto mesh = iter;
 
             num_vertices += mesh->GetNumVertices();
             num_normals += mesh->GetNumNormals();
             num_uvs += mesh->GetNumUVs();
             num_indices += mesh->GetNumIndices();
+            num_material_ids += mesh->GetNumIndices() / 3;
+        }
+
+        for (auto& iter : excluded_meshes)
+        {
+            auto mesh = iter;
+
+            num_vertices += mesh->GetNumVertices();
+            num_normals += mesh->GetNumNormals();
+            num_uvs += mesh->GetNumUVs();
+            num_indices += mesh->GetNumIndices();
+            num_material_ids += mesh->GetNumIndices() / 3;
+        }
+
+        for (auto& iter : instances)
+        {
+            auto instance = iter;
+            auto mesh = static_cast<Mesh const*>(instance->GetBaseShape());
+            num_material_ids += mesh->GetNumIndices() / 3;
         }
 
         // Create CL arrays
@@ -454,8 +622,10 @@ namespace Baikal
         out.normals = m_context.CreateBuffer<float3>(num_normals, CL_MEM_READ_ONLY);
         out.uvs = m_context.CreateBuffer<float2>(num_uvs, CL_MEM_READ_ONLY);
         out.indices = m_context.CreateBuffer<int>(num_indices, CL_MEM_READ_ONLY);
-        out.shapes = m_context.CreateBuffer<ClwScene::Shape>(scene.GetNumShapes(), CL_MEM_READ_ONLY);
-        out.materialids = m_context.CreateBuffer<int>(num_indices / 3, CL_MEM_READ_ONLY);
+
+        auto num_shapes = meshes.size() + excluded_meshes.size() + instances.size();
+        out.shapes = m_context.CreateBuffer<ClwScene::Shape>(num_shapes, CL_MEM_READ_ONLY);
+        out.materialids = m_context.CreateBuffer<int>(num_material_ids, CL_MEM_READ_ONLY);
 
         float3* vertices = nullptr;
         float3* normals = nullptr;
@@ -472,11 +642,12 @@ namespace Baikal
         m_context.MapBuffer(0, out.materialids, CL_MAP_WRITE, &matids);
         m_context.MapBuffer(0, out.shapes, CL_MAP_WRITE, &shapes).Wait();
 
-        shape_iter->Reset();
-        for (; shape_iter->IsValid(); shape_iter->Next())
+        // Keep associated shapes data for instance look up
+        std::map<Mesh const*, ClwScene::Shape> shape_data;
+        // Handle meshes
+        for (auto& iter : meshes)
         {
-            // TODO: support instances here
-            auto mesh = shape_iter->ItemAs<Mesh const>();
+            auto mesh = iter;
 
             // Get pointers data
             auto mesh_vertex_array = mesh->GetVertices();
@@ -495,10 +666,10 @@ namespace Baikal
             ClwScene::Shape shape;
             shape.numprims = static_cast<int>(mesh_num_indices / 3);
             shape.startvtx = static_cast<int>(num_vertices_written);
-            shape.numvertices = static_cast<int>(mesh_num_vertices);
             shape.startidx = static_cast<int>(num_indices_written);
+            shape.start_material_idx = static_cast<int>(num_matids_written);
 
-            RadeonRays::matrix transform = mesh->GetTransform();
+            auto transform = mesh->GetTransform();
             shape.transform.m0 = { transform.m00, transform.m01, transform.m02, transform.m03 };
             shape.transform.m1 = { transform.m10, transform.m11, transform.m12, transform.m13 };
             shape.transform.m2 = { transform.m20, transform.m21, transform.m22, transform.m23 };
@@ -506,6 +677,8 @@ namespace Baikal
 
             shape.linearvelocity = float3(0.0f, 0.f, 0.f);
             shape.angularvelocity = float3(0.f, 0.f, 0.f, 1.f);
+
+            shape_data[mesh] = shape;
 
             std::copy(mesh_vertex_array, mesh_vertex_array + mesh_num_vertices, vertices + num_vertices_written);
             num_vertices_written += mesh_num_vertices;
@@ -519,8 +692,7 @@ namespace Baikal
             std::copy(mesh_index_array, mesh_index_array + mesh_num_indices, indices + num_indices_written);
             num_indices_written += mesh_num_indices;
 
-            shapes[num_shapes_written] = shape;
-            ++num_shapes_written;
+            shapes[num_shapes_written++] = shape;
 
             // Check if mesh has a material and use default if not
             auto material = mesh->GetMaterial();
@@ -534,8 +706,107 @@ namespace Baikal
 
             num_matids_written += mesh_num_indices / 3;
 
-            // Drop dirty flas
+            // Drop dirty flag
             mesh->SetDirty(false);
+        }
+
+        for (auto& iter : excluded_meshes)
+        {
+            auto mesh = iter;
+
+            // Get pointers data
+            auto mesh_vertex_array = mesh->GetVertices();
+            auto mesh_num_vertices = mesh->GetNumVertices();
+
+            auto mesh_normal_array = mesh->GetNormals();
+            auto mesh_num_normals = mesh->GetNumNormals();
+
+            auto mesh_uv_array = mesh->GetUVs();
+            auto mesh_num_uvs = mesh->GetNumUVs();
+
+            auto mesh_index_array = mesh->GetIndices();
+            auto mesh_num_indices = mesh->GetNumIndices();
+
+            // Prepare shape descriptor
+            ClwScene::Shape shape;
+            shape.numprims = static_cast<int>(mesh_num_indices / 3);
+            shape.startvtx = static_cast<int>(num_vertices_written);
+            shape.startidx = static_cast<int>(num_indices_written);
+            shape.start_material_idx = static_cast<int>(num_matids_written);
+
+            auto transform = mesh->GetTransform();
+            shape.transform.m0 = { transform.m00, transform.m01, transform.m02, transform.m03 };
+            shape.transform.m1 = { transform.m10, transform.m11, transform.m12, transform.m13 };
+            shape.transform.m2 = { transform.m20, transform.m21, transform.m22, transform.m23 };
+            shape.transform.m3 = { transform.m30, transform.m31, transform.m32, transform.m33 };
+
+            shape.linearvelocity = float3(0.0f, 0.f, 0.f);
+            shape.angularvelocity = float3(0.f, 0.f, 0.f, 1.f);
+
+            shape_data[mesh] = shape;
+
+            std::copy(mesh_vertex_array, mesh_vertex_array + mesh_num_vertices, vertices + num_vertices_written);
+            num_vertices_written += mesh_num_vertices;
+
+            std::copy(mesh_normal_array, mesh_normal_array + mesh_num_normals, normals + num_normals_written);
+            num_normals_written += mesh_num_normals;
+
+            std::copy(mesh_uv_array, mesh_uv_array + mesh_num_uvs, uvs + num_uvs_written);
+            num_uvs_written += mesh_num_uvs;
+
+            std::copy(mesh_index_array, mesh_index_array + mesh_num_indices, indices + num_indices_written);
+            num_indices_written += mesh_num_indices;
+
+            shapes[num_shapes_written++] = shape;
+
+            // We do not need materials for excluded shapes, we never shade them
+            std::fill(matids + num_matids_written, matids + num_matids_written + mesh_num_indices / 3, -1);
+
+            num_matids_written += mesh_num_indices / 3;
+
+            // Drop dirty flag
+            mesh->SetDirty(false);
+        }
+
+        // Handle instances
+        for (auto& iter : instances)
+        {
+            auto instance = iter;
+            auto base_shape = static_cast<Mesh const*>(instance->GetBaseShape());
+            auto material = instance->GetMaterial();
+            auto transform = instance->GetTransform();
+            auto mesh_num_indices = base_shape->GetNumIndices();
+
+            // Here shape_data is guaranteed to contain 
+            // info for base_shape since we have serialized it
+            // above in a different pass.
+            ClwScene::Shape shape = shape_data[base_shape];
+            // Instance has its own material part
+            shape.start_material_idx = num_matids_written;
+
+            // Instance has its own transform
+            shape.transform.m0 = { transform.m00, transform.m01, transform.m02, transform.m03 };
+            shape.transform.m1 = { transform.m10, transform.m11, transform.m12, transform.m13 };
+            shape.transform.m2 = { transform.m20, transform.m21, transform.m22, transform.m23 };
+            shape.transform.m3 = { transform.m30, transform.m31, transform.m32, transform.m33 };
+
+            shape.linearvelocity = float3(0.0f, 0.f, 0.f);
+            shape.angularvelocity = float3(0.f, 0.f, 0.f, 1.f);
+
+            shapes[num_shapes_written++] = shape;
+
+            if (!material)
+            {
+                material = m_default_material.get();
+            }
+
+            auto mat_idx = mat_collector.GetItemIndex(material);
+            std::fill(matids + num_matids_written, matids + num_matids_written + mesh_num_indices / 3, mat_idx);
+
+            num_matids_written += mesh_num_indices / 3;
+
+            // Drop dirty flag
+            instance->SetDirty(false);
         }
 
         m_context.UnmapBuffer(0, out.vertices, vertices);
@@ -619,7 +890,7 @@ namespace Baikal
     {
         m_api->DetachAll();
 
-        for (auto& s : inout.isect_shapes)
+        for (auto& s : inout.visible_shapes)
         {
             m_api->AttachShape(s);
         }
@@ -991,12 +1262,9 @@ namespace Baikal
             // TODO: optimize this linear search
             auto shape = static_cast<AreaLight const*>(light)->GetShape();
 
-            std::size_t idx = 0;
-            for (auto iter = scene.CreateShapeIterator(); iter->IsValid(); iter->Next(), ++idx)
-            {
-                if (iter->ItemAs<Shape const>() == shape)
-                    break;
-            }
+            std::unique_ptr<Iterator> shape_iter(scene.CreateShapeIterator());
+
+            auto idx = GetShapeIdx(shape_iter.get(), shape);
 
             clw_light->shapeidx = static_cast<int>(idx);
             clw_light->primidx = static_cast<int>(static_cast<AreaLight const*>(light)->GetPrimitiveIdx());

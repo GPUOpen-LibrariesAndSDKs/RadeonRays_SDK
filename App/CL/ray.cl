@@ -22,37 +22,42 @@
 #ifndef RAY_CL
 #define RAY_CL
 
-/// Ray descriptor
-typedef struct _ray
+#include "../App/CL/common.cl"
+
+// Ray descriptor
+typedef struct
 {
-    /// xyz - origin, w - max range
+    // xyz - origin, w - max range
     float4 o;
-    /// xyz - direction, w - time
+    // xyz - direction, w - time
     float4 d;
-    /// x - ray mask, y - activity flag
+    // x - ray mask, y - activity flag
     int2 extra;
-    /// Padding
+    // Padding
     float2 padding;
 } ray;
 
-void Ray_SetInactive(__global ray* r)
+// Set ray activity flag
+INLINE void Ray_SetInactive(GLOBAL ray* r)
 {
     r->extra.y = 0;
 }
 
-void Ray_SetExtra(__global ray* r, float2 extra)
+// Set extra data for ray
+INLINE void Ray_SetExtra(GLOBAL ray* r, float2 extra)
 {
     r->padding = extra;
 }
 
-float2 Ray_GetExtra(__global ray const* r)
+// Get extra data for ray
+INLINE float2 Ray_GetExtra(GLOBAL ray const* r)
 {
     return r->padding;
 }
 
-void Ray_Init(__global ray* r, float3 o, float3 d, float maxt, float time, int mask)
+// Initialize ray structure
+INLINE void Ray_Init(GLOBAL ray* r, float3 o, float3 d, float maxt, float time, int mask)
 {
-    // TODO: Check if it generates MTBUF_XYZW write
     r->o.xyz = o;
     r->d.xyz = d;
     r->o.w = maxt;
