@@ -233,7 +233,7 @@ KERNEL void intersect_main(
                             int shape_mask = shapes[shape_idx].mask;
                             // Drill into 2nd level BVH only if the geometry is not masked vs current ray
                             // otherwise skip the subtree
-                            //if (ray_get_mask(&r) && shape_mask)
+                            if (ray_get_mask(&r) & shape_mask)
                             {
                                 // Fetch bottom level BVH index
                                 addr = shapes[shape_idx].bvh_idx;
@@ -392,7 +392,7 @@ KERNEL void occluded_main(
                             int shape_mask = shapes[shape_idx].mask;
                             // Drill into 2nd level BVH only if the geometry is not masked vs current ray
                             // otherwise skip the subtree
-                            if (ray_get_mask(&r) && shape_mask)
+                            if (ray_get_mask(&r) & shape_mask)
                             {
                                 // Fetch bottom level BVH index
                                 addr = shapes[shape_idx].bvh_idx;
