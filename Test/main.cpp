@@ -1287,9 +1287,6 @@ void test_feature_cameraDOF()
     status = rprContextSetScene(context, scene);
     assert(status == RPR_SUCCESS);
 
-
-
-
     float c = 0.5f;
     float d = -7.0f;
     float o = -7.0f;
@@ -1600,6 +1597,7 @@ void test_feature_ContextImageFromData()
     assert(status == RPR_SUCCESS);
 }
 
+//test RPR_MATERIAL_NODE_INPUT_LOOKUP and rprContextCreateMeshEx unsupported
 void test_feature_multiUV()
 {
     rpr_int status = RPR_SUCCESS;
@@ -1616,28 +1614,11 @@ void test_feature_multiUV()
     status = rprContextSetScene(context, scene);
     assert(status == RPR_SUCCESS);
 
-    //textures
-    rpr_image image_input_a = NULL; status = rprContextCreateImageFromFile(context, "../Resources/Textures/texTest.png", &image_input_a);
-    assert(status == RPR_SUCCESS);
-    rpr_image image_input_b = NULL; status = rprContextCreateImageFromFile(context, "../Resources/Textures/alpha.png", &image_input_b);
-    assert(status == RPR_SUCCESS);
-    rpr_material_node materialNodeTexture = NULL; status = rprMaterialSystemCreateNode(matsys, RPR_MATERIAL_NODE_IMAGE_TEXTURE, &materialNodeTexture);
-    assert(status == RPR_SUCCESS);
-    status = rprMaterialNodeSetInputImageData(materialNodeTexture, "data", image_input_a);
-    assert(status == RPR_SUCCESS);
-
+    
     rpr_material_node uv_node = NULL;
     status = rprMaterialSystemCreateNode(matsys, RPR_MATERIAL_NODE_INPUT_LOOKUP, &uv_node);
-    assert(status == RPR_SUCCESS);
-    status = rprMaterialNodeSetInputU(uv_node, "value", RPR_MATERIAL_NODE_LOOKUP_UV);
-    assert(status == RPR_SUCCESS);
-
-
-    rpr_material_node diffuseSphere = NULL; status = rprMaterialSystemCreateNode(matsys, RPR_MATERIAL_NODE_DIFFUSE, &diffuseSphere);
-    assert(status == RPR_SUCCESS);
-    status = rprMaterialNodeSetInputN(diffuseSphere, "color", uv_node   /*  materialNodeTexture */);
-    assert(status == RPR_SUCCESS);
-
+    assert(status == RPR_ERROR_UNSUPPORTED);
+      
     VertexMT meshVertices[] =
     {
         { -2.0f, 2.0f, 0.0f,    0.0f, 0.0f, +1.0f,    0.0f, 0.0f ,    1.0f, 1.0f },
@@ -1677,83 +1658,248 @@ void test_feature_multiUV()
         texcoord_indices_, tidx_stride_,
 
         num_face_vertices, num_face_vertices_nbOfElement, &mesh);
+    assert(status == RPR_ERROR_UNSUPPORTED);
+
+    //cleanup
+    status = rprSceneSetCamera(scene, NULL);
+    assert(status == RPR_SUCCESS);
+    status = rprObjectDelete(scene); scene = NULL;
+    assert(status == RPR_SUCCESS);
+    status = rprObjectDelete(matsys); matsys = NULL;
+    assert(status == RPR_SUCCESS);
+}
+void test_apiMecha_Light()
+{
+    rpr_int status = RPR_SUCCESS;
+    //create context and scene
+    rpr_context	context;
+    status = rprCreateContext(RPR_API_VERSION, nullptr, 0, RPR_CREATION_FLAGS_ENABLE_GPU0, NULL, NULL, &context);
+    assert(status == RPR_SUCCESS);
+    rpr_scene scene = NULL; status = rprContextCreateScene(context, &scene);
     assert(status == RPR_SUCCESS);
 
+    for (rpr_int iter = 0; iter<3; iter++)//add/destroy several times
+    {
+
+        rpr_light lightDir = NULL; status = rprContextCreateDirectionalLight(context, &lightDir);
+        assert(status == RPR_SUCCESS);
+        rpr_light lightEnv = NULL; status = rprContextCreateEnvironmentLight(context, &lightEnv);
+        assert(status == RPR_SUCCESS);
+        rpr_light lightPoint = NULL; status = rprContextCreatePointLight(context, &lightPoint);
+        assert(status == RPR_SUCCESS);
+        rpr_light lightSpot = NULL; status = rprContextCreateSpotLight(context, &lightSpot);
+        assert(status == RPR_SUCCESS);
+
+        matrix transform = translation(float3(-0.7f, 0.5f, 1.5f));
+
+        status = rprLightSetTransform(lightDir, true, &transform.m00);
+        assert(status == RPR_SUCCESS);
+        status = rprLightSetTransform(lightEnv, true, &transform.m00);
+        assert(status == RPR_SUCCESS);
+        status = rprLightSetTransform(lightPoint, true, &transform.m00);
+        assert(status == RPR_SUCCESS);
+        status = rprLightSetTransform(lightSpot, true, &transform.m00);
+        assert(status == RPR_SUCCESS);
+
+        size_t querrySize = 0;
+        char* querryData = (char*)malloc(1);
+
+        for (rpr_int i = 0; i<4; i++)
+        {
+            rpr_light pLightTest = NULL;
+            rpr_light_type LightTypeShouldBe = 0;
+            if (i == 0) { pLightTest = lightDir;    LightTypeShouldBe = RPR_LIGHT_TYPE_DIRECTIONAL; }
+            else if (i == 1) { pLightTest = lightEnv;    LightTypeShouldBe = RPR_LIGHT_TYPE_ENVIRONMENT; }
+            else if (i == 2) { pLightTest = lightPoint;  LightTypeShouldBe = RPR_LIGHT_TYPE_POINT; }
+            else if (i == 3) { pLightTest = lightSpot;   LightTypeShouldBe = RPR_LIGHT_TYPE_SPOT; }
+            else { assert(false); }
+
+            status = rprLightGetInfo(pLightTest, RPR_LIGHT_TRANSFORM, 0, NULL, &querrySize);
+            assert(status == RPR_SUCCESS);
+            querryData = (char*)realloc(querryData, querrySize);
+            status = rprLightGetInfo(pLightTest, RPR_LIGHT_TRANSFORM, querrySize, querryData, NULL);
+            assert(status == RPR_SUCCESS);
+            if (querrySize != sizeof(matrix)) { assert(false); }
+            if (memcmp(querryData, &transform.m00, querrySize) != 0) { assert(false); }
+
+            status = rprLightGetInfo(pLightTest, RPR_LIGHT_TYPE, 0, NULL, &querrySize);
+            assert(status == RPR_SUCCESS);
+            querryData = (char*)realloc(querryData, querrySize);
+            status = rprLightGetInfo(pLightTest, RPR_LIGHT_TYPE, querrySize, querryData, NULL);
+            assert(status == RPR_SUCCESS);
+            if (querrySize != sizeof(rpr_light_type)) { assert(false); }
+            if (memcmp(querryData, &LightTypeShouldBe, querrySize) != 0) { assert(false); }
+        }
+
+        free(querryData); querryData = NULL;
+
+        //attach
+        status = rprSceneAttachLight(scene, lightDir);
+        assert(status == RPR_SUCCESS);
+        status = rprSceneAttachLight(scene, lightEnv);
+        assert(status == RPR_SUCCESS);
+        status = rprSceneAttachLight(scene, lightPoint);
+        assert(status == RPR_SUCCESS);
+        status = rprSceneAttachLight(scene, lightSpot);
+        assert(status == RPR_SUCCESS);
+
+        //detach
+        status = rprSceneDetachLight(scene, lightDir);
+        assert(status == RPR_SUCCESS);
+        status = rprSceneDetachLight(scene, lightEnv);
+        assert(status == RPR_SUCCESS);
+        status = rprSceneDetachLight(scene, lightPoint);
+        assert(status == RPR_SUCCESS);
+        status = rprSceneDetachLight(scene, lightSpot);
+        assert(status == RPR_SUCCESS);
+
+        //cleanup
+        status = rprObjectDelete(lightDir); lightDir = NULL;
+        assert(status == RPR_SUCCESS);
+        status = rprObjectDelete(lightEnv); lightEnv = NULL;
+        assert(status == RPR_SUCCESS);
+        status = rprObjectDelete(lightPoint); lightPoint = NULL;
+        assert(status == RPR_SUCCESS);
+        status = rprObjectDelete(lightSpot); lightSpot = NULL;
+        assert(status == RPR_SUCCESS);
+    }
+
+    status = rprObjectDelete(scene); scene = NULL;
+    assert(status == RPR_SUCCESS);
+}
+
+void test_feature_LightDirectional()
+{
+    rpr_int status = RPR_SUCCESS;
+
+    //create context and scene
+    rpr_context	context;
+    status = rprCreateContext(RPR_API_VERSION, nullptr, 0, RPR_CREATION_FLAGS_ENABLE_GPU0, NULL, NULL, &context);
+    assert(status == RPR_SUCCESS);
+    rpr_material_system matsys = NULL;
+    status = rprContextCreateMaterialSystem(context, 0, &matsys);
+    assert(status == RPR_SUCCESS);
+    rpr_scene scene = NULL; status = rprContextCreateScene(context, &scene);
+    assert(status == RPR_SUCCESS);
+    status = rprContextSetScene(context, scene);
+    assert(status == RPR_SUCCESS);
+
+    //vertex data
+    float c = 0.5f;
+    float d = -7.0f;
+    float o = -7.0f;
+    float x = 0.6f;
+
+    Vertex meshVertices[] =
+    {
+        { -2.0f, 2.0f, 0.0f,    0.0f, 0.0f, +1.0f,    0.0f, 0.0f },
+        {  2.0f, 2.0f, 0.0f,    0.0f, 0.0f, +1.0f,    1.0f, 0.0f  },
+        {  2.0f, -2.0f, 0.0f ,  0.0f, 0.0f, +1.0f,    1.0f, 1.0f  },
+        {  -2.0f, -2.0f, 0.0f , 0.0f, 0.0f, +1.0f,    0.0f, 1.0f },
+    };
+    rpr_int indices[] =
+    {
+        3,2,1,0,
+    };
+    rpr_int num_face_vertices[] =
+    {
+        4,
+    };
+
+    //mesh
+    rpr_shape mesh = 0; status = rprContextCreateMesh(context,
+        (rpr_float const*)&meshVertices[0], sizeof(meshVertices) / sizeof(meshVertices[0]), sizeof(Vertex),
+        (rpr_float const*)((char*)&meshVertices[0] + sizeof(rpr_float) * 3), sizeof(meshVertices) / sizeof(meshVertices[0]), sizeof(Vertex),
+        (rpr_float const*)((char*)&meshVertices[0] + sizeof(rpr_float) * 6), sizeof(meshVertices) / sizeof(meshVertices[0]), sizeof(Vertex),
+        (rpr_int const*)indices, sizeof(rpr_int),
+        (rpr_int const*)indices, sizeof(rpr_int),
+        (rpr_int const*)indices, sizeof(rpr_int),
+        num_face_vertices, sizeof(num_face_vertices) / sizeof(num_face_vertices[0]), &mesh);
     status = rprSceneAttachShape(scene, mesh);
     assert(status == RPR_SUCCESS);
-
-
-    status = rprShapeSetMaterial(mesh, diffuseSphere);
-    assert(status == RPR_SUCCESS);
-
+    //camera
     rpr_camera camera = NULL; status = rprContextCreateCamera(context, &camera);
     assert(status == RPR_SUCCESS);
-
     status = rprCameraLookAt(camera, 0, 0, 7, 0, 0, 0, 0, 1, 0);
     assert(status == RPR_SUCCESS);
-
     status = rprSceneSetCamera(scene, camera);
     assert(status == RPR_SUCCESS);
 
-
-    //light
-    rpr_light light = NULL; status = rprContextCreatePointLight(context, &light);
-    assert(status == RPR_SUCCESS);
-    matrix lightm = translation(float3(0, 0, 4)) * rotation_z(3.14f);
-    status = rprLightSetTransform(light, true, &lightm.m00);
-    assert(status == RPR_SUCCESS);
-    status = rprPointLightSetRadiantPower3f(light, 60, 60, 60);
-    assert(status == RPR_SUCCESS);
-    status = rprSceneAttachLight(scene, light);
-    assert(status == RPR_SUCCESS);
 
     rpr_framebuffer_desc desc;
     desc.fb_width = 800;
     desc.fb_height = 600;
 
+    //shader
+    rpr_material_node shader_lambert = NULL; status = rprMaterialSystemCreateNode(matsys, RPR_MATERIAL_NODE_DIFFUSE, &shader_lambert);
+    status = rprMaterialNodeSetInputF(shader_lambert, "color", 0.0f, 0.5f, 1.0f, 1.0f);
+    assert(status == RPR_SUCCESS);
+    status = rprShapeSetMaterial(mesh, shader_lambert);
+    assert(status == RPR_SUCCESS);
+
+
+    //light
+    rpr_light light = NULL; status = rprContextCreateDirectionalLight(context, &light);
+    assert(status == RPR_SUCCESS);
+    matrix lightm = translation(float3(1.0f, 0.0f, 1.0f)) * rotation_y(0.5f*3.14f / 2.0f);
+    status = rprLightSetTransform(light, true, &lightm.m00);
+    assert(status == RPR_SUCCESS);
+    status = rprDirectionalLightSetRadiantPower3f(light, 1.0f, 1.0f, 1.0f);
+    assert(status == RPR_SUCCESS);
+    status = rprSceneAttachLight(scene, light);
+    assert(status == RPR_SUCCESS);
+
+
     rpr_framebuffer_format fmt = { 4, RPR_COMPONENT_TYPE_FLOAT32 };
     rpr_framebuffer frame_buffer = NULL; status = rprContextCreateFrameBuffer(context, fmt, &desc, &frame_buffer);
     assert(status == RPR_SUCCESS);
-    status = rprContextSetAOV(context, RPR_AOV_COLOR, frame_buffer); assert(status == RPR_SUCCESS);
 
-    status = rprFrameBufferClear(frame_buffer); assert(status == RPR_SUCCESS);
-    for (rpr_uint i = 0; i < kRenderIterations; ++i)
+    status = rprContextSetAOV(context, RPR_AOV_COLOR, frame_buffer);
+    assert(status == RPR_SUCCESS);
+
+    status = rprFrameBufferClear(frame_buffer);
+    assert(status == RPR_SUCCESS);
+
+    //render
+    for (rpr_uint i = 0; i<kRenderIterations; i++)
     {
         status = rprContextRender(context);
         assert(status == RPR_SUCCESS);
     }
-    rprFrameBufferSaveToFile(frame_buffer, "feature_multiUV_0.png");
+    rprFrameBufferSaveToFile(frame_buffer, "feature_LightDirectional.png");
 
-
-    status = rprMaterialNodeSetInputU(uv_node, "value", RPR_MATERIAL_NODE_LOOKUP_UV1);
+    //dynamic:
+    matrix lightm2 = translation(float3(0.0f, 0.0f, 1.0f)) * rotation_y(0.0f*3.14f / 2.0f);
+    status = rprLightSetTransform(light, true, &lightm2.m00);
+    assert(status == RPR_SUCCESS);
+    status = rprDirectionalLightSetRadiantPower3f(light, 8.0f, 8.0f, 0.0f);
+    assert(status == RPR_SUCCESS);
+    status = rprFrameBufferClear(frame_buffer);
     assert(status == RPR_SUCCESS);
 
-    status = rprFrameBufferClear(frame_buffer); assert(status == RPR_SUCCESS);
-    for (rpr_uint i = 0; i < kRenderIterations; ++i)
+    for (rpr_uint i = 0; i<kRenderIterations; i++)
     {
         status = rprContextRender(context);
         assert(status == RPR_SUCCESS);
     }
-    rprFrameBufferSaveToFile(frame_buffer, "feature_multiUV_1.png");
+    rprFrameBufferSaveToFile(frame_buffer, "feature_LightDirectional_dynamic.png");
 
-    status = rprObjectDelete(image_input_a); image_input_a = NULL;
+    //cleanup
+    status = rprObjectDelete(shader_lambert);
     assert(status == RPR_SUCCESS);
-    status = rprObjectDelete(image_input_b); image_input_b = NULL;
-    assert(status == RPR_SUCCESS);
-    status = rprObjectDelete(frame_buffer); frame_buffer = NULL;
-    assert(status == RPR_SUCCESS);
+    FR_MACRO_CLEAN_SHAPE_RELEASE(mesh, scene);
     status = rprSceneDetachLight(scene, light);
     assert(status == RPR_SUCCESS);
     status = rprObjectDelete(light); light = NULL;
     assert(status == RPR_SUCCESS);
     status = rprSceneSetCamera(scene, NULL);
     assert(status == RPR_SUCCESS);
+    status = rprObjectDelete(scene); scene = NULL;
+    assert(status == RPR_SUCCESS);
+
     status = rprObjectDelete(camera); camera = NULL;
     assert(status == RPR_SUCCESS);
-    FR_MACRO_CLEAN_SHAPE_RELEASE(mesh, scene);
-    status = rprObjectDelete(diffuseSphere);
-    assert(status == RPR_SUCCESS);
-    status = rprObjectDelete(scene); scene = NULL;
+    status = rprObjectDelete(frame_buffer); frame_buffer = NULL;
     assert(status == RPR_SUCCESS);
     status = rprObjectDelete(matsys); matsys = NULL;
     assert(status == RPR_SUCCESS);
@@ -1761,18 +1907,20 @@ void test_feature_multiUV()
 
 int main(int argc, char* argv[])
 {
-    //MeshCreationTest();
-    //SimpleRenderTest();
-    //ComplexRenderTest();
-    //EnvLightClearTest();
-    //MemoryStatistics();
-    //DefaultMaterialTest();
-    //NullShaderTest();
-    //TiledRender();
-    //test_feature_cameraDOF();
+    MeshCreationTest();
+    SimpleRenderTest();
+    ComplexRenderTest();
+    EnvLightClearTest();
+    MemoryStatistics();
+    DefaultMaterialTest();
+    NullShaderTest();
+//    TiledRender();
+    test_feature_cameraDOF();
+    test_feature_ContextImageFromData();
+    test_feature_multiUV();
+    test_apiMecha_Light();
+    test_feature_LightDirectional();
     //RunObjViewer(argc, argv);
-    //test_feature_ContextImageFromData();
-    //test_feature_multiUV();
 
     return 0;
 }
