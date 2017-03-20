@@ -64,7 +64,7 @@ rpr_int rprCreateContext(rpr_int api_version, rpr_int * pluginIDs, size_t plugin
         Context* cont = new Context();
         try
         {
-            //TODO check num_bounces 
+            //TODO: check num_bounces 
             ConfigManager::CreateConfigs(ConfigManager::kUseSingleGpu, interop, cont->cfgs, 5);
         }
         catch(...)
@@ -94,7 +94,7 @@ rpr_int rprContextGetInfo(rpr_context in_context, rpr_context_info in_context_in
         return RPR_ERROR_INVALID_CONTEXT;
     }
 
-    //cast dat
+    //cast data
     Context* context = static_cast<Context*>(in_context);
 
     switch (in_context_info)
@@ -102,7 +102,7 @@ rpr_int rprContextGetInfo(rpr_context in_context, rpr_context_info in_context_in
     case RPR_CONTEXT_RENDER_STATISTICS:
         if (out_data)
         {
-            //TODO more statistics
+            //TODO: more statistics
             rpr_render_statistics* rs = static_cast<rpr_render_statistics*>(out_data);
             for (const auto& cfg : context->cfgs)
             {
@@ -167,7 +167,7 @@ rpr_int rprContextSetAOV(rpr_context in_context, rpr_aov in_aov, rpr_framebuffer
     case RPR_AOV_WORLD_COORDINATE:
         return RPR_ERROR_UNIMPLEMENTED;
     default:
-        //TODO add other AOV
+        //TODO: add other AOV
         return RPR_ERROR_INVALID_PARAMETER;
     }
 
@@ -185,6 +185,7 @@ rpr_int rprContextSetScene(rpr_context in_context, rpr_scene in_scene)
         return RPR_ERROR_INVALID_PARAMETER;
     }
 
+    //cast data
     Context* cont = static_cast<Context*>(in_context);
     Scene1* scene = static_cast<Scene1*>(in_scene);
     cont->current_scene = scene;
@@ -193,14 +194,42 @@ rpr_int rprContextSetScene(rpr_context in_context, rpr_scene in_scene)
 }
 
 
-rpr_int rprContextGetScene(rpr_context arg0, rpr_scene * out_scene)
+rpr_int rprContextGetScene(rpr_context in_context, rpr_scene * out_scene)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    if (!in_context)
+    {
+        return RPR_ERROR_INVALID_CONTEXT;
+    }
+
+    //cast data
+    Context* cont = static_cast<Context*>(in_context);
+    *out_scene = cont->current_scene;
+
+    return RPR_SUCCESS;
 }
 
-rpr_int rprContextSetParameter1u(rpr_context context, rpr_char const * name, rpr_uint x)
+rpr_int rprContextSetParameter1u(rpr_context in_context, rpr_char const * name, rpr_uint x)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    if (!in_context)
+    {
+        return RPR_ERROR_INVALID_CONTEXT;
+    }
+
+    //cast data
+    Context* cont = static_cast<Context*>(in_context);
+    //TODO: handle all context parameters
+    if (!strcmp(name, "rendermode"))
+    {
+        switch (x)
+        {
+        case RPR_RENDER_MODE_GLOBAL_ILLUMINATION:
+            break;
+        default:
+            return RPR_ERROR_UNIMPLEMENTED;
+        }
+    }
+
+    return RPR_SUCCESS;
 }
 
 rpr_int rprContextSetParameter1f(rpr_context context, rpr_char const * name, rpr_float x)
@@ -300,7 +329,7 @@ rpr_int rprContextCreateInstance(rpr_context in_context, rpr_shape shape, rpr_sh
     Context* context = static_cast<Context*>(in_context);
     Mesh* mesh = static_cast<Mesh*>(shape);
 
-    //TODO replace by instance
+    //TODO: replace by instance
     Mesh* instance = new Mesh();
 
     //copy data
@@ -452,7 +481,7 @@ rpr_int rprContextCreateFrameBuffer(rpr_context in_context, rpr_framebuffer_form
     //prepare
     Context* cont = static_cast<Context*>(in_context);
 
-    //TODO: implement for several devices
+    //TODO:: implement for several devices
     if (cont->cfgs.size() != 1)
     {
         return RPR_ERROR_INTERNAL_ERROR;
@@ -484,9 +513,19 @@ rpr_int rprCameraSetFocalLength(rpr_camera in_camera, rpr_float flength)
     return RPR_SUCCESS;
 }
 
-rpr_int rprCameraSetFocusDistance(rpr_camera camera, rpr_float fdist)
+rpr_int rprCameraSetFocusDistance(rpr_camera in_camera, rpr_float fdist)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    if (!in_camera)
+    {
+        return RPR_ERROR_INVALID_PARAMETER;
+    }
+
+    //cast data
+    PerspectiveCamera* camera = static_cast<PerspectiveCamera*>(in_camera);
+
+    camera->SetFocusDistance(fdist);
+
+    return RPR_SUCCESS;
 }
 
 rpr_int rprCameraSetTransform(rpr_camera camera, rpr_bool transpose, rpr_float * transform)
@@ -532,6 +571,8 @@ rpr_int rprCameraSetFStop(rpr_camera in_camera, rpr_float fstop)
     {
         return RPR_ERROR_INVALID_PARAMETER;
     }
+
+    //cast
     PerspectiveCamera* camera = static_cast<PerspectiveCamera*>(in_camera);
     //translate m -> to mm
     camera->SetAperture(fstop / 1000.f);
@@ -549,9 +590,25 @@ rpr_int rprCameraSetExposure(rpr_camera camera, rpr_float exposure)
     return RPR_ERROR_UNIMPLEMENTED;
 }
 
-rpr_int rprCameraSetMode(rpr_camera camera, rpr_camera_mode mode)
+rpr_int rprCameraSetMode(rpr_camera in_camera, rpr_camera_mode mode)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    if (!in_camera)
+    {
+        return RPR_ERROR_INVALID_PARAMETER;
+    }
+
+    //cast
+    PerspectiveCamera* camera = static_cast<PerspectiveCamera*>(in_camera);
+    //TODO: only perspective camera used for now
+    switch (mode)
+    {
+    case RPR_CAMERA_MODE_PERSPECTIVE:
+        break;
+    default:
+        return RPR_ERROR_UNIMPLEMENTED;
+    }
+    
+    return RPR_SUCCESS;
 }
 
 rpr_int rprCameraSetOrthoWidth(rpr_camera camera, rpr_float width)
@@ -818,7 +875,7 @@ rpr_int rprSpotLightSetConeShape(rpr_light in_light, rpr_float in_iangle, rpr_fl
     float2 angle = {in_iangle, in_oangle};
     
     //set angles
-    //TODO: check
+    //TODO:: check
     light->SetConeShape(angle);
 
     return RPR_SUCCESS;
@@ -957,9 +1014,31 @@ rpr_int rprLightGetInfo(rpr_light light, rpr_light_info info, size_t size, void 
     return RPR_ERROR_UNIMPLEMENTED;
 }
 
-rpr_int rprSceneClear(rpr_scene scene)
+rpr_int rprSceneClear(rpr_scene in_scene)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    if (!in_scene)
+    {
+        return RPR_ERROR_INVALID_PARAMETER;
+    }
+
+    //cast input data
+    Scene1* scene = static_cast<Scene1*>(in_scene);
+
+    //remove lights
+        for (std::unique_ptr<Iterator> it_light(scene->CreateLightIterator()); it_light->IsValid();)
+    {
+        scene->DetachLight(it_light->ItemAs<const Light>());
+        it_light.reset(scene->CreateLightIterator());
+    }
+
+    //remove shapes
+    for (std::unique_ptr<Iterator> it_shape(scene->CreateShapeIterator()); it_shape->IsValid();)
+    {
+        scene->DetachShape(it_shape->ItemAs<const Mesh>());
+        it_shape.reset(scene->CreateShapeIterator());
+    }
+
+    return RPR_SUCCESS;
 }
 
 rpr_int rprSceneAttachShape(rpr_scene in_scene, rpr_shape in_shape)
@@ -1069,9 +1148,29 @@ rpr_int rprSceneGetCamera(rpr_scene scene, rpr_camera * out_camera)
     return RPR_ERROR_UNIMPLEMENTED;
 }
 
-rpr_int rprFrameBufferGetInfo(rpr_framebuffer framebuffer, rpr_framebuffer_info info, size_t size, void * data, size_t * size_ret)
+rpr_int rprFrameBufferGetInfo(rpr_framebuffer in_frame_buffer, rpr_framebuffer_info in_info, size_t in_size, void * out_data, size_t * out_size)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    if (!in_frame_buffer)
+    {
+        return RPR_ERROR_INVALID_PARAMETER;
+    }
+
+    //cast data
+    ClwOutput* buff = static_cast<ClwOutput*>(in_frame_buffer);
+    
+    switch (in_info)
+    {
+    case RPR_FRAMEBUFFER_DATA:
+        if (out_data)
+            buff->GetData(static_cast<RadeonRays::float3*>(out_data));
+        if (out_size)
+            *out_size = sizeof(float3) * buff->width() * buff->height();
+        break;
+    default:
+        return RPR_ERROR_UNIMPLEMENTED;
+    }
+
+    return RPR_SUCCESS;
 }
 
 rpr_int rprFrameBufferClear(rpr_framebuffer in_frame_buffer)
@@ -1182,6 +1281,7 @@ rpr_int rprMaterialSystemCreateNode(rpr_material_system in_matsys, rpr_material_
         break;
     }
     case RPR_MATERIAL_NODE_IMAGE_TEXTURE:
+    case RPR_MATERIAL_NODE_NORMAL_MAP:
         node = new Texture();
         break;
     case RPR_MATERIAL_NODE_REFLECTION:
@@ -1192,8 +1292,30 @@ rpr_int rprMaterialSystemCreateNode(rpr_material_system in_matsys, rpr_material_
         break;
     }
     case RPR_MATERIAL_NODE_REFRACTION:
-    { 
+    {
         SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kIdealRefract);
+        mat->SetTwoSided(true);
+        node = mat;
+        break;
+    }
+    case RPR_MATERIAL_NODE_STANDARD:
+    {
+        SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kZero);
+        mat->SetTwoSided(true);
+        node = mat;
+        break;
+    }
+    case RPR_MATERIAL_NODE_FRESNEL:
+    {
+        //TODO: fix
+        SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kLambert);
+        mat->SetTwoSided(true);
+        node = mat;
+        break;
+    }
+    case RPR_MATERIAL_NODE_EMISSIVE:
+    {
+        SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kEmissive);
         mat->SetTwoSided(true);
         node = mat;
         break;
@@ -1226,6 +1348,14 @@ rpr_int rprMaterialNodeSetInputN(rpr_material_node in_node, rpr_char const * in_
     if (!strcmp(in_input, "color"))
     {
         input_name = "albedo";
+    }
+    else if (!strcmp(in_input, "normal"))
+    {
+        input_name = in_input;
+    }
+    else if (!strcmp(in_input, "roughness"))
+    {
+        input_name = in_input;
     }
     else
     {
@@ -1345,7 +1475,7 @@ rpr_int rprMaterialNodeGetInputInfo(rpr_material_node in_node, rpr_int in_input_
 
 rpr_int rprObjectDelete(void * obj)
 {
-    //TODO
+    //TODO:
     delete obj;
 
     return RPR_SUCCESS;
