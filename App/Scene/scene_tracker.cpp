@@ -32,6 +32,7 @@ namespace Baikal
 
         m_api->SetOption("acc.type", "fatbvh");
         m_api->SetOption("bvh.builder", "sah");
+        m_api->SetOption("bvh.sah.num_bins", 256.f);
 
         m_default_material->SetInputValue("albedo", float4(0.5f, 0.6f, 0.5f, 1.f));
     }

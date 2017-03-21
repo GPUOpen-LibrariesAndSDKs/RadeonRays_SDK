@@ -189,9 +189,11 @@ namespace RadeonRays
 
             auto builder = world.options_.GetOption("bvh.builder");
             auto tcost = world.options_.GetOption("bvh.sah.traversal_cost");
+            auto nbins = world.options_.GetOption("bvh.sah.num_bins");
 
             bool use_sah = false;
             float traversal_cost = tcost ? tcost->AsFloat() : 10.f;
+            int num_bins = nbins ? (int)nbins->AsFloat() : 64;
 
 
             if (builder && builder->AsString() == "sah")
@@ -253,7 +255,7 @@ namespace RadeonRays
             // Create actual BVH objects
             for (int i = 0; i < nummeshes + 1; ++i)
             {
-                m_bvhs[i].reset(new Bvh(traversal_cost, use_sah));
+                m_bvhs[i].reset(new Bvh(traversal_cost, num_bins, use_sah));
                 m_cpudata->bvhptrs[i] = m_bvhs[i].get();
             }
 
@@ -339,7 +341,6 @@ namespace RadeonRays
             // Copy translated nodes first
             m_gpudata->bvh = m_device->CreateBuffer(m_cpudata->translator.nodes_.size() * sizeof(PlainBvhTranslator::Node), Calc::kRead, &m_cpudata->translator.nodes_[0]);
             m_gpudata->bvhrootidx = m_cpudata->translator.root_;
-
 
             // Create vertex buffer
             {
@@ -570,9 +571,11 @@ namespace RadeonRays
             // Calculate top level BVH
             auto builder = world.options_.GetOption("bvh.builder");
             auto tcost = world.options_.GetOption("bvh.sah.traversal_cost");
+            auto nbins = world.options_.GetOption("bvh.sah.num_bins");
 
             bool use_sah = false;
             float traversal_cost = tcost ? tcost->AsFloat() : 10.f;
+            int num_bins = nbins ? (int)nbins->AsFloat() : 64;
 
 
             if (builder && builder->AsString() == "sah")
@@ -580,7 +583,7 @@ namespace RadeonRays
                 use_sah = true;
             }
 
-            m_bvhs[nummeshes].reset(new Bvh(traversal_cost, use_sah));
+            m_bvhs[nummeshes].reset(new Bvh(traversal_cost, num_bins, use_sah));
             m_bvhs[nummeshes]->Build(&object_bounds[0], nummeshes + numinstances);
             m_cpudata->bvhptrs[nummeshes] = m_bvhs[nummeshes].get();
 

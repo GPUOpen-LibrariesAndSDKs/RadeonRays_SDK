@@ -155,10 +155,13 @@ namespace RadeonRays
             auto overlap = world.options_.GetOption("bvh.sah.min_overlap");
             auto tcost = world.options_.GetOption("bvh.sah.traversal_cost");
             auto node_budget = world.options_.GetOption("bvh.sah.extra_node_budget");
+            auto nbins = world.options_.GetOption("bvh.sah.num_bins");
+
 
             bool use_sah = false;
             bool use_splits = false;
             int max_split_depth = maxdepth ? (int)maxdepth->AsFloat() : 10;
+            int num_bins = nbins ? (int)nbins->AsFloat() : 64;
             float min_overlap = overlap ? overlap->AsFloat() : 0.05f;
             float traversal_cost = tcost ? tcost->AsFloat() : 10.f;
             float extra_node_budget = node_budget ? node_budget->AsFloat() : 0.5f;
@@ -174,8 +177,8 @@ namespace RadeonRays
             }
 
             m_bvh.reset(use_splits ?
-                new SplitBvh(traversal_cost, max_split_depth, min_overlap, extra_node_budget) :
-                new Bvh(traversal_cost, use_sah)
+                new SplitBvh(traversal_cost, num_bins, max_split_depth, min_overlap, extra_node_budget) :
+                new Bvh(traversal_cost, num_bins, use_sah)
             );
 
             // Partition the array into meshes and instances

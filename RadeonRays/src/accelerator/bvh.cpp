@@ -246,7 +246,7 @@ namespace RadeonRays
     {
         // SAH implementation
         // calc centroids histogram
-        int const kNumBins = 128;
+        // int const kNumBins = 128;
         // moving split bin index
         int splitidx = -1;
         // Set SAH to maximum float value as a start
@@ -273,7 +273,11 @@ namespace RadeonRays
         };
 
         // Keep bins for each dimension
-        Bin   bins[3][kNumBins];
+        std::vector<Bin> bins[3];
+        bins[0].resize(m_num_bins);
+        bins[1].resize(m_num_bins);
+        bins[2].resize(m_num_bins);
+
         // Precompute inverse parent area
         float invarea = 1.f / req.bounds.surface_area();
         // Precompute min point
@@ -291,7 +295,7 @@ namespace RadeonRays
             if (centroid_rng == 0.f) continue;
 
             // Initialize bins
-            for (unsigned i = 0; i < kNumBins; ++i)
+            for (unsigned i = 0; i < m_num_bins; ++i)
             {
                 bins[axis][i].count = 0;
                 bins[axis][i].bounds = bbox();
@@ -301,17 +305,17 @@ namespace RadeonRays
             for (int i = req.startidx; i < req.startidx + req.numprims; ++i)
             {
                 int idx = primindices[i];
-                int binidx = (int)std::min<float>(kNumBins * ((centroids[idx][axis] - rootminc) * invcentroid_rng), kNumBins - 1);
+                int binidx = (int)std::min<float>(m_num_bins * ((centroids[idx][axis] - rootminc) * invcentroid_rng), m_num_bins - 1);
 
                 ++bins[axis][binidx].count;
                 bins[axis][binidx].bounds.grow(bounds[idx]);
             }
 
-            bbox rightbounds[kNumBins - 1];
+            std::vector<bbox> rightbounds(m_num_bins - 1);
 
             // Start with 1-bin right box
             bbox rightbox = bbox();
-            for (int i = kNumBins - 1; i > 0; --i)
+            for (int i = m_num_bins - 1; i > 0; --i)
             {
                 rightbox.grow(bins[axis][i].bounds);
                 rightbounds[i - 1] = rightbox;
@@ -324,7 +328,7 @@ namespace RadeonRays
             // Start best SAH search
             // i is current split candidate (split between i and i + 1)
             float sahtmp = 0.f;
-            for (int i = 0; i < kNumBins - 1; ++i)
+            for (int i = 0; i < m_num_bins - 1; ++i)
             {
                 leftbox.grow(bins[axis][i].bounds);
                 leftcount += bins[axis][i].count;
@@ -346,7 +350,7 @@ namespace RadeonRays
         // Choose split plane
         if (splitidx != -1)
         {
-            split.split = rootmin[split.dim] + (splitidx + 1) * (centroid_extents[split.dim] / kNumBins);
+            split.split = rootmin[split.dim] + (splitidx + 1) * (centroid_extents[split.dim] / m_num_bins);
         }
 
         return split;
@@ -491,6 +495,7 @@ namespace RadeonRays
     {
         os << "Class name: " << "Bvh\n";
         os << "SAH: " << (m_usesah ? "enabled\n" : "disabled\n");
+        os << "SAH bins: " << m_num_bins << "\n";
         os << "Number of triangles: " << m_indices.size() << "\n";
         os << "Number of nodes: " << m_nodecnt << "\n";
         os << "Tree height: " << GetHeight() << "\n";
