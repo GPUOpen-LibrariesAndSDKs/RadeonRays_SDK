@@ -744,9 +744,9 @@ rpr_int rprShapeSetMaterial(rpr_shape in_shape, rpr_material_node in_node)
     }
     
     //cast data
-    Mesh* mesh = static_cast<Mesh*>(in_shape);
+    Baikal::Shape* shape = static_cast<Baikal::Shape*>(in_shape);
     Material* mat = static_cast<Material*>(in_node);
-    mesh->SetMaterial(mat);
+    shape->SetMaterial(mat);
 
     return RPR_SUCCESS;
 }
@@ -1200,8 +1200,8 @@ rpr_int rprSceneAttachShape(rpr_scene in_scene, rpr_shape in_shape)
 
     //cast input data
     Scene1* scene = static_cast<Scene1*>(in_scene);
-    Mesh* mesh = static_cast<Mesh*>(in_shape);
-    scene->AttachShape(mesh);
+    Baikal::Shape* shape = static_cast<Baikal::Shape*>(in_shape);
+    scene->AttachShape(shape);
 
     return RPR_SUCCESS;
 }
@@ -1215,8 +1215,8 @@ rpr_int rprSceneDetachShape(rpr_scene in_scene, rpr_shape in_shape)
 
     //cast input data
     Scene1* scene = static_cast<Scene1*>(in_scene);
-    Mesh* mesh = static_cast<Mesh*>(in_shape);
-    scene->DetachShape(mesh);
+    Baikal::Shape* shape = static_cast<Baikal::Shape*>(in_shape);
+    scene->DetachShape(shape);
 
     return RPR_SUCCESS;
 }
@@ -1536,7 +1536,7 @@ rpr_int rprMaterialNodeSetInputN(rpr_material_node in_node, rpr_char const * in_
     SceneObject* input_node = static_cast<SceneObject*>(in_input_node);
     Texture* input_tex = dynamic_cast<Texture*>(input_node);
     SingleBxdf* input_mat = dynamic_cast<SingleBxdf*>(input_node);
-    
+
     //TODO: move to wrap
     //TODO: handle RPR_MATERIAL_NODE_BLEND
     //convert input name
