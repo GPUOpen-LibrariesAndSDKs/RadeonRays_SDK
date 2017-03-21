@@ -56,4 +56,19 @@ void DifferentialGeometry_ApplyBumpMap(DifferentialGeometry* diffgeo, TEXTURE_AR
     }
 }
 
+void DifferentialGeometry_ApplyBumpNormalMap(DifferentialGeometry* diffgeo, TEXTURE_ARG_LIST)
+{
+    int bump_flag = diffgeo->mat.bump_flag;
+    if (bump_flag)
+    {
+        DifferentialGeometry_ApplyBumpMap(diffgeo, TEXTURE_ARGS);
+    }
+    else
+    {
+        DifferentialGeometry_ApplyNormalMap(diffgeo, TEXTURE_ARGS);
+    }
+}
+
+
+
 #endif // NORMALMAP_CL

@@ -133,7 +133,7 @@ typedef struct _Material
         int num_materials;
     };
 
-    int twosided;
+    int bump_flag;
 } Material;
 
 

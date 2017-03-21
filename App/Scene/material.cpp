@@ -239,12 +239,14 @@ namespace Baikal
     {
         RegisterInput("albedo", "Diffuse color", {InputType::kFloat4, InputType::kTexture});
         RegisterInput("normal", "Normal map", {InputType::kTexture});
+        RegisterInput("bump", "Bump map", { InputType::kTexture });
         RegisterInput("ior", "Index of refraction", {InputType::kFloat4});
         RegisterInput("fresnel", "Fresnel flag", {InputType::kFloat4});
         RegisterInput("roughness", "Roughness", {InputType::kFloat4, InputType::kTexture});
         
         SetInputValue("albedo", RadeonRays::float4(0.7f, 0.7f, 0.7f, 1.f));
         SetInputValue("normal", static_cast<Texture const*>(nullptr));
+        SetInputValue("bump", static_cast<Texture const*>(nullptr));
     }
     
     SingleBxdf::BxdfType SingleBxdf::GetBxdfType() const

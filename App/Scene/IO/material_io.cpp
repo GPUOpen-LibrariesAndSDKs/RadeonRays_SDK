@@ -204,6 +204,15 @@ namespace Baikal
             {
                 WriteInput(io, printer, "normal", normal);
             }
+            else
+            {
+                SingleBxdf::InputValue bump = bxdf->GetInputValue("bump");
+
+                if (bump.tex_value)
+                {
+                    WriteInput(io, printer, "bump", bump);
+                }
+            }
 
             SingleBxdf::InputValue ior = bxdf->GetInputValue("ior");
 
