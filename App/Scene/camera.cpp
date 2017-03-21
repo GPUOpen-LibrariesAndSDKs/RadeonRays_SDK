@@ -52,6 +52,7 @@ namespace Baikal
         m_forward = normalize(at - eye);
         m_right = cross(m_forward, normalize(up));
         m_up = cross(m_right, m_forward);
+        SetDirty(true);
     }
     
     // Rotate camera around world Z axis, use for FPS camera
