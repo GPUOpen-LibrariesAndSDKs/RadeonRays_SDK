@@ -213,14 +213,12 @@ namespace Baikal
             mix->SetInputValue("base_material", green);
             mix->SetInputValue("top_material", spec);
             mix->SetInputValue("ior", float4(1.33f, 1.33f, 1.33f, 1.33f));
-            
-            
+
             mesh->SetMaterial(mix);
             
             scene->AttachAutoreleaseObject(green);
             scene->AttachAutoreleaseObject(spec);
             scene->AttachAutoreleaseObject(mix);
-            
         }
         else if (filename == "sphere+plane+area")
         {
@@ -230,8 +228,6 @@ namespace Baikal
 
             SingleBxdf* grey = new SingleBxdf(SingleBxdf::BxdfType::kLambert);
             grey->SetInputValue("albedo", float4(0.7f, 0.7f, 0.7f, 1.f));
-            grey->SetTwoSided(true);
-
 
             Mesh* floor = CreateQuad(
                                     {
@@ -289,18 +285,28 @@ namespace Baikal
 
             SingleBxdf* green = new SingleBxdf(SingleBxdf::BxdfType::kLambert);
             green->SetInputValue("albedo", 2.f * float4(0.1f, 0.2f, 0.1f, 1.f));
-            
+
+            SingleBxdf* grey = new SingleBxdf(SingleBxdf::BxdfType::kLambert);
+            green->SetInputValue("albedo", 2.f * float4(0.2f, 0.2f, 0.2f, 0.2f));
+
             SingleBxdf* spec = new SingleBxdf(SingleBxdf::BxdfType::kMicrofacetGGX);
             spec->SetInputValue("albedo", float4(0.9f, 0.9f, 0.9f, 1.f));
             spec->SetInputValue("roughness", float4(0.02f, 0.02f, 0.02f, 1.f));
-            
+
+            auto normal_map = image_io->LoadImage("../Resources/Textures/test_normal.jpg");
+            auto bump_map = image_io->LoadImage("../Resources/Textures/test_bump.jpg");
+            green->SetInputValue("normal", normal_map);
+            spec->SetInputValue("normal", normal_map);
+            grey->SetInputValue("bump", bump_map);
+            instance->SetMaterial(grey);
+
             MultiBxdf* mix = new MultiBxdf(MultiBxdf::Type::kFresnelBlend);
             mix->SetInputValue("base_material", green);
             mix->SetInputValue("top_material", spec);
             mix->SetInputValue("ior", float4(3.33f, 3.33f, 3.33f, 3.33f));
-            
+
             mesh->SetMaterial(mix);
-            
+
             Mesh* floor = CreateQuad(
                                      {
                                          RadeonRays::float3(-8, 0, -8),
@@ -326,6 +332,9 @@ namespace Baikal
             scene->AttachAutoreleaseObject(green);
             scene->AttachAutoreleaseObject(spec);
             scene->AttachAutoreleaseObject(mix);
+            scene->AttachAutoreleaseObject(grey);
+            scene->AttachAutoreleaseObject(normal_map);
+            scene->AttachAutoreleaseObject(bump_map);
             
         }
         

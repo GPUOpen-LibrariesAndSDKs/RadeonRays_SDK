@@ -188,7 +188,7 @@ namespace Baikal
         m_context.FillBuffer(0, m_render_data->hitcount, maxrays, 1);
 
         // Initialize first pass
-        for (int pass = 0; pass < m_num_bounces; ++pass)
+        for (int pass = 0; pass < static_cast<int>(m_num_bounces); ++pass)
         {
             // Clear ray hits buffer
             m_context.FillBuffer(0, m_render_data->hits, 0, m_render_data->hits.GetElementCount());

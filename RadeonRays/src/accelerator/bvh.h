@@ -39,8 +39,9 @@ namespace RadeonRays
     class Bvh
     {
     public:
-        Bvh(float traversal_cost, bool usesah = false)
+        Bvh(float traversal_cost, int num_bins = 64, bool usesah = false)
             : m_root(nullptr)
+            , m_num_bins(num_bins)
             , m_usesah(usesah)
             , m_height(0)
             , m_traversal_cost(traversal_cost)
@@ -135,6 +136,8 @@ namespace RadeonRays
         int m_height;
         // Node traversal cost
         float m_traversal_cost;
+        // Number of spatial bins to use for SAH
+        int m_num_bins;
 
 
     private:
@@ -183,7 +186,7 @@ namespace RadeonRays
 
     inline size_t Bvh::GetNumIndices() const
     {
-        return m_indices.size();
+        return m_packed_indices.size();
     }
 
     inline int Bvh::GetHeight() const

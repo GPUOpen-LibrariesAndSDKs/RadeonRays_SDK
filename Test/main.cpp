@@ -14,7 +14,7 @@ using namespace RadeonRays;
 namespace
 {
     //control how many frames to render in tests for resulting image
-    int kRenderIterations = 100;
+    int kRenderIterations = 256;
     //default structure for Vertex data
     struct Vertex
     {
@@ -146,7 +146,7 @@ void MeshCreationTest()
     };
 
     rpr_int status = RPR_SUCCESS;
-    rpr_context	context;
+    rpr_context	context = nullptr;
     status = rprCreateContext(RPR_API_VERSION, nullptr, 0, RPR_CREATION_FLAGS_ENABLE_GPU0, NULL, NULL, &context);
     assert(status == RPR_SUCCESS);
 
@@ -724,7 +724,7 @@ void EnvLightClearTest()
     //environment light
     rpr_light light = NULL; status = rprContextCreateEnvironmentLight(context, &light);
     assert(status == RPR_SUCCESS);
-    rpr_image imageInput = NULL; status = rprContextCreateImageFromFile(context, "../Resources/Textures/Studio015.hdr", &imageInput);
+    rpr_image imageInput = NULL; status = rprContextCreateImageFromFile(context, "../Resources/Textures/studio015.hdr", &imageInput);
     assert(status == RPR_SUCCESS);
     status = rprEnvironmentLightSetImage(light, imageInput);
     assert(status == RPR_SUCCESS);
@@ -1905,6 +1905,163 @@ void test_feature_LightDirectional()
     assert(status == RPR_SUCCESS);
 }
 
+void InstancingTest()
+{
+    rpr_int status = RPR_SUCCESS;
+    rpr_context	context;
+    status = rprCreateContext(RPR_API_VERSION, nullptr, 0, RPR_CREATION_FLAGS_ENABLE_GPU0, NULL, NULL, &context);
+    assert(status == RPR_SUCCESS);
+    rpr_material_system matsys = NULL;
+    status = rprContextCreateMaterialSystem(context, 0, &matsys);
+    assert(status == RPR_SUCCESS);
+
+    rpr_scene scene = NULL; status = rprContextCreateScene(context, &scene);
+    assert(status == RPR_SUCCESS);
+
+    //material
+    rpr_material_node diffuse = NULL; status = rprMaterialSystemCreateNode(matsys, RPR_MATERIAL_NODE_DIFFUSE, &diffuse);
+    assert(status == RPR_SUCCESS);
+    status = rprMaterialNodeSetInputF(diffuse, "color", 0.7f, 0.7f, 0.0f, 0.0f);
+    assert(status == RPR_SUCCESS);
+
+    //sphere
+    rpr_shape mesh = CreateSphere(context, 64, 32, 1.f, float3());
+    assert(status == RPR_SUCCESS);
+    status = rprSceneAttachShape(scene, mesh);
+    assert(status == RPR_SUCCESS);
+    status = rprShapeSetMaterial(mesh, diffuse);
+    assert(status == RPR_SUCCESS);
+
+    std::vector<rpr_shape> instances;
+    std::vector<rpr_material_node> materials;
+
+    for (auto x = -20; x <= 20; x+= 2)
+        for (auto y = -20; y <= 20; y += 2)
+        {
+            if (x == 0 && y == 0) continue;
+            rpr_shape instance = nullptr;
+            status = rprContextCreateInstance(context, mesh, &instance);
+            assert(status == RPR_SUCCESS);
+
+            matrix m = translation(float3(x, y, 0));
+            status = rprShapeSetTransform(instance, true, &m.m00);
+            assert(status == RPR_SUCCESS);
+
+            status = rprSceneAttachShape(scene, instance);
+            assert(status == RPR_SUCCESS);
+
+            if (rand_float() < 0.5)
+            {
+                rpr_material_node mat = NULL; status = rprMaterialSystemCreateNode(matsys, RPR_MATERIAL_NODE_DIFFUSE, &mat);
+                assert(status == RPR_SUCCESS);
+                status = rprMaterialNodeSetInputF(mat, "color", rand_float(), rand_float(), rand_float(), 1.f);
+                assert(status == RPR_SUCCESS);
+                status = rprShapeSetMaterial(instance, mat);
+                assert(status == RPR_SUCCESS);
+                materials.push_back(mat);
+            }
+            else if (rand_float() < 0.5)
+            {
+                rpr_material_node spec = NULL; status = rprMaterialSystemCreateNode(matsys, RPR_MATERIAL_NODE_MICROFACET, &spec);
+                assert(status == RPR_SUCCESS);
+                status = rprMaterialNodeSetInputF(spec, "color", rand_float(), rand_float(), rand_float(), 1.f);
+                status = rprMaterialNodeSetInputF(spec, "roughness", 0.5f * rand_float(), 0.5f * rand_float(), 0.5f * rand_float(), 1.f);
+                assert(status == RPR_SUCCESS);
+                status = rprShapeSetMaterial(instance, spec);
+                assert(status == RPR_SUCCESS);
+                materials.push_back(spec);
+            }
+
+            instances.push_back(instance);
+        }
+
+    rpr_light light = NULL; status = rprContextCreateEnvironmentLight(context, &light);
+    assert(status == RPR_SUCCESS);
+    rpr_image imageInput = NULL; status = rprContextCreateImageFromFile(context, "../Resources/Textures/studio015.hdr", &imageInput);
+    assert(status == RPR_SUCCESS);
+    status = rprEnvironmentLightSetImage(light, imageInput);
+    assert(status == RPR_SUCCESS);
+    status = rprSceneAttachLight(scene, light);
+    assert(status == RPR_SUCCESS);
+
+    //camera
+    rpr_camera camera = NULL; status = rprContextCreateCamera(context, &camera);
+    assert(status == RPR_SUCCESS);
+    status = rprCameraLookAt(camera, 0, 0, 15, 0, 0, 0, 0, 1, 0);
+    assert(status == RPR_SUCCESS);
+    status = rprCameraSetFocalLength(camera, 23.f);
+    assert(status == RPR_SUCCESS);
+    //status = rprCameraSetFStop(camera, 5.4f);
+    assert(status == RPR_SUCCESS);
+    status = rprSceneSetCamera(scene, camera);
+    assert(status == RPR_SUCCESS);
+
+    status = rprContextSetScene(context, scene);
+    assert(status == RPR_SUCCESS);
+
+    //light
+
+    //setup out
+    rpr_framebuffer_desc desc;
+    desc.fb_width = 800;
+    desc.fb_height = 600;
+
+    rpr_framebuffer_format fmt = { 4, RPR_COMPONENT_TYPE_FLOAT32 };
+    rpr_framebuffer frame_buffer = NULL; status = rprContextCreateFrameBuffer(context, fmt, &desc, &frame_buffer);
+    assert(status == RPR_SUCCESS);
+    status = rprContextSetAOV(context, RPR_AOV_COLOR, frame_buffer);
+    assert(status == RPR_SUCCESS);
+    status = rprFrameBufferClear(frame_buffer);  assert(status == RPR_SUCCESS);
+
+    //change light
+    status = rprFrameBufferClear(frame_buffer);  assert(status == RPR_SUCCESS);
+    assert(status == RPR_SUCCESS);
+
+    for (int i = 0; i < kRenderIterations; ++i)
+    {
+        status = rprContextRender(context);
+        assert(status == RPR_SUCCESS);
+    }
+
+    status = rprFrameBufferSaveToFile(frame_buffer, "ManySpheresTest.jpg");
+    assert(status == RPR_SUCCESS);
+    rpr_render_statistics rs;
+    status = rprContextGetInfo(context, RPR_CONTEXT_RENDER_STATISTICS, sizeof(rpr_render_statistics), &rs, NULL);
+    assert(status == RPR_SUCCESS);
+
+    //cleanup
+    for (auto& i : instances)
+    {
+        status = rprObjectDelete(i);
+        assert(status == RPR_SUCCESS);
+    }
+
+    for (auto& i : materials)
+    {
+        status = rprObjectDelete(i);
+        assert(status == RPR_SUCCESS);
+    }
+
+    status = rprSceneDetachLight(scene, light);
+    assert(status == RPR_SUCCESS);
+    status = rprObjectDelete(light); light = NULL;
+    assert(status == RPR_SUCCESS);
+    rprObjectDelete(diffuse);
+    status = rprSceneSetCamera(scene, NULL);
+    assert(status == RPR_SUCCESS);
+    status = rprObjectDelete(scene); scene = NULL;
+    assert(status == RPR_SUCCESS);
+    status = rprObjectDelete(camera); camera = NULL;
+    assert(status == RPR_SUCCESS);
+    status = rprObjectDelete(frame_buffer); frame_buffer = NULL;
+    assert(status == RPR_SUCCESS);
+    status = rprObjectDelete(matsys); matsys = NULL;
+    assert(status == RPR_SUCCESS);
+}
+
+
+
+
 int main(int argc, char* argv[])
 {
     MeshCreationTest();
@@ -1920,6 +2077,7 @@ int main(int argc, char* argv[])
     test_feature_multiUV();
     test_apiMecha_Light();
     test_feature_LightDirectional();
+    InstancingTest();
     //RunObjViewer(argc, argv);
 
     return 0;
