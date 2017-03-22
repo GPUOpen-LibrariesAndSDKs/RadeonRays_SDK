@@ -21,6 +21,7 @@ THE SOFTWARE.
 ********************************************************************/
 #include <OpenImageIO/imageio.h>
 #include <math/int2.h>
+#include <map>
 
 #include "App/Scene/texture.h"
 #include "App/Scene/material.h"
@@ -32,6 +33,17 @@ THE SOFTWARE.
 using namespace RadeonRays;
 using namespace Baikal;
 
+namespace
+{
+    //contains pairs <rpr input name, baikal input name> of input names
+        std::map<std::string, std::string> kInputNamesDictionary = { { "color" , "albedo" },
+                                                                    { "normal" , "normal" },
+                                                                    { "roughness" , "roughness" }, 
+                                                                    { "weight" , "weight" }, 
+                                                                    { "ior" , "ior" },
+                                                                    { "color0", "base_material" },
+                                                                    { "color1", "top_material" }, };
+}
 MaterialObject::MaterialObject(rpr_material_node_type in_type)
 {
     m_is_tex = false;
@@ -42,35 +54,30 @@ MaterialObject::MaterialObject(rpr_material_node_type in_type)
     case RPR_MATERIAL_NODE_ORENNAYAR:
     {
         SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kLambert);
-
         m_mat = mat;
         break;
     }
     case RPR_MATERIAL_NODE_MICROFACET:
     {
         SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kMicrofacetGGX);
-
         m_mat = mat;
         break;
     }
     case RPR_MATERIAL_NODE_MICROFACET_REFRACTION:
     {
         SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kMicrofacetRefractionGGX);
-
         m_mat = mat;
         break;
     }
     case RPR_MATERIAL_NODE_REFLECTION:
     {
         SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kIdealReflect);
-
         m_mat = mat;
         break;
     }
     case RPR_MATERIAL_NODE_REFRACTION:
     {
         SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kIdealRefract);
-
         m_mat = mat;
         break;
     }
@@ -78,14 +85,12 @@ MaterialObject::MaterialObject(rpr_material_node_type in_type)
     {
         //TODO: fix
         SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kLambert);
-
         m_mat = mat;
         break;
     }
     case RPR_MATERIAL_NODE_DIFFUSE_REFRACTION:
     {
         SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kTranslucent);
-
         m_mat = mat;
         break;
     }
@@ -93,21 +98,18 @@ MaterialObject::MaterialObject(rpr_material_node_type in_type)
     case RPR_MATERIAL_NODE_FRESNEL:
     {
         SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kTranslucent);
-
         m_mat = mat;
         break;
     }
     case RPR_MATERIAL_NODE_EMISSIVE:
     {
         SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kEmissive);
-
         m_mat = mat;
         break;
     }
     case RPR_MATERIAL_NODE_BLEND:
     {
         MultiBxdf* mat = new MultiBxdf(MultiBxdf::Type::kMix);
-
         mat->SetInputValue("weight", 0.5f);
         m_mat = mat;
         break;
@@ -116,7 +118,6 @@ MaterialObject::MaterialObject(rpr_material_node_type in_type)
     case RPR_MATERIAL_NODE_PASSTHROUGH:
     {
         SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kPassthrough);
-
         m_mat = mat;
         break;
     }
@@ -209,9 +210,6 @@ MaterialObject::MaterialObject(const std::string& in_path)
     delete oiio;
 }
 
-
-
-
 MaterialObject::~MaterialObject()
 {
     Clear();
@@ -231,40 +229,27 @@ void MaterialObject::Clear()
     }
 }
 
-std::string MaterialObject::TranslatePropName(const std::string& in)
+std::string MaterialObject::TranslatePropName(const std::string& in, Type type)
 {
     std::string result;
-    if (in == "color")
+    if (type == Type::kBumpMap)
     {
-        result = "albedo";
+        return "bump";
     }
-    else if (in == "normal")
+    else if (type == Type::kNormalMap)
     {
-        result = in;
+        return "normal";
     }
-    else if (in == "ior")
+
+    auto it = kInputNamesDictionary.find(in);
+    if (it != kInputNamesDictionary.end())
     {
-        result = in;
-    }
-    else if (in == "roughness")
-    {
-        result = in;
-    }
-    else if (in == "base")
-    {
-        result = "base_material";
-    }
-    else if (in == "top")
-    {
-        result = "top_material";
-    }
-    else if (in == "weight")
-    {
-        result = in;
+        result = it->second;
     }
     else
     {
         throw Exception(RPR_ERROR_UNIMPLEMENTED, "MaterialObject: unimplemented input.");
+
     }
 
     return result;
@@ -286,7 +271,8 @@ void MaterialObject::SetInputN(const std::string& input_name, MaterialObject* in
     }
 
     //translate material name
-    std::string name = TranslatePropName(input_name);
+    std::string name = TranslatePropName(input_name, input->GetType());
+
     if (input->IsTexture())
     {
         m_mat->SetInputValue(name, input->GetTexture());
@@ -296,6 +282,8 @@ void MaterialObject::SetInputN(const std::string& input_name, MaterialObject* in
             MultiBxdf* blend_mat = dynamic_cast<MultiBxdf*>(m_mat);
             blend_mat->SetType(MultiBxdf::Type::kMix);
         }
+
+
     }
     else
     {

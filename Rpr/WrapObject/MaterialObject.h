@@ -94,7 +94,9 @@ public:
     Baikal::Material* GetMaterial() { return m_mat; }
 private:
     void Clear();
-    std::string TranslatePropName(const std::string& in);
+
+    //type - is type of input material
+    std::string TranslatePropName(const std::string& in, Type type = Type::kDiffuse);
 
     Type m_type;
     bool m_is_tex;
