@@ -92,8 +92,10 @@ MaterialObject::MaterialObject(rpr_material_node_type in_type)
     case RPR_MATERIAL_NODE_FRESNEL_SCHLICK:
     case RPR_MATERIAL_NODE_FRESNEL:
     {
-        //TODO: fix
-        throw Exception(RPR_ERROR_UNIMPLEMENTED, "MaterialObject: TODO handle Fresnel materials");
+        SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kTranslucent);
+        mat->SetTwoSided(true);
+        m_mat = mat;
+        break;
     }
     case RPR_MATERIAL_NODE_EMISSIVE:
     {
@@ -272,10 +274,31 @@ void MaterialObject::SetInputN(const std::string& input_name, MaterialObject* in
     if (input->IsTexture())
     {
         m_mat->SetInputValue(name, input->GetTexture());
+        //handle blend material case
+        if (m_type == kBlend && name == "weight")
+        {
+            MultiBxdf* blend_mat = dynamic_cast<MultiBxdf*>(m_mat);
+            blend_mat->SetType(MultiBxdf::Type::kMix);
+        }
     }
     else
     {
-        m_mat->SetInputValue(name, input->GetMaterial());
+        //handle blend material case
+        if (m_type == kBlend && name == "weight")
+        {
+            //expected only fresnel materials
+            if (input->m_type != Type::kFresnel && input->m_type != Type::kFresnelShlick)
+            {
+                throw Exception(RPR_ERROR_INVALID_PARAMETER, "MaterialObject: expected only fresnel materials as weight of blend material.");
+            }
+            MultiBxdf* blend_mat = dynamic_cast<MultiBxdf*>(m_mat);
+            blend_mat->SetType(MultiBxdf::Type::kFresnelBlend);
+            m_mat->SetInputValue(name, input->m_mat->GetInputValue("ior").float_value);
+        }
+        else
+        {
+            m_mat->SetInputValue(name, input->GetMaterial());
+        }
     }
 
 }
@@ -297,6 +320,13 @@ void MaterialObject::SetInputValue(const std::string& input_name, const RadeonRa
     //translate material name
     std::string name = TranslatePropName(input_name);
     m_mat->SetInputValue(name, val);
+    
+    //handle blend material case
+    if (m_type == kBlend && name == "weight")
+    {
+        MultiBxdf* blend_mat = dynamic_cast<MultiBxdf*>(m_mat);
+        blend_mat->SetType(MultiBxdf::Type::kMix);
+    }
 }
 
 void MaterialObject::SetInputImageData(const std::string& input_name, MaterialObject* input)

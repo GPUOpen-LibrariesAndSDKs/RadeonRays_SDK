@@ -159,9 +159,15 @@ void ShapeObject::SetMaterial(MaterialObject* mat)
     {
         if (!mat->IsMaterial())
         {
-            throw Exception(RPR_ERROR_INVALID_PARAMETER, "ShapeObject: material is invalid");
+            throw Exception(RPR_ERROR_INVALID_PARAMETER, "ShapeObject: material is a texture.");
         }
 
+        //handle fresnel materials
+        if (mat->GetType() == MaterialObject::Type::kFresnel ||
+            mat->GetType() == MaterialObject::Type::kFresnelShlick)
+        {
+            throw Exception(RPR_ERROR_INVALID_PARAMETER, "ShapeObject: fresnel materials available only as input for kBlend material.");
+        }
         m_shape->SetMaterial(mat->GetMaterial());
     }
     else

@@ -89,6 +89,7 @@ public:
     void SetInputValue(const std::string& input_name, const RadeonRays::float4& val);
     void SetInputImageData(const std::string& input_name, MaterialObject* input);
 
+    Type GetType() { return m_type; }
     Baikal::Texture* GetTexture() { return m_tex; }
     Baikal::Material* GetMaterial() { return m_mat; }
 private:
