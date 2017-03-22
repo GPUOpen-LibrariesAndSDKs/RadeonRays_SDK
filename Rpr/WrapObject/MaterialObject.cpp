@@ -42,35 +42,35 @@ MaterialObject::MaterialObject(rpr_material_node_type in_type)
     case RPR_MATERIAL_NODE_ORENNAYAR:
     {
         SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kLambert);
-        mat->SetTwoSided(true);
+
         m_mat = mat;
         break;
     }
     case RPR_MATERIAL_NODE_MICROFACET:
     {
         SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kMicrofacetGGX);
-        mat->SetTwoSided(true);
+
         m_mat = mat;
         break;
     }
     case RPR_MATERIAL_NODE_MICROFACET_REFRACTION:
     {
         SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kMicrofacetRefractionGGX);
-        mat->SetTwoSided(true);
+
         m_mat = mat;
         break;
     }
     case RPR_MATERIAL_NODE_REFLECTION:
     {
         SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kIdealReflect);
-        mat->SetTwoSided(true);
+
         m_mat = mat;
         break;
     }
     case RPR_MATERIAL_NODE_REFRACTION:
     {
         SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kIdealRefract);
-        mat->SetTwoSided(true);
+
         m_mat = mat;
         break;
     }
@@ -78,14 +78,14 @@ MaterialObject::MaterialObject(rpr_material_node_type in_type)
     {
         //TODO: fix
         SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kLambert);
-        mat->SetTwoSided(true);
+
         m_mat = mat;
         break;
     }
     case RPR_MATERIAL_NODE_DIFFUSE_REFRACTION:
     {
         SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kTranslucent);
-        mat->SetTwoSided(true);
+
         m_mat = mat;
         break;
     }
@@ -93,21 +93,21 @@ MaterialObject::MaterialObject(rpr_material_node_type in_type)
     case RPR_MATERIAL_NODE_FRESNEL:
     {
         SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kTranslucent);
-        mat->SetTwoSided(true);
+
         m_mat = mat;
         break;
     }
     case RPR_MATERIAL_NODE_EMISSIVE:
     {
         SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kEmissive);
-        mat->SetTwoSided(true);
+
         m_mat = mat;
         break;
     }
     case RPR_MATERIAL_NODE_BLEND:
     {
         MultiBxdf* mat = new MultiBxdf(MultiBxdf::Type::kMix);
-        mat->SetTwoSided(true);
+
         mat->SetInputValue("weight", 0.5f);
         m_mat = mat;
         break;
@@ -116,7 +116,7 @@ MaterialObject::MaterialObject(rpr_material_node_type in_type)
     case RPR_MATERIAL_NODE_PASSTHROUGH:
     {
         SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kPassthrough);
-        mat->SetTwoSided(true);
+
         m_mat = mat;
         break;
     }
@@ -242,7 +242,23 @@ std::string MaterialObject::TranslatePropName(const std::string& in)
     {
         result = in;
     }
+    else if (in == "ior")
+    {
+        result = in;
+    }
     else if (in == "roughness")
+    {
+        result = in;
+    }
+    else if (in == "base")
+    {
+        result = "base_material";
+    }
+    else if (in == "top")
+    {
+        result = "top_material";
+    }
+    else if (in == "weight")
     {
         result = in;
     }
@@ -293,7 +309,7 @@ void MaterialObject::SetInputN(const std::string& input_name, MaterialObject* in
             }
             MultiBxdf* blend_mat = dynamic_cast<MultiBxdf*>(m_mat);
             blend_mat->SetType(MultiBxdf::Type::kFresnelBlend);
-            m_mat->SetInputValue(name, input->m_mat->GetInputValue("ior").float_value);
+            m_mat->SetInputValue("ior", input->m_mat->GetInputValue("ior").float_value);
         }
         else
         {
