@@ -1944,14 +1944,15 @@ void InstancingTest()
             status = rprContextCreateInstance(context, mesh, &instance);
             assert(status == RPR_SUCCESS);
 
-            matrix m = translation(float3(x, y, 0));
+            float s = 0.75f + rand_float();
+            matrix m = translation(float3(x, y, rand_float() * 10.f - 5.f)) * scale(float3(s, s, s));
             status = rprShapeSetTransform(instance, true, &m.m00);
             assert(status == RPR_SUCCESS);
 
             status = rprSceneAttachShape(scene, instance);
             assert(status == RPR_SUCCESS);
 
-            if (rand_float() < 0.5)
+            if (rand_float() < 0.1)
             {
                 rpr_material_node mat = NULL; status = rprMaterialSystemCreateNode(matsys, RPR_MATERIAL_NODE_DIFFUSE, &mat);
                 assert(status == RPR_SUCCESS);
@@ -1972,6 +1973,37 @@ void InstancingTest()
                 assert(status == RPR_SUCCESS);
                 materials.push_back(spec);
             }
+            else
+            {
+                rpr_material_node mat = NULL; status = rprMaterialSystemCreateNode(matsys, RPR_MATERIAL_NODE_DIFFUSE, &mat);
+                assert(status == RPR_SUCCESS);
+                status = rprMaterialNodeSetInputF(mat, "color", rand_float(), rand_float(), rand_float(), 1.f);
+                assert(status == RPR_SUCCESS);
+                materials.push_back(mat);
+                rpr_material_node spec = NULL; status = rprMaterialSystemCreateNode(matsys, RPR_MATERIAL_NODE_MICROFACET, &spec);
+                assert(status == RPR_SUCCESS);
+                status = rprMaterialNodeSetInputF(spec, "color", rand_float(), rand_float(), rand_float(), 1.f);
+                status = rprMaterialNodeSetInputF(spec, "roughness", 0.1f * rand_float(), 0.1f * rand_float(), 0.1f * rand_float(), 1.f);
+                assert(status == RPR_SUCCESS);
+                materials.push_back(spec);
+                rpr_material_node layered = NULL; status = rprMaterialSystemCreateNode(matsys, RPR_MATERIAL_NODE_BLEND, &layered);
+                assert(status == RPR_SUCCESS);
+                status = rprMaterialNodeSetInputN(layered, "color0", mat);
+                status = rprMaterialNodeSetInputN(layered, "color1", spec);
+                assert(status == RPR_SUCCESS);
+                rpr_material_node fresnel = NULL; status = rprMaterialSystemCreateNode(matsys, RPR_MATERIAL_NODE_FRESNEL, &fresnel);
+                assert(status == RPR_SUCCESS);
+
+                auto ior = 1.f + rand_float() * 2.f;
+                status = rprMaterialNodeSetInputF(fresnel, "ior", ior, ior, ior, ior);
+                assert(status == RPR_SUCCESS);
+                materials.push_back(fresnel);
+                status = rprMaterialNodeSetInputN(layered, "weight", fresnel);
+                assert(status == RPR_SUCCESS);
+                status = rprShapeSetMaterial(instance, layered);
+                assert(status == RPR_SUCCESS);
+                materials.push_back(layered);
+            }
 
             instances.push_back(instance);
         }
@@ -1988,7 +2020,7 @@ void InstancingTest()
     //camera
     rpr_camera camera = NULL; status = rprContextCreateCamera(context, &camera);
     assert(status == RPR_SUCCESS);
-    status = rprCameraLookAt(camera, 0, 0, 15, 0, 0, 0, 0, 1, 0);
+    status = rprCameraLookAt(camera, 0, 0, 20, 0, 0, 0, 0, 1, 0);
     assert(status == RPR_SUCCESS);
     status = rprCameraSetFocalLength(camera, 23.f);
     assert(status == RPR_SUCCESS);
@@ -2561,19 +2593,19 @@ void test_feature_shaderTypeLayered()
 
 int main(int argc, char* argv[])
 {
-    MeshCreationTest();
-    SimpleRenderTest();
-    ComplexRenderTest();
-    EnvLightClearTest();
-    MemoryStatistics();
-    DefaultMaterialTest();
-    NullShaderTest();
-//    TiledRender();
-    test_feature_cameraDOF();
-    test_feature_ContextImageFromData();
-    test_feature_multiUV();
-    test_apiMecha_Light();
-    test_feature_LightDirectional();
+//    MeshCreationTest();
+//    SimpleRenderTest();
+//    ComplexRenderTest();
+//    EnvLightClearTest();
+//    MemoryStatistics();
+//    DefaultMaterialTest();
+//    NullShaderTest();
+////    TiledRender();
+//    test_feature_cameraDOF();
+//    test_feature_ContextImageFromData();
+//    test_feature_multiUV();
+//    test_apiMecha_Light();
+//    test_feature_LightDirectional();
     InstancingTest();
     BumpmapTest();
     test_feature_shaderBumpmap();

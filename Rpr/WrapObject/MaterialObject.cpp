@@ -297,7 +297,7 @@ void MaterialObject::SetInputN(const std::string& input_name, MaterialObject* in
             }
             MultiBxdf* blend_mat = dynamic_cast<MultiBxdf*>(m_mat);
             blend_mat->SetType(MultiBxdf::Type::kFresnelBlend);
-            m_mat->SetInputValue(name, input->m_mat->GetInputValue("ior").float_value);
+            m_mat->SetInputValue("ior", input->m_mat->GetInputValue("ior").float_value);
         }
         else
         {
