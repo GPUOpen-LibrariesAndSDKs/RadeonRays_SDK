@@ -182,7 +182,7 @@ namespace Baikal
 
         printer.PushAttribute("id", (int)(reinterpret_cast<std::uint64_t>(material)));
 
-        printer.PushAttribute("twosided", material->IsTwoSided());
+        printer.PushAttribute("thin", material->IsThin());
 
         SingleBxdf const* bxdf = dynamic_cast<SingleBxdf const*>(material);
 
@@ -355,7 +355,9 @@ namespace Baikal
     {
         std::string name(element.Attribute("name"));
         std::string type(element.Attribute("type"));
-        std::string twosided(element.Attribute("twosided"));
+
+        auto attribute_thin = element.Attribute("thin");
+        std::string thin(attribute_thin ? attribute_thin : "");
         auto id = static_cast<std::uint64_t>(std::atoi(element.Attribute("id")));
 
         Material* material = nullptr;
@@ -387,7 +389,7 @@ namespace Baikal
 
         material->SetName(name);
 
-        material->SetTwoSided(twosided == "true" ? true : false);
+        material->SetThin(thin == "true" ? true : false);
 
         for (auto input = element.FirstChildElement(); input; input = input->NextSiblingElement())
         {

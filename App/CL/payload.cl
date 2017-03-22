@@ -134,6 +134,8 @@ typedef struct _Material
     };
 
     int bump_flag;
+    int thin;
+    int padding[3];
 } Material;
 
 

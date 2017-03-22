@@ -142,8 +142,6 @@ namespace Baikal
         // Set material name
         material->SetName(mat.name);
 
-        // Disable normal flip
-        material->SetTwoSided(true);
         scene.AttachAutoreleaseObject(material);
 
         return material;
@@ -236,12 +234,11 @@ namespace Baikal
                     scene->AttachLight(light);
                     scene->AttachAutoreleaseObject(light);
                 }
-
             }
         }
 
         // TODO: temporary code, add IBL
-        Texture* ibl_texture = image_io->LoadImage("../Resources/Textures/studio015.hdr");
+        Texture* ibl_texture = image_io->LoadImage("../Resources/Textures/sky.hdr");
         scene->AttachAutoreleaseObject(ibl_texture);
 
         ImageBasedLight* ibl = new ImageBasedLight();

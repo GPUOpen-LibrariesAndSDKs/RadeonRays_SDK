@@ -32,7 +32,7 @@ namespace Baikal
 
         m_api->SetOption("acc.type", "fatbvh");
         m_api->SetOption("bvh.builder", "sah");
-        m_api->SetOption("bvh.sah.num_bins", 256.f);
+        m_api->SetOption("bvh.sah.num_bins", 64.f);
 
         m_default_material->SetInputValue("albedo", float4(0.5f, 0.6f, 0.5f, 1.f));
     }
@@ -1040,6 +1040,7 @@ namespace Baikal
         auto type = GetMaterialType(material);
 
         clw_material->type = type;
+        clw_material->thin = material->IsThin() ? 1 : 0;
 
         switch (type)
         {

@@ -228,8 +228,6 @@ namespace Baikal
 
             SingleBxdf* grey = new SingleBxdf(SingleBxdf::BxdfType::kLambert);
             grey->SetInputValue("albedo", float4(0.7f, 0.7f, 0.7f, 1.f));
-            grey->SetTwoSided(true);
-
 
             Mesh* floor = CreateQuad(
                                     {

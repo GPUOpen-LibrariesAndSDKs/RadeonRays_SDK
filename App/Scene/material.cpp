@@ -50,7 +50,7 @@ namespace Baikal
     
     
     Material::Material()
-    : m_twosided(false)
+    : m_thin(false)
     {
     }
     
@@ -223,17 +223,17 @@ namespace Baikal
         }
     }
 
-    bool Material::IsTwoSided() const
+    bool Material::IsThin() const
     {
-        return m_twosided;
+        return m_thin;
     }
     
-    void Material::SetTwoSided(bool twosided)
+    void Material::SetThin(bool thin)
     {
-        m_twosided = twosided;
+        m_thin = thin;
         SetDirty(true);
     }
-    
+
     SingleBxdf::SingleBxdf(BxdfType type)
     : m_type(type)
     {
