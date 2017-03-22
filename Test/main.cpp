@@ -146,7 +146,7 @@ void MeshCreationTest()
     };
 
     rpr_int status = RPR_SUCCESS;
-    rpr_context	context;
+    rpr_context	context = nullptr;
     status = rprCreateContext(RPR_API_VERSION, nullptr, 0, RPR_CREATION_FLAGS_ENABLE_GPU0, NULL, NULL, &context);
     assert(status == RPR_SUCCESS);
 

@@ -37,6 +37,7 @@
 #include "iterator.h"
 
 #include "scene_object.h"
+#include "shape.h"
 
 namespace Baikal
 {
