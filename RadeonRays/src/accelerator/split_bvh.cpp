@@ -50,12 +50,12 @@ namespace RadeonRays
         if (req.numprims < 2)
         {
             node->type = kLeaf;
-            node->startidx = (int)m_indices.size();
+            node->startidx = (int)m_packed_indices.size();
             node->numprims = req.numprims;
 
             for (int i = req.startidx; i < req.startidx + req.numprims; ++i)
             {
-                m_indices.push_back(primrefs[i].idx);
+                m_packed_indices.push_back(primrefs[i].idx);
             }
         }
         else
@@ -200,7 +200,6 @@ namespace RadeonRays
     {
         // SAH implementation
         // calc centroids histogram
-        int const kNumBins = 64;
         // moving split bin index
         int splitidx = -1;
         // Set SAH to maximum float value as a start
@@ -228,7 +227,11 @@ namespace RadeonRays
         };
 
         // Keep bins for each dimension
-        Bin   bins[3][kNumBins];
+        std::vector<Bin> bins[3];
+        bins[0].resize(m_num_bins);
+        bins[1].resize(m_num_bins);
+        bins[2].resize(m_num_bins);
+
         // Precompute inverse parent area
         auto invarea = 1.f / req.bounds.surface_area();
         // Precompute min point
@@ -246,7 +249,7 @@ namespace RadeonRays
             if (centroid_rng == 0.f) continue;
 
             // Initialize bins
-            for (unsigned i = 0; i < kNumBins; ++i)
+            for (unsigned i = 0; i < m_num_bins; ++i)
             {
                 bins[axis][i].count = 0;
                 bins[axis][i].bounds = bbox();
@@ -256,17 +259,17 @@ namespace RadeonRays
             for (int i = req.startidx; i < req.startidx + req.numprims; ++i)
             {
                 auto idx = i;
-                auto binidx = (int)std::min<float>(kNumBins * ((refs[idx].center[axis] - rootminc) * invcentroid_rng), kNumBins - 1);
+                auto binidx = (int)std::min<float>(m_num_bins * ((refs[idx].center[axis] - rootminc) * invcentroid_rng), m_num_bins - 1);
 
                 ++bins[axis][binidx].count;
                 bins[axis][binidx].bounds.grow(refs[idx].bounds);
             }
 
-            bbox rightbounds[kNumBins - 1];
+            std::vector<bbox> rightbounds(m_num_bins - 1);
 
             // Start with 1-bin right box
             bbox rightbox = bbox();
-            for (int i = kNumBins - 1; i > 0; --i)
+            for (int i = m_num_bins - 1; i > 0; --i)
             {
                 rightbox.grow(bins[axis][i].bounds);
                 rightbounds[i - 1] = rightbox;
@@ -279,7 +282,7 @@ namespace RadeonRays
             // Start best SAH search
             // i is current split candidate (split between i and i + 1)
             float sahtmp = 0.f;
-            for (int i = 0; i < kNumBins - 1; ++i)
+            for (int i = 0; i < m_num_bins - 1; ++i)
             {
                 leftbox.grow(bins[axis][i].bounds);
                 leftcount += bins[axis][i].count;
@@ -304,7 +307,7 @@ namespace RadeonRays
         // Choose split plane
         if (splitidx != -1)
         {
-            split.split = rootmin[split.dim] + (splitidx + 1) * (centroid_extents[split.dim] / kNumBins);
+            split.split = rootmin[split.dim] + (splitidx + 1) * (centroid_extents[split.dim] / m_num_bins);
             split.sah = sah;
 
         }
@@ -518,9 +521,10 @@ namespace RadeonRays
     void SplitBvh::PrintStatistics(std::ostream& os) const
     {
         size_t num_triangles = (m_num_nodes_for_regular + 1) / 2;
-        size_t num_refs = m_indices.size();
+        size_t num_refs = m_packed_indices.size();
         os << "Class name: " << "SplitBvh\n";
         os << "SAH: " << "enabled (forced)\n";
+        os << "SAH bins: " << m_num_bins << "\n";
         os << "Max split depth: " << m_max_split_depth << "\n";
         os << "Min node overlap: " << m_min_overlap << "\n";
         os << "Number of triangles: " << num_triangles << "\n";

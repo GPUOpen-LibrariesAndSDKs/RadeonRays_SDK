@@ -30,10 +30,11 @@ namespace RadeonRays
     {
     public:
         SplitBvh(float traversal_cost,
+                 int num_bins,
                  int max_split_depth, 
                  float min_overlap,
                  float extra_refs_budget)
-        : Bvh(traversal_cost, true)
+        : Bvh(traversal_cost, num_bins, true)
         , m_max_split_depth(max_split_depth)
         , m_min_overlap(min_overlap)
         , m_extra_refs_budget(extra_refs_budget)

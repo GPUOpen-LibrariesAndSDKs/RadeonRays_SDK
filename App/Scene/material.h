@@ -113,10 +113,10 @@ namespace Baikal
 
         InputValue GetInputValue(std::string const& name) const;
 
-        // Check if material is two-sided (normal direction does not matter and can be reversed)
-        bool IsTwoSided() const;
-        // Set two-sidedness
-        void SetTwoSided(bool twosided);
+        // Check if material is thin (normal is always pointing in ray incidence direction)
+        bool IsThin() const;
+        // Set thin flag
+        void SetThin(bool thin);
 
     protected:
         // Register specific input
@@ -130,8 +130,8 @@ namespace Baikal
         using InputMap = std::map<std::string, Input>;
         // Input map
         InputMap m_inputs;
-        // Sidedness flag
-        bool m_twosided;
+        // Thin material
+        bool m_thin;;
     };
 
     inline Material::~Material()

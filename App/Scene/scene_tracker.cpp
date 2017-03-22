@@ -32,6 +32,7 @@ namespace Baikal
 
         m_api->SetOption("acc.type", "fatbvh");
         m_api->SetOption("bvh.builder", "sah");
+        m_api->SetOption("bvh.sah.num_bins", 64.f);
 
         m_default_material->SetInputValue("albedo", float4(0.5f, 0.6f, 0.5f, 1.f));
     }
@@ -1039,7 +1040,7 @@ namespace Baikal
         auto type = GetMaterialType(material);
 
         clw_material->type = type;
-        clw_material->twosided = material->IsTwoSided() ? 1 : 0;
+        clw_material->thin = material->IsThin() ? 1 : 0;
 
         switch (type)
         {
@@ -1100,13 +1101,25 @@ namespace Baikal
 
             value = material->GetInputValue("normal");
 
-            if (value.type == Material::InputType::kTexture)
+            if (value.type == Material::InputType::kTexture && value.tex_value)
             {
-                clw_material->nmapidx = value.tex_value ? tex_collector.GetItemIndex(value.tex_value) : -1;
+                clw_material->nmapidx = tex_collector.GetItemIndex(value.tex_value);
+                clw_material->bump_flag = 0;
             }
             else
             {
-                clw_material->nmapidx = -1;
+                value = material->GetInputValue("bump");
+
+                if (value.type == Material::InputType::kTexture && value.tex_value)
+                {
+                    clw_material->nmapidx = tex_collector.GetItemIndex(value.tex_value);
+                    clw_material->bump_flag = 1;
+                }
+                else
+                {
+                    clw_material->nmapidx = -1;
+                    clw_material->bump_flag = 0;
+                }
             }
 
             value = material->GetInputValue("fresnel");

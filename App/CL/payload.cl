@@ -133,7 +133,9 @@ typedef struct _Material
         int num_materials;
     };
 
-    int twosided;
+    int bump_flag;
+    int thin;
+    int padding[3];
 } Material;
 
 
