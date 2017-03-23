@@ -349,13 +349,14 @@ __kernel void ShadeSurface(
                     float ld = isect.uvwt.w;
                     float denom = fabs(dot(diffgeo.n, wi)) * diffgeo.area;
                     // TODO: num_lights should be num_emissies instead, presence of analytical lights breaks this code
-                    float bxdflightpdf = denom > 0.f ? (ld * ld / denom / num_lights) : 0.f; 
+                    float bxdflightpdf = denom > 0.f ? (ld * ld / denom / num_lights) : 0.f;
                     weight = BalanceHeuristic(1, extra.x, 1, bxdflightpdf);
 
-                    // In this case we hit after an application of MIS process at previous step.
-                    // That means BRDF weight has been already applied.
-                    output[pixelidx] += Path_GetThroughput(path) * Emissive_GetLe(&diffgeo, TEXTURE_ARGS) * weight;
                 }
+
+                // In this case we hit after an application of MIS process at previous step.
+                // That means BRDF weight has been already applied.
+                output[pixelidx] += Path_GetThroughput(path) * Emissive_GetLe(&diffgeo, TEXTURE_ARGS) * weight;
             }
 
             Path_Kill(path);
