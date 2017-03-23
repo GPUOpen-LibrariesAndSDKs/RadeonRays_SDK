@@ -247,8 +247,8 @@ else
         if fileExists("./Rpr/Rpr.lua") then
             dofile("./Rpr/Rpr.lua")
         end
-        if fileExists("./Test/Test.lua") then
-            dofile("./Test/Test.lua")
+        if fileExists("./RprTest/RprTest.lua") then
+            dofile("./RprTest/RprTest.lua")
         end
         if fileExists("./RprLoadStore/RprLoadStore.lua") then
             dofile("./RprLoadStore/RprLoadStore.lua")

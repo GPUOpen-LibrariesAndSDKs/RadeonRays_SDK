@@ -15,7 +15,7 @@ using namespace RadeonRays;
 namespace
 {
     //control how many frames to render in tests for resulting image
-    int kRenderIterations = 1000;
+    int kRenderIterations = 10;
     //default structure for Vertex data
     struct Vertex
     {
@@ -1694,13 +1694,13 @@ void test_apiMecha_Light()
 
         matrix transform = translation(float3(-0.7f, 0.5f, 1.5f));
 
-        status = rprLightSetTransform(lightDir, true, &transform.m00);
+        status = rprLightSetTransform(lightDir, false, &transform.m00);
         assert(status == RPR_SUCCESS);
-        status = rprLightSetTransform(lightEnv, true, &transform.m00);
+        status = rprLightSetTransform(lightEnv, false, &transform.m00);
         assert(status == RPR_SUCCESS);
-        status = rprLightSetTransform(lightPoint, true, &transform.m00);
+        status = rprLightSetTransform(lightPoint, false, &transform.m00);
         assert(status == RPR_SUCCESS);
-        status = rprLightSetTransform(lightSpot, true, &transform.m00);
+        status = rprLightSetTransform(lightSpot, false, &transform.m00);
         assert(status == RPR_SUCCESS);
 
         size_t querrySize = 0;
@@ -2684,23 +2684,23 @@ void LoadFrs(const std::string& file)
 
 int main(int argc, char* argv[])
 {
-//    MeshCreationTest();
-    SimpleRenderTest();
-//    ComplexRenderTest();
-//    EnvLightClearTest();
-//    MemoryStatistics();
-//    DefaultMaterialTest();
-//    NullShaderTest();
-////    TiledRender();
-//    test_feature_cameraDOF();
-//    test_feature_ContextImageFromData();
-//    //test_feature_multiUV();
-//    test_apiMecha_Light();
-//    test_feature_LightDirectional();
-//    InstancingTest();
-    //BumpmapTest();
-    //test_feature_shaderBumpmap();
-    //test_feature_shaderTypeLayered();
+	//MeshCreationTest();
+ //   SimpleRenderTest();
+ //   ComplexRenderTest();
+ //   EnvLightClearTest();
+ //   MemoryStatistics();
+ //   DefaultMaterialTest();
+ //   NullShaderTest();
+	////TiledRender();
+ //   test_feature_cameraDOF();
+ //   test_feature_ContextImageFromData();
+ //   //test_feature_multiUV();
+ //   test_apiMecha_Light();
+ //   test_feature_LightDirectional();
+ //   InstancingTest();
+ //   BumpmapTest();
+ //   test_feature_shaderBumpmap();
+ //   test_feature_shaderTypeLayered();
 	LoadFrs("../Resources/frs/bath_new.frs");
 //RunObjViewer(argc, argv);
 

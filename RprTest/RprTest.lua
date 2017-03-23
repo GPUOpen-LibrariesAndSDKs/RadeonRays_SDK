@@ -47,6 +47,8 @@ project "RprTest"
         targetdir "../Bin/Release/x64"
     configuration {}
     
+    os.mkdir("Output")
+
     if os.is("windows") then
         postbuildcommands  { 
           'copy "..\\3rdparty\\glew\\bin\\%{cfg.platform}\\glew32.dll" "%{cfg.buildtarget.directory}"', 

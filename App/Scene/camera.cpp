@@ -39,6 +39,7 @@ namespace Baikal
     , m_focus_distance(0.f)
     , m_focal_length(0.f)
     , m_zcap(0.f, 0.f)
+	, m_aspect(0.f)
     {
         // Construct camera frame
         LookAt(eye, at, up);

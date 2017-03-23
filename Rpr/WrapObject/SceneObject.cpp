@@ -131,6 +131,10 @@ void SceneObject::AddEmissive()
 		assert(mesh);
 
 		const Baikal::Material* mat = mesh->GetMaterial();
+		if (!mat)
+		{
+			continue;
+		}
 		//fine shapes with emissive material
 		if (mat->HasEmission())
 		{
