@@ -58,3 +58,15 @@ CameraObject::~CameraObject()
     delete m_cam;
     m_cam = nullptr;
 }
+
+void CameraObject::SetTransform(const RadeonRays::matrix& m)
+{
+	//default values
+	RadeonRays::float3 eye(0.f, 0.f, 0.f);
+	RadeonRays::float3 at(0.f, 0.f, -1.f);
+	RadeonRays::float3 up(0.f, 1.f, 0.f);
+	eye = m * eye;
+	at = m * at;
+	up = m * up;
+	m_cam->LookAt(eye, at, up);
+}

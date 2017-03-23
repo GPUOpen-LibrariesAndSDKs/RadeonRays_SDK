@@ -36,13 +36,22 @@ using namespace Baikal;
 namespace
 {
     //contains pairs <rpr input name, baikal input name> of input names
-        std::map<std::string, std::string> kInputNamesDictionary = { { "color" , "albedo" },
-                                                                    { "normal" , "normal" },
-                                                                    { "roughness" , "roughness" }, 
-                                                                    { "weight" , "weight" }, 
-                                                                    { "ior" , "ior" },
-                                                                    { "color0", "base_material" },
-                                                                    { "color1", "top_material" }, };
+    const std::map<std::string, std::string> kInputNamesDictionary = { { "color" , "albedo" },
+                                                                { "normal" , "normal" },
+																{ "roughness" , "roughness" },
+																{ "roughness_x" , "roughness" },
+                                                                { "weight" , "weight" }, 
+                                                                { "ior" , "ior" },
+                                                                { "color0", "base_material" },
+                                                                { "color1", "top_material" }, };
+	const std::set<std::string> kIgnoreInputnames = { "roughness_y",
+														"rotation"};
+	//these materials are unsupported now:
+	const std::set<int> kUnsupportedMaterials = { RPR_MATERIAL_NODE_ADD,
+													 RPR_MATERIAL_NODE_ARITHMETIC,
+													 RPR_MATERIAL_NODE_BLEND_VALUE,
+													 RPR_MATERIAL_NODE_VOLUME,
+													 RPR_MATERIAL_NODE_INPUT_LOOKUP, };
 }
 MaterialObject::MaterialObject(rpr_material_node_type in_type)
 {
@@ -50,13 +59,13 @@ MaterialObject::MaterialObject(rpr_material_node_type in_type)
     switch (in_type)
     {
     case RPR_MATERIAL_NODE_DIFFUSE:
-    case RPR_MATERIAL_NODE_WARD:
     case RPR_MATERIAL_NODE_ORENNAYAR:
     {
         SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kLambert);
         m_mat = mat;
         break;
     }
+	case RPR_MATERIAL_NODE_WARD:
     case RPR_MATERIAL_NODE_MICROFACET:
     {
         SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kMicrofacetGGX);
@@ -83,7 +92,6 @@ MaterialObject::MaterialObject(rpr_material_node_type in_type)
     }
     case RPR_MATERIAL_NODE_STANDARD:
     {
-        //TODO: fix
         SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kLambert);
         m_mat = mat;
         break;
@@ -126,8 +134,17 @@ MaterialObject::MaterialObject(rpr_material_node_type in_type)
     case RPR_MATERIAL_NODE_BLEND_VALUE:
     case RPR_MATERIAL_NODE_VOLUME:
     case RPR_MATERIAL_NODE_INPUT_LOOKUP:
-        throw Exception(RPR_ERROR_UNSUPPORTED, "MaterialObject: unsupported material");
-        break;
+	{
+		//these materials are unsupported
+		if (kUnsupportedMaterials.find(in_type) == kUnsupportedMaterials.end())
+		{
+			throw Exception(RPR_ERROR_INTERNAL_ERROR, "MaterialObject: need to update list of unsupported materials.");
+		}
+		SingleBxdf* mat = new SingleBxdf(SingleBxdf::BxdfType::kLambert);
+		mat->SetInputValue("albedo", float3(1.f, 0.f, 0.f));
+		m_mat = mat;
+		break;
+	}
     case RPR_MATERIAL_NODE_NORMAL_MAP:
     case RPR_MATERIAL_NODE_IMAGE_TEXTURE:
     case RPR_MATERIAL_NODE_NOISE2D_TEXTURE:
@@ -155,35 +172,66 @@ MaterialObject::MaterialObject(rpr_image_format const in_format, rpr_image_desc 
     //Clean if material was already initialized
     Clear();
 
-    //TODO: fix only 4 components data supported
-    if (in_format.num_components != 4)
-        throw Exception(RPR_ERROR_UNIMPLEMENTED, "TextureObject: only 4 component texture implemented.");
+ //   //TODO: fix only 4 components data supported
+	//if (in_format.num_components != 4 && in_format.num_components != 3)
+	//{
+	//	throw Exception(RPR_ERROR_UNIMPLEMENTED, "TextureObject: only 3 and 4 component texture implemented.");
+	//}
 
     //tex size
     int2 tex_size(in_image_desc->image_width, in_image_desc->image_height);
 
     //texture takes ownership of its data array
     //so need to copy input data
-    int data_size = in_format.num_components * tex_size.x * tex_size.y;
+	int pixels_count = tex_size.x * tex_size.y;
+
+	//bytes per pixel
+	int pixel_bytes = in_format.num_components;
+	int component_bytes = 1;
     Texture::Format data_format = Texture::Format::kRgba8;
     switch (in_format.type)
     {
     case RPR_COMPONENT_TYPE_UINT8:
         break;
     case RPR_COMPONENT_TYPE_FLOAT16:
-        data_size *= 2;
+		component_bytes = 2;
         data_format = Texture::Format::kRgba16;
         break;
     case RPR_COMPONENT_TYPE_FLOAT32:
-        data_size *= 4;
+		component_bytes = 4;
         data_format = Texture::Format::kRgba32;
         break;
     default:
         throw Exception(RPR_ERROR_INVALID_PARAMETER, "TextureObject: invalid format type.");
     }
-
+	pixel_bytes *= component_bytes;
+	int data_size = 4 * component_bytes * pixels_count;//4 component baikal texture
     char* data = new char[data_size];
-    memcpy(data, in_data, data_size);
+	if (in_format.num_components == 4)
+	{
+		//copy data
+		memcpy(data, in_data, data_size);
+	}
+	else
+	{
+		//copy to 4component texture
+		const char* in_data_cast = static_cast<const char*>(in_data);
+		for (int i = 0; i < pixels_count; ++i)
+		{
+			//copy
+			for (int comp_ind = 0; comp_ind < in_format.num_components; ++comp_ind)
+			{
+				int index = comp_ind * component_bytes;
+				memcpy(&data[i * 4 * component_bytes + index], &in_data_cast[i * in_format.num_components * component_bytes + index], component_bytes);
+			}
+			//clean other colors
+			for (int comp_ind = in_format.num_components; comp_ind < 4; ++comp_ind)
+			{
+				int index = comp_ind * component_bytes;
+				memset(&data[i * 4 + comp_ind], 0, component_bytes);
+			}
+		}
+	}
     m_tex = new Texture(data, tex_size, data_format);
 }
 
@@ -258,7 +306,28 @@ std::string MaterialObject::TranslatePropName(const std::string& in, Type type)
 
 void MaterialObject::SetInputN(const std::string& input_name, MaterialObject* input)
 {
-    //TODO: handle RPR_MATERIAL_NODE_BLEND
+	//TODO: fix
+	if (kUnsupportedMaterials.find(m_type) != kUnsupportedMaterials.end() ||
+		kUnsupportedMaterials.find(input->GetType()) != kUnsupportedMaterials.end())
+	{
+		//this is unsupported material, so don't update anything
+		return;
+	}
+	
+	//TODO: 
+	if (kIgnoreInputnames.find(input_name) != kIgnoreInputnames.end())
+	{
+		//ignore inputs
+		return;
+	}
+
+	//TODO: fix
+	//can't set material to color input
+	if (input_name == "color" && input->IsMaterial())
+	{
+		return;
+	}
+
     //convert input name
     if (m_type == Type::kImage)
     {
@@ -267,7 +336,9 @@ void MaterialObject::SetInputN(const std::string& input_name, MaterialObject* in
 
     if (IsTexture())
     {
-        throw Exception(RPR_ERROR_UNIMPLEMENTED, "MaterialObject: SetInputN not implemented for Texture materials.");
+		//TODO: handle texture materials nodes
+		return;
+        //throw Exception(RPR_ERROR_UNIMPLEMENTED, "MaterialObject: SetInputN not implemented for Texture materials.");
     }
 
     //translate material name
@@ -309,7 +380,18 @@ void MaterialObject::SetInputN(const std::string& input_name, MaterialObject* in
 
 void MaterialObject::SetInputValue(const std::string& input_name, const RadeonRays::float4& val)
 {
-    //TODO: handle RPR_MATERIAL_NODE_BLEND
+	//TODO:
+	if (kUnsupportedMaterials.find(m_type) != kUnsupportedMaterials.end())
+	{
+		//this is unsupported material, so don't update anything
+		return;
+	}
+	//TODO: 
+	if (kIgnoreInputnames.find(input_name) != kIgnoreInputnames.end())
+	{
+		//ignore inputs
+		return;
+	}
     //convert input name
     if (m_type == Type::kImage)
     {
@@ -318,7 +400,9 @@ void MaterialObject::SetInputValue(const std::string& input_name, const RadeonRa
 
     if (IsTexture())
     {
-        throw Exception(RPR_ERROR_UNIMPLEMENTED, "MaterialObject: SetInputValue not implemented for Texture materials.");
+		//TODO: handle texture materials nodes
+		return;
+        //throw Exception(RPR_ERROR_UNIMPLEMENTED, "MaterialObject: SetInputValue not implemented for Texture materials.");
     }
 
     //translate material name
@@ -335,6 +419,12 @@ void MaterialObject::SetInputValue(const std::string& input_name, const RadeonRa
 
 void MaterialObject::SetInputImageData(const std::string& input_name, MaterialObject* input)
 {
+	if (kUnsupportedMaterials.find(m_type) != kUnsupportedMaterials.end())
+	{
+		//this is unsupported material, so don't update anything
+		return;
+	}
+
     if (!input->IsTexture())
     {
         throw Exception(RPR_ERROR_INVALID_PARAMETER, "MaterialObject: input material isn't rpr_image.");

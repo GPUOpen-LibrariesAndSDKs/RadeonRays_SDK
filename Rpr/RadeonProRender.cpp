@@ -35,9 +35,13 @@ THE SOFTWARE.
 #include "math/matrix.h"
 #include "math/mathutils.h"
 
+//defines behaviour for unimplemented API part
+#define UNIMLEMENTED_FUNCTION return RPR_SUCCESS;
+//#define UNIMLEMENTED_FUNCTION UNIMLEMENTED_FUNCTION
+
 rpr_int rprRegisterPlugin(rpr_char const * path)
 {
-    return RPR_ERROR_UNSUPPORTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprCreateContext(rpr_int api_version, rpr_int * pluginIDs, size_t pluginCount, rpr_creation_flags creation_flags, rpr_context_properties const * props, rpr_char const * cache_path, rpr_context * out_context)
@@ -62,7 +66,7 @@ rpr_int rprCreateContext(rpr_int api_version, rpr_int * pluginIDs, size_t plugin
 
 rpr_int rprContextSetActivePlugin(rpr_context context, rpr_int pluginID)
 {
-    return RPR_ERROR_UNSUPPORTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprContextGetInfo(rpr_context in_context, rpr_context_info in_context_info, size_t in_size, void * out_data, size_t * out_size_ret)
@@ -80,7 +84,7 @@ rpr_int rprContextGetInfo(rpr_context in_context, rpr_context_info in_context_in
         context->GetRenderStatistics(out_data, out_size_ret);
         break;
     default:
-        return RPR_ERROR_UNIMPLEMENTED;
+        UNIMLEMENTED_FUNCTION
 
     }
     return RPR_SUCCESS;
@@ -88,7 +92,7 @@ rpr_int rprContextGetInfo(rpr_context in_context, rpr_context_info in_context_in
 
 rpr_int rprContextGetParameterInfo(rpr_context context, int param_idx, rpr_parameter_info parameter_info, size_t size, void * data, size_t * size_ret)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprContextGetAOV(rpr_context in_context, rpr_aov in_aov, rpr_framebuffer * out_fb)
@@ -184,6 +188,8 @@ rpr_int rprContextSetParameter1u(rpr_context in_context, rpr_char const * name, 
     }
 
     //TODO: handle context parameters
+	return RPR_SUCCESS;
+
     if (!strcmp(name, "rendermode"))
     {
         switch (x)
@@ -191,12 +197,12 @@ rpr_int rprContextSetParameter1u(rpr_context in_context, rpr_char const * name, 
         case RPR_RENDER_MODE_GLOBAL_ILLUMINATION:
             break;
         default:
-            return RPR_ERROR_UNIMPLEMENTED;
+            UNIMLEMENTED_FUNCTION
         }
     }
     else
     {
-        return RPR_ERROR_UNIMPLEMENTED;
+        UNIMLEMENTED_FUNCTION
     }
 
     return RPR_SUCCESS;
@@ -204,22 +210,22 @@ rpr_int rprContextSetParameter1u(rpr_context in_context, rpr_char const * name, 
 
 rpr_int rprContextSetParameter1f(rpr_context context, rpr_char const * name, rpr_float x)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprContextSetParameter3f(rpr_context context, rpr_char const * name, rpr_float x, rpr_float y, rpr_float z)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprContextSetParameter4f(rpr_context context, rpr_char const * name, rpr_float x, rpr_float y, rpr_float z, rpr_float w)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprContextSetParameterString(rpr_context context, rpr_char const * name, rpr_char const * value)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprContextRender(rpr_context in_context)
@@ -238,12 +244,12 @@ rpr_int rprContextRender(rpr_context in_context)
 
 rpr_int rprContextRenderTile(rpr_context context, rpr_uint xmin, rpr_uint xmax, rpr_uint ymin, rpr_uint ymax)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprContextClearMemory(rpr_context context)
 {
-    return RPR_ERROR_UNSUPPORTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprContextCreateImage(rpr_context in_context, rpr_image_format const in_format, rpr_image_desc const * in_image_desc, void const * in_data, rpr_image * out_image)
@@ -377,7 +383,7 @@ rpr_int rprContextCreateMesh(rpr_context in_context,
 
 rpr_int rprContextCreateMeshEx(rpr_context context, rpr_float const * vertices, size_t num_vertices, rpr_int vertex_stride, rpr_float const * normals, size_t num_normals, rpr_int normal_stride, rpr_int const * perVertexFlag, size_t num_perVertexFlags, rpr_int perVertexFlag_stride, rpr_int numberOfTexCoordLayers, rpr_float const ** texcoords, size_t * num_texcoords, rpr_int * texcoord_stride, rpr_int const * vertex_indices, rpr_int vidx_stride, rpr_int const * normal_indices, rpr_int nidx_stride, rpr_int const ** texcoord_indices, rpr_int * tidx_stride, rpr_int const * num_face_vertices, size_t num_faces, rpr_shape * out_mesh)
 {
-    return RPR_ERROR_UNSUPPORTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprContextCreateCamera(rpr_context in_context, rpr_camera * out_camera)
@@ -426,7 +432,7 @@ rpr_int rprContextCreateFrameBuffer(rpr_context in_context, rpr_framebuffer_form
 
 rpr_int rprCameraGetInfo(rpr_camera camera, rpr_camera_info camera_info, size_t size, void * data, size_t * size_ret)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprCameraSetFocalLength(rpr_camera in_camera, rpr_float flength)
@@ -458,9 +464,26 @@ rpr_int rprCameraSetFocusDistance(rpr_camera in_camera, rpr_float fdist)
     return RPR_SUCCESS;
 }
 
-rpr_int rprCameraSetTransform(rpr_camera camera, rpr_bool transpose, rpr_float * transform)
+rpr_int rprCameraSetTransform(rpr_camera in_camera, rpr_bool transpose, rpr_float * transform)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+	//cast data
+	CameraObject* camera = WrapObject::Cast<CameraObject>(in_camera);
+	if (!camera)
+	{
+		return RPR_ERROR_INVALID_PARAMETER;
+	}
+
+	RadeonRays::matrix m;
+	//fill matrix
+	memcpy(m.m, transform, 16 * sizeof(rpr_float));
+
+	if (!transpose)
+	{
+		m = m.transpose();
+	}
+
+	camera->SetTransform(m);
+	return RPR_SUCCESS;
 }
 
 rpr_int rprCameraSetSensorSize(rpr_camera in_camera, rpr_float in_width, rpr_float in_height)
@@ -514,12 +537,12 @@ rpr_int rprCameraSetFStop(rpr_camera in_camera, rpr_float fstop)
 
 rpr_int rprCameraSetApertureBlades(rpr_camera camera, rpr_uint num_blades)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprCameraSetExposure(rpr_camera camera, rpr_float exposure)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprCameraSetMode(rpr_camera in_camera, rpr_camera_mode mode)
@@ -537,7 +560,7 @@ rpr_int rprCameraSetMode(rpr_camera in_camera, rpr_camera_mode mode)
     case RPR_CAMERA_MODE_PERSPECTIVE:
         break;
     default:
-        return RPR_ERROR_UNIMPLEMENTED;
+        UNIMLEMENTED_FUNCTION
     }
     
     return RPR_SUCCESS;
@@ -545,37 +568,37 @@ rpr_int rprCameraSetMode(rpr_camera in_camera, rpr_camera_mode mode)
 
 rpr_int rprCameraSetOrthoWidth(rpr_camera camera, rpr_float width)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprCameraSetFocalTilt(rpr_camera camera, rpr_float tilt)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprCameraSetIPD(rpr_camera camera, rpr_float ipd)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprCameraSetLensShift(rpr_camera camera, rpr_float shiftx, rpr_float shifty)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprCameraSetOrthoHeight(rpr_camera camera, rpr_float height)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprImageGetInfo(rpr_image image, rpr_image_info image_info, size_t size, void * data, size_t * size_ret)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprImageSetWrap(rpr_image image, rpr_image_wrap_type type)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprShapeSetTransform(rpr_shape in_shape, rpr_bool transpose, rpr_float const * transform)
@@ -591,9 +614,9 @@ rpr_int rprShapeSetTransform(rpr_shape in_shape, rpr_bool transpose, rpr_float c
     //fill matrix
     memcpy(m.m, transform, 16  * sizeof(rpr_float));
 
-    if (transpose)
+    if (!transpose)
     {
-        m.transpose();
+        m = m.transpose();
     }
 
     shape->SetTransform(m);
@@ -601,33 +624,33 @@ rpr_int rprShapeSetTransform(rpr_shape in_shape, rpr_bool transpose, rpr_float c
 }
 
 rpr_int rprShapeSetSubdivisionFactor(rpr_shape shape, rpr_uint factor)
-{
-    return RPR_ERROR_UNIMPLEMENTED;
+{	
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprShapeSetSubdivisionCreaseWeight(rpr_shape shape, rpr_float factor)
-{
-    return RPR_ERROR_UNIMPLEMENTED;
+{	
+	UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprShapeSetSubdivisionBoundaryInterop(rpr_shape shape, rpr_subdiv_boundary_interfop_type type)
-{
-    return RPR_ERROR_UNIMPLEMENTED;
+{	
+	UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprShapeSetDisplacementScale(rpr_shape shape, rpr_float minscale, rpr_float maxscale)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprShapeSetObjectGroupID(rpr_shape shape, rpr_uint objectGroupID)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+	UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprShapeSetDisplacementImage(rpr_shape shape, rpr_image image)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+	UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprShapeSetMaterial(rpr_shape in_shape, rpr_material_node in_node)
@@ -655,47 +678,47 @@ rpr_int rprShapeSetMaterial(rpr_shape in_shape, rpr_material_node in_node)
 
 rpr_int rprShapeSetMaterialOverride(rpr_shape shape, rpr_material_node node)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprShapeSetVolumeMaterial(rpr_shape shape, rpr_material_node node)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprShapeSetLinearMotion(rpr_shape shape, rpr_float x, rpr_float y, rpr_float z)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprShapeSetAngularMotion(rpr_shape shape, rpr_float x, rpr_float y, rpr_float z, rpr_float w)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprShapeSetVisibility(rpr_shape shape, rpr_bool visible)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprShapeSetVisibilityPrimaryOnly(rpr_shape shape, rpr_bool visible)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprShapeSetVisibilityInSpecular(rpr_shape shape, rpr_bool visible)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprShapeSetShadowCatcher(rpr_shape shape, rpr_bool shadowCatcher)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprShapeSetShadow(rpr_shape shape, rpr_bool casts_shadow)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprLightSetTransform(rpr_light in_light, rpr_bool in_transpose, rpr_float const * in_transform)
@@ -707,7 +730,7 @@ rpr_int rprLightSetTransform(rpr_light in_light, rpr_bool in_transpose, rpr_floa
     
     RadeonRays::matrix m;
     memcpy(&m.m00, in_transform, 16 * sizeof(rpr_float));
-    if (in_transpose)
+    if (!in_transpose)
     {
         m = m.transpose();
     }
@@ -719,22 +742,22 @@ rpr_int rprLightSetTransform(rpr_light in_light, rpr_bool in_transpose, rpr_floa
 
 rpr_int rprShapeGetInfo(rpr_shape arg0, rpr_shape_info arg1, size_t arg2, void * arg3, size_t * arg4)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprMeshGetInfo(rpr_shape mesh, rpr_mesh_info mesh_info, size_t size, void * data, size_t * size_ret)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprMeshPolygonGetInfo(rpr_shape mesh, size_t polygon_index, rpr_mesh_polygon_info polygon_info, size_t size, void * data, size_t * size_ret)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprInstanceGetBaseShape(rpr_shape shape, rpr_shape * out_shape)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprContextCreatePointLight(rpr_context in_context, rpr_light * out_light)
@@ -869,7 +892,7 @@ rpr_int rprDirectionalLightSetShadowSoftness(rpr_light in_light, rpr_float in_co
         return RPR_ERROR_INVALID_PARAMETER;
     }
 
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprContextCreateEnvironmentLight(rpr_context in_context, rpr_light * out_light)
@@ -930,62 +953,62 @@ rpr_int rprEnvironmentLightSetIntensityScale(rpr_light in_env_light, rpr_float i
 
 rpr_int rprEnvironmentLightAttachPortal(rpr_light env_light, rpr_shape portal)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprEnvironmentLightDetachPortal(rpr_light env_light, rpr_shape portal)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprContextCreateSkyLight(rpr_context context, rpr_light * out_light)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprSkyLightSetTurbidity(rpr_light skylight, rpr_float turbidity)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprSkyLightSetAlbedo(rpr_light skylight, rpr_float albedo)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprSkyLightSetScale(rpr_light skylight, rpr_float scale)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprSkyLightAttachPortal(rpr_light skylight, rpr_shape portal)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprSkyLightDetachPortal(rpr_light skylight, rpr_shape portal)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprContextCreateIESLight(rpr_context context, rpr_light * light)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprIESLightSetRadiantPower3f(rpr_light light, rpr_float r, rpr_float g, rpr_float b)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprIESLightSetImageFromFile(rpr_light env_light, rpr_char const * imagePath, rpr_int nx, rpr_int ny)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprIESLightSetImageFromIESdata(rpr_light env_light, rpr_char const * iesData, rpr_int nx, rpr_int ny)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprLightGetInfo(rpr_light in_light, rpr_light_info in_info, size_t in_size, void * out_data, size_t * out_size_ret)
@@ -1130,29 +1153,57 @@ rpr_int rprSceneDetachLight(rpr_scene in_scene, rpr_light in_light)
     return RPR_SUCCESS;
 }
 
-rpr_int rprSceneGetInfo(rpr_scene scene, rpr_scene_info info, size_t size, void * data, size_t * size_ret)
+rpr_int rprSceneGetInfo(rpr_scene in_scene, rpr_scene_info info, size_t size, void * data, size_t * size_ret)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+	//cast
+	SceneObject* scene = WrapObject::Cast<SceneObject>(in_scene);
+	if (!scene)
+	{
+		return RPR_ERROR_INVALID_PARAMETER;
+	}
+	
+	//TODO: remake(handle other inputs)
+
+	switch (info)
+	{
+	case RPR_SCENE_SHAPE_COUNT:
+	{
+		size_t* input_data = static_cast<size_t*>(data);
+		*input_data = scene->GetShapeCount();
+		break;
+	}
+	case RPR_SCENE_SHAPE_LIST:
+	{
+		scene->GetShapeList(data);
+		break;
+	}
+	case RPR_SCENE_CAMERA:
+	{
+		rpr_camera* input_data = static_cast<rpr_camera*>(data);
+		*input_data = scene->GetCamera();
+	}
+	}
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprSceneGetEnvironmentOverride(rpr_scene scene, rpr_environment_override overrride, rpr_light * out_light)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprSceneSetEnvironmentOverride(rpr_scene scene, rpr_environment_override overrride, rpr_light light)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprSceneSetBackgroundImage(rpr_scene scene, rpr_image image)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprSceneGetBackgroundImage(rpr_scene scene, rpr_image * out_image)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprSceneSetCamera(rpr_scene in_scene, rpr_camera in_camera)
@@ -1210,7 +1261,7 @@ rpr_int rprFrameBufferGetInfo(rpr_framebuffer in_frame_buffer, rpr_framebuffer_i
         }
         break;
     default:
-        return RPR_ERROR_UNIMPLEMENTED;
+        UNIMLEMENTED_FUNCTION
     }
 
     return RPR_SUCCESS;
@@ -1252,7 +1303,7 @@ rpr_int rprFrameBufferSaveToFile(rpr_framebuffer in_frame_buffer, rpr_char const
 
 rpr_int rprContextResolveFrameBuffer(rpr_context context, rpr_framebuffer src_frame_buffer, rpr_framebuffer dst_frame_buffer, rpr_bool normalizeOnly)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprContextCreateMaterialSystem(rpr_context in_context, rpr_material_system_type type, rpr_material_system * out_matsys)
@@ -1336,7 +1387,7 @@ rpr_int rprMaterialNodeSetInputF(rpr_material_node in_node, rpr_char const * in_
 
 rpr_int rprMaterialNodeSetInputU(rpr_material_node in_node, rpr_char const * in_input, rpr_uint in_value)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+	UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprMaterialNodeSetInputImageData(rpr_material_node in_node, rpr_char const * in_input, rpr_image in_image)
@@ -1363,17 +1414,16 @@ rpr_int rprMaterialNodeSetInputImageData(rpr_material_node in_node, rpr_char con
 
 rpr_int rprMaterialNodeGetInfo(rpr_material_node in_node, rpr_material_node_info in_info, size_t in_size, void * in_data, size_t * out_size)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprMaterialNodeGetInputInfo(rpr_material_node in_node, rpr_int in_input_idx, rpr_material_node_input_info in_info, size_t in_size, void * in_data, size_t * out_size)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprObjectDelete(void * in_obj)
 {
-    //TODO:
     WrapObject* obj = static_cast<WrapObject*>(in_obj);
     delete obj;
 
@@ -1382,40 +1432,40 @@ rpr_int rprObjectDelete(void * in_obj)
 
 rpr_int rprObjectSetName(void * node, rpr_char const * name)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprContextCreatePostEffect(rpr_context context, rpr_post_effect_type type, rpr_post_effect * out_effect)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprContextAttachPostEffect(rpr_context context, rpr_post_effect effect)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprContextDetachPostEffect(rpr_context context, rpr_post_effect effect)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprPostEffectSetParameter1u(rpr_post_effect effect, rpr_char const * name, rpr_uint x)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprPostEffectSetParameter1f(rpr_post_effect effect, rpr_char const * name, rpr_float x)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprPostEffectSetParameter3f(rpr_post_effect effect, rpr_char const * name, rpr_float x, rpr_float y, rpr_float z)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }
 
 rpr_int rprPostEffectSetParameter4f(rpr_post_effect effect, rpr_char const * name, rpr_float x, rpr_float y, rpr_float z, rpr_float w)
 {
-    return RPR_ERROR_UNIMPLEMENTED;
+    UNIMLEMENTED_FUNCTION
 }

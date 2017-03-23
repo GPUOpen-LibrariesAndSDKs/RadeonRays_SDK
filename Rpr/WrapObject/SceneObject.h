@@ -22,14 +22,15 @@ THE SOFTWARE.
 #pragma once
 
 #include "WrapObject/WrapObject.h"
+#include "Scene/scene1.h"
+#include "Scene/shape.h"
+#include "Scene/light.h"
+
+#include <vector>
 
 class ShapeObject;
 class LightObject;
 class CameraObject;
-
-namespace Baikal {
-    class Scene1;
-}
 
 //this class represent rpr_context
 class SceneObject
@@ -53,8 +54,16 @@ public:
     void SetCamera(CameraObject* cam);
     CameraObject* GetCamera() { return m_current_camera; }
 
-    Baikal::Scene1* GetScene() { return m_scene; };
+	void GetShapeList(void* out_list);
+	size_t GetShapeCount() { return m_scene->GetNumShapes(); }
+
+	void AddEmissive();
+	void RemoveEmissive();
+	Baikal::Scene1* GetScene() { return m_scene; };
 private:
     Baikal::Scene1* m_scene;
     CameraObject* m_current_camera;
+	std::vector<Baikal::AreaLight*> m_emmisive_lights;//area lights fro emissive shapes
+	std::vector<ShapeObject*> m_shapes;
+
 };

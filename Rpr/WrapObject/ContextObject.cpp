@@ -30,6 +30,11 @@ THE SOFTWARE.
 #include "WrapObject/MaterialObject.h"
 #include "WrapObject/Exception.h"
 
+#include "Scene/scene1.h"
+#include "Scene/iterator.h"
+#include "Scene/material.h"
+#include "Scene/light.h"
+
 ContextObject::ContextObject(rpr_creation_flags creation_flags)
     : m_current_scene(nullptr)
 {
@@ -132,10 +137,14 @@ FramebufferObject* ContextObject::GetAOV(rpr_int in_aov)
 
 void ContextObject::Render()
 {
+	m_current_scene->AddEmissive();
+
+	//render
     for (auto& c : m_cfgs)
     {
         c.renderer->Render(*m_current_scene->GetScene());
     }
+
 }
 SceneObject* ContextObject::CreateScene()
 {

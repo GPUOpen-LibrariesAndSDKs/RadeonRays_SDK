@@ -23,6 +23,8 @@ THE SOFTWARE.
 
 #include "WrapObject.h"
 #include "Scene/camera.h"
+
+#include "math/matrix.h"
 #include <RadeonProRender.h>
 
 namespace Baikal {
@@ -46,7 +48,7 @@ public:
         RadeonRays::float3 const& up) { m_cam->LookAt(eye, at, up); };
 
     void SetAperture(rpr_float fstop) { m_cam->SetAperture(fstop); }
-
+	void SetTransform(const RadeonRays::matrix& m);
     Baikal::Camera* GetCamera() { return m_cam; }
 private:
     Baikal::PerspectiveCamera* m_cam;

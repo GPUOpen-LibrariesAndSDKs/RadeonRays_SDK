@@ -1,8 +1,8 @@
-project "Test"
+project "RprTest"
     kind "ConsoleApp"
-    location "../Test"
+    location "../RprTest"
     links {"RadeonRays", "CLW", "Calc", "Rpr", "RprLoadStore"}
-    files { "../Test/**.h", "../Test/**.cpp", "../Test/**.cl", "../Test/**.fsh", "../Test/**.vsh" }
+    files { "../RprTest/**.h", "../RprTest/**.cpp", "../RprTest/**.cl", "../RprTest/**.fsh", "../RprTest/**.vsh" }
 
     includedirs{ "../Rpr", ".", "../RprLoadStore/" }
     libdirs { "../Rpr/RprLoadStore/lib", }
