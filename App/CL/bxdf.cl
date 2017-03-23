@@ -69,10 +69,6 @@ float FresnelDielectric(float etai, float etat, float ndotwi, float ndotwt)
 float MicrofacetDistribution_Beckmann_D(float roughness, float3 m)
 {
     float ndotm = fabs(m.y);
-
-    if (ndotm <= 0.f)
-        return 0.f;
-
     float ndotm2 = ndotm * ndotm;
     float sinmn = native_sqrt(1.f - clamp(ndotm * ndotm, 0.f, 1.f));
     float tanmn = sinmn / ndotm;
@@ -99,55 +95,9 @@ float MicrofacetDistribution_Beckmann_GetPdf(
     float3 m = normalize(wi + wo);
     float wodotm = fabs(dot(wo, m));
 
-    if (wodotm <= 0.f)
-        return 0.f;
-
-    //
     float mpdf = MicrofacetDistribution_Beckmann_D(roughness, m) * fabs(m.y);
     // See Humphreys and Pharr for derivation
-
     return mpdf / (4.f * wodotm);
-}
-
-// Sample the distribution
-void MicrofacetDistribution_Beckmann_Sample(// Roughness
-    float roughness,
-    // Geometry
-    DifferentialGeometry const* dg,
-    // Incoming direction
-    float3 wi,
-    // Texture args
-    TEXTURE_ARG_LIST,
-    // Sample
-    float2 sample,
-    // Outgoing  direction
-    float3* wo,
-    // PDF at wo
-    float* pdf
-    )
-{
-    float r1 = sample.x;
-    float r2 = sample.y;
-
-    // Sample halfway vector first, then reflect wi around that
-    float temp = atan(native_sqrt(-roughness*roughness*native_log(1.f - r1*0.99f)));
-    float theta = (float)((temp >= 0) ? temp : (temp + 2 * PI));
-
-    float costheta = native_cos(theta);
-    float sintheta = native_sqrt(1.f - clamp(costheta * costheta, 0.f, 1.f));
-
-    // phi = 2*PI*ksi2
-    float cosphi = native_cos(2.f*PI*r2);
-    float sinphi = native_sqrt(1.f - clamp(cosphi * cosphi, 0.f, 1.f));
-
-    // Calculate wh
-    float3 wh = make_float3(sintheta * cosphi, costheta, sintheta * sinphi);
-
-    // Reflect wi around wh
-    *wo = -wi + 2.f*fabs(dot(wi, wh)) * wh;
-
-    // Calc pdf
-    *pdf = MicrofacetDistribution_Beckmann_GetPdf(roughness, dg, wi, *wo, TEXTURE_ARGS);
 }
 
 // Sample the distribution
@@ -167,15 +117,14 @@ void MicrofacetDistribution_Beckmann_SampleNormal(// Roughness
     float r2 = sample.y;
 
     // Sample halfway vector first, then reflect wi around that
-    float temp = atan(native_sqrt(-roughness*roughness*native_log(1.f - r1*0.99f)));
-    float theta = (float)((temp >= 0) ? temp : (temp + 2 * PI));
-
+    float theta = atan(native_sqrt(-roughness*roughness*native_log(1.f - r1*0.99f)));
     float costheta = native_cos(theta);
-    float sintheta = native_sqrt(1.f - clamp(costheta * costheta, 0.f, 1.f));
+    float sintheta = native_sin(theta);
 
     // phi = 2*PI*ksi2
-    float cosphi = native_cos(2.f*PI*r2);
-    float sinphi = native_sqrt(1.f - clamp(cosphi * cosphi, 0.f, 1.f));
+    float phi = 2.f*PI*r2;
+    float cosphi = native_cos(phi);
+    float sinphi = native_sin(phi);
 
     // Reflect wi around wh
     *wh = make_float3(sintheta * cosphi, costheta, sintheta * sinphi);
@@ -185,7 +134,6 @@ float MicrofacetDistribution_Beckmann_G1(float roughness, float3 v, float3 m)
 {
     float ndotv = fabs(v.y);
     float mdotv = fabs(dot(m, v));
-
     float sinnv = native_sqrt(1.f - clamp(ndotv * ndotv, 0.f, 1.f));
     float tannv = sinnv / ndotv;
     float a = tannv > DENOM_EPS ? 1.f / (roughness * tannv) : 0.f;
@@ -218,7 +166,6 @@ float3 MicrofacetBeckmann_Evaluate(
     const float3 ks = Texture_GetValue3f(dg->mat.kx.xyz, dg->uv, TEXTURE_ARGS_IDX(dg->mat.kxmapidx));
     const float roughness = Texture_GetValue1f(dg->mat.ns, dg->uv, TEXTURE_ARGS_IDX(dg->mat.nsmapidx));
     const float eta = dg->mat.ni;
-
 
     // Incident and reflected zenith angles
     float costhetao = fabs(wo.y);
@@ -266,10 +213,15 @@ float3 MicrofacetBeckmann_Sample(
     float* pdf
     )
 {
-    float ndotwi = fabs(wi.y);
-
     const float roughness = Texture_GetValue1f(dg->mat.ns, dg->uv, TEXTURE_ARGS_IDX(dg->mat.nsmapidx));
-    MicrofacetDistribution_Beckmann_Sample(roughness, dg, wi, TEXTURE_ARGS, sample, wo, pdf);
+
+    float3 wh;
+    MicrofacetDistribution_Beckmann_SampleNormal(roughness, dg, TEXTURE_ARGS, sample, &wh);
+
+    *wo = -wi + 2.f*fabs(dot(wi, wh)) * wh;
+
+    *pdf = MicrofacetDistribution_Beckmann_GetPdf(roughness, dg, wi, *wo, TEXTURE_ARGS);
+
     return MicrofacetBeckmann_Evaluate(dg, wi, *wo, TEXTURE_ARGS);
 }
 
@@ -282,7 +234,7 @@ float MicrofacetDistribution_GGX_D(float roughness, float3 m)
     float ndotm = fabs(m.y);
     float ndotm2 = ndotm * ndotm;
     float sinmn = native_sqrt(1.f - clamp(ndotm * ndotm, 0.f, 1.f));
-    float tanmn = ndotm > DENOM_EPS ? sinmn / ndotm : 0.f;
+    float tanmn = sinmn / ndotm;
     float a2 = roughness * roughness;
     float denom = (PI * ndotm2 * ndotm2 * (a2 + tanmn * tanmn) * (a2 + tanmn * tanmn));
     return denom > DENOM_EPS ? (a2 / denom) : 0.f;
@@ -312,48 +264,6 @@ float MicrofacetDistribution_GGX_GetPdf(
 }
 
 // Sample the distribution
-void MicrofacetDistribution_GGX_Sample(
-    // Roughness
-    float roughness,
-    // Geometry
-    DifferentialGeometry const* dg,
-    // Incoming direction
-    float3 wi,
-    // Texture args
-    TEXTURE_ARG_LIST,
-    // Sample
-    float2 sample,
-    // Outgoing  direction
-    float3* wo,
-    // PDF at wo
-    float* pdf
-    )
-{
-    float r1 = sample.x;
-    float r2 = sample.y;
-
-    // Sample halfway vector first, then reflect wi around that
-    float temp = atan(roughness * native_sqrt(r1) / native_sqrt(1.f - r1));
-    float theta = (float)((temp >= 0) ? temp : (temp + 2 * PI));
-
-    float costheta = native_cos(theta);
-    float sintheta = native_sqrt(1.f - clamp(costheta * costheta, 0.f, 1.f));
-
-    // phi = 2*PI*ksi2
-    float cosphi = native_cos(2.f*PI*r2);
-    float sinphi = native_sqrt(1.f - clamp(cosphi * cosphi, 0.f, 1.f));
-
-    // Calculate wh
-    float3 wh = make_float3(sintheta * cosphi, costheta, sintheta * sinphi);
-
-    // Reflect wi around wh
-    *wo = -wi + 2.f*fabs(dot(wi, wh)) * wh;
-
-    // Calc pdf
-    *pdf = MicrofacetDistribution_GGX_GetPdf(wh, roughness, dg, wi, *wo, TEXTURE_ARGS);
-}
-
-// Sample the distribution
 void MicrofacetDistribution_GGX_SampleNormal(
     // Roughness
     float roughness,
@@ -371,15 +281,14 @@ void MicrofacetDistribution_GGX_SampleNormal(
     float r2 = sample.y;
 
     // Sample halfway vector first, then reflect wi around that
-    float temp = atan(roughness * native_sqrt(r1) / native_sqrt(1.f - r1));
-    float theta = (float)((temp >= 0) ? temp : (temp + 2 * PI));
-
+    float theta = atan2(roughness * native_sqrt(r1), native_sqrt(1.f - r1));
     float costheta = native_cos(theta);
-    float sintheta = native_sqrt(1.f - clamp(costheta * costheta, 0.f, 1.f));
+    float sintheta = native_sin(theta);
 
     // phi = 2*PI*ksi2
-    float cosphi = native_cos(2.f*PI*r2);
-    float sinphi = native_sqrt(1.f - clamp(cosphi * cosphi, 0.f, 1.f));
+    float phi = 2.f * PI * r2;
+    float cosphi = native_cos(phi);
+    float sinphi = native_sin(phi);
 
     // Calculate wh
     *wh = make_float3(sintheta * cosphi, costheta, sintheta * sinphi);
@@ -392,7 +301,7 @@ float MicrofacetDistribution_GGX_G1(float roughness, float3 v, float3 m)
     float mdotv = fabs(dot(m, v));
 
     float sinnv = native_sqrt(1.f - clamp(ndotv * ndotv, 0.f, 1.f));
-    float tannv = ndotv > 0.f ? sinnv / ndotv : 0.f;
+    float tannv = sinnv / ndotv;
     float a2 = roughness * roughness;
     return 2.f / (1.f + native_sqrt(1.f + a2 * tannv * tannv));
 }
@@ -468,7 +377,12 @@ float3 MicrofacetGGX_Sample(
 {
     const float roughness = Texture_GetValue1f(dg->mat.ns, dg->uv, TEXTURE_ARGS_IDX(dg->mat.nsmapidx));
 
-    MicrofacetDistribution_GGX_Sample(roughness, dg, wi, TEXTURE_ARGS, sample, wo, pdf);
+    float3 wh;
+    MicrofacetDistribution_GGX_SampleNormal(roughness, dg, TEXTURE_ARGS, sample, &wh);
+
+    *wo = -wi + 2.f*fabs(dot(wi, wh)) * wh;
+
+    *pdf = MicrofacetDistribution_GGX_GetPdf(wh, roughness, dg, wi, *wo, TEXTURE_ARGS);
 
     return MicrofacetGGX_Evaluate(dg, wi, *wo, TEXTURE_ARGS);
 }

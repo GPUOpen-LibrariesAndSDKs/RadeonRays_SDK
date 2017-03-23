@@ -45,7 +45,7 @@ namespace Baikal
         for(auto j = 1U; j < lat - 1; j++)
             for(auto i = 0U; i < lon; i++)
             {
-                float theta = float(j) / (lat - 1) * (float)M_PI;
+                float theta = float(j) / (lat - 1) * (float)M_PI; 
                 float phi   = float(i) / (lon - 1 ) * (float)M_PI * 2;
                 vertices[t].x =  r * sinf(theta) * cosf(phi) + c.x;
                 vertices[t].y =  r * cosf(theta) + c.y;
@@ -53,8 +53,8 @@ namespace Baikal
                 normals[t].x = sinf(theta) * cosf(phi);
                 normals[t].y = cosf(theta);
                 normals[t].z = -sinf(theta) * sinf(phi);
-                uvs[t].x = phi / (2 * (float)M_PI);
-                uvs[t].y = theta / ((float)M_PI);
+                uvs[t].x = float(j) / (lat - 2);
+                uvs[t].y = float(i) / (lon - 1);
                 ++t;
             }
         
@@ -226,8 +226,9 @@ namespace Baikal
             scene->AttachShape(mesh);
             scene->AttachAutoreleaseObject(mesh);
 
-            SingleBxdf* grey = new SingleBxdf(SingleBxdf::BxdfType::kLambert);
-            grey->SetInputValue("albedo", float4(0.7f, 0.7f, 0.7f, 1.f));
+            SingleBxdf* grey = new SingleBxdf(SingleBxdf::BxdfType::kMicrofacetGGX);
+            grey->SetInputValue("albedo", float4(0.99f, 0.99f, 0.99f, 1.f));
+            grey->SetInputValue("roughness", float4(0.025f, 0.025f, 0.025f, 1.f));
 
             Mesh* floor = CreateQuad(
                                     {
@@ -244,7 +245,7 @@ namespace Baikal
             mesh->SetMaterial(grey);
 
             SingleBxdf* emissive = new SingleBxdf(SingleBxdf::BxdfType::kEmissive);
-            emissive->SetInputValue("albedo", 2.f * float4(3.1f, 3.f, 2.8f, 1.f));
+            emissive->SetInputValue("albedo", 1.f * float4(3.1f, 3.f, 2.8f, 1.f));
             
             Mesh* light = CreateQuad(
                                      {
@@ -291,7 +292,7 @@ namespace Baikal
 
             SingleBxdf* spec = new SingleBxdf(SingleBxdf::BxdfType::kMicrofacetGGX);
             spec->SetInputValue("albedo", float4(0.9f, 0.9f, 0.9f, 1.f));
-            spec->SetInputValue("roughness", float4(0.02f, 0.02f, 0.02f, 1.f));
+            spec->SetInputValue("roughness", float4(0.2f, 0.2f, 0.2f, 1.f));
 
             auto normal_map = image_io->LoadImage("../Resources/Textures/test_normal.jpg");
             auto bump_map = image_io->LoadImage("../Resources/Textures/test_bump.jpg");
