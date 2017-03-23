@@ -208,7 +208,6 @@ float3 AreaLight_Sample(// Emissive object
     Scene_InterpolateAttributes(scene, shapeidx, primidx, uv, &p, &n, &tx, &area);
 
     *wo = p - dg->p;
-    *pdf = 1.f / area;
 
     int mat_idx = Scene_GetMaterialIndex(scene, shapeidx, primidx);
     Material mat = scene->materials[mat_idx];
@@ -221,8 +220,10 @@ float3 AreaLight_Sample(// Emissive object
 
     if (ndotv > 0.f)
     {
-        float denom = (length(*wo) * length(*wo));
-        return denom > 0.f ? ke * ndotv / denom : 0.f;
+        float dist2 = (length(*wo) * length(*wo));
+        float denom = fabs(ndotv) * area;
+        *pdf = denom > 0.f ? dist2 / denom : 0.f;
+        return dist2 > 0.f ? ke * ndotv / dist2 : 0.f;
     }
     else
     {
@@ -265,10 +266,10 @@ float AreaLight_GetPdf(// Emissive object
         Scene_InterpolateAttributes(scene, shapeidx, primidx, make_float2(a, b), &p, &n, &tx, &area);
 
         float3 d = p - dg->p;
-        float  ld = length(d);
-        float denom = (fabs(dot(normalize(d), dg->n)) * area);
+        float dist2 = dot(d, d) ;
+        float denom = (fabs(dot(-normalize(d), n)) * area);
 
-        return denom > 0.f ? ld * ld / denom : 0.f;
+        return denom > 0.f ? dist2 / denom : 0.f;
     }
     else
     {

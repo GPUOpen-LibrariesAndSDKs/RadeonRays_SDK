@@ -183,8 +183,8 @@ void Scene_FillDifferentialGeometry(// Scene
     float du2 = uv1.x - uv2.x;
     float dv1 = uv0.y - uv2.y;
     float dv2 = uv1.y - uv2.y;
-    float3 dp1 = v2 - v0;
-    float3 dp2 = v1 - v0;
+    float3 dp1 = v0 - v2;
+    float3 dp2 = v1 - v2;
     float det = du1 * dv2 - dv1 * du2;
 
     if (0 && det != 0.f)
@@ -192,6 +192,11 @@ void Scene_FillDifferentialGeometry(// Scene
         float invdet = 1.f / det;
         diffgeo->dpdu = normalize( (dv2 * dp1 - dv1 * dp2) * invdet );
         diffgeo->dpdv = normalize( (-du2 * dp1 + du1 * dp2) * invdet );
+        diffgeo->dpdu -= dot(diffgeo->n, diffgeo->dpdu) * diffgeo->n;
+        diffgeo->dpdv -= dot(diffgeo->n, diffgeo->dpdv) * diffgeo->n;
+        diffgeo->dpdv -= dot(diffgeo->dpdu, diffgeo->dpdv) * diffgeo->dpdu;
+        diffgeo->dpdu = normalize(diffgeo->dpdu);
+        diffgeo->dpdv = normalize(diffgeo->dpdv);
     }
     else
     {
