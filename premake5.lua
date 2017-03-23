@@ -250,6 +250,9 @@ else
         if fileExists("./Test/Test.lua") then
             dofile("./Test/Test.lua")
         end
+        if fileExists("./RprLoadStore/RprLoadStore.lua") then
+            dofile("./RprLoadStore/RprLoadStore.lua")
+        end
     end
 
     if _OPTIONS["use_opencl"] then

@@ -17,7 +17,7 @@
 //#include <Rpr/Math/mathutils.h>
 #include "../App/tiny_obj_loader.h"
 
-#include <RprLoadStore/include/RprLoadStore.h>
+#include <../RprLoadStore/RprLoadStore.h>
 #include <random>
 #include <algorithm>
 
@@ -382,9 +382,9 @@ void InitFR(int argc, char** argv)
 
 void LoadSceneFromFile(int argc, char** argv)
 {
-    std::string fileToLoad = //"C:/Users/Sean/Downloads/Synergy_test_01b.frs";
-        "../Resources/Obj/bumpMapTest.obj";
-
+	std::string fileToLoad = //"C:/Users/Sean/Downloads/Synergy_test_01b.frs";
+	   // "../Resources/Obj/bumpMapTest.obj";
+		"../Resources/frs/bath_new.frs";
     if (argc == 2)
     {
         fileToLoad = argv[1];

@@ -1,10 +1,10 @@
 project "Test"
     kind "ConsoleApp"
     location "../Test"
-    links {"RadeonRays", "CLW", "Calc", "Rpr", "RprLoadStore64"}
+    links {"RadeonRays", "CLW", "Calc", "Rpr", "RprLoadStore"}
     files { "../Test/**.h", "../Test/**.cpp", "../Test/**.cl", "../Test/**.fsh", "../Test/**.vsh" }
 
-    includedirs{ "../Rpr", "." }
+    includedirs{ "../Rpr", ".", "../RprLoadStore/" }
     libdirs { "../Rpr/RprLoadStore/lib", }
 
     if os.is("macosx") then
@@ -55,8 +55,5 @@ project "Test"
           'copy "..\\3rdparty\\embree\\bin\\%{cfg.platform}\\tbb.dll" "%{cfg.buildtarget.directory}"',
           'copy "..\\3rdparty\\oiio\\bin\\%{cfg.platform}\\OpenImageIO.dll" "%{cfg.buildtarget.directory}"',
           'copy "..\\3rdparty\\oiio\\bin\\%{cfg.platform}\\OpenImageIOD.dll" "%{cfg.buildtarget.directory}"',
-          'copy "..\\Rpr\\RprLoadStore\\bin\\RprLoadStore64.dll" "%{cfg.buildtarget.directory}"', 
-          'copy "..\\Rpr\\RprLoadStore\\bin\\OpenImageIO_RPR.dll" "%{cfg.buildtarget.directory}"', 
-          'copy "..\\Rpr\\RprLoadStore\\bin\\RadeonProRender64.dll" "%{cfg.buildtarget.directory}"' 
         }
     end
