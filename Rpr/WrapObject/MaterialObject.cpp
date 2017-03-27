@@ -20,12 +20,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
 #include <OpenImageIO/imageio.h>
-#include <math/int2.h>
 #include <map>
 
+#include "math/int2.h"
 #include "App/Scene/texture.h"
 #include "App/Scene/material.h"
 #include "App/Scene/IO/image_io.h"
+#include "App/Scene/iterator.h"
 #include "WrapObject/MaterialObject.h"
 #include "WrapObject/Exception.h"
 
@@ -43,9 +44,54 @@ namespace
                                                                 { "weight" , "weight" }, 
                                                                 { "ior" , "ior" },
                                                                 { "color0", "base_material" },
-                                                                { "color1", "top_material" }, };
-	const std::set<std::string> kIgnoreInputnames = { "roughness_y",
-														"rotation"};
+                                                                { "color1", "top_material" }, 
+                                                                { "data", "data" }, };
+
+    std::map<uint32_t, std::string> kMaterialNodeInputStrings = {
+        { RPR_MATERIAL_INPUT_COLOR, "color" },
+        { RPR_MATERIAL_INPUT_COLOR0, "color0" },
+        { RPR_MATERIAL_INPUT_COLOR1, "color1" },
+        { RPR_MATERIAL_INPUT_NORMAL, "normal" },
+        { RPR_MATERIAL_INPUT_UV, "uv" },
+        { RPR_MATERIAL_INPUT_DATA, "data" },
+        { RPR_MATERIAL_INPUT_ROUGHNESS, "roughness" },
+        { RPR_MATERIAL_INPUT_IOR, "ior" },
+        { RPR_MATERIAL_INPUT_ROUGHNESS_X, "roughness_x" },
+        { RPR_MATERIAL_INPUT_ROUGHNESS_Y, "roughness_y" },
+        { RPR_MATERIAL_INPUT_ROTATION, "rotation" },
+        { RPR_MATERIAL_INPUT_WEIGHT, "weight" },
+        { RPR_MATERIAL_INPUT_OP, "op" },
+        { RPR_MATERIAL_INPUT_INVEC, "invec" },
+        { RPR_MATERIAL_INPUT_UV_SCALE, "uv_scale" },
+        { RPR_MATERIAL_INPUT_VALUE, "value" },
+        { RPR_MATERIAL_INPUT_REFLECTANCE, "reflectance" },
+        { RPR_MATERIAL_INPUT_SCALE, "bumpscale" },
+        { RPR_MATERIAL_INPUT_SCATTERING, "sigmas" },
+        { RPR_MATERIAL_INPUT_ABSORBTION, "sigmaa" },
+        { RPR_MATERIAL_INPUT_EMISSION, "emission" },
+        { RPR_MATERIAL_INPUT_G, "g" },
+        { RPR_MATERIAL_INPUT_MULTISCATTER, "multiscatter" },
+
+        { RPR_MATERIAL_STANDARD_INPUT_DIFFUSE_COLOR, "diffuse.color" },
+        { RPR_MATERIAL_STANDARD_INPUT_DIFFUSE_NORMAL, "diffuse.normal" },
+        { RPR_MATERIAL_STANDARD_INPUT_GLOSSY_COLOR, "glossy.color" },
+        { RPR_MATERIAL_STANDARD_INPUT_GLOSSY_NORMAL, "glossy.normal" },
+        { RPR_MATERIAL_STANDARD_INPUT_GLOSSY_ROUGHNESS_X, "glossy.roughness_x" },
+        { RPR_MATERIAL_STANDARD_INPUT_GLOSSY_ROUGHNESS_Y, "glossy.roughness_y" },
+        { RPR_MATERIAL_STANDARD_INPUT_CLEARCOAT_COLOR, "clearcoat.color" },
+        { RPR_MATERIAL_STANDARD_INPUT_CLEARCOAT_NORMAL, "clearcoat.normal" },
+        { RPR_MATERIAL_STANDARD_INPUT_REFRACTION_COLOR, "refraction.color" },
+        { RPR_MATERIAL_STANDARD_INPUT_REFRACTION_NORMAL, "refraction.normal" },
+        { RPR_MATERIAL_STANDARD_INPUT_REFRACTION_ROUGHNESS, "refraction.roughness" },   //  REFRACTION doesn't have roughness parameter.
+        { RPR_MATERIAL_STANDARD_INPUT_REFRACTION_IOR, "refraction.ior" },
+        { RPR_MATERIAL_STANDARD_INPUT_TRANSPARENCY_COLOR, "transparency.color" },
+        { RPR_MATERIAL_STANDARD_INPUT_DIFFUSE_TO_REFRACTION_WEIGHT, "weights.diffuse2refraction" },
+        { RPR_MATERIAL_STANDARD_INPUT_GLOSSY_TO_DIFFUSE_WEIGHT, "weights.glossy2diffuse" },
+        { RPR_MATERIAL_STANDARD_INPUT_CLEARCOAT_TO_GLOSSY_WEIGHT, "weights.clearcoat2glossy" },
+        { RPR_MATERIAL_STANDARD_INPUT_TRANSPARENCY, "weights.transparency" },
+
+    };
+
 	//these materials are unsupported now:
 	const std::set<int> kUnsupportedMaterials = { RPR_MATERIAL_NODE_ADD,
 													 RPR_MATERIAL_NODE_ARITHMETIC,
@@ -304,78 +350,100 @@ std::string MaterialObject::TranslatePropName(const std::string& in, Type type)
 }
 
 
-void MaterialObject::SetInputN(const std::string& input_name, MaterialObject* input)
+void MaterialObject::SetInputMaterial(const std::string& input_name, MaterialObject* input)
 {
-	//TODO: fix
-	if (kUnsupportedMaterials.find(m_type) != kUnsupportedMaterials.end() ||
-		kUnsupportedMaterials.find(input->GetType()) != kUnsupportedMaterials.end())
-	{
-		//this is unsupported material, so don't update anything
-		return;
-	}
-	
-	//TODO: 
-	if (kIgnoreInputnames.find(input_name) != kIgnoreInputnames.end())
-	{
-		//ignore inputs
-		return;
-	}
+    //TODO: fix
+    if (kUnsupportedMaterials.find(m_type) != kUnsupportedMaterials.end() ||
+        kUnsupportedMaterials.find(input->GetType()) != kUnsupportedMaterials.end())
+    {
+        //this is unsupported material, so don't update anything
+        return;
+    }
 
-	//TODO: fix
-	//can't set material to color input
-	if (input_name == "color" && input->IsMaterial())
-	{
-		return;
-	}
+    //translated input name
+    std::string name;
+
+    //TODO:fix
+    //check is input name is registered
+    auto it_input = std::find_if(kMaterialNodeInputStrings.begin(), kMaterialNodeInputStrings.end(), 
+                            [&input_name](const std::pair<uint32_t, std::string>& input) { return input.second == input_name; });
+    if (it_input == kMaterialNodeInputStrings.end())
+    {
+        throw Exception(RPR_ERROR_INVALID_TAG, "MaterialObject: unregistered input name.");
+    }
+    try
+    {
+        name = TranslatePropName(input_name);
+    }
+    catch (Exception& e)
+    {
+        //failed to translate valid input name annd ignore it
+        //TODO:
+        return;
+    }
+    //TODO: fix
+    //can't set material to color input
+    if (input_name == "color" && input->IsMaterial())
+    {
+        return;
+    }
 
     //convert input name
-    if (m_type == Type::kImage)
+    if (input->m_type == Type::kImage)
     {
-        throw Exception(RPR_ERROR_INVALID_PARAMETER, "MaterialObject: trying SetInputN for rpr_image object.");
-    }
-
-    if (IsTexture())
-    {
-		//TODO: handle texture materials nodes
-		return;
-        //throw Exception(RPR_ERROR_UNIMPLEMENTED, "MaterialObject: SetInputN not implemented for Texture materials.");
-    }
-
-    //translate material name
-    std::string name = TranslatePropName(input_name, input->GetType());
-
-    if (input->IsTexture())
-    {
-        m_mat->SetInputValue(name, input->GetTexture());
-        //handle blend material case
-        if (m_type == kBlend && name == "weight")
+        if (IsTexture())
         {
-            MultiBxdf* blend_mat = dynamic_cast<MultiBxdf*>(m_mat);
-            blend_mat->SetType(MultiBxdf::Type::kMix);
+            if (name != "data")
+            {
+                throw Exception(RPR_ERROR_INVALID_TAG, "MaterialObject: inalid input tag");
+            }
+            //copy image data
+            Baikal::Texture* tex = input->GetTexture();
+            const char* data = tex->GetData();
+            RadeonRays::int2 size = tex->GetSize();
+            auto format = tex->GetFormat();
+            char* tex_data = new char[tex->GetSizeInBytes()];
+            memcpy(tex_data, data, tex->GetSizeInBytes());
+
+            m_tex->SetData(tex_data, size, format);
         }
-
-
     }
     else
     {
-        //handle blend material case
-        if (m_type == kBlend && name == "weight")
+        if (input->IsTexture())
         {
-            //expected only fresnel materials
-            if (input->m_type != Type::kFresnel && input->m_type != Type::kFresnelShlick)
+            m_mat->SetInputValue(name, input->GetTexture());
+            //handle blend material case
+            if (m_type == kBlend && name == "weight")
             {
-                throw Exception(RPR_ERROR_INVALID_PARAMETER, "MaterialObject: expected only fresnel materials as weight of blend material.");
+                MultiBxdf* blend_mat = dynamic_cast<MultiBxdf*>(m_mat);
+                blend_mat->SetType(MultiBxdf::Type::kMix);
             }
-            MultiBxdf* blend_mat = dynamic_cast<MultiBxdf*>(m_mat);
-            blend_mat->SetType(MultiBxdf::Type::kFresnelBlend);
-            m_mat->SetInputValue("ior", input->m_mat->GetInputValue("ior").float_value);
+
+
         }
         else
         {
-            m_mat->SetInputValue(name, input->GetMaterial());
+            //handle blend material case
+            if (m_type == kBlend && name == "weight")
+            {
+                //expected only fresnel materials
+                if (input->m_type != Type::kFresnel && input->m_type != Type::kFresnelShlick)
+                {
+                    throw Exception(RPR_ERROR_INVALID_PARAMETER, "MaterialObject: expected only fresnel materials as weight of blend material.");
+                }
+                MultiBxdf* blend_mat = dynamic_cast<MultiBxdf*>(m_mat);
+                blend_mat->SetType(MultiBxdf::Type::kFresnelBlend);
+                blend_mat->SetInputValue("ior", input->m_mat->GetInputValue("ior").float_value);
+            }
+            else
+            {
+                m_mat->SetInputValue(name, input->GetMaterial());
+            }
         }
     }
-
+    input->AddOutput(this, name);
+    Notify();
 }
 
 void MaterialObject::SetInputValue(const std::string& input_name, const RadeonRays::float4& val)
@@ -386,12 +454,28 @@ void MaterialObject::SetInputValue(const std::string& input_name, const RadeonRa
 		//this is unsupported material, so don't update anything
 		return;
 	}
-	//TODO: 
-	if (kIgnoreInputnames.find(input_name) != kIgnoreInputnames.end())
-	{
-		//ignore inputs
-		return;
-	}
+
+    std::string name;
+
+    //TODO:fix
+    //check is input name is registered
+    auto it_input = std::find_if(kMaterialNodeInputStrings.begin(), kMaterialNodeInputStrings.end(),
+                                [&input_name](const std::pair<uint32_t, std::string>& input) { return input.second == input_name; });
+    if (it_input == kMaterialNodeInputStrings.end())
+    {
+        throw Exception(RPR_ERROR_INVALID_TAG, "MaterialObject: unregistered input name.");
+    }
+    try
+    {
+        name = TranslatePropName(input_name);
+    }
+    catch (Exception& e)
+    {
+        //failed to translate valid input name annd ignore it
+        //TODO:
+        return;
+    }
+
     //convert input name
     if (m_type == Type::kImage)
     {
@@ -406,7 +490,6 @@ void MaterialObject::SetInputValue(const std::string& input_name, const RadeonRa
     }
 
     //translate material name
-    std::string name = TranslatePropName(input_name);
     m_mat->SetInputValue(name, val);
     
     //handle blend material case
@@ -415,39 +498,38 @@ void MaterialObject::SetInputValue(const std::string& input_name, const RadeonRa
         MultiBxdf* blend_mat = dynamic_cast<MultiBxdf*>(m_mat);
         blend_mat->SetType(MultiBxdf::Type::kMix);
     }
+
+    Notify();
 }
 
-void MaterialObject::SetInputImageData(const std::string& input_name, MaterialObject* input)
+void MaterialObject::AddOutput(MaterialObject* mat, const std::string& input_name)
 {
-	if (kUnsupportedMaterials.find(m_type) != kUnsupportedMaterials.end())
-	{
-		//this is unsupported material, so don't update anything
-		return;
-	}
+    m_out_mats[input_name] = mat;
+}
 
-    if (!input->IsTexture())
+void MaterialObject::RemoveOutput(const std::string& input_name)
+{
+    m_out_mats.erase(input_name);
+}
+
+void MaterialObject::Notify()
+{
+    for (auto mat : m_out_mats)
     {
-        throw Exception(RPR_ERROR_INVALID_PARAMETER, "MaterialObject: input material isn't rpr_image.");
+        mat.second->Update(this, mat.first);
     }
-    //ImageTexture case
-    if (IsTexture())
+}
+
+void MaterialObject::Update(MaterialObject* mat, const std::string& input_name)
+{
+    if (m_type == kBlend && input_name == "weight")
     {
-        if (input_name != "data")
+        //expected only fresnel materials
+        if (mat->m_type == Type::kFresnel || mat->m_type == Type::kFresnelShlick)
         {
-            throw Exception(RPR_ERROR_INVALID_TAG, "MaterialObject: inalid input tag");
+            MultiBxdf* blend_mat = dynamic_cast<MultiBxdf*>(m_mat);
+            blend_mat->SetType(MultiBxdf::Type::kFresnelBlend);
+            blend_mat->SetInputValue("ior", mat->m_mat->GetInputValue("ior").float_value);
         }
-        //copy image data
-        Baikal::Texture* tex = input->GetTexture();
-        const char* data = tex->GetData();
-        RadeonRays::int2 size = tex->GetSize();
-        auto format = tex->GetFormat();
-        char* tex_data = new char[tex->GetSizeInBytes()];
-        memcpy(tex_data, data, tex->GetSizeInBytes());
-
-        m_tex->SetData(tex_data, size, format);
-    }
-    else
-    {
-        SetInputN(input_name, input);
     }
 }

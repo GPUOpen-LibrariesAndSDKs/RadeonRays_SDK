@@ -36,8 +36,11 @@ THE SOFTWARE.
 #include "math/mathutils.h"
 
 //defines behaviour for unimplemented API part
-#define UNIMLEMENTED_FUNCTION return RPR_SUCCESS;
-//#define UNIMLEMENTED_FUNCTION UNIMLEMENTED_FUNCTION
+//#define UNIMLEMENTED_FUNCTION return RPR_SUCCESS;
+#define UNIMLEMENTED_FUNCTION return RPR_ERROR_UNIMPLEMENTED;
+
+#define UNSUPPORTED_FUNCTION return RPR_SUCCESS;
+//#define UNSUPPORTED_FUNCTION return RPR_ERROR_UNSUPPORTED;
 
 rpr_int rprRegisterPlugin(rpr_char const * path)
 {
@@ -208,24 +211,88 @@ rpr_int rprContextSetParameter1u(rpr_context in_context, rpr_char const * name, 
     return RPR_SUCCESS;
 }
 
-rpr_int rprContextSetParameter1f(rpr_context context, rpr_char const * name, rpr_float x)
+rpr_int rprContextSetParameter1f(rpr_context in_context, rpr_char const * name, rpr_float x)
 {
-    UNIMLEMENTED_FUNCTION
+    //cast data
+    ContextObject* context = WrapObject::Cast<ContextObject>(in_context);
+    if (!context)
+    {
+        return RPR_ERROR_INVALID_CONTEXT;
+    }
+
+    try
+    {
+        context->SetParameter(name, x);
+    }
+    catch (Exception& e)
+    {
+        return e.m_error;
+    }
+
+    return RPR_SUCCESS;
 }
 
-rpr_int rprContextSetParameter3f(rpr_context context, rpr_char const * name, rpr_float x, rpr_float y, rpr_float z)
+rpr_int rprContextSetParameter3f(rpr_context in_context, rpr_char const * name, rpr_float x, rpr_float y, rpr_float z)
 {
-    UNIMLEMENTED_FUNCTION
+    //cast data
+    ContextObject* context = WrapObject::Cast<ContextObject>(in_context);
+    if (!context)
+    {
+        return RPR_ERROR_INVALID_CONTEXT;
+    }
+
+    try
+    {
+        context->SetParameter(name, x, y, z);
+    }
+    catch (Exception& e)
+    {
+        return e.m_error;
+    }
+
+    return RPR_SUCCESS;
 }
 
-rpr_int rprContextSetParameter4f(rpr_context context, rpr_char const * name, rpr_float x, rpr_float y, rpr_float z, rpr_float w)
+rpr_int rprContextSetParameter4f(rpr_context in_context, rpr_char const * name, rpr_float x, rpr_float y, rpr_float z, rpr_float w)
 {
-    UNIMLEMENTED_FUNCTION
+    //cast data
+    ContextObject* context = WrapObject::Cast<ContextObject>(in_context);
+    if (!context)
+    {
+        return RPR_ERROR_INVALID_CONTEXT;
+    }
+
+    try
+    {
+        context->SetParameter(name, x, y, z, w);
+    }
+    catch (Exception& e)
+    {
+        return e.m_error;
+    }
+
+    return RPR_SUCCESS;
 }
 
-rpr_int rprContextSetParameterString(rpr_context context, rpr_char const * name, rpr_char const * value)
+rpr_int rprContextSetParameterString(rpr_context in_context, rpr_char const * name, rpr_char const * value)
 {
-    UNIMLEMENTED_FUNCTION
+    //cast data
+    ContextObject* context = WrapObject::Cast<ContextObject>(in_context);
+    if (!context)
+    {
+        return RPR_ERROR_INVALID_CONTEXT;
+    }
+
+    try
+    {
+        context->SetParameter(name, value);
+    }
+    catch (Exception& e)
+    {
+        return e.m_error;
+    }
+
+    return RPR_SUCCESS;
 }
 
 rpr_int rprContextRender(rpr_context in_context)
@@ -537,12 +604,12 @@ rpr_int rprCameraSetFStop(rpr_camera in_camera, rpr_float fstop)
 
 rpr_int rprCameraSetApertureBlades(rpr_camera camera, rpr_uint num_blades)
 {
-    UNIMLEMENTED_FUNCTION
+    UNSUPPORTED_FUNCTION
 }
 
 rpr_int rprCameraSetExposure(rpr_camera camera, rpr_float exposure)
 {
-    UNIMLEMENTED_FUNCTION
+    UNSUPPORTED_FUNCTION
 }
 
 rpr_int rprCameraSetMode(rpr_camera in_camera, rpr_camera_mode mode)
@@ -568,27 +635,27 @@ rpr_int rprCameraSetMode(rpr_camera in_camera, rpr_camera_mode mode)
 
 rpr_int rprCameraSetOrthoWidth(rpr_camera camera, rpr_float width)
 {
-    UNIMLEMENTED_FUNCTION
+    UNSUPPORTED_FUNCTION
 }
 
 rpr_int rprCameraSetFocalTilt(rpr_camera camera, rpr_float tilt)
 {
-    UNIMLEMENTED_FUNCTION
+    UNSUPPORTED_FUNCTION
 }
 
 rpr_int rprCameraSetIPD(rpr_camera camera, rpr_float ipd)
 {
-    UNIMLEMENTED_FUNCTION
+    UNSUPPORTED_FUNCTION
 }
 
 rpr_int rprCameraSetLensShift(rpr_camera camera, rpr_float shiftx, rpr_float shifty)
 {
-    UNIMLEMENTED_FUNCTION
+    UNSUPPORTED_FUNCTION
 }
 
 rpr_int rprCameraSetOrthoHeight(rpr_camera camera, rpr_float height)
 {
-    UNIMLEMENTED_FUNCTION
+    UNSUPPORTED_FUNCTION
 }
 
 rpr_int rprImageGetInfo(rpr_image image, rpr_image_info image_info, size_t size, void * data, size_t * size_ret)
@@ -625,22 +692,22 @@ rpr_int rprShapeSetTransform(rpr_shape in_shape, rpr_bool transpose, rpr_float c
 
 rpr_int rprShapeSetSubdivisionFactor(rpr_shape shape, rpr_uint factor)
 {	
-    UNIMLEMENTED_FUNCTION
+    UNSUPPORTED_FUNCTION
 }
 
 rpr_int rprShapeSetSubdivisionCreaseWeight(rpr_shape shape, rpr_float factor)
 {	
-	UNIMLEMENTED_FUNCTION
+    UNSUPPORTED_FUNCTION
 }
 
 rpr_int rprShapeSetSubdivisionBoundaryInterop(rpr_shape shape, rpr_subdiv_boundary_interfop_type type)
 {	
-	UNIMLEMENTED_FUNCTION
+    UNSUPPORTED_FUNCTION
 }
 
 rpr_int rprShapeSetDisplacementScale(rpr_shape shape, rpr_float minscale, rpr_float maxscale)
 {
-    UNIMLEMENTED_FUNCTION
+    UNSUPPORTED_FUNCTION
 }
 
 rpr_int rprShapeSetObjectGroupID(rpr_shape shape, rpr_uint objectGroupID)
@@ -650,7 +717,7 @@ rpr_int rprShapeSetObjectGroupID(rpr_shape shape, rpr_uint objectGroupID)
 
 rpr_int rprShapeSetDisplacementImage(rpr_shape shape, rpr_image image)
 {
-	UNIMLEMENTED_FUNCTION
+    UNSUPPORTED_FUNCTION
 }
 
 rpr_int rprShapeSetMaterial(rpr_shape in_shape, rpr_material_node in_node)
@@ -678,47 +745,47 @@ rpr_int rprShapeSetMaterial(rpr_shape in_shape, rpr_material_node in_node)
 
 rpr_int rprShapeSetMaterialOverride(rpr_shape shape, rpr_material_node node)
 {
-    UNIMLEMENTED_FUNCTION
+    UNSUPPORTED_FUNCTION
 }
 
 rpr_int rprShapeSetVolumeMaterial(rpr_shape shape, rpr_material_node node)
 {
-    UNIMLEMENTED_FUNCTION
+    UNSUPPORTED_FUNCTION
 }
 
-rpr_int rprShapeSetLinearMotion(rpr_shape shape, rpr_float x, rpr_float y, rpr_float z)
+rpr_int rprShapeSetLinearMotion(rpr_shape in_shape, rpr_float x, rpr_float y, rpr_float z)
 {
-    UNIMLEMENTED_FUNCTION
+    UNSUPPORTED_FUNCTION
 }
 
 rpr_int rprShapeSetAngularMotion(rpr_shape shape, rpr_float x, rpr_float y, rpr_float z, rpr_float w)
 {
-    UNIMLEMENTED_FUNCTION
+    UNSUPPORTED_FUNCTION
 }
 
 rpr_int rprShapeSetVisibility(rpr_shape shape, rpr_bool visible)
 {
-    UNIMLEMENTED_FUNCTION
+    UNSUPPORTED_FUNCTION
 }
 
 rpr_int rprShapeSetVisibilityPrimaryOnly(rpr_shape shape, rpr_bool visible)
 {
-    UNIMLEMENTED_FUNCTION
+    UNSUPPORTED_FUNCTION
 }
 
 rpr_int rprShapeSetVisibilityInSpecular(rpr_shape shape, rpr_bool visible)
 {
-    UNIMLEMENTED_FUNCTION
+    UNSUPPORTED_FUNCTION
 }
 
 rpr_int rprShapeSetShadowCatcher(rpr_shape shape, rpr_bool shadowCatcher)
 {
-    UNIMLEMENTED_FUNCTION
+    UNSUPPORTED_FUNCTION
 }
 
 rpr_int rprShapeSetShadow(rpr_shape shape, rpr_bool casts_shadow)
 {
-    UNIMLEMENTED_FUNCTION
+    UNSUPPORTED_FUNCTION
 }
 
 rpr_int rprLightSetTransform(rpr_light in_light, rpr_bool in_transpose, rpr_float const * in_transform)
@@ -1183,7 +1250,8 @@ rpr_int rprSceneGetInfo(rpr_scene in_scene, rpr_scene_info info, size_t size, vo
 		*input_data = scene->GetCamera();
 	}
 	}
-    UNIMLEMENTED_FUNCTION
+
+    return RPR_SUCCESS;
 }
 
 rpr_int rprSceneGetEnvironmentOverride(rpr_scene scene, rpr_environment_override overrride, rpr_light * out_light)
@@ -1354,7 +1422,7 @@ rpr_int rprMaterialNodeSetInputN(rpr_material_node in_node, rpr_char const * in_
 
     try
     {
-        mat->SetInputN(in_input, input_node);
+        mat->SetInputMaterial(in_input, input_node);
     }
     catch (Exception& e)
     {
@@ -1402,7 +1470,7 @@ rpr_int rprMaterialNodeSetInputImageData(rpr_material_node in_node, rpr_char con
     
     try
     {
-        mat->SetInputImageData(in_input, img);
+        mat->SetInputMaterial(in_input, img);
     }
     catch (Exception& e)
     {
@@ -1430,9 +1498,24 @@ rpr_int rprObjectDelete(void * in_obj)
     return RPR_SUCCESS;
 }
 
-rpr_int rprObjectSetName(void * node, rpr_char const * name)
+rpr_int rprObjectSetName(void * in_node, rpr_char const * in_name)
 {
-    UNIMLEMENTED_FUNCTION
+    //check nullptr
+    if (!in_node)
+    {
+        return RPR_ERROR_INVALID_OBJECT;
+    }
+
+    if (!in_name)
+    {
+        return RPR_ERROR_INVALID_PARAMETER;
+    }
+
+    //set name
+    WrapObject* node = WrapObject::Cast<WrapObject>(in_node);
+    node->SetName(in_name);
+
+    return RPR_SUCCESS;
 }
 
 rpr_int rprContextCreatePostEffect(rpr_context context, rpr_post_effect_type type, rpr_post_effect * out_effect)

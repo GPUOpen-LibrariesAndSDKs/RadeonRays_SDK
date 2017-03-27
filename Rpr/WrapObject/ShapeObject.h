@@ -21,10 +21,8 @@ THE SOFTWARE.
 ********************************************************************/
 #pragma once
 
-#include <RadeonProRender.h>
-
+#include "RadeonProRender.h"
 #include "App/Scene/shape.h"
-
 #include "WrapObject/WrapObject.h"
 #include "WrapObject/MaterialObject.h"
 

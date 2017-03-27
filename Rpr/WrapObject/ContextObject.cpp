@@ -35,6 +35,66 @@ THE SOFTWARE.
 #include "Scene/material.h"
 #include "Scene/light.h"
 
+namespace
+{
+    struct ParameterDesc
+    {
+        std::string name;
+        std::string desc;
+        rpr_parameter_type type;
+
+        ParameterDesc() {}
+        ParameterDesc(std::string const& n, std::string const& d, rpr_parameter_type t)
+            : name(n)
+            , desc(d)
+            , type(t)
+        {
+        }
+
+    };
+    std::map<uint32_t, ParameterDesc> kContextParameterDescriptions = {
+    { RPR_CONTEXT_AA_CELL_SIZE,{ "aacellsize", "Numbers of cells for stratified sampling", RPR_PARAMETER_TYPE_UINT } },
+    { RPR_CONTEXT_AA_SAMPLES,{ "aasamples", "Numbers of samples per pixel", RPR_PARAMETER_TYPE_UINT } },
+    { RPR_CONTEXT_IMAGE_FILTER_TYPE,{ "imagefilter.type", "Image filter to use", RPR_PARAMETER_TYPE_UINT } },
+    { RPR_CONTEXT_IMAGE_FILTER_BOX_RADIUS,{ "imagefilter.box.radius", "Image filter to use", RPR_PARAMETER_TYPE_FLOAT } },
+    { RPR_CONTEXT_IMAGE_FILTER_GAUSSIAN_RADIUS,{ "imagefilter.gaussian.radius", "Filter radius", RPR_PARAMETER_TYPE_FLOAT } },
+    { RPR_CONTEXT_IMAGE_FILTER_TRIANGLE_RADIUS,{ "imagefilter.triangle.radius", "Filter radius", RPR_PARAMETER_TYPE_FLOAT } },
+    { RPR_CONTEXT_IMAGE_FILTER_MITCHELL_RADIUS,{ "imagefilter.mitchell.radius", "Filter radius", RPR_PARAMETER_TYPE_FLOAT } },
+    { RPR_CONTEXT_IMAGE_FILTER_LANCZOS_RADIUS,{ "imagefilter.lanczos.radius", "Filter radius", RPR_PARAMETER_TYPE_FLOAT } },
+    { RPR_CONTEXT_IMAGE_FILTER_BLACKMANHARRIS_RADIUS,{ "imagefilter.blackmanharris.radius", "Filter radius", RPR_PARAMETER_TYPE_FLOAT } },
+    { RPR_CONTEXT_TONE_MAPPING_TYPE,{ "tonemapping.type", "Tonemapping operator", RPR_PARAMETER_TYPE_UINT } },
+    { RPR_CONTEXT_TONE_MAPPING_LINEAR_SCALE,{ "tonemapping.linear.scale", "Linear scale", RPR_PARAMETER_TYPE_FLOAT } },
+    { RPR_CONTEXT_TONE_MAPPING_PHOTO_LINEAR_SENSITIVITY,{ "tonemapping.photolinear.sensitivity", "Linear sensitivity", RPR_PARAMETER_TYPE_FLOAT } },
+    { RPR_CONTEXT_TONE_MAPPING_PHOTO_LINEAR_EXPOSURE,{ "tonemapping.photolinear.exposure", "Photolinear exposure", RPR_PARAMETER_TYPE_FLOAT } },
+    { RPR_CONTEXT_TONE_MAPPING_PHOTO_LINEAR_FSTOP,{ "tonemapping.photolinear.fstop", "Photolinear fstop", RPR_PARAMETER_TYPE_FLOAT } },
+    { RPR_CONTEXT_TONE_MAPPING_REINHARD02_PRE_SCALE,{ "tonemapping.reinhard02.prescale", "Reinhard prescale", RPR_PARAMETER_TYPE_FLOAT } },
+    { RPR_CONTEXT_TONE_MAPPING_REINHARD02_POST_SCALE,{ "tonemapping.reinhard02.postscale", "Reinhard postscale", RPR_PARAMETER_TYPE_FLOAT } },
+    { RPR_CONTEXT_TONE_MAPPING_REINHARD02_BURN,{ "tonemapping.reinhard02.burn", "Reinhard burn", RPR_PARAMETER_TYPE_FLOAT } },
+    { RPR_CONTEXT_MAX_RECURSION,{ "maxRecursion", "Ray trace depth", RPR_PARAMETER_TYPE_UINT } },
+    { RPR_CONTEXT_RAY_CAST_EPISLON,{ "raycastepsilon", "Ray epsilon", RPR_PARAMETER_TYPE_FLOAT } },
+    { RPR_CONTEXT_RADIANCE_CLAMP,{ "radianceclamp", "Max radiance value", RPR_PARAMETER_TYPE_FLOAT } },
+    { RPR_CONTEXT_X_FLIP,{ "xflip", "Flip framebuffer output along X axis", RPR_PARAMETER_TYPE_UINT } },
+    { RPR_CONTEXT_Y_FLIP,{ "yflip", "Flip framebuffer output along Y axis", RPR_PARAMETER_TYPE_UINT } },
+    { RPR_CONTEXT_TEXTURE_GAMMA,{ "texturegamma", "Texture gamma", RPR_PARAMETER_TYPE_FLOAT } },
+    { RPR_CONTEXT_DISPLAY_GAMMA,{ "displaygamma", "Display gamma", RPR_PARAMETER_TYPE_FLOAT } },
+    { RPR_CONTEXT_CLIPPING_PLANE,{ "clippingplane", "Clipping Plane", RPR_PARAMETER_TYPE_FLOAT } },
+    { RPR_CONTEXT_MATERIAL_STACK_SIZE,{ "stacksize", "Maximum number of nodes that a material graph can support. Constant value.", RPR_PARAMETER_TYPE_UINT } },
+    { RPR_CONTEXT_PDF_THRESHOLD,{ "pdfThreshold", "pdf Threshold", RPR_PARAMETER_TYPE_FLOAT } },
+    { RPR_CONTEXT_RENDER_MODE,{ "stage", "render mode", RPR_PARAMETER_TYPE_UINT } },
+    { RPR_CONTEXT_ROUGHNESS_CAP,{ "roughnessCap", "roughness Cap", RPR_PARAMETER_TYPE_FLOAT } },
+    { RPR_CONTEXT_GPU0_NAME,{ "gpu0name", "Name of the GPU index 0 in context. Constant value.", RPR_PARAMETER_TYPE_STRING } },
+    { RPR_CONTEXT_GPU1_NAME,{ "gpu1name", "Name of the GPU index 1 in context. Constant value.", RPR_PARAMETER_TYPE_STRING } },
+    { RPR_CONTEXT_GPU2_NAME,{ "gpu2name", "Name of the GPU index 2 in context. Constant value.", RPR_PARAMETER_TYPE_STRING } },
+    { RPR_CONTEXT_GPU3_NAME,{ "gpu3name", "Name of the GPU index 3 in context. Constant value.", RPR_PARAMETER_TYPE_STRING } },
+    { RPR_CONTEXT_GPU4_NAME,{ "gpu4name", "Name of the GPU index 4 in context. Constant value.", RPR_PARAMETER_TYPE_STRING } },
+    { RPR_CONTEXT_GPU5_NAME,{ "gpu5name", "Name of the GPU index 5 in context. Constant value.", RPR_PARAMETER_TYPE_STRING } },
+    { RPR_CONTEXT_GPU6_NAME,{ "gpu6name", "Name of the GPU index 6 in context. Constant value.", RPR_PARAMETER_TYPE_STRING } },
+    { RPR_CONTEXT_GPU7_NAME,{ "gpu7name", "Name of the GPU index 7 in context. Constant value.", RPR_PARAMETER_TYPE_STRING } },
+    { RPR_CONTEXT_CPU_NAME,{ "cpuname", "Name of the CPU in context. Constant value.", RPR_PARAMETER_TYPE_STRING } },
+    };
+
+}// anonymous
+
 ContextObject::ContextObject(rpr_creation_flags creation_flags)
     : m_current_scene(nullptr)
 {
@@ -219,4 +279,34 @@ FramebufferObject* ContextObject::CreateFrameBuffer(rpr_framebuffer_format const
     Baikal::Output* out = c.renderer->CreateOutput(in_fb_desc->fb_width, in_fb_desc->fb_height);
     result->SetOutput(out);
     return result;
+}
+
+void ContextObject::SetParameter(const std::string& input, float x, float y, float z, float w)
+{
+    auto it = std::find_if(kContextParameterDescriptions.begin(), kContextParameterDescriptions.end(), [input](std::pair<uint32_t, ParameterDesc> desc) { return desc.second.name == input; });
+    if (it == kContextParameterDescriptions.end())
+    {
+        throw Exception(RPR_ERROR_INVALID_TAG, "ContextObject: invalid context input parameter.");
+    }
+
+    it = std::find_if(kContextParameterDescriptions.begin(), kContextParameterDescriptions.end(), [input](std::pair<uint32_t, ParameterDesc> desc){ return desc.second.type == RPR_PARAMETER_TYPE_FLOAT; });
+    if (it == kContextParameterDescriptions.end())
+    {
+        throw Exception(RPR_ERROR_INVALID_PARAMETER_TYPE, "ContextObject: invalid context input type.");
+    }
+}
+
+void ContextObject::SetParameter(const std::string& input, const std::string& value)
+{
+    auto it = std::find_if(kContextParameterDescriptions.begin(), kContextParameterDescriptions.end(), [input](std::pair<uint32_t, ParameterDesc> desc) { return desc.second.name == input; });
+    if (it == kContextParameterDescriptions.end())
+    {
+        throw Exception(RPR_ERROR_INVALID_TAG, "ContextObject: invalid context input parameter.");
+    }
+
+    it = std::find_if(kContextParameterDescriptions.begin(), kContextParameterDescriptions.end(), [input](std::pair<uint32_t, ParameterDesc> desc) { return desc.second.type == RPR_PARAMETER_TYPE_STRING; });
+    if (it == kContextParameterDescriptions.end())
+    {
+        throw Exception(RPR_ERROR_INVALID_PARAMETER_TYPE, "ContextObject: invalid context input type.");
+    }
 }

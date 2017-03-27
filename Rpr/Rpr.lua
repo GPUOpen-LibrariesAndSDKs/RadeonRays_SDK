@@ -3,8 +3,7 @@ project "Rpr"
     location "../Rpr"
     links {"RadeonRays", "CLW", "Calc"}
     files { "../Rpr/**.h", "../Rpr/**.cpp", "../App/**.h", "../App/**.cpp" }
-    removefiles{"../App/main.cpp",}
-
+    removefiles{"../App/main.cpp","../App/main_benchmark.cpp"}
     includedirs{ "../RadeonRays/include", "../CLW", "../App", "." }
 
     if os.is("macosx") then
@@ -20,14 +19,12 @@ project "Rpr"
         linkoptions { '/DEF:"RadeonProRender.def"' }
 
         links {"RadeonRays",}
-        if not _OPTIONS["benchmark"] then
-            links {"freeglut", "glew"}
+        links {"freeglut", "glew"}
+        libdirs {   "../3rdparty/glew/lib/%{cfg.platform}", 
+                    "../3rdparty/freeglut/lib/%{cfg.platform}", 
+                    "../3rdparty/embree/lib/%{cfg.platform}", 
+                    "../3rdparty/oiio/lib/%{cfg.platform}"}
 
-        end
-            libdirs {   "../3rdparty/glew/lib/%{cfg.platform}", 
-                        "../3rdparty/freeglut/lib/%{cfg.platform}", 
-                        "../3rdparty/embree/lib/%{cfg.platform}", 
-                        "../3rdparty/oiio/lib/%{cfg.platform}"}
         configuration {"Debug"}
             links {"OpenImageIOD"}
         configuration {"Release"}
@@ -67,19 +64,6 @@ project "Rpr"
         end
     end
 
-    if _OPTIONS["benchmark"] then
-        defines{"APP_BENCHMARK"}
-        removefiles{"../App/main.cpp",
-                    "../App/shader_manager.cpp",}
-    else
-        removefiles {"../App/main_benchmark.cpp"}
-    end
-    -- if _OPTIONS["embed_kernels"] then
-    --      configuration {}
-    --      defines {"FR_EMBED_KERNELS"}
-    --      os.execute("python ../Tools/scripts/stringify.py ./CL/ > ./CL/cache/kernels.h")
---      print ">> App: CL kernels embedded"
---    end
 
     configuration {"x32", "Debug"}
         targetdir "../Bin/Debug/x86"

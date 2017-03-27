@@ -22,11 +22,10 @@ THE SOFTWARE.
 #pragma once
 
 #include "WrapObject.h"
-
-#include <math/matrix.h>
-#include <math/float2.h>
-#include <math/float3.h>
-#include <RadeonProRender.h>
+#include "math/matrix.h"
+#include "math/float2.h"
+#include "math/float3.h"
+#include "RadeonProRender.h"
 
 namespace Baikal
 {

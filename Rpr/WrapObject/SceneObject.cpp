@@ -110,12 +110,14 @@ void SceneObject::GetShapeList(void* out_list)
 
 void SceneObject::AddEmissive()
 {
-	//TODO: check scene isn't changed
-	//check do we have emissives
-	if (!m_emmisive_lights.empty())
+    //TODO: check scene isn't changed
+    //recreate amissives if scene is dirty
+    if (!m_scene->GetDirtyFlags())
 	{
 		return;
 	}
+    RemoveEmissive();
+
 	//handle emissive materials
 	for (std::unique_ptr<Baikal::Iterator> it_shape(m_scene->CreateShapeIterator()); it_shape->IsValid(); it_shape->Next())
 	{
