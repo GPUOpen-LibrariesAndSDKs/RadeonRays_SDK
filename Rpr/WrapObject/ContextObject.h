@@ -51,6 +51,8 @@ public:
     
     //context info
     void GetRenderStatistics(void * out_data, size_t * out_size_ret) const;
+    void SetParameter(const std::string& input, float x, float y = 0.f, float z = 0.f, float w = 0.f);
+    void SetParameter(const std::string& input, const std::string& value);
 
     //AOV
     void SetAOV(rpr_int in_aov, FramebufferObject* buffer);

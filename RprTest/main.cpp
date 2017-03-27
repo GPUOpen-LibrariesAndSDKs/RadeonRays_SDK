@@ -15,7 +15,7 @@ using namespace RadeonRays;
 namespace
 {
     //control how many frames to render in tests for resulting image
-    int kRenderIterations = 10;
+    int kRenderIterations = 256;
     //default structure for Vertex data
     struct Vertex
     {
@@ -511,7 +511,7 @@ void ComplexRenderTest()
     assert(status == RPR_SUCCESS);
     status = rprMaterialNodeSetInputF(diffuse, "color", 0.9f, 0.9f, 0.f, 1.0f);
     assert(status == RPR_SUCCESS);
-    rpr_image img = NULL; status = rprContextCreateImageFromFile(context, "../Resources/Textures/scratched.png", &img);
+    rpr_image img = NULL; status = rprContextCreateImageFromFile(context, "../Resources/Textures/test_diffuse.jpg", &img);
     assert(status == RPR_SUCCESS);
     status = rprMaterialNodeSetInputImageData(diffuse, "color", img);
     assert(status == RPR_SUCCESS);
@@ -533,7 +533,7 @@ void ComplexRenderTest()
     rpr_light light = NULL; status = rprContextCreatePointLight(context, &light);
     assert(status == RPR_SUCCESS);
     matrix lightm = translation(float3(0, 6, 0)) * rotation_z(3.14f);
-    status = rprLightSetTransform(light, true, &lightm.m00);
+    status = rprLightSetTransform(light, false, &lightm.m00);
     assert(status == RPR_SUCCESS);
     status = rprPointLightSetRadiantPower3f(light, 100, 100, 100);
     assert(status == RPR_SUCCESS);
@@ -693,7 +693,7 @@ void EnvLightClearTest()
     status = rprShapeSetMaterial(mesh, diffuse);
     assert(status == RPR_SUCCESS);
     matrix m = translation(float3(0, 1, 0)) * scale(float3(0.2, 0.2, 0.2));
-    status = rprShapeSetTransform(mesh, true, &m.m00);
+    status = rprShapeSetTransform(mesh, false, &m.m00);
     assert(status == RPR_SUCCESS);
 
     //plane mesh
@@ -732,7 +732,7 @@ void EnvLightClearTest()
     status = rprEnvironmentLightSetIntensityScale(light, 5.f);
     assert(status == RPR_SUCCESS);
     matrix lightm = rotation_y(M_PI);
-    status = rprLightSetTransform(light, true, &lightm.m00);
+    status = rprLightSetTransform(light, false, &lightm.m00);
     assert(status == RPR_SUCCESS);
     status = rprSceneAttachLight(scene, light);
     assert(status == RPR_SUCCESS);
@@ -876,7 +876,7 @@ void DefaultMaterialTest()
         num_face_vertices, 2, &mesh);
     assert(status == RPR_SUCCESS);
     matrix r = rotation_x(M_PI_2);
-    status = rprShapeSetTransform(mesh, true, &r.m00);
+    status = rprShapeSetTransform(mesh, false, &r.m00);
     assert(status == RPR_SUCCESS);
     status = rprSceneAttachShape(scene, mesh);
     assert(status == RPR_SUCCESS);
@@ -897,7 +897,7 @@ void DefaultMaterialTest()
     rpr_light light = NULL; status = rprContextCreatePointLight(context, &light);
     assert(status == RPR_SUCCESS);
     matrix lightm = translation(float3(0, 0, 6));
-    status = rprLightSetTransform(light, true, &lightm.m00);
+    status = rprLightSetTransform(light, false, &lightm.m00);
     assert(status == RPR_SUCCESS);
     status = rprPointLightSetRadiantPower3f(light, 200, 200, 200);
     assert(status == RPR_SUCCESS);
@@ -994,7 +994,7 @@ void NullShaderTest()
         num_face_vertices, 2, &mesh);
     assert(status == RPR_SUCCESS);
     matrix r = rotation_x(M_PI_2);
-    status = rprShapeSetTransform(mesh, true, &r.m00);
+    status = rprShapeSetTransform(mesh, false, &r.m00);
     assert(status == RPR_SUCCESS);
     status = rprSceneAttachShape(scene, mesh);
     assert(status == RPR_SUCCESS);
@@ -1021,7 +1021,7 @@ void NullShaderTest()
     rpr_light light = NULL; status = rprContextCreatePointLight(context, &light);
     assert(status == RPR_SUCCESS);
     matrix lightm = translation(float3(0, 0, 6));
-    status = rprLightSetTransform(light, true, &lightm.m00);
+    status = rprLightSetTransform(light, false, &lightm.m00);
     assert(status == RPR_SUCCESS);
     status = rprPointLightSetRadiantPower3f(light, 200, 200, 200);
     assert(status == RPR_SUCCESS);
@@ -1186,7 +1186,7 @@ void TiledRender()
     status = rprSceneAttachShape(scene, mesh);
     assert(status == RPR_SUCCESS);
     matrix m = rotation_x(M_PI_4) * rotation_y(M_PI);
-    status = rprShapeSetTransform(mesh, true, &m.m00);
+    status = rprShapeSetTransform(mesh, false, &m.m00);
     assert(status == RPR_SUCCESS);
 
     rpr_shape plane_mesh = NULL; status = rprContextCreateMesh(context,
@@ -1227,7 +1227,7 @@ void TiledRender()
     rpr_light light = NULL; status = rprContextCreatePointLight(context, &light);
     assert(status == RPR_SUCCESS);
     matrix lightm = translation(float3(0, 6, 0));
-    status = rprLightSetTransform(light, true, &lightm.m00);
+    status = rprLightSetTransform(light, false, &lightm.m00);
     assert(status == RPR_SUCCESS);
     status = rprPointLightSetRadiantPower3f(light, 60, 60, 60);
     assert(status == RPR_SUCCESS);
@@ -1397,7 +1397,7 @@ void test_feature_cameraDOF()
     rpr_light light = NULL; status = rprContextCreatePointLight(context, &light);
     assert(status == RPR_SUCCESS);
     matrix lightm = translation(float3(0.0f, +0.6f, 4.0f));
-    status = rprLightSetTransform(light, true, &lightm.m00);
+    status = rprLightSetTransform(light, false, &lightm.m00);
     assert(status == RPR_SUCCESS);
     status = rprPointLightSetRadiantPower3f(light, 1000, 1000, 1000);
     assert(status == RPR_SUCCESS);
@@ -1548,7 +1548,7 @@ void test_feature_ContextImageFromData()
     rpr_light light = NULL; status = rprContextCreatePointLight(context, &light);
     assert(status == RPR_SUCCESS);
     matrix lightm = translation(float3(0, 0, 4)) * rotation_z(3.14f);
-    status = rprLightSetTransform(light, true, &lightm.m00);
+    status = rprLightSetTransform(light, false, &lightm.m00);
     assert(status == RPR_SUCCESS);
     status = rprPointLightSetRadiantPower3f(light, 40, 40, 40);
     assert(status == RPR_SUCCESS);
@@ -1844,7 +1844,7 @@ void test_feature_LightDirectional()
     rpr_light light = NULL; status = rprContextCreateDirectionalLight(context, &light);
     assert(status == RPR_SUCCESS);
     matrix lightm = translation(float3(1.0f, 0.0f, 1.0f)) * rotation_y(0.5f*3.14f / 2.0f);
-    status = rprLightSetTransform(light, true, &lightm.m00);
+    status = rprLightSetTransform(light, false, &lightm.m00);
     assert(status == RPR_SUCCESS);
     status = rprDirectionalLightSetRadiantPower3f(light, 1.0f, 1.0f, 1.0f);
     assert(status == RPR_SUCCESS);
@@ -1872,7 +1872,7 @@ void test_feature_LightDirectional()
 
     //dynamic:
     matrix lightm2 = translation(float3(0.0f, 0.0f, 1.0f)) * rotation_y(0.0f*3.14f / 2.0f);
-    status = rprLightSetTransform(light, true, &lightm2.m00);
+    status = rprLightSetTransform(light, false, &lightm2.m00);
     assert(status == RPR_SUCCESS);
     status = rprDirectionalLightSetRadiantPower3f(light, 8.0f, 8.0f, 0.0f);
     assert(status == RPR_SUCCESS);
@@ -2149,14 +2149,14 @@ void BumpmapTest()
     assert(status == RPR_SUCCESS);
 
     //materials
-    rpr_image img = NULL; status = rprContextCreateImageFromFile(context, "../Resources/Textures/maniwall.png", &img);
+    rpr_image img = NULL; status = rprContextCreateImageFromFile(context, "../Resources/Textures/test_diffuse.jpg", &img);
     assert(status == RPR_SUCCESS);
     rpr_material_node materialNodeTextureA = NULL; status = rprMaterialSystemCreateNode(matsys, RPR_MATERIAL_NODE_IMAGE_TEXTURE, &materialNodeTextureA);
     assert(status == RPR_SUCCESS);
     status = rprMaterialNodeSetInputImageData(materialNodeTextureA, "data", img);
     assert(status == RPR_SUCCESS);
 
-    rpr_image imgBump = NULL; status = rprContextCreateImageFromFile(context, "../Resources/Textures/maniwallbp1.png", &imgBump);
+    rpr_image imgBump = NULL; status = rprContextCreateImageFromFile(context, "../Resources/Textures/test_normal.jpg", &imgBump);
     assert(status == RPR_SUCCESS);
     rpr_material_node materialNodeTextureB = NULL; status = rprMaterialSystemCreateNode(matsys, RPR_MATERIAL_NODE_NORMAL_MAP, &materialNodeTextureB);
     assert(status == RPR_SUCCESS);
@@ -2191,7 +2191,7 @@ void BumpmapTest()
     rpr_light light = NULL; status = rprContextCreatePointLight(context, &light);
     assert(status == RPR_SUCCESS);
     matrix lightm = translation(float3(0, 6, 0));
-    status = rprLightSetTransform(light, true, &lightm.m00);
+    status = rprLightSetTransform(light, false, &lightm.m00);
     assert(status == RPR_SUCCESS);
     status = rprPointLightSetRadiantPower3f(light, 200, 200, 200);
     assert(status == RPR_SUCCESS);
@@ -2271,7 +2271,7 @@ void test_feature_shaderBumpmap()
     status = rprMaterialNodeSetInputF(shaderMicrofacet, "color", 0.3f, 0.7f, 0.9f, 1.0f);
     assert(status == RPR_SUCCESS);
 
-    rpr_image imageInputA = NULL; status = rprContextCreateImageFromFile(context, "../Resources/Textures/BumpYoung.png", &imageInputA);
+    rpr_image imageInputA = NULL; status = rprContextCreateImageFromFile(context, "../Resources/Textures/test_bump.jpg", &imageInputA);
     assert(status == RPR_SUCCESS);
     rpr_material_node textureNormalMap = NULL; status = rprMaterialSystemCreateNode(matsys, RPR_MATERIAL_NODE_BUMP_MAP, &textureNormalMap);
     assert(status == RPR_SUCCESS);
@@ -2328,7 +2328,7 @@ void test_feature_shaderBumpmap()
     rpr_light light = NULL; status = rprContextCreatePointLight(context, &light);
     assert(status == RPR_SUCCESS);
     matrix lightm = translation(float3(0, 0, 4)) * rotation_z(3.14f);
-    status = rprLightSetTransform(light, true, &lightm.m00);
+    status = rprLightSetTransform(light, false, &lightm.m00);
     assert(status == RPR_SUCCESS);
     status = rprPointLightSetRadiantPower3f(light, 40, 40, 40);
     assert(status == RPR_SUCCESS);
@@ -2359,7 +2359,7 @@ void test_feature_shaderBumpmap()
     status = rprMaterialNodeSetInputF(shaderMicrofacet, "color", 0.9f, 0.7f, 0.3f, 1.0f);
     assert(status == RPR_SUCCESS);
 
-    rpr_image imageInputB = NULL; status = rprContextCreateImageFromFile(context, "../Resources/Textures/displacement.png", &imageInputB);
+    rpr_image imageInputB = NULL; status = rprContextCreateImageFromFile(context, "../Resources/Textures/test_bump.jpg", &imageInputB);
     assert(status == RPR_SUCCESS);
     rpr_material_node textureNormalMap2 = NULL; status = rprMaterialSystemCreateNode(matsys, RPR_MATERIAL_NODE_BUMP_MAP, &textureNormalMap2);
     assert(status == RPR_SUCCESS);
@@ -2445,7 +2445,7 @@ void test_feature_shaderTypeLayered()
     assert(status == RPR_SUCCESS);
     status = rprMaterialNodeSetInputF(specularSphere, "color", 0.1f, 0.9f, 0.2f, 1.0f);
     assert(status == RPR_SUCCESS);
-    rpr_image imageInputA = NULL; status = rprContextCreateImageFromFile(context, "../Resources/Textures/rocky.png", &imageInputA);
+    rpr_image imageInputA = NULL; status = rprContextCreateImageFromFile(context, "../Resources/Textures/test_normal.jpg", &imageInputA);
     assert(status == RPR_SUCCESS);
     rpr_material_node textureNormalMap = NULL; status = rprMaterialSystemCreateNode(matsys, RPR_MATERIAL_NODE_NORMAL_MAP, &textureNormalMap);
     assert(status == RPR_SUCCESS);
@@ -2511,7 +2511,7 @@ void test_feature_shaderTypeLayered()
     rpr_light light = NULL; status = rprContextCreatePointLight(context, &light);
     assert(status == RPR_SUCCESS);
     matrix lightm = translation(float3(0, 0, 4)) * rotation_z(3.14f);
-    status = rprLightSetTransform(light, true, &lightm.m00);
+    status = rprLightSetTransform(light, false, &lightm.m00);
     assert(status == RPR_SUCCESS);
     status = rprPointLightSetRadiantPower3f(light, 40, 40, 40);
     assert(status == RPR_SUCCESS);
@@ -2541,7 +2541,7 @@ void test_feature_shaderTypeLayered()
 
 
     //dynamic : change parameters :
-    rpr_image imageInputB = NULL; status = rprContextCreateImageFromFile(context, "../Resources/Textures/RedCeramicTile.png", &imageInputB);
+    rpr_image imageInputB = NULL; status = rprContextCreateImageFromFile(context, "../Resources/Textures/test_normal.jpg", &imageInputB);
     assert(status == RPR_SUCCESS);
     rpr_material_node textureNormalMap2 = NULL; status = rprMaterialSystemCreateNode(matsys, RPR_MATERIAL_NODE_NORMAL_MAP, &textureNormalMap2);
     assert(status == RPR_SUCCESS);
@@ -2682,25 +2682,155 @@ void LoadFrs(const std::string& file)
 
 }
 
+void UpdateMaterial()
+{
+    //check material properties updated properly
+    //on blend material
+    rpr_int status = RPR_SUCCESS;
+    rpr_context	context;
+    status = rprCreateContext(RPR_API_VERSION, nullptr, 0, RPR_CREATION_FLAGS_ENABLE_GPU0, NULL, NULL, &context);
+    assert(status == RPR_SUCCESS);
+    rpr_material_system matsys = NULL;
+    status = rprContextCreateMaterialSystem(context, 0, &matsys);
+    assert(status == RPR_SUCCESS);
+
+    rpr_scene scene = NULL; status = rprContextCreateScene(context, &scene);
+    assert(status == RPR_SUCCESS);
+
+    //material
+    rpr_material_node red = NULL; status = rprMaterialSystemCreateNode(matsys, RPR_MATERIAL_NODE_DIFFUSE, &red);
+    assert(status == RPR_SUCCESS);
+    status = rprMaterialNodeSetInputF(red, "color", 1.f, 0.f, 0.f, 1.f);
+    assert(status == RPR_SUCCESS);
+    rpr_material_node green = NULL; status = rprMaterialSystemCreateNode(matsys, RPR_MATERIAL_NODE_DIFFUSE, &green);
+    assert(status == RPR_SUCCESS);
+    status = rprMaterialNodeSetInputF(green, "color", 0.f, 1.f, 0.f, 1.f);
+    assert(status == RPR_SUCCESS);
+    rpr_material_node layered = NULL; status = rprMaterialSystemCreateNode(matsys, RPR_MATERIAL_NODE_BLEND, &layered);
+    assert(status == RPR_SUCCESS);
+    status = rprMaterialNodeSetInputN(layered, "color0", red);
+    status = rprMaterialNodeSetInputN(layered, "color1", green);
+    assert(status == RPR_SUCCESS);
+    rpr_material_node fresnel = NULL; status = rprMaterialSystemCreateNode(matsys, RPR_MATERIAL_NODE_FRESNEL, &fresnel);
+    assert(status == RPR_SUCCESS);
+    auto ior = 0.f;
+    status = rprMaterialNodeSetInputF(fresnel, "ior", ior, ior, ior, ior);
+    assert(status == RPR_SUCCESS);
+    status = rprMaterialNodeSetInputN(layered, "weight", fresnel);
+    assert(status == RPR_SUCCESS);
+
+    //sphere
+    rpr_shape mesh = CreateSphere(context, 64, 32, 1.f, float3());
+    assert(status == RPR_SUCCESS);
+    status = rprSceneAttachShape(scene, mesh);
+    assert(status == RPR_SUCCESS);
+    status = rprShapeSetMaterial(mesh, layered);
+    assert(status == RPR_SUCCESS);
+
+    //light
+    rpr_light light = NULL; status = rprContextCreateEnvironmentLight(context, &light);
+    assert(status == RPR_SUCCESS);
+    rpr_image imageInput = NULL; status = rprContextCreateImageFromFile(context, "../Resources/Textures/studio015.hdr", &imageInput);
+    assert(status == RPR_SUCCESS);
+    status = rprEnvironmentLightSetImage(light, imageInput);
+    assert(status == RPR_SUCCESS);
+    status = rprSceneAttachLight(scene, light);
+    assert(status == RPR_SUCCESS);
+
+    //camera
+    rpr_camera camera = NULL; status = rprContextCreateCamera(context, &camera);
+    assert(status == RPR_SUCCESS);
+    status = rprCameraLookAt(camera, 0, 0, 3, 0, 0, 0, 0, 1, 0);
+    assert(status == RPR_SUCCESS);
+    status = rprCameraSetFocalLength(camera, 23.f);
+    assert(status == RPR_SUCCESS);
+    status = rprCameraSetFStop(camera, 5.4f);
+    assert(status == RPR_SUCCESS);
+    status = rprSceneSetCamera(scene, camera);
+    assert(status == RPR_SUCCESS);
+
+    status = rprContextSetScene(context, scene);
+    assert(status == RPR_SUCCESS);
+
+    //light
+
+    //setup out
+    rpr_framebuffer_desc desc;
+    desc.fb_width = 800;
+    desc.fb_height = 600;
+
+    rpr_framebuffer_format fmt = { 4, RPR_COMPONENT_TYPE_FLOAT32 };
+    rpr_framebuffer frame_buffer = NULL; status = rprContextCreateFrameBuffer(context, fmt, &desc, &frame_buffer);
+    assert(status == RPR_SUCCESS);
+    status = rprContextSetAOV(context, RPR_AOV_COLOR, frame_buffer);
+    assert(status == RPR_SUCCESS);
+    status = rprFrameBufferClear(frame_buffer);
+    assert(status == RPR_SUCCESS);
+
+    //render
+    for (int i = 0; i < kRenderIterations; ++i)
+    {
+        status = rprContextRender(context);
+        assert(status == RPR_SUCCESS);
+    }
+    status = rprFrameBufferSaveToFile(frame_buffer, "Output/UpdateMaterial_1.jpg");
+
+    //update ior
+    ior = 1.f;
+    status = rprMaterialNodeSetInputF(fresnel, "ior", ior, ior, ior, ior);
+    assert(status == RPR_SUCCESS);
+    status = rprFrameBufferClear(frame_buffer);
+    assert(status == RPR_SUCCESS);
+    for (int i = 0; i < kRenderIterations; ++i)
+    {
+        status = rprContextRender(context);
+        assert(status == RPR_SUCCESS);
+    }
+    status = rprFrameBufferSaveToFile(frame_buffer, "Output/UpdateMaterial_2.jpg");
+
+    assert(status == RPR_SUCCESS);
+    rpr_render_statistics rs;
+    status = rprContextGetInfo(context, RPR_CONTEXT_RENDER_STATISTICS, sizeof(rpr_render_statistics), &rs, NULL);
+    assert(status == RPR_SUCCESS);
+
+
+
+    //cleanup
+    status = rprSceneDetachLight(scene, light);
+    assert(status == RPR_SUCCESS);
+    status = rprObjectDelete(light); light = NULL;
+    assert(status == RPR_SUCCESS);
+    status = rprSceneSetCamera(scene, NULL);
+    assert(status == RPR_SUCCESS);
+    status = rprObjectDelete(scene); scene = NULL;
+    assert(status == RPR_SUCCESS);
+    status = rprObjectDelete(camera); camera = NULL;
+    assert(status == RPR_SUCCESS);
+    status = rprObjectDelete(frame_buffer); frame_buffer = NULL;
+    assert(status == RPR_SUCCESS);
+    status = rprObjectDelete(matsys); matsys = NULL;
+    assert(status == RPR_SUCCESS);
+}
 int main(int argc, char* argv[])
 {
 	//MeshCreationTest();
- //   SimpleRenderTest();
- //   ComplexRenderTest();
- //   EnvLightClearTest();
- //   MemoryStatistics();
- //   DefaultMaterialTest();
- //   NullShaderTest();
-	////TiledRender();
- //   test_feature_cameraDOF();
- //   test_feature_ContextImageFromData();
- //   //test_feature_multiUV();
- //   test_apiMecha_Light();
- //   test_feature_LightDirectional();
- //   InstancingTest();
- //   BumpmapTest();
- //   test_feature_shaderBumpmap();
- //   test_feature_shaderTypeLayered();
+    SimpleRenderTest();
+    ComplexRenderTest();
+    EnvLightClearTest();
+    MemoryStatistics();
+    DefaultMaterialTest();
+    NullShaderTest();
+	//TiledRender();
+    test_feature_cameraDOF();
+    test_feature_ContextImageFromData();
+    //test_feature_multiUV();
+    test_apiMecha_Light();
+    test_feature_LightDirectional();
+    InstancingTest();
+    BumpmapTest();
+    test_feature_shaderBumpmap();
+    test_feature_shaderTypeLayered();
+    UpdateMaterial();
 	LoadFrs("../Resources/frs/bath_new.frs");
 //RunObjViewer(argc, argv);
 

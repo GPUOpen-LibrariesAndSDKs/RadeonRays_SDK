@@ -21,6 +21,8 @@ THE SOFTWARE.
 ********************************************************************/
 #pragma once
 
+#include <string>
+
 //base wrap class of Baikal scene nodes
 class WrapObject
 {
@@ -34,7 +36,14 @@ public:
         WrapObject* base = static_cast<WrapObject*>(obj);
         return dynamic_cast<T*>(base);
     };
+
+    //name
+    std::string GetName() { return m_name; }
+    void SetName(const std::string& name) { m_name = name; }
+
     //forbidden
     WrapObject(const WrapObject&) = delete;
     WrapObject& operator= (WrapObject const&) = delete;
+private:
+    std::string m_name;
 };

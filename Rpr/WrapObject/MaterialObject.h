@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include <RadeonProRender.h>
 #include <math/float3.h>
 #include <string>
+#include <map>
 
 namespace Baikal
 {
@@ -85,15 +86,21 @@ public:
     bool IsMaterial() { return !m_is_tex; }
 
     //inputs
-    void SetInputN(const std::string& input_name, MaterialObject* input);
+    void SetInputMaterial(const std::string& input_name, MaterialObject* input);
     void SetInputValue(const std::string& input_name, const RadeonRays::float4& val);
-    void SetInputImageData(const std::string& input_name, MaterialObject* input);
 
     Type GetType() { return m_type; }
     Baikal::Texture* GetTexture() { return m_tex; }
     Baikal::Material* GetMaterial() { return m_mat; }
 private:
     void Clear();
+    bool CheckInputMaterial();
+
+    //add and remove output materials
+    void AddOutput(MaterialObject* mat, const std::string& input_name);
+    void RemoveOutput(const std::string& input_name);
+    void Notify();
+    void Update(MaterialObject* mat, const std::string& input_name);
 
     //type - is type of input material
     std::string TranslatePropName(const std::string& in, Type type = Type::kDiffuse);
@@ -105,5 +112,6 @@ private:
         Baikal::Texture* m_tex;
         Baikal::Material* m_mat;
     };
-
+    //material + input name
+    std::map<std::string, MaterialObject*> m_out_mats;
 };
