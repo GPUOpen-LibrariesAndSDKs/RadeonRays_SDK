@@ -23,9 +23,8 @@ THE SOFTWARE.
 #include "WrapObject/FramebufferObject.h"
 #include "WrapObject/Exception.h"
 #include "App/CLW/clwoutput.h"
-
-#include <OpenImageIO/imageio.h>
-#include <RadeonProRender.h>
+#include "OpenImageIO/imageio.h"
+#include "RadeonProRender.h"
 
 FramebufferObject::FramebufferObject()
     : m_out(nullptr)

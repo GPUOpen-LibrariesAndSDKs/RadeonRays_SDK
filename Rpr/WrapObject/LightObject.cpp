@@ -22,11 +22,9 @@ THE SOFTWARE.
 #include "WrapObject/LightObject.h"
 #include "WrapObject/MaterialObject.h"
 #include "WrapObject/Exception.h"
-
 #include "radeon_rays.h"
 #include "App/Scene/light.h"
-
-#include <RadeonProRender.h>
+#include "RadeonProRender.h"
 
 void LightObject::SetTransform(const RadeonRays::matrix& t)
 {

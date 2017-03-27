@@ -17,7 +17,7 @@
 //#include <Rpr/Math/mathutils.h>
 #include "../App/tiny_obj_loader.h"
 
-#include <../RprLoadStore/RprLoadStore.h>
+#include "../RprLoadStore/RprLoadStore.h"
 #include <random>
 #include <algorithm>
 

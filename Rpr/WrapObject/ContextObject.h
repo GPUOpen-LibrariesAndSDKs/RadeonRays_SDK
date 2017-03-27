@@ -28,7 +28,7 @@ THE SOFTWARE.
 #include "App/PT/ptrenderer.h"
 
 #include <vector>
-#include <RadeonProRender.h>
+#include "RadeonProRender.h"
 
 class TextureObject;
 class FramebufferObject;

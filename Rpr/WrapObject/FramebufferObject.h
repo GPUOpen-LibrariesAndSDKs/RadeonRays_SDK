@@ -22,7 +22,6 @@ THE SOFTWARE.
 #pragma once
 
 #include "WrapObject.h"
-
 #include "CLW/clwoutput.h"
 
 //this class represent rpr_context

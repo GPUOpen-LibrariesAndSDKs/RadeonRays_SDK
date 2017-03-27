@@ -22,7 +22,7 @@ THE SOFTWARE.
 
 #include "WrapObject/CameraObject.h"
 #include "Scene/camera.h"
-#include <radeon_rays.h>
+#include "radeon_rays.h"
 
 using namespace Baikal;
 using namespace RadeonRays;

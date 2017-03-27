@@ -23,7 +23,7 @@ THE SOFTWARE.
 
 #include "WrapObject.h"
 
-#include <RadeonProRender.h>
+#include "RadeonProRender.h"
 
 class MaterialObject;
 

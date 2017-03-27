@@ -20,9 +20,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
 #include <OpenImageIO/imageio.h>
-#include <math/int2.h>
 #include <map>
 
+#include "math/int2.h"
 #include "App/Scene/texture.h"
 #include "App/Scene/material.h"
 #include "App/Scene/IO/image_io.h"

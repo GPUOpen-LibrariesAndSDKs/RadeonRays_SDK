@@ -21,11 +21,11 @@ THE SOFTWARE.
 ********************************************************************/
 
 #include <vector>
+#include <iostream>
 
 #include "WrapObject/ShapeObject.h"
 #include "WrapObject/Exception.h"
 #include "App/Scene/shape.h"
-#include <iostream>
 
 
 using namespace Baikal;
