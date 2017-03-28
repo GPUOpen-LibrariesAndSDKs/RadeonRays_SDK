@@ -1433,9 +1433,9 @@ rpr_int FRS6::StoreContext(rpr_context context, std::ofstream *myfile)
 			//first, we store the parameters that will set several default parameters.
 			//so we are sure that all custom parameters will be set during the load of context
 			if (
-				iPass == 0 && (strcmp("imagefilter.type", paramName) == 0 || strcmp("tonemapping.type", paramName) == 0)
+				(iPass == 0 && (strcmp("imagefilter.type", paramName) == 0 || strcmp("tonemapping.type", paramName) == 0))
 				||
-				iPass == 1 && strcmp("imagefilter.type", paramName) != 0 && strcmp("tonemapping.type", paramName) != 0
+				(iPass == 1 && strcmp("imagefilter.type", paramName) != 0 && strcmp("tonemapping.type", paramName) != 0)
 				)
 			{
 				myfile->write((char*)&name_length, sizeof(uint64_t));
@@ -1457,8 +1457,6 @@ rpr_int FRS6::StoreContext(rpr_context context, std::ofstream *myfile)
 				if (value_length > 0)
 				{
 					char* paramValue = new char[value_length];
-					float* paramValue_float = (float*)paramValue;
-					paramValue_float[0];
 					status = rprContextGetParameterInfo(context, int(i), RPR_PARAMETER_VALUE, value_length, paramValue, NULL);
 					CHECK_STATUS_RETURNERROR;
 

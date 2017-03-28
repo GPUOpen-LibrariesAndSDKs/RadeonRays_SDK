@@ -60,7 +60,13 @@ RPS8::~RPS8()
 
 }
 
-void RPS8::WarningDetected()
+void RPS8::WarningDetected()if os.is("macosx") then
+sysincludedirs {"/usr/local/include"}
+libdirs {"/usr/local/lib"}
+linkoptions{ "-framework OpenGL", "-framework GLUT" }
+buildoptions "-std=c++11 -stdlib=libc++"
+links {"OpenImageIO"}
+end
 {
     //add breakpoint here for debugging frLoader
     int a = 0;
@@ -1206,9 +1212,9 @@ rpr_int RPS8::Store_Context(rpr_context context)
             //first, we store the parameters that will set several default parameters.
             //so we are sure that all custom parameters will be set during the load of context
             if (
-                iPass == 0 && (paramID == RPR_CONTEXT_IMAGE_FILTER_TYPE || paramID == RPR_CONTEXT_TONE_MAPPING_TYPE)
+                (iPass == 0 && (paramID == RPR_CONTEXT_IMAGE_FILTER_TYPE || paramID == RPR_CONTEXT_TONE_MAPPING_TYPE))
                 ||
-                iPass == 1 && paramID != RPR_CONTEXT_IMAGE_FILTER_TYPE && paramID != RPR_CONTEXT_TONE_MAPPING_TYPE
+                (iPass == 1 && paramID != RPR_CONTEXT_IMAGE_FILTER_TYPE && paramID != RPR_CONTEXT_TONE_MAPPING_TYPE)
                 )
             {
 
@@ -1441,8 +1447,6 @@ rpr_int RPS8::LoadCustomList(
     std::vector<rpr_material_node>& materialNodeList
 )
 {
-    rpr_int status = RPR_SUCCESS;
-
     char headCheckCode[4] = { 0,0,0,0 };
     m_rpsFile->read(headCheckCode, sizeof(headCheckCode));
     if (headCheckCode[0] != m_HEADER_CHECKCODE[0] ||
@@ -1888,15 +1892,15 @@ rpr_int RPS8::Read_Context(rpr_context context)
 
 
                 // read only parameter. don't set it.
-                else if (paramType == RPSPT_UNDEF && paramName == "gpu0name"
-                    || paramType == RPSPT_UNDEF && paramName == "gpu1name"
-                    || paramType == RPSPT_UNDEF && paramName == "gpu2name"
-                    || paramType == RPSPT_UNDEF && paramName == "gpu3name"
-                    || paramType == RPSPT_UNDEF && paramName == "gpu4name"
-                    || paramType == RPSPT_UNDEF && paramName == "gpu5name"
-                    || paramType == RPSPT_UNDEF && paramName == "gpu6name"
-                    || paramType == RPSPT_UNDEF && paramName == "gpu7name"
-                    || paramType == RPSPT_UNDEF && paramName == "cpuname"
+                else if ((paramType == RPSPT_UNDEF && paramName == "gpu0name")
+                    || (paramType == RPSPT_UNDEF && paramName == "gpu1name")
+                    || (paramType == RPSPT_UNDEF && paramName == "gpu2name")
+                    || (paramType == RPSPT_UNDEF && paramName == "gpu3name")
+                    || (paramType == RPSPT_UNDEF && paramName == "gpu4name")
+                    || (paramType == RPSPT_UNDEF && paramName == "gpu5name")
+                    || (paramType == RPSPT_UNDEF && paramName == "gpu6name")
+                    || (paramType == RPSPT_UNDEF && paramName == "gpu7name")
+                    || (paramType == RPSPT_UNDEF && paramName == "cpuname")
                     )
                 {
                     char* data_data = new char[paramDataSize];
@@ -2398,16 +2402,16 @@ rpr_light RPS8::Read_Light(rpr_context context, rpr_scene scene, rpr_material_sy
                 }
 
             }
-            else if (nextElem == RPSRT_OBJECT_BEG && elementName == "RPR_ENVIRONMENT_LIGHT_IMAGE" && objBegType == "rpr_image"
-                || nextElem == RPSRT_REFERENCE && elementName == "RPR_ENVIRONMENT_LIGHT_IMAGE"
+            else if ((nextElem == RPSRT_OBJECT_BEG && elementName == "RPR_ENVIRONMENT_LIGHT_IMAGE" && objBegType == "rpr_image")
+                || (nextElem == RPSRT_REFERENCE && elementName == "RPR_ENVIRONMENT_LIGHT_IMAGE")
                 )
             {
                 rpr_image img = Read_Image(context);
                 status = rprEnvironmentLightSetImage(light, img);
                 CHECK_STATUS_RETURNNULL;
             }
-            else if (nextElem == RPSRT_OBJECT_BEG && elementName == STR__SHAPE_FOR_SKY_LIGHT_PORTAL_ID && objBegType == "rpr_shape"
-                || nextElem == RPSRT_REFERENCE && elementName == STR__SHAPE_FOR_SKY_LIGHT_PORTAL_ID
+            else if ((nextElem == RPSRT_OBJECT_BEG && elementName == STR__SHAPE_FOR_SKY_LIGHT_PORTAL_ID && objBegType == "rpr_shape")
+                || (nextElem == RPSRT_REFERENCE && elementName == STR__SHAPE_FOR_SKY_LIGHT_PORTAL_ID)
                 )
             {
                 rpr_shape shape = Read_Shape(context, materialSystem);
@@ -2415,8 +2419,8 @@ rpr_light RPS8::Read_Light(rpr_context context, rpr_scene scene, rpr_material_sy
                 status = rprSkyLightAttachPortal(light, shape);
                 CHECK_STATUS_RETURNNULL;
             }
-            else if (nextElem == RPSRT_OBJECT_BEG && elementName == STR__SHAPE_FOR_ENVIRONMENT_LIGHT_PORTAL_ID && objBegType == "rpr_shape"
-                || nextElem == RPSRT_REFERENCE && elementName == STR__SHAPE_FOR_ENVIRONMENT_LIGHT_PORTAL_ID
+            else if ((nextElem == RPSRT_OBJECT_BEG && elementName == STR__SHAPE_FOR_ENVIRONMENT_LIGHT_PORTAL_ID && objBegType == "rpr_shape")
+                || (nextElem == RPSRT_REFERENCE && elementName == STR__SHAPE_FOR_ENVIRONMENT_LIGHT_PORTAL_ID)
                 )
             {
                 rpr_shape shape = Read_Shape(context, materialSystem);
@@ -2568,7 +2572,7 @@ rpr_image RPS8::Read_Image(rpr_context context)
             return NULL;
         }
         status = rprContextCreateImage(context, imgFormat, &imgDesc, imgData, &image);
-        if (imgData) { delete[] imgData; imgData = NULL; }
+        if (imgData) { delete[] static_cast<char*>(imgData); imgData = NULL; }
         CHECK_STATUS_RETURNNULL;
 
         if (objectName)
@@ -2700,8 +2704,8 @@ rpr_material_node RPS8::Read_MaterialNode(rpr_material_system materialSystem, rp
                 }
 
             }
-            else if (nextElem == RPSRT_OBJECT_BEG && objBegType == "rpr_material_node"
-                || nextElem == RPSRT_REFERENCE && objBegType == "rpr_material_node"
+            else if ((nextElem == RPSRT_OBJECT_BEG && objBegType == "rpr_material_node")
+                || (nextElem == RPSRT_REFERENCE && objBegType == "rpr_material_node")
                 )
             {
 
@@ -2715,8 +2719,8 @@ rpr_material_node RPS8::Read_MaterialNode(rpr_material_system materialSystem, rp
                 CHECK_STATUS_RETURNNULL;
 
             }
-            else if (nextElem == RPSRT_OBJECT_BEG && objBegType == "rpr_image"
-                || nextElem == RPSRT_REFERENCE && objBegType == "rpr_image"
+            else if ((nextElem == RPSRT_OBJECT_BEG && objBegType == "rpr_image")
+                || (nextElem == RPSRT_REFERENCE && objBegType == "rpr_image")
                 )
             {
 
@@ -3046,15 +3050,15 @@ rpr_shape RPS8::Read_Shape(rpr_context context, rpr_material_system materialSyst
                 }
 
             }
-            else if (nextElem == RPSRT_OBJECT_BEG && elementName == "RPR_SHAPE_DISPLACEMENT_IMAGE" && objBegType == "rpr_image"
-                || nextElem == RPSRT_REFERENCE && elementName == "RPR_SHAPE_DISPLACEMENT_IMAGE"
+            else if ((nextElem == RPSRT_OBJECT_BEG && elementName == "RPR_SHAPE_DISPLACEMENT_IMAGE" && objBegType == "rpr_image")
+                || (nextElem == RPSRT_REFERENCE && elementName == "RPR_SHAPE_DISPLACEMENT_IMAGE")
                 )
             {
                 param__RPR_SHAPE_DISPLACEMENT_IMAGE__data = Read_Image(context);
                 param__RPR_SHAPE_DISPLACEMENT_IMAGE__defined = true;
             }
-            else if (nextElem == RPSRT_OBJECT_BEG && objBegType == "rpr_material_node"
-                || nextElem == RPSRT_REFERENCE  && objBegType == "rpr_material_node"
+            else if ((nextElem == RPSRT_OBJECT_BEG && objBegType == "rpr_material_node")
+                || (nextElem == RPSRT_REFERENCE  && objBegType == "rpr_material_node")
                 )
             {
                 shapeMaterial = Read_MaterialNode(materialSystem, context);

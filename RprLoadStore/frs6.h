@@ -1,7 +1,7 @@
 #ifndef frLoadStore_FRS6_H_
 #define frLoadStore_FRS6_H_
 
-#include <Rpr/RadeonProRender.h>
+#include "Rpr/RadeonProRender.h"
 
 #include <fstream>
 #include <vector>

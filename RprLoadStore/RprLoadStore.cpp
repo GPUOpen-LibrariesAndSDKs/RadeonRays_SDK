@@ -1,6 +1,6 @@
 #include "RprLoadStore.h"
 
-#include <Rpr/RadeonProRender.h>
+#include "Rpr/RadeonProRender.h"
 
 #include <fstream>
 #include <cstring>
@@ -302,7 +302,6 @@ int rprsGetExtraCustomParam_float(const char* name, float* value)
 int rprsGetExtraCustomParamIndex_int(int index, int* value)
 {
 	int nbOfInt = g_extraCustomParam_int.size();
-	int nbOfFloat = g_extraCustomParam_float.size();
 
 	if ( index >= 0 && index < nbOfInt ) 
 	{

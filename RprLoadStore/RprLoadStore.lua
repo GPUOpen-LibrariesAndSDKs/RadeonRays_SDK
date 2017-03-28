@@ -16,6 +16,10 @@ project "RprLoadStore"
         buildoptions { '-std=c++0x' }      
     end
 
+    if os.is("macosx") then
+        buildoptions "-std=c++11 -stdlib=libc++"
+    end
+
     configuration {"x32", "Debug"}
         targetdir "../Bin/Debug/x86"
     configuration {"x64", "Debug"}
