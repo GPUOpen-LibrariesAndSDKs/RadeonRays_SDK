@@ -49,7 +49,6 @@ CameraObject::CameraObject()
     camera->SetFocalLength(camera_focal_length);
     camera->SetFocusDistance(camera_focus_distance);
     camera->SetAperture(camera_aperture);
-
     m_cam = camera;
 }
 

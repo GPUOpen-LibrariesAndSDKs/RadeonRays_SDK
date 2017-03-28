@@ -1660,6 +1660,14 @@ rpr_int rprMaterialNodeGetInfo(rpr_material_node in_node, rpr_material_node_info
         memcpy(&data[0], &value, size_ret);
         break;
     }
+    case RPR_MATERIAL_NODE_INPUT_COUNT:
+    {
+        uint64_t value = mat->GetInputCount();
+        size_ret = sizeof(value);
+        data.resize(size_ret);
+        memcpy(&data[0], &value, size_ret);
+        break;
+    }
     default:
         UNIMLEMENTED_FUNCTION
     }
@@ -1675,9 +1683,53 @@ rpr_int rprMaterialNodeGetInfo(rpr_material_node in_node, rpr_material_node_info
     return RPR_SUCCESS;
 }
 
-rpr_int rprMaterialNodeGetInputInfo(rpr_material_node in_node, rpr_int in_input_idx, rpr_material_node_input_info in_info, size_t in_size, void * in_data, size_t * out_size)
+rpr_int rprMaterialNodeGetInputInfo(rpr_material_node in_node, rpr_int in_input_idx, rpr_material_node_input_info in_info, size_t in_size, void * in_data, size_t * in_out_size)
 {
-    UNIMLEMENTED_FUNCTION
+    MaterialObject* mat = WrapObject::Cast<MaterialObject>(in_node);
+    if (!mat)
+    {
+        return RPR_ERROR_INVALID_OBJECT;
+    }
+
+    std::vector<char> data;
+    size_t size_ret = 0;
+    switch (in_info)
+    {
+    case RPR_MATERIAL_NODE_INPUT_NAME_STRING:
+    {
+        std::string name = mat->GetInputName(in_input_idx);
+        size_ret = name.size() + 1;
+        data.resize(size_ret);
+        memcpy(&data[0], name.data(), size_ret);
+        break;
+    }
+    case RPR_MATERIAL_NODE_INPUT_TYPE:
+    {
+        rpr_uint value = mat->GetInputType(in_input_idx);
+        size_ret = sizeof(value);
+        data.resize(size_ret);
+        memcpy(&data[0], &value, size_ret);
+        break;
+    }
+    case RPR_MATERIAL_NODE_INPUT_VALUE:
+    {
+        data.resize(sizeof(size_t));
+        mat->GetInput(in_input_idx, data.data(), &size_ret);
+        break;
+    }
+    default:
+        UNIMLEMENTED_FUNCTION
+    }
+
+    if (in_out_size)
+    {
+        *in_out_size = size_ret;
+    }
+    if (in_data)
+    {
+        memcpy(in_data, &data[0], size_ret);
+    }
+    return RPR_SUCCESS;
 }
 
 rpr_int rprObjectDelete(void * in_obj)
