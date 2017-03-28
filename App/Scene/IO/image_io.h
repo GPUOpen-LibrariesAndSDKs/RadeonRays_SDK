@@ -48,7 +48,7 @@ namespace Baikal
         // Constructor
         ImageIo() = default;
         // Destructor
-        ~ImageIo() = default;
+        virtual ~ImageIo() = default;
         
         // Load texture from file
         virtual Texture* LoadImage(std::string const& filename) const = 0;

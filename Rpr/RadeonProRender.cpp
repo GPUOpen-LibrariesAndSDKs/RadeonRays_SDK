@@ -438,7 +438,6 @@ rpr_int rprContextCreateMesh(rpr_context in_context,
                                         in_normal_indices, in_nidx_stride,
                                         in_texcoord_indices, in_tidx_stride,
                                         in_num_face_vertices, in_num_faces);
-        ShapeObject* test = WrapObject::Cast<ShapeObject>(*out_mesh);
     }
     catch (Exception& e)
     {

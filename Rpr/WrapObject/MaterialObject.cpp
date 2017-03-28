@@ -273,7 +273,6 @@ MaterialObject::MaterialObject(rpr_image_format const in_format, rpr_image_desc 
 			//clean other colors
 			for (int comp_ind = in_format.num_components; comp_ind < 4; ++comp_ind)
 			{
-				int index = comp_ind * component_bytes;
 				memset(&data[i * 4 + comp_ind], 0, component_bytes);
 			}
 		}
