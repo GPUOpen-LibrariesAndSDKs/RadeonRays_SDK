@@ -357,11 +357,6 @@ namespace Baikal
             }
         };
 
-        auto instance_cast = [](Shape const* shape)
-        {
-            return dynamic_cast<Instance const*>(shape);
-        };
-
         for (; shape_iter->IsValid(); shape_iter->Next())
         {
             auto shape = shape_iter->ItemAs<Shape const>();
