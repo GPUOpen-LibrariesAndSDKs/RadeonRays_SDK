@@ -50,12 +50,26 @@ public:
 
     ShapeObject* CreateInstance();
 
-    
+    bool IsInstance() { return m_is_instance; }
     void SetTransform(const RadeonRays::matrix& m) { m_shape->SetTransform(m); };
+   
     void SetMaterial(MaterialObject* mat);
+    MaterialObject* GetMaterial() { return m_current_mat; }
+    
+    uint64_t GetVertexCount();
+    const RadeonRays::float3* GetVertexData() const;
+    
+    uint64_t GetNormalCount();
+    const RadeonRays::float3* GetNormalData() const;
+    
+    uint64_t GetUVCount();
+    const RadeonRays::float2* GetUVData() const;
+
+    const uint32_t* GetIndicesData() const;
 
     Baikal::Shape* GetShape() { return m_shape; }
 private:
     Baikal::Shape* m_shape;
+    MaterialObject* m_current_mat;
     bool m_is_instance;
 };

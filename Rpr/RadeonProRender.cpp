@@ -86,6 +86,21 @@ rpr_int rprContextGetInfo(rpr_context in_context, rpr_context_info in_context_in
     case RPR_CONTEXT_RENDER_STATISTICS:
         context->GetRenderStatistics(out_data, out_size_ret);
         break;
+    case RPR_CONTEXT_PARAMETER_COUNT:
+        break;
+    case RPR_OBJECT_NAME:
+    {
+        std::string name = context->GetName();
+        if (out_data)
+        {
+            memcpy(out_data, name.c_str(), name.size() + 1);
+        }
+        if (out_size_ret)
+        {
+            *out_size_ret = name.size() + 1;
+        }
+        break;
+    }
     default:
         UNIMLEMENTED_FUNCTION
 
@@ -807,14 +822,159 @@ rpr_int rprLightSetTransform(rpr_light in_light, rpr_bool in_transpose, rpr_floa
     return RPR_SUCCESS;
 }
 
-rpr_int rprShapeGetInfo(rpr_shape arg0, rpr_shape_info arg1, size_t arg2, void * arg3, size_t * arg4)
+rpr_int rprShapeGetInfo(rpr_shape in_shape, rpr_shape_info in_info, size_t in_size, void * in_data, size_t * in_size_ret)
 {
-    UNIMLEMENTED_FUNCTION
+    ShapeObject* shape = WrapObject::Cast<ShapeObject>(in_shape);
+    if (!shape)
+    {
+        return RPR_ERROR_INVALID_OBJECT;
+    }
+
+    std::vector<char> data;
+    size_t size_ret = 0;
+    switch (in_info)
+    {
+    case RPR_SHAPE_TYPE:
+    {   
+        int value = shape->IsInstance() ? RPR_SHAPE_TYPE_INSTANCE : RPR_SHAPE_TYPE_MESH;
+        size_ret = sizeof(value);
+        data.resize(size_ret);
+        memcpy(&data[0], &value, size_ret);
+        break;
+    }
+    case RPR_SHAPE_MATERIAL:
+    {
+        MaterialObject* value = shape->GetMaterial();
+        size_ret = sizeof(value);
+        data.resize(size_ret);
+        memcpy(&data[0], &value, size_ret);
+        break;
+    }
+    default:
+        UNIMLEMENTED_FUNCTION
+    }
+
+    if (in_size_ret)
+    {
+        *in_size_ret = size_ret;
+    }
+    if (in_data)
+    {
+        memcpy(in_data, &data[0], size_ret);
+    }
+    return RPR_SUCCESS;
 }
 
-rpr_int rprMeshGetInfo(rpr_shape mesh, rpr_mesh_info mesh_info, size_t size, void * data, size_t * size_ret)
+rpr_int rprMeshGetInfo(rpr_shape in_mesh, rpr_mesh_info in_mesh_info, size_t in_size, void * in_data, size_t * in_size_ret)
 {
-    UNIMLEMENTED_FUNCTION
+    ShapeObject* mesh = WrapObject::Cast<ShapeObject>(in_mesh);
+    if (!mesh || mesh->IsInstance())
+    {
+        return RPR_ERROR_INVALID_OBJECT;
+    }
+
+    std::vector<char> data;
+    size_t size_ret = 0;
+    switch (in_mesh_info)
+    {
+    case RPR_MESH_POLYGON_COUNT:
+    {
+        uint64_t value = mesh->GetVertexCount() / 3;
+        size_ret = sizeof(value);
+        data.resize(size_ret);
+        memcpy(&data[0], &value, size_ret);
+        break;
+    }
+    case RPR_MESH_VERTEX_COUNT:
+    {
+        uint64_t value = mesh->GetVertexCount();
+        size_ret = sizeof(value);
+        data.resize(size_ret);
+        memcpy(&data[0], &value, size_ret);
+        break;
+    }
+    case RPR_MESH_NORMAL_COUNT:
+    {
+        uint64_t value = mesh->GetNormalCount();
+        size_ret = sizeof(value);
+        data.resize(size_ret);
+        memcpy(&data[0], &value, size_ret);
+        break;
+    }
+    case RPR_MESH_UV_COUNT:
+    {
+        uint64_t value = mesh->GetUVCount();
+        size_ret = sizeof(value);
+        data.resize(size_ret);
+        memcpy(&data[0], &value, size_ret);
+        break;
+    }
+    case RPR_MESH_UV2_COUNT:
+    {
+        //UV2 unsupported
+        uint64_t value = 0;
+        size_ret = sizeof(value);
+        data.resize(size_ret);
+        memcpy(&data[0], &value, size_ret);
+        break;
+    }
+    case RPR_MESH_VERTEX_ARRAY:
+    {
+        const RadeonRays::float3* value = mesh->GetVertexData();
+        size_ret = sizeof(RadeonRays::float3) * mesh->GetVertexCount();
+        data.resize(size_ret);
+        memcpy(&data[0], &value, size_ret);
+        break;
+    }
+    case RPR_MESH_NORMAL_ARRAY:
+    {
+        const RadeonRays::float3* value = mesh->GetNormalData();
+        size_ret = sizeof(RadeonRays::float3) * mesh->GetNormalCount();
+        data.resize(size_ret);
+        memcpy(&data[0], &value, size_ret);
+        break;
+
+    }
+    case RPR_MESH_UV_ARRAY:
+    {
+        const RadeonRays::float2* value = mesh->GetUVData();
+        size_ret = sizeof(RadeonRays::float2) * mesh->GetUVCount();
+        data.resize(size_ret);
+        memcpy(&data[0], &value, size_ret);
+        break;
+    }
+    case RPR_MESH_VERTEX_INDEX_ARRAY:
+    case RPR_MESH_UV_INDEX_ARRAY:
+    case RPR_MESH_NORMAL_INDEX_ARRAY:
+    {
+        const uint32_t* value = mesh->GetIndicesData();
+        size_ret = sizeof(uint32_t) * mesh->GetVertexCount();
+        data.resize(size_ret);
+        memcpy(&data[0], &value, size_ret);
+        break;
+    }
+    case RPR_MESH_NUM_FACE_VERTICES_ARRAY:
+    {
+        //only triangles used in Baikal mesh
+        std::vector<int32_t> value(mesh->GetVertexCount() / 3, 3);
+        size_ret = sizeof(value);
+        data.resize(size_ret);
+        memcpy(&data[0], &value, size_ret);
+        break;
+    }
+    default:
+        UNIMLEMENTED_FUNCTION
+    }
+
+    if (in_size_ret)
+    {
+        *in_size_ret = size_ret;
+    }
+    if (in_data)
+    {
+        memcpy(in_data, &data[0], size_ret);
+    }
+    return RPR_SUCCESS;
 }
 
 rpr_int rprMeshPolygonGetInfo(rpr_shape mesh, size_t polygon_index, rpr_mesh_polygon_info polygon_info, size_t size, void * data, size_t * size_ret)
@@ -1480,9 +1640,39 @@ rpr_int rprMaterialNodeSetInputImageData(rpr_material_node in_node, rpr_char con
     return RPR_SUCCESS;
 }
 
-rpr_int rprMaterialNodeGetInfo(rpr_material_node in_node, rpr_material_node_info in_info, size_t in_size, void * in_data, size_t * out_size)
+rpr_int rprMaterialNodeGetInfo(rpr_material_node in_node, rpr_material_node_info in_info, size_t in_size, void * in_data, size_t * in_out_size)
 {
-    UNIMLEMENTED_FUNCTION
+    MaterialObject* mat = WrapObject::Cast<MaterialObject>(in_node);
+    if (!mat)
+    {
+        return RPR_ERROR_INVALID_OBJECT;
+    }
+
+    std::vector<char> data;
+    size_t size_ret = 0;
+    switch (in_info)
+    {
+    case RPR_MATERIAL_NODE_TYPE:
+    {
+        rpr_material_node_type value = mat->GetType();
+        size_ret = sizeof(value);
+        data.resize(size_ret);
+        memcpy(&data[0], &value, size_ret);
+        break;
+    }
+    default:
+        UNIMLEMENTED_FUNCTION
+    }
+
+    if (in_out_size)
+    {
+        *in_out_size = size_ret;
+    }
+    if (in_data)
+    {
+        memcpy(in_data, &data[0], size_ret);
+    }
+    return RPR_SUCCESS;
 }
 
 rpr_int rprMaterialNodeGetInputInfo(rpr_material_node in_node, rpr_int in_input_idx, rpr_material_node_input_info in_info, size_t in_size, void * in_data, size_t * out_size)

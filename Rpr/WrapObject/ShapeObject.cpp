@@ -73,6 +73,7 @@ namespace
 ShapeObject::ShapeObject(Baikal::Shape* shape, bool is_instance)
     : m_shape(shape)
     , m_is_instance(is_instance)
+    , m_current_mat(nullptr)
 {
 }
 
@@ -188,4 +189,74 @@ void ShapeObject::SetMaterial(MaterialObject* mat)
     {
         m_shape->SetMaterial(nullptr);
     }
+    m_current_mat = mat;
+}
+
+uint64_t ShapeObject::GetVertexCount()
+{
+    Baikal::Mesh* mesh = dynamic_cast<Baikal::Mesh*>(m_shape);
+    if (!mesh)
+    {
+        throw Exception(RPR_ERROR_INTERNAL_ERROR, "ShapeObject: mesh is nullptr.");
+    }
+    return mesh->GetNumVertices();
+}
+
+const RadeonRays::float3* ShapeObject::GetVertexData() const
+{
+    Baikal::Mesh* mesh = dynamic_cast<Baikal::Mesh*>(m_shape);
+    if (!mesh)
+    {
+        throw Exception(RPR_ERROR_INTERNAL_ERROR, "ShapeObject: mesh is nullptr.");
+    }
+    return mesh->GetVertices();
+}
+
+
+uint64_t ShapeObject::GetNormalCount()
+{
+    Baikal::Mesh* mesh = dynamic_cast<Baikal::Mesh*>(m_shape);
+    if (!mesh)
+    {
+        throw Exception(RPR_ERROR_INTERNAL_ERROR, "ShapeObject: mesh is nullptr.");
+    }
+    return mesh->GetNumNormals();
+}
+const RadeonRays::float3* ShapeObject::GetNormalData() const
+{
+    Baikal::Mesh* mesh = dynamic_cast<Baikal::Mesh*>(m_shape);
+    if (!mesh)
+    {
+        throw Exception(RPR_ERROR_INTERNAL_ERROR, "ShapeObject: mesh is nullptr.");
+    }
+    return mesh->GetNormals();
+}
+
+
+uint64_t ShapeObject::GetUVCount()
+{
+    Baikal::Mesh* mesh = dynamic_cast<Baikal::Mesh*>(m_shape);
+    if (!mesh)
+    {
+        throw Exception(RPR_ERROR_INTERNAL_ERROR, "ShapeObject: mesh is nullptr.");
+    }
+    return mesh->GetNumUVs();
+}const RadeonRays::float2* ShapeObject::GetUVData() const
+{
+    Baikal::Mesh* mesh = dynamic_cast<Baikal::Mesh*>(m_shape);
+    if (!mesh)
+    {
+        throw Exception(RPR_ERROR_INTERNAL_ERROR, "ShapeObject: mesh is nullptr.");
+    }
+    return mesh->GetUVs();
+}
+
+const uint32_t* ShapeObject::GetIndicesData() const
+{
+    Baikal::Mesh* mesh = dynamic_cast<Baikal::Mesh*>(m_shape);
+    if (!mesh)
+    {
+        throw Exception(RPR_ERROR_INTERNAL_ERROR, "ShapeObject: mesh is nullptr.");
+    }
+    return mesh->GetIndices();
 }
