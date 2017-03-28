@@ -60,13 +60,7 @@ RPS8::~RPS8()
 
 }
 
-void RPS8::WarningDetected()if os.is("macosx") then
-sysincludedirs {"/usr/local/include"}
-libdirs {"/usr/local/lib"}
-linkoptions{ "-framework OpenGL", "-framework GLUT" }
-buildoptions "-std=c++11 -stdlib=libc++"
-links {"OpenImageIO"}
-end
+void RPS8::WarningDetected()
 {
     //add breakpoint here for debugging frLoader
     int a = 0;
