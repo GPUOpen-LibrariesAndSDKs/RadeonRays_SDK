@@ -8,7 +8,7 @@
 
 
 
-#include "tiny_obj_loader.h"
+#include "Utils/tiny_obj_loader.h"
 
 namespace Baikal
 {

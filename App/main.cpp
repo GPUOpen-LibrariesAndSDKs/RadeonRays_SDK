@@ -63,7 +63,7 @@ THE SOFTWARE.
 
 #include "math/mathutils.h"
 
-#include "tiny_obj_loader.h"
+#include "Utils/tiny_obj_loader.h"
 #include "SceneGraph/camera.h"
 #include "Utils/shader_manager.h"
 #include "SceneGraph/scene1.h"

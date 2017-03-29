@@ -6,7 +6,7 @@
 #include "SceneGraph/material.h"
 #include "SceneGraph/texture.h"
 #include "SceneGraph/Collector/collector.h"
-#include "iterator.h"
+#include "SceneGraph/iterator.h"
 
 #include <chrono>
 #include <memory>

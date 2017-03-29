@@ -32,7 +32,7 @@ THE SOFTWARE.
 #include <random>
 #include <algorithm>
 
-#include "sobol.h"
+#include "Utils/sobol.h"
 
 #ifdef RR_EMBED_KERNELS
 #include "./CL/cache/kernels.h"
