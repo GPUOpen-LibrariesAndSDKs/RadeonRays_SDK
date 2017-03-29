@@ -19,55 +19,51 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
-#pragma once
+#ifndef CONFIG_MANAGER_H
+#define CONFIG_MANAGER_H
 
-#include "WrapObject/WrapObject.h"
-#include "Scene/scene1.h"
-#include "Scene/shape.h"
-#include "Scene/light.h"
-
+#include "CLW.h"
 #include <vector>
 
-class ShapeObject;
-class LightObject;
-class CameraObject;
+namespace Baikal
+{
+    class PtRenderer;
+    class AoRenderer;
+}
 
-//this class represent rpr_context
-class SceneObject
-    : public WrapObject
+class ConfigManager
 {
 public:
-    SceneObject();
-    virtual ~SceneObject();
 
-    void Clear();
-    
-    //shape
-    void AttachShape(ShapeObject* shape);
-    void DetachShape(ShapeObject* shape);
+    enum DeviceType
+    {
+        kPrimary,
+        kSecondary
+    };
 
-    //light
-    void AttachLight(LightObject* light);
-    void DetachLight(LightObject* light);
-    
-    //camera
-    void SetCamera(CameraObject* cam);
-    CameraObject* GetCamera() { return m_current_camera; }
+    enum Mode
+    {
+        kUseAll,
+        kUseGpus,
+        kUseSingleGpu,
+        kUseSingleCpu,
+        kUseCpus
+    };
 
-	void GetShapeList(void* out_list);
-	size_t GetShapeCount() { return m_scene->GetNumShapes(); }
-    
-    void GetLightList(void* out_list);
-    size_t GetLightCount() { return m_scene->GetNumLights(); }
+    struct Config
+    {
+        DeviceType type;
+        int devidx;
+        Baikal::PtRenderer* renderer;
+        CLWContext context;
+        bool caninterop;
 
-	void AddEmissive();
-	void RemoveEmissive();
-	Baikal::Scene1* GetScene() { return m_scene; };
+    };
+
+    static void CreateConfigs(Mode mode, bool interop, std::vector<Config>& renderers, int initial_num_bounces);
+
 private:
-    Baikal::Scene1* m_scene;
-    CameraObject* m_current_camera;
-	std::vector<Baikal::AreaLight*> m_emmisive_lights;//area lights fro emissive shapes
-    std::vector<ShapeObject*> m_shapes;
-    std::vector<LightObject*> m_lights;
 
 };
+
+#endif // CONFIG_MANAGER_H

@@ -265,15 +265,14 @@ MaterialObject::MaterialObject(rpr_image_format const in_format, rpr_image_desc 
 		for (int i = 0; i < pixels_count; ++i)
 		{
 			//copy
-			for (int comp_ind = 0; comp_ind < in_format.num_components; ++comp_ind)
+			for (unsigned int comp_ind = 0; comp_ind < in_format.num_components; ++comp_ind)
 			{
 				int index = comp_ind * component_bytes;
 				memcpy(&data[i * 4 * component_bytes + index], &in_data_cast[i * in_format.num_components * component_bytes + index], component_bytes);
 			}
 			//clean other colors
-			for (int comp_ind = in_format.num_components; comp_ind < 4; ++comp_ind)
+			for (unsigned int comp_ind = in_format.num_components; comp_ind < 4; ++comp_ind)
 			{
-				int index = comp_ind * component_bytes;
 				memset(&data[i * 4 + comp_ind], 0, component_bytes);
 			}
 		}
@@ -388,6 +387,7 @@ void MaterialObject::SetInputMaterial(const std::string& input_name, MaterialObj
         return;
     }
 
+
     //convert input name
     if (input->m_type == Type::kImage)
     {
@@ -442,7 +442,8 @@ void MaterialObject::SetInputMaterial(const std::string& input_name, MaterialObj
             }
         }
     }
-    input->AddOutput(this, name);
+    input->AddOutput(this);
+    SetInput(input, input_name);
     Notify();
 }
 
@@ -471,7 +472,7 @@ void MaterialObject::SetInputValue(const std::string& input_name, const RadeonRa
     }
     catch (Exception& e)
     {
-        //failed to translate valid input name annd ignore it
+        //failed to translate valid input name and ignore it
         //TODO:
         return;
     }
@@ -498,30 +499,42 @@ void MaterialObject::SetInputValue(const std::string& input_name, const RadeonRa
         MultiBxdf* blend_mat = dynamic_cast<MultiBxdf*>(m_mat);
         blend_mat->SetType(MultiBxdf::Type::kMix);
     }
-
+    SetInput(nullptr, input_name);
     Notify();
 }
 
-void MaterialObject::AddOutput(MaterialObject* mat, const std::string& input_name)
+void MaterialObject::SetInput(MaterialObject* input_mat, const std::string& input_name)
 {
-    m_out_mats[input_name] = mat;
+    m_inputs[input_name] = input_mat;
 }
 
-void MaterialObject::RemoveOutput(const std::string& input_name)
+
+void MaterialObject::AddOutput(MaterialObject* mat)
 {
-    m_out_mats.erase(input_name);
+    m_out_mats.insert(mat);
+}
+
+void MaterialObject::RemoveOutput(MaterialObject* mat)
+{
+    m_out_mats.erase(mat);
 }
 
 void MaterialObject::Notify()
 {
     for (auto mat : m_out_mats)
     {
-        mat.second->Update(this, mat.first);
+        mat->Update(this);
     }
 }
 
-void MaterialObject::Update(MaterialObject* mat, const std::string& input_name)
+void MaterialObject::Update(MaterialObject* mat)
 {
+    auto input_it = std::find_if(m_inputs.begin(), m_inputs.end(), [mat](const std::pair<std::string, MaterialObject*>& i) { return i.second == mat; });
+    if (input_it == m_inputs.end())
+    {
+        throw Exception(RPR_ERROR_INTERNAL_ERROR, "MaterialObject: failed to find requested input node.");
+    }
+    const std::string& input_name = TranslatePropName(input_it->first, mat->GetType());
     if (m_type == kBlend && input_name == "weight")
     {
         //expected only fresnel materials
@@ -532,4 +545,112 @@ void MaterialObject::Update(MaterialObject* mat, const std::string& input_name)
             blend_mat->SetInputValue("ior", mat->m_mat->GetInputValue("ior").float_value);
         }
     }
+}
+
+uint64_t MaterialObject::GetInputCount()
+{
+    return m_inputs.size();
+}
+
+rpr_uint MaterialObject::GetInputType(int i)
+{
+    rpr_uint result = RPR_MATERIAL_NODE_INPUT_TYPE_NODE;
+    //get i input
+    auto it = m_inputs.begin();
+    for (int index = 0; it != m_inputs.end(); ++it, ++index)
+        if (index == i)
+        {
+            break;
+        }
+
+    //means no MaterialObject connected
+    if (!it->second)
+    {
+        result = RPR_MATERIAL_NODE_INPUT_TYPE_FLOAT4;
+    }
+    //connected input represent rpr_image
+    else if(it->second->IsImg())
+    {
+        result = RPR_MATERIAL_NODE_INPUT_TYPE_IMAGE;
+    }
+
+    return result;
+}
+
+std::string MaterialObject::GetInputName(int i)
+{
+    //get i input
+    auto it = m_inputs.begin();
+    for (int index = 0; it != m_inputs.end(); ++it, ++index)
+        if (index == i)
+        {
+            break;
+        }
+
+    return it->first;
+}
+
+
+void MaterialObject::GetInput(int i, void* out, size_t* out_size)
+{
+    //get i input
+    auto it = m_inputs.begin();
+    for (int index = 0; it != m_inputs.end(); ++it, ++index)
+        if (index == i)
+        {
+            break;
+        }
+
+    //translated name
+    std::string trans_name = TranslatePropName(it->first);
+    //means no MaterialObject connected
+    if (!it->second)
+    {
+        *out_size = sizeof(RadeonRays::float4);
+        Baikal::Material::InputValue value = m_mat->GetInputValue(trans_name);
+        if (value.type != Baikal::Material::InputType::kFloat4)
+        {
+            throw Exception(RPR_ERROR_INTERNAL_ERROR, "MaterialObject: material input type is unexpected.");
+        }
+
+        memcpy(out, &value.float_value, *out_size);
+    }
+    //images, textures and materials
+    else
+    {
+        *out_size = sizeof(rpr_material_node);
+        memcpy(out, &it->second, *out_size);
+    }
+}
+
+
+rpr_image_desc MaterialObject::GetTextureDesc() const
+{
+    RadeonRays::int2 size = m_tex->GetSize();
+    rpr_uint depth = m_tex->GetSizeInBytes() / size.x / size.y;
+    return {(rpr_uint)size.x, (rpr_uint)size.y, depth, 0, 0};
+}
+char const* MaterialObject::GetTextureData() const
+{
+    return m_tex->GetData();
+}
+rpr_image_format MaterialObject::GetTextureFormat() const
+{
+    rpr_component_type type;
+    switch (m_tex->GetFormat())
+    {
+    case Baikal::Texture::Format::kRgba8:
+        type = RPR_COMPONENT_TYPE_UINT8;
+        break;
+    case Baikal::Texture::Format::kRgba16:
+        type = RPR_COMPONENT_TYPE_FLOAT16;
+        break;
+    case Baikal::Texture::Format::kRgba32:
+        type = RPR_COMPONENT_TYPE_FLOAT32;
+        break;
+    default:
+        throw Exception(RPR_ERROR_INTERNAL_ERROR, "MaterialObject: invalid image format.");
+    }
+    //only 4component textures used
+    return{ 4, type };
 }

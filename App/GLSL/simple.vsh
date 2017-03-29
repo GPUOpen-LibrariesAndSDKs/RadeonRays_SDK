@@ -19,55 +19,15 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
-#pragma once
 
-#include "WrapObject/WrapObject.h"
-#include "Scene/scene1.h"
-#include "Scene/shape.h"
-#include "Scene/light.h"
+attribute vec3 inPosition;
+attribute vec2 inTexcoord;
 
-#include <vector>
+varying vec2 Texcoord;
 
-class ShapeObject;
-class LightObject;
-class CameraObject;
-
-//this class represent rpr_context
-class SceneObject
-    : public WrapObject
+void main()
 {
-public:
-    SceneObject();
-    virtual ~SceneObject();
+    Texcoord = inTexcoord;
+    gl_Position = vec4(inPosition, 1.0);
+}
 
-    void Clear();
-    
-    //shape
-    void AttachShape(ShapeObject* shape);
-    void DetachShape(ShapeObject* shape);
-
-    //light
-    void AttachLight(LightObject* light);
-    void DetachLight(LightObject* light);
-    
-    //camera
-    void SetCamera(CameraObject* cam);
-    CameraObject* GetCamera() { return m_current_camera; }
-
-	void GetShapeList(void* out_list);
-	size_t GetShapeCount() { return m_scene->GetNumShapes(); }
-    
-    void GetLightList(void* out_list);
-    size_t GetLightCount() { return m_scene->GetNumLights(); }
-
-	void AddEmissive();
-	void RemoveEmissive();
-	Baikal::Scene1* GetScene() { return m_scene; };
-private:
-    Baikal::Scene1* m_scene;
-    CameraObject* m_current_camera;
-	std::vector<Baikal::AreaLight*> m_emmisive_lights;//area lights fro emissive shapes
-    std::vector<ShapeObject*> m_shapes;
-    std::vector<LightObject*> m_lights;
-
-};

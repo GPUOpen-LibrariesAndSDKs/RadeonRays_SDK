@@ -1056,9 +1056,9 @@ fr_int FRS7::Store_Context(fr_context context)
 			//first, we store the parameters that will set several default parameters.
 			//so we are sure that all custom parameters will be set during the load of context
 			if (
-				iPass == 0 && ( paramID == FR_CONTEXT_IMAGE_FILTER_TYPE || paramID == FR_CONTEXT_TONE_MAPPING_TYPE )
+				(iPass == 0 && ( paramID == FR_CONTEXT_IMAGE_FILTER_TYPE || paramID == FR_CONTEXT_TONE_MAPPING_TYPE ))
 				||
-				iPass == 1 && paramID != FR_CONTEXT_IMAGE_FILTER_TYPE && paramID != FR_CONTEXT_TONE_MAPPING_TYPE
+				(iPass == 1 && paramID != FR_CONTEXT_IMAGE_FILTER_TYPE && paramID != FR_CONTEXT_TONE_MAPPING_TYPE)
 				)
 			{
 
@@ -1569,15 +1569,15 @@ fr_int FRS7::Read_Context(fr_context context)
 
 
 				// read only parameter. don't set it.
-				else if (  paramType == FRSPT_UNDEF && paramName == "gpu0name"
-						|| paramType == FRSPT_UNDEF && paramName == "gpu1name"
-						|| paramType == FRSPT_UNDEF && paramName == "gpu2name"
-						|| paramType == FRSPT_UNDEF && paramName == "gpu3name"
-						|| paramType == FRSPT_UNDEF && paramName == "gpu4name"
-						|| paramType == FRSPT_UNDEF && paramName == "gpu5name"
-						|| paramType == FRSPT_UNDEF && paramName == "gpu6name"
-						|| paramType == FRSPT_UNDEF && paramName == "gpu7name"
-						|| paramType == FRSPT_UNDEF && paramName == "cpuname"
+				else if (  (paramType == FRSPT_UNDEF && paramName == "gpu0name")
+						|| (paramType == FRSPT_UNDEF && paramName == "gpu1name")
+						|| (paramType == FRSPT_UNDEF && paramName == "gpu2name")
+						|| (paramType == FRSPT_UNDEF && paramName == "gpu3name")
+						|| (paramType == FRSPT_UNDEF && paramName == "gpu4name")
+						|| (paramType == FRSPT_UNDEF && paramName == "gpu5name")
+						|| (paramType == FRSPT_UNDEF && paramName == "gpu6name")
+						|| (paramType == FRSPT_UNDEF && paramName == "gpu7name")
+						|| (paramType == FRSPT_UNDEF && paramName == "cpuname")
 					)
 				{
 					char* data_data = new char[paramDataSize];
@@ -2034,16 +2034,16 @@ fr_light FRS7::Read_Light(fr_context context, fr_scene scene, fr_material_system
 			}
 
 		}
-		else if ( nextElem == FRSRT_OBJECT_BEG && elementName == "FR_ENVIRONMENT_LIGHT_IMAGE" && objBegType == "fr_image"
-			||    nextElem == FRSRT_REFERENCE && elementName == "FR_ENVIRONMENT_LIGHT_IMAGE" 
+		else if ( (nextElem == FRSRT_OBJECT_BEG && elementName == "FR_ENVIRONMENT_LIGHT_IMAGE" && objBegType == "fr_image")
+			||    (nextElem == FRSRT_REFERENCE && elementName == "FR_ENVIRONMENT_LIGHT_IMAGE")
 			)
 		{
 			fr_image img = Read_Image(context);
 			status = frEnvironmentLightSetImage(light, img);
 			CHECK_STATUS_RETURNNULL;
 		}
-		else if ( nextElem == FRSRT_OBJECT_BEG && elementName == STR__SHAPE_FOR_SKY_LIGHT_PORTAL_ID && objBegType == "fr_shape"
-			||    nextElem == FRSRT_REFERENCE && elementName == STR__SHAPE_FOR_SKY_LIGHT_PORTAL_ID 
+		else if ( (nextElem == FRSRT_OBJECT_BEG && elementName == STR__SHAPE_FOR_SKY_LIGHT_PORTAL_ID && objBegType == "fr_shape")
+			||    (nextElem == FRSRT_REFERENCE && elementName == STR__SHAPE_FOR_SKY_LIGHT_PORTAL_ID)
 			)
 		{
 			fr_shape shape = Read_Shape(context,materialSystem);
@@ -2051,8 +2051,8 @@ fr_light FRS7::Read_Light(fr_context context, fr_scene scene, fr_material_system
 			status = frSkyLightAttachPortal(light, shape);
 			CHECK_STATUS_RETURNNULL;
 		}
-		else if ( nextElem == FRSRT_OBJECT_BEG && elementName == STR__SHAPE_FOR_ENVIRONMENT_LIGHT_PORTAL_ID && objBegType == "fr_shape"
-			||    nextElem == FRSRT_REFERENCE && elementName == STR__SHAPE_FOR_ENVIRONMENT_LIGHT_PORTAL_ID 
+		else if ( (nextElem == FRSRT_OBJECT_BEG && elementName == STR__SHAPE_FOR_ENVIRONMENT_LIGHT_PORTAL_ID && objBegType == "fr_shape")
+			||    (nextElem == FRSRT_REFERENCE && elementName == STR__SHAPE_FOR_ENVIRONMENT_LIGHT_PORTAL_ID)
 			)
 		{
 			fr_shape shape = Read_Shape(context,materialSystem);
@@ -2188,7 +2188,7 @@ fr_image FRS7::Read_Image(fr_context context)
 			return NULL;
 		}
 		status = frContextCreateImage(context, imgFormat, &imgDesc, imgData, &image);
-		if ( imgData ) { delete[] imgData; imgData=NULL; }
+		if ( imgData ) { delete[] static_cast<char*>(imgData); imgData=NULL; }
 		CHECK_STATUS_RETURNNULL;
 
 		if ( objectName )
@@ -2314,8 +2314,8 @@ fr_material_node FRS7::Read_MaterialNode(fr_material_system materialSystem, fr_c
 				}
 
 			}
-			else if ( nextElem == FRSRT_OBJECT_BEG && objBegType == "fr_material_node" 
-				||    nextElem == FRSRT_REFERENCE && objBegType == "fr_material_node" 
+			else if ( (nextElem == FRSRT_OBJECT_BEG && objBegType == "fr_material_node") 
+				||    (nextElem == FRSRT_REFERENCE && objBegType == "fr_material_node")
 				)
 			{
 			
@@ -2329,8 +2329,8 @@ fr_material_node FRS7::Read_MaterialNode(fr_material_system materialSystem, fr_c
 				CHECK_STATUS_RETURNNULL;
 
 			}
-			else if ( nextElem == FRSRT_OBJECT_BEG && objBegType == "fr_image" 
-				||    nextElem == FRSRT_REFERENCE && objBegType == "fr_image" 
+			else if ( (nextElem == FRSRT_OBJECT_BEG && objBegType == "fr_image")
+				||    (nextElem == FRSRT_REFERENCE && objBegType == "fr_image")
 				)
 			{
 			
@@ -2611,15 +2611,15 @@ fr_shape FRS7::Read_Shape(fr_context context, fr_material_system materialSystem 
 				}
 
 			}
-			else if ( nextElem == FRSRT_OBJECT_BEG && elementName == "FR_SHAPE_DISPLACEMENT_IMAGE" && objBegType == "fr_image"
-				||    nextElem == FRSRT_REFERENCE && elementName == "FR_SHAPE_DISPLACEMENT_IMAGE" 
+			else if ( (nextElem == FRSRT_OBJECT_BEG && elementName == "FR_SHAPE_DISPLACEMENT_IMAGE" && objBegType == "fr_image")
+				||    (nextElem == FRSRT_REFERENCE && elementName == "FR_SHAPE_DISPLACEMENT_IMAGE") 
 				)
 			{
 				param__FR_SHAPE_DISPLACEMENT_IMAGE__data = Read_Image(context);
 				param__FR_SHAPE_DISPLACEMENT_IMAGE__defined = true;
 			}
-			else if ( nextElem == FRSRT_OBJECT_BEG && objBegType == "fr_material_node"
-				||    nextElem == FRSRT_REFERENCE  && objBegType == "fr_material_node"
+			else if ( (nextElem == FRSRT_OBJECT_BEG && objBegType == "fr_material_node")
+				||    (nextElem == FRSRT_REFERENCE  && objBegType == "fr_material_node")
 				)
 			{
 				shapeMaterial = Read_MaterialNode(materialSystem,context);

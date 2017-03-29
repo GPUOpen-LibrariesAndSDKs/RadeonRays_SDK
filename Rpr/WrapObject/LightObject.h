@@ -54,15 +54,22 @@ public:
     //light methods
     void SetTransform(const RadeonRays::matrix& transform);
     RadeonRays::matrix GetTransform();
+    
     void SetRadiantPower(const RadeonRays::float3& p);
+    RadeonRays::float3 GetRadiantPower();
 
     //spot light methods
     void SetSpotConeShape(const RadeonRays::float2& cone);
+    RadeonRays::float2 GetSpotConeShape();
 
     //env light
     void SetEnvTexture(MaterialObject* img);
+    MaterialObject* GetEnvTexture();
     void SetEnvMultiplier(rpr_float mult);
+    rpr_float GetEnvMultiplier();
 private:
     Baikal::Light* m_light;
     Type m_type;
+    //only for GetEnvTexture() method
+    MaterialObject* m_env_tex;
 };

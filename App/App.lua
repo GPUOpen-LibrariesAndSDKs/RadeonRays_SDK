@@ -2,7 +2,7 @@ project "App"
     kind "ConsoleApp"
     location "../App"
     links {"RadeonRays", "CLW", "Calc"}
-    files { "../App/**.h", "../App/**.cpp", "../App/**.cl", "../App/**.fsh", "../App/**.vsh" }
+    files { "../App/**.inl", "../App/**.h", "../App/**.cpp", "../App/**.cl", "../App/**.fsh", "../App/**.vsh" }
 
     includedirs{ "../RadeonRays/include", "../CLW", "." }
 
@@ -21,9 +21,9 @@ project "App"
             links {"freeglut", "glew"}
 
         end
-            libdirs {   "../3rdparty/glew/lib/%{cfg.platform}", 
-                        "../3rdparty/freeglut/lib/%{cfg.platform}", 
-                        "../3rdparty/embree/lib/%{cfg.platform}", 
+            libdirs {   "../3rdparty/glew/lib/%{cfg.platform}",
+                        "../3rdparty/freeglut/lib/%{cfg.platform}",
+                        "../3rdparty/embree/lib/%{cfg.platform}",
                         "../3rdparty/oiio/lib/%{cfg.platform}"}
         configuration {"Debug"}
             links {"OpenImageIOD"}
@@ -87,14 +87,14 @@ project "App"
     configuration {"x64", "Release"}
         targetdir "../Bin/Release/x64"
     configuration {}
-    
+
     if os.is("windows") then
-        postbuildcommands  { 
-          'copy "..\\3rdparty\\glew\\bin\\%{cfg.platform}\\glew32.dll" "%{cfg.buildtarget.directory}"', 
-          'copy "..\\3rdparty\\freeglut\\bin\\%{cfg.platform}\\freeglut.dll" "%{cfg.buildtarget.directory}"', 
+        postbuildcommands  {
+          'copy "..\\3rdparty\\glew\\bin\\%{cfg.platform}\\glew32.dll" "%{cfg.buildtarget.directory}"',
+          'copy "..\\3rdparty\\freeglut\\bin\\%{cfg.platform}\\freeglut.dll" "%{cfg.buildtarget.directory}"',
           'copy "..\\3rdparty\\embree\\bin\\%{cfg.platform}\\embree.dll" "%{cfg.buildtarget.directory}"',
           'copy "..\\3rdparty\\embree\\bin\\%{cfg.platform}\\tbb.dll" "%{cfg.buildtarget.directory}"',
           'copy "..\\3rdparty\\oiio\\bin\\%{cfg.platform}\\OpenImageIO.dll" "%{cfg.buildtarget.directory}"',
-          'copy "..\\3rdparty\\oiio\\bin\\%{cfg.platform}\\OpenImageIOD.dll" "%{cfg.buildtarget.directory}"' 
+          'copy "..\\3rdparty\\oiio\\bin\\%{cfg.platform}\\OpenImageIOD.dll" "%{cfg.buildtarget.directory}"'
         }
     end

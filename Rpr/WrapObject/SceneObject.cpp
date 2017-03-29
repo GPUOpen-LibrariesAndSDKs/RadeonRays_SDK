@@ -46,6 +46,8 @@ SceneObject::~SceneObject()
 void SceneObject::Clear()
 {
 	m_shapes.clear();
+    m_lights.clear();
+
     //remove lights
     for (std::unique_ptr<Baikal::Iterator> it_light(m_scene->CreateLightIterator()); it_light->IsValid();)
     {
@@ -88,11 +90,26 @@ void SceneObject::DetachShape(ShapeObject* shape)
 
 void SceneObject::AttachLight(LightObject* light)
 {
+    //check is light already in scene
+    auto it = std::find(m_lights.begin(), m_lights.end(), light);
+    if (it != m_lights.end())
+    {
+        return;
+    }
+    m_lights.push_back(light);
+
     m_scene->AttachLight(light->GetLight());
 }
 
 void SceneObject::DetachLight(LightObject* light)
 {
+    //check is light in scene
+    auto it = std::find(m_lights.begin(), m_lights.end(), light);
+    if (it == m_lights.end())
+    {
+        return;
+    }
+    m_lights.erase(it);
     m_scene->DetachLight(light->GetLight());
 }
 
@@ -107,6 +124,12 @@ void SceneObject::GetShapeList(void* out_list)
 {
 	memcpy(out_list, m_shapes.data(), m_shapes.size() * sizeof(ShapeObject*));
 }
+
+void SceneObject::GetLightList(void* out_list)
+{
+    memcpy(out_list, m_lights.data(), m_lights.size() * sizeof(LightObject*));
+}
+
 
 void SceneObject::AddEmissive()
 {

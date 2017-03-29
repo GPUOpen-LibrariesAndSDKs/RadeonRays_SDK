@@ -2,9 +2,9 @@
 
 #include "CLW.h"
 #include "math/float3.h"
-#include "Scene/scene1.h"
+#include "SceneGraph/scene1.h"
 #include "radeon_rays.h"
-#include "Scene/Collector/collector.h"
+#include "SceneGraph/Collector/collector.h"
 
 
 namespace Baikal

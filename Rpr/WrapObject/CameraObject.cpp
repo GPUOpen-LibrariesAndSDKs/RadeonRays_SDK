@@ -49,7 +49,6 @@ CameraObject::CameraObject()
     camera->SetFocalLength(camera_focal_length);
     camera->SetFocusDistance(camera_focus_distance);
     camera->SetAperture(camera_aperture);
-
     m_cam = camera;
 }
 
@@ -69,4 +68,13 @@ void CameraObject::SetTransform(const RadeonRays::matrix& m)
 	at = m * at;
 	up = m * up;
 	m_cam->LookAt(eye, at, up);
+}
+
+void CameraObject::GetLookAt(RadeonRays::float3& eye,
+    RadeonRays::float3& at,
+    RadeonRays::float3& up)
+{
+    eye = m_cam->GetPosition();
+    at = m_cam->GetForwardVector();
+    up = m_cam->GetUpVector();
 }

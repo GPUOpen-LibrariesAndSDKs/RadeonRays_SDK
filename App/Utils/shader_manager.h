@@ -19,55 +19,43 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
-#pragma once
+#ifndef SHADER_MANAGER_H
+#define SHADER_MANAGER_H
 
-#include "WrapObject/WrapObject.h"
-#include "Scene/scene1.h"
-#include "Scene/shape.h"
-#include "Scene/light.h"
+#ifdef __APPLE__
+#include <OpenCL/OpenCL.h>
+#include <OpenGL/OpenGL.h>
+#include <GLUT/GLUT.h>
+#elif WIN32
+#define NOMINMAX
+#include <Windows.h>
+#include "GL/glew.h"
+#include "GLUT/GLUT.h"
+#else
+#include <CL/cl.h>
+#include <GL/glew.h>
+#include <GL/glut.h>
+#endif
 
-#include <vector>
+#include <string>
+#include <map>
 
-class ShapeObject;
-class LightObject;
-class CameraObject;
-
-//this class represent rpr_context
-class SceneObject
-    : public WrapObject
+class ShaderManager
 {
 public:
-    SceneObject();
-    virtual ~SceneObject();
-
-    void Clear();
+    ShaderManager();
+    ~ShaderManager();
     
-    //shape
-    void AttachShape(ShapeObject* shape);
-    void DetachShape(ShapeObject* shape);
-
-    //light
-    void AttachLight(LightObject* light);
-    void DetachLight(LightObject* light);
+    GLuint GetProgram(std::string const& name);
     
-    //camera
-    void SetCamera(CameraObject* cam);
-    CameraObject* GetCamera() { return m_current_camera; }
-
-	void GetShapeList(void* out_list);
-	size_t GetShapeCount() { return m_scene->GetNumShapes(); }
-    
-    void GetLightList(void* out_list);
-    size_t GetLightCount() { return m_scene->GetNumLights(); }
-
-	void AddEmissive();
-	void RemoveEmissive();
-	Baikal::Scene1* GetScene() { return m_scene; };
 private:
-    Baikal::Scene1* m_scene;
-    CameraObject* m_current_camera;
-	std::vector<Baikal::AreaLight*> m_emmisive_lights;//area lights fro emissive shapes
-    std::vector<ShapeObject*> m_shapes;
-    std::vector<LightObject*> m_lights;
-
+    GLuint CompileProgram(std::string const& name);
+    
+    ShaderManager(ShaderManager const&);
+    ShaderManager& operator = (ShaderManager const&);
+    
+    std::map<std::string, GLuint> shadercache_;
 };
+
+#endif
+

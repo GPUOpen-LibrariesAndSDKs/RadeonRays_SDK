@@ -63,17 +63,17 @@ THE SOFTWARE.
 
 #include "math/mathutils.h"
 
-#include "tiny_obj_loader.h"
-#include "Scene/camera.h"
-#include "shader_manager.h"
-#include "Scene/scene1.h"
-#include "PT/ptrenderer.h"
-#include "AO/aorenderer.h"
+#include "Utils/tiny_obj_loader.h"
+#include "SceneGraph/camera.h"
+#include "Utils/shader_manager.h"
+#include "SceneGraph/scene1.h"
+#include "Renderers/PT/ptrenderer.h"
+#include "Renderers/AO/aorenderer.h"
 #include "CLW/clwoutput.h"
-#include "config_manager.h"
-#include "Scene/scene1.h"
-#include "Scene/IO/scene_io.h"
-#include "Scene/IO/material_io.h"
+#include "Utils/config_manager.h"
+#include "SceneGraph/scene1.h"
+#include "SceneGraph/IO/scene_io.h"
+#include "SceneGraph/IO/material_io.h"
 
 Baikal::Scene1 scene;
 
@@ -185,7 +185,7 @@ void Render()
             glBindBuffer(GL_ARRAY_BUFFER, g_vertex_buffer);
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g_index_buffer);
 
-            GLuint program = g_shader_manager->GetProgram("../App/simple");
+            GLuint program = g_shader_manager->GetProgram("../App/GLSL/simple");
             glUseProgram(program);
 
             GLuint texloc = glGetUniformLocation(program, "g_Texture");
