@@ -28,7 +28,7 @@
  */
 #pragma once
 
-#include "scene_controller.h"
+#include "SceneGraph/scene_controller.h"
 #include "CLW.h"
 
 #include "CLW/clwscene.h"
