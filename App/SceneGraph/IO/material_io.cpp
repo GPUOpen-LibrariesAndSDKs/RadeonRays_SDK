@@ -1,12 +1,12 @@
 #include "material_io.h"
 
-#include "Scene/scene1.h"
-#include "Scene/iterator.h"
-#include "Scene/shape.h"
-#include "Scene/material.h"
+#include "SceneGraph/scene1.h"
+#include "SceneGraph/iterator.h"
+#include "SceneGraph/shape.h"
+#include "SceneGraph/material.h"
 
-#include "Scene/IO/image_io.h"
-#include "Scene/Collector/collector.h"
+#include "SceneGraph/IO/image_io.h"
+#include "SceneGraph/Collector/collector.h"
 
 
 #include "XML/tinyxml2.h"

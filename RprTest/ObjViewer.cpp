@@ -3,9 +3,19 @@
 #include <algorithm>
 #include <fstream>
 #include <cassert>
+#ifdef __APPLE__
+#include <OpenGL/OpenGL.h>
+#include <GLUT/GLUT.h>
+#elif WIN32
+#define NOMINMAX
+#include <Windows.h>
+#include "GL/glew.h"
+#include "GLUT/GLUT.h"
+#else
 #include <GL/glew.h>
-#include <GLUT/glut.h>
-#include <GL/GL.h>
+#include <GL/glut.h>
+#include <GL/glx.h>
+#endif
 //#include <GL/glfw3.h>
 //#include <glm/glm.hpp>
 //#include <glm/ext.hpp>
@@ -226,8 +236,13 @@ void InitGraphics(int argc, char** argv)
         1, -1, 0
     };
 
+#ifdef __APPLE__
+    glGenVertexArraysAPPLE(1, &g_vao);
+    glBindVertexArrayAPPLE(g_vao);
+#else
     glGenVertexArrays(1, &g_vao);
     glBindVertexArray(g_vao);
+#endif
 
     GLuint vbo;
     glGenBuffers(1, &vbo);
@@ -237,7 +252,11 @@ void InitGraphics(int argc, char** argv)
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
+#ifdef __APPLE__
+    glBindVertexArrayAPPLE(0);
+#else
     glBindVertexArray(0);
+#endif
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     // Allocate a texture to be used as framebuffer target.
@@ -823,7 +842,12 @@ void Render()
     assert(glGetError() == GL_NO_ERROR);
 
     // Render full screen quad.
+#ifdef __APPLE__
+    glBindVertexArrayAPPLE(g_vao);
+#else
     glBindVertexArray(g_vao);
+#endif
+    
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
     glBindTexture(GL_TEXTURE_2D, 0);
