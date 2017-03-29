@@ -30,7 +30,6 @@ namespace Baikal
         m_api = CreateFromOpenClContext(m_context, id, queue);
 
         m_api->SetOption("acc.type", "bvh");
-        m_api->SetOption("bvh.forceflat", 1.f);
         m_api->SetOption("bvh.builder", "sah");
         m_api->SetOption("bvh.sah.num_bins", 64.f);
     }
