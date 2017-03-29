@@ -99,6 +99,11 @@ public:
     void GetInput(int i, void* out, size_t* out_size);
     std::string GetInputName(int i);
 
+    //rprImageGetInfo:
+    rpr_image_desc GetTextureDesc() const;
+    char const* GetTextureData() const;
+    rpr_image_format GetTextureFormat() const;
+
 private:
     void Clear();
     bool CheckInputMaterial();

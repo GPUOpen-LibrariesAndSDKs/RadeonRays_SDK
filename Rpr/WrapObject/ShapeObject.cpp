@@ -70,10 +70,10 @@ namespace
     }
 }
 
-ShapeObject::ShapeObject(Baikal::Shape* shape, bool is_instance)
+ShapeObject::ShapeObject(Baikal::Shape* shape, ShapeObject* base_shape_obj)
     : m_shape(shape)
-    , m_is_instance(is_instance)
     , m_current_mat(nullptr)
+    , m_base_obj(base_shape_obj)
 {
 }
 
@@ -81,7 +81,7 @@ ShapeObject::~ShapeObject()
 {
     delete m_shape;
     m_shape = nullptr;
-    m_is_instance = false;
+    m_base_obj = nullptr;
 }
 
 ShapeObject* ShapeObject::CreateInstance()
@@ -90,25 +90,14 @@ ShapeObject* ShapeObject::CreateInstance()
     {
         return nullptr;
     }
-    Instance* instance = nullptr;
-    if (m_is_instance)
+    ShapeObject* base_shape = m_base_obj;
+    //if current ShapeObject is not an instance
+    if (!base_shape)
     {
-        //get base shape
-        Instance* inst = WrapObject::Cast<Instance>(m_shape);
-        if (!inst)
-        {
-            //something goes wrong
-            return nullptr;
-        }
-        const Shape* base = inst->GetBaseShape();
-        instance = new Instance(base);
+        base_shape = this;
     }
-    else
-    {
-        instance = new Instance(m_shape);
-    }
-
-    ShapeObject* result = new ShapeObject(instance, true);
+    Instance* instance = new Instance(base_shape->m_shape);
+    ShapeObject* result = new ShapeObject(instance, base_shape);
 
     return result;
 }

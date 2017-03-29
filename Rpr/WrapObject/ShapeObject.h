@@ -36,7 +36,7 @@ class ShapeObject
 {
 private:
 
-    ShapeObject(Baikal::Shape* shape, bool is_instance);
+    ShapeObject(Baikal::Shape* shape, ShapeObject* base_shape_obj = nullptr);
     virtual ~ShapeObject();
 
 public:
@@ -50,9 +50,12 @@ public:
 
     ShapeObject* CreateInstance();
 
-    bool IsInstance() { return m_is_instance; }
+    bool IsInstance() { return m_base_obj; }
+    
+    //Set/Get methods
     void SetTransform(const RadeonRays::matrix& m) { m_shape->SetTransform(m); };
-   
+    RadeonRays::matrix GetTransform() { return m_shape->GetTransform(); }
+
     void SetMaterial(MaterialObject* mat);
     MaterialObject* GetMaterial() { return m_current_mat; }
     
@@ -67,9 +70,10 @@ public:
 
     const uint32_t* GetIndicesData() const;
 
+    ShapeObject* GetBaseShape() { return m_base_obj; }
     Baikal::Shape* GetShape() { return m_shape; }
 private:
     Baikal::Shape* m_shape;
     MaterialObject* m_current_mat;
-    bool m_is_instance;
+    ShapeObject* m_base_obj;
 };

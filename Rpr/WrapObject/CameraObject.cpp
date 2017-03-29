@@ -69,3 +69,12 @@ void CameraObject::SetTransform(const RadeonRays::matrix& m)
 	up = m * up;
 	m_cam->LookAt(eye, at, up);
 }
+
+void CameraObject::GetLookAt(RadeonRays::float3& eye,
+    RadeonRays::float3& at,
+    RadeonRays::float3& up)
+{
+    eye = m_cam->GetPosition();
+    at = m_cam->GetForwardVector();
+    up = m_cam->GetUpVector();
+}

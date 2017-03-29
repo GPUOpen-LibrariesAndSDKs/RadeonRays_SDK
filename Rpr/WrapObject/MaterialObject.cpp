@@ -265,13 +265,13 @@ MaterialObject::MaterialObject(rpr_image_format const in_format, rpr_image_desc 
 		for (int i = 0; i < pixels_count; ++i)
 		{
 			//copy
-			for (int comp_ind = 0; comp_ind < in_format.num_components; ++comp_ind)
+			for (unsigned int comp_ind = 0; comp_ind < in_format.num_components; ++comp_ind)
 			{
 				int index = comp_ind * component_bytes;
 				memcpy(&data[i * 4 * component_bytes + index], &in_data_cast[i * in_format.num_components * component_bytes + index], component_bytes);
 			}
 			//clean other colors
-			for (int comp_ind = in_format.num_components; comp_ind < 4; ++comp_ind)
+			for (unsigned int comp_ind = in_format.num_components; comp_ind < 4; ++comp_ind)
 			{
 				int index = comp_ind * component_bytes;
 				memset(&data[i * 4 + comp_ind], 0, component_bytes);
@@ -622,4 +622,36 @@ void MaterialObject::GetInput(int i, void* out, size_t* out_size)
         *out_size = sizeof(rpr_material_node);
         memcpy(out, &it->second, *out_size);
     }
+}
+
+
+rpr_image_desc MaterialObject::GetTextureDesc() const
+{
+    RadeonRays::int2 size = m_tex->GetSize();
+    rpr_uint depth = m_tex->GetSizeInBytes() / size.x / size.y;
+    return {(rpr_uint)size.x, (rpr_uint)size.y, depth, 0, 0};
+}
+char const* MaterialObject::GetTextureData() const
+{
+    return m_tex->GetData();
+}
+rpr_image_format MaterialObject::GetTextureFormat() const
+{
+    rpr_component_type type;
+    switch (m_tex->GetFormat())
+    {
+    case Baikal::Texture::Format::kRgba8:
+        type = RPR_COMPONENT_TYPE_UINT8;
+        break;
+    case Baikal::Texture::Format::kRgba16:
+        type = RPR_COMPONENT_TYPE_FLOAT16;
+        break;
+    case Baikal::Texture::Format::kRgba32:
+        type = RPR_COMPONENT_TYPE_FLOAT32;
+        break;
+    default:
+        throw Exception(RPR_ERROR_INTERNAL_ERROR, "MaterialObject: invalid image format.");
+    }
+    //only 4component textures used
+    return{ 4, type };
 }

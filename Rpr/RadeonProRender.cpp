@@ -463,8 +463,29 @@ rpr_int rprContextCreateMesh(rpr_context in_context,
     return result;
 }
 
-rpr_int rprContextCreateMeshEx(rpr_context context, rpr_float const * vertices, size_t num_vertices, rpr_int vertex_stride, rpr_float const * normals, size_t num_normals, rpr_int normal_stride, rpr_int const * perVertexFlag, size_t num_perVertexFlags, rpr_int perVertexFlag_stride, rpr_int numberOfTexCoordLayers, rpr_float const ** texcoords, size_t * num_texcoords, rpr_int * texcoord_stride, rpr_int const * vertex_indices, rpr_int vidx_stride, rpr_int const * normal_indices, rpr_int nidx_stride, rpr_int const ** texcoord_indices, rpr_int * tidx_stride, rpr_int const * num_face_vertices, size_t num_faces, rpr_shape * out_mesh)
+rpr_int rprContextCreateMeshEx(rpr_context context, 
+                                rpr_float const * vertices, size_t num_vertices, rpr_int vertex_stride, 
+                                rpr_float const * normals, size_t num_normals, rpr_int normal_stride, 
+                                rpr_int const * perVertexFlag, size_t num_perVertexFlags, rpr_int perVertexFlag_stride, 
+                                rpr_int numberOfTexCoordLayers, 
+                                rpr_float const ** texcoords, size_t * num_texcoords, rpr_int * texcoord_stride, 
+                                rpr_int const * vertex_indices, rpr_int vidx_stride, 
+                                rpr_int const * normal_indices, rpr_int nidx_stride, 
+                                rpr_int const ** texcoord_indices, rpr_int * tidx_stride, 
+                                rpr_int const * num_face_vertices, size_t num_faces, rpr_shape * out_mesh)
 {
+    if (num_perVertexFlags == 0 && numberOfTexCoordLayers == 1)
+    {
+        //can use rprContextCreateMesh
+        return rprContextCreateMesh(context,
+                                vertices, num_vertices, vertex_stride,
+                                normals, num_normals, normal_stride,
+                                texcoords[0], num_texcoords[0], texcoord_stride[0],
+                                vertex_indices, vidx_stride,
+                                normal_indices, nidx_stride,
+                                texcoord_indices[0], tidx_stride[0],
+                                num_face_vertices, num_faces, out_mesh);
+    }
     UNIMLEMENTED_FUNCTION
 }
 
@@ -512,9 +533,124 @@ rpr_int rprContextCreateFrameBuffer(rpr_context in_context, rpr_framebuffer_form
     return RPR_SUCCESS;
 }
 
-rpr_int rprCameraGetInfo(rpr_camera camera, rpr_camera_info camera_info, size_t size, void * data, size_t * size_ret)
+rpr_int rprCameraGetInfo(rpr_camera in_camera, rpr_camera_info in_camera_info, size_t in_size, void * out_data, size_t * out_size_ret)
 {
-    UNIMLEMENTED_FUNCTION
+    CameraObject* cam = WrapObject::Cast<CameraObject>(in_camera);
+    if (!cam)
+    {
+        return RPR_ERROR_INVALID_OBJECT;
+    }
+
+    std::vector<char> data;
+    size_t size_ret = 0;
+    switch (in_camera_info)
+    {
+    case RPR_CAMERA_FSTOP:
+    {
+        rpr_float value = cam->GetAperture();
+        size_ret = sizeof(value);
+        data.resize(size_ret);
+        memcpy(&data[0], &value, size_ret);
+        break;
+    }
+    case RPR_CAMERA_FOCAL_LENGTH:
+    {
+        rpr_float value = cam->GetFocalLength();
+        size_ret = sizeof(value);
+        data.resize(size_ret);
+        memcpy(&data[0], &value, size_ret);
+        break;
+    }
+    case RPR_CAMERA_SENSOR_SIZE:
+    {
+        RadeonRays::float2 value = cam->GetSensorSize();
+        size_ret = sizeof(value);
+        data.resize(size_ret);
+        memcpy(&data[0], &value, size_ret);
+        break;
+    }
+    case RPR_CAMERA_MODE:
+    {
+        //TODO: only prespective camera supported now
+        rpr_camera_mode value = RPR_CAMERA_MODE_PERSPECTIVE;
+        size_ret = sizeof(value);
+        data.resize(size_ret);
+        memcpy(&data[0], &value, size_ret);
+        break;
+    }
+    case RPR_CAMERA_FOCUS_DISTANCE:
+    {
+        //TODO: only prespective camera supported now
+        rpr_float value = cam->GetFocusDistance();
+        size_ret = sizeof(value);
+        data.resize(size_ret);
+        memcpy(&data[0], &value, size_ret);
+        break;
+    }
+    case RPR_CAMERA_POSITION:
+    {
+        RadeonRays::float3 pos;
+        RadeonRays::float3 at;
+        RadeonRays::float3 up;
+        cam->GetLookAt(pos, at, up);
+        size_ret = sizeof(pos);
+        data.resize(size_ret);
+        memcpy(&data[0], &pos, size_ret);
+        break;
+    }
+    case RPR_CAMERA_LOOKAT:
+    {
+        RadeonRays::float3 pos;
+        RadeonRays::float3 at;
+        RadeonRays::float3 up;
+        cam->GetLookAt(pos, at, up);
+        size_ret = sizeof(at);
+        data.resize(size_ret);
+        memcpy(&data[0], &at, size_ret);
+        break;
+    }
+    case RPR_CAMERA_UP:
+    {
+        RadeonRays::float3 pos;
+        RadeonRays::float3 at;
+        RadeonRays::float3 up;
+        cam->GetLookAt(pos, at, up);
+        size_ret = sizeof(up);
+        data.resize(size_ret);
+        memcpy(&data[0], &up, size_ret);
+        break;
+    }
+    case RPR_OBJECT_NAME:
+    {
+        std::string name = cam->GetName();
+        size_ret = name.size() + 1;
+        data.resize(size_ret);
+        memcpy(&data[0], name.c_str(), size_ret);
+        break;
+    }
+    case RPR_CAMERA_APERTURE_BLADES:
+    case RPR_CAMERA_EXPOSURE:
+    case RPR_CAMERA_ORTHO_WIDTH:
+    case RPR_CAMERA_FOCAL_TILT:
+    case RPR_CAMERA_IPD:
+    case RPR_CAMERA_LENS_SHIFT:
+    case RPR_CAMERA_ORTHO_HEIGHT:
+
+        UNSUPPORTED_FUNCTION
+        break;
+    default:
+        UNIMLEMENTED_FUNCTION
+    }
+
+    if (out_size_ret)
+    {
+        *out_size_ret = size_ret;
+    }
+    if (out_data)
+    {
+        memcpy(out_data, &data[0], size_ret);
+    }
+    return RPR_SUCCESS;
 }
 
 rpr_int rprCameraSetFocalLength(rpr_camera in_camera, rpr_float flength)
@@ -527,7 +663,7 @@ rpr_int rprCameraSetFocalLength(rpr_camera in_camera, rpr_float flength)
     }
 
     //translate meters to mm 
-    camera->SetFocalLength(flength / 1000.f);
+    camera->SetFocalLength(flength);
 
     return RPR_SUCCESS;
 }
@@ -578,7 +714,7 @@ rpr_int rprCameraSetSensorSize(rpr_camera in_camera, rpr_float in_width, rpr_flo
     }
 
     //convedrt meters to mm
-    RadeonRays::float2 size = { in_width / 1000.f, in_height / 1000.f };
+    RadeonRays::float2 size = { in_width, in_height};
     camera->SetSensorSize(size);
 
     return RPR_SUCCESS;
@@ -612,7 +748,7 @@ rpr_int rprCameraSetFStop(rpr_camera in_camera, rpr_float fstop)
     }
 
     //translate m -> to mm
-    camera->SetAperture(fstop / 1000.f);
+    camera->SetAperture(fstop);
 
     return RPR_SUCCESS;
 }
@@ -673,14 +809,74 @@ rpr_int rprCameraSetOrthoHeight(rpr_camera camera, rpr_float height)
     UNSUPPORTED_FUNCTION
 }
 
-rpr_int rprImageGetInfo(rpr_image image, rpr_image_info image_info, size_t size, void * data, size_t * size_ret)
+rpr_int rprImageGetInfo(rpr_image in_image, rpr_image_info in_image_info, size_t in_size, void * in_data, size_t * in_size_ret)
 {
-    UNIMLEMENTED_FUNCTION
+    MaterialObject* img = WrapObject::Cast<MaterialObject>(in_image);
+    if (!img || !img->IsImg())
+    {
+        return RPR_ERROR_INVALID_IMAGE;
+    }
+
+    std::vector<char> data;
+    size_t size_ret = 0;
+    switch (in_image_info)
+    {
+    case RPR_IMAGE_FORMAT:
+    {
+        //texture data always stored as 4 component FLOAT32
+        rpr_image_format value = img->GetTextureFormat();
+        size_ret = sizeof(value);
+        data.resize(size_ret);
+        memcpy(&data[0], &value, size_ret);
+        break;
+    }
+    case RPR_IMAGE_DESC:
+    {
+        rpr_image_desc value = img->GetTextureDesc();
+        size_ret = sizeof(value);
+        data.resize(size_ret);
+        memcpy(&data[0], &value, size_ret);
+        break;
+    }
+    case RPR_IMAGE_DATA:
+    {
+        rpr_image_desc desc = img->GetTextureDesc();
+        const char* value = img->GetTextureData();
+        size_ret = desc.image_width * desc.image_height * desc.image_depth;
+        data.resize(size_ret);
+        memcpy(&data[0], value, size_ret);
+        break;
+    }
+    case RPR_OBJECT_NAME:
+    {
+        std::string name = img->GetName();
+        size_ret = name.size() + 1;
+        data.resize(size_ret);
+        memcpy(&data[0], name.c_str(), size_ret);
+        break;
+    }
+    case RPR_IMAGE_WRAP:
+        UNSUPPORTED_FUNCTION
+        break;
+    default:
+        UNIMLEMENTED_FUNCTION
+    }
+
+    if (in_size_ret)
+    {
+        *in_size_ret = size_ret;
+    }
+    if (in_data)
+    {
+        memcpy(in_data, &data[0], size_ret);
+    }
+
+    return RPR_SUCCESS;
 }
 
 rpr_int rprImageSetWrap(rpr_image image, rpr_image_wrap_type type)
 {
-    UNIMLEMENTED_FUNCTION
+    UNSUPPORTED_FUNCTION
 }
 
 rpr_int rprShapeSetTransform(rpr_shape in_shape, rpr_bool transpose, rpr_float const * transform)
@@ -850,6 +1046,35 @@ rpr_int rprShapeGetInfo(rpr_shape in_shape, rpr_shape_info in_info, size_t in_si
         memcpy(&data[0], &value, size_ret);
         break;
     }
+    case RPR_SHAPE_TRANSFORM:
+    {
+        RadeonRays::matrix value = shape->GetTransform();
+        size_ret = sizeof(value);
+        data.resize(size_ret);
+        memcpy(&data[0], &value, size_ret);
+        break;
+    }
+    case RPR_OBJECT_NAME:
+    {
+        std::string name = shape->GetName();
+        size_ret = name.size() + 1;
+        data.resize(size_ret);
+        memcpy(&data[0], name.c_str(), size_ret);
+        break;
+    }
+    //these properties of shape are unsupported
+    case RPR_SHAPE_LINEAR_MOTION:
+    case RPR_SHAPE_ANGULAR_MOTION:
+    case RPR_SHAPE_VISIBILITY_FLAG:
+    case RPR_SHAPE_SHADOW_FLAG:
+    case RPR_SHAPE_SHADOW_CATCHER_FLAG:
+    case RPR_SHAPE_SUBDIVISION_FACTOR:
+    case RPR_SHAPE_SUBDIVISION_CREASEWEIGHT:
+    case RPR_SHAPE_SUBDIVISION_BOUNDARYINTEROP:
+    case RPR_SHAPE_DISPLACEMENT_SCALE:
+    case RPR_SHAPE_OBJECT_GROUP_ID:
+    case RPR_SHAPE_DISPLACEMENT_IMAGE:
+        UNSUPPORTED_FUNCTION
     default:
         UNIMLEMENTED_FUNCTION
     }
@@ -982,9 +1207,16 @@ rpr_int rprMeshPolygonGetInfo(rpr_shape mesh, size_t polygon_index, rpr_mesh_pol
     UNIMLEMENTED_FUNCTION
 }
 
-rpr_int rprInstanceGetBaseShape(rpr_shape shape, rpr_shape * out_shape)
+rpr_int rprInstanceGetBaseShape(rpr_shape in_shape, rpr_shape * out_shape)
 {
-    UNIMLEMENTED_FUNCTION
+    ShapeObject* instance = WrapObject::Cast<ShapeObject>(in_shape);
+    if (!instance || !instance->IsInstance())
+    {
+        return RPR_ERROR_INVALID_OBJECT;
+    }
+
+    *out_shape = instance->GetBaseShape();
+    return RPR_SUCCESS;
 }
 
 rpr_int rprContextCreatePointLight(rpr_context in_context, rpr_light * out_light)
@@ -1247,57 +1479,91 @@ rpr_int rprLightGetInfo(rpr_light in_light, rpr_light_info in_info, size_t in_si
         return RPR_ERROR_INVALID_PARAMETER;
     }
 
+    std::vector<char> data;
+    size_t size_ret = 0;
     switch (in_info)
     {
     case RPR_LIGHT_TYPE:
     {
-        int* data = static_cast<int*>(out_data);
-        if (data && in_size < sizeof(int))
-        {
-            return RPR_ERROR_INVALID_PARAMETER;
-        }
-        if (out_size_ret)
-        {
-            *out_size_ret = sizeof(int);
-        }
-        if (data)
-        {
-            int type = (int)light->GetType();
-            switch (type)
-            {
-            case RPR_LIGHT_TYPE_POINT:
-            case RPR_LIGHT_TYPE_DIRECTIONAL:
-            case RPR_LIGHT_TYPE_SPOT:
-            case RPR_LIGHT_TYPE_ENVIRONMENT:
-                *data = type;
-                break;
-            default:
-                //TODO: handle RPR_LIGHT_TYPE_SKY and RPR_LIGHT_TYPE_IES
-                return RPR_ERROR_INVALID_LIGHT;
-            }
-        }
+        rpr_light_type value = (rpr_light_type)light->GetType();
+        size_ret = sizeof(value);
+        data.resize(size_ret);
+        memcpy(&data[0], &value, size_ret);
         break;
     }
     case RPR_LIGHT_TRANSFORM:
     {
-        float *data = static_cast<float*>(out_data);
-        if (data && in_size < sizeof(RadeonRays::matrix))
-        {
-            return RPR_ERROR_INVALID_PARAMETER;
-        }
-        if (out_size_ret)
-        {
-            *out_size_ret = sizeof(RadeonRays::matrix);
-        }
-        if (data)
-        {
-            RadeonRays::matrix m = light->GetTransform();
-            memcpy(data, &m.m[0], sizeof(RadeonRays::matrix));
-        }
+        RadeonRays::matrix value = light->GetTransform();
+        size_ret = sizeof(value);
+        data.resize(size_ret);
+        memcpy(&data[0], &value, size_ret);
         break;
     }
+    case RPR_ENVIRONMENT_LIGHT_IMAGE:
+    {
+        RadeonRays::matrix value = light->GetTransform();
+        size_ret = sizeof(value);
+        data.resize(size_ret);
+        memcpy(&data[0], &value, size_ret);
+        break;
+    }
+    case RPR_POINT_LIGHT_RADIANT_POWER:
+    case RPR_SPOT_LIGHT_RADIANT_POWER:
+    case RPR_DIRECTIONAL_LIGHT_RADIANT_POWER:
+    {
+        RadeonRays::float3 value = light->GetRadiantPower();
+        size_ret = sizeof(value);
+        data.resize(size_ret);
+        memcpy(&data[0], &value, size_ret);
+        break;
+    }
+    case RPR_SPOT_LIGHT_CONE_SHAPE:
+    {
+        RadeonRays::float2 value = light->GetSpotConeShape();
+        size_ret = sizeof(value);
+        data.resize(size_ret);
+        memcpy(&data[0], &value, size_ret);
+        break;
+    }
+    case RPR_ENVIRONMENT_LIGHT_INTENSITY_SCALE:
+    {
+        rpr_float value = light->GetEnvMultiplier();
+        size_ret = sizeof(value);
+        data.resize(size_ret);
+        memcpy(&data[0], &value, size_ret);
+        break;
+    }
+    case RPR_OBJECT_NAME:
+    {
+        std::string name = light->GetName();
+        size_ret = name.size() + 1;
+        data.resize(size_ret);
+        memcpy(&data[0], name.c_str(), size_ret);
+        break;
+    }
+    case RPR_DIRECTIONAL_LIGHT_SHADOW_SOFTNESS:
+    case RPR_ENVIRONMENT_LIGHT_PORTAL_COUNT:
+    case RPR_ENVIRONMENT_LIGHT_PORTAL_LIST:
+    case RPR_SKY_LIGHT_SCALE:
+    case RPR_SKY_LIGHT_ALBEDO:
+    case RPR_SKY_LIGHT_TURBIDITY:
+    case RPR_SKY_LIGHT_PORTAL_COUNT:
+    case RPR_SKY_LIGHT_PORTAL_LIST:
+    case RPR_IES_LIGHT_RADIANT_POWER:
+    case RPR_IES_LIGHT_IMAGE_DESC:        
+        UNSUPPORTED_FUNCTION
+        break;
     default:
         return RPR_ERROR_INVALID_PARAMETER;
+    }
+
+    if (out_size_ret)
+    {
+        *out_size_ret = size_ret;
+    }
+    if (out_data)
+    {
+        memcpy(out_data, &data[0], size_ret);
     }
 
     return RPR_SUCCESS;
@@ -1380,7 +1646,7 @@ rpr_int rprSceneDetachLight(rpr_scene in_scene, rpr_light in_light)
     return RPR_SUCCESS;
 }
 
-rpr_int rprSceneGetInfo(rpr_scene in_scene, rpr_scene_info info, size_t size, void * data, size_t * size_ret)
+rpr_int rprSceneGetInfo(rpr_scene in_scene, rpr_scene_info in_info, size_t in_size, void * out_data, size_t * out_size_ret)
 {
 	//cast
 	SceneObject* scene = WrapObject::Cast<SceneObject>(in_scene);
@@ -1389,49 +1655,99 @@ rpr_int rprSceneGetInfo(rpr_scene in_scene, rpr_scene_info info, size_t size, vo
 		return RPR_ERROR_INVALID_PARAMETER;
 	}
 	
-	//TODO: remake(handle other inputs)
+    std::vector<char> data;
+    size_t size_ret = 0;
+    switch (in_info)
+    {
+    case RPR_SCENE_SHAPE_COUNT:
+    {
+        size_t value = scene->GetShapeCount();
+        size_ret = sizeof(value);
+        data.resize(size_ret);
+        memcpy(&data[0], &value, size_ret);
+        break;
+    }
+    case RPR_SCENE_SHAPE_LIST:
+    {
+        size_t value = scene->GetShapeCount();
+        size_ret = sizeof(rpr_shape) * value;
+        data.resize(size_ret);
+        scene->GetShapeList(data.data());
+        break;
+    }
+    case RPR_SCENE_LIGHT_COUNT:
+    {
+        size_t value = scene->GetLightCount();
+        size_ret = sizeof(value);
+        data.resize(size_ret);
+        memcpy(&data[0], &value, size_ret);
+        break;
+    }
+    case RPR_SCENE_LIGHT_LIST:
+    {
+        size_t value = scene->GetLightCount();
+        size_ret = sizeof(rpr_light) * value;
+        data.resize(size_ret);
+        scene->GetLightList(data.data());
+        break;
+    }
+    case RPR_SCENE_CAMERA:
+    {
+        rpr_camera value = scene->GetCamera();
+        size_ret = sizeof(value);
+        data.resize(size_ret);
+        memcpy(&data[0], &value, size_ret);
+        break;
+    }
+    case RPR_OBJECT_NAME:
+    {
+        std::string name = scene->GetName();
+        size_ret = name.size() + 1;
+        data.resize(size_ret);
+        memcpy(&data[0], name.c_str(), size_ret);
+        break;
+    }
+    case RPR_SCENE_BACKGROUND_IMAGE:
+    case RPR_SCENE_ENVIRONMENT_OVERRIDE_REFLECTION:
+    case RPR_SCENE_ENVIRONMENT_OVERRIDE_REFRACTION:
+    case RPR_SCENE_ENVIRONMENT_OVERRIDE_TRANSPARENCY:
+    case RPR_SCENE_ENVIRONMENT_OVERRIDE_BACKGROUND:
+    case RPR_SCENE_AXIS_ALIGNED_BOUNDING_BOX:
+        UNSUPPORTED_FUNCTION
+    default:
+        UNIMLEMENTED_FUNCTION
+    }
 
-	switch (info)
-	{
-	case RPR_SCENE_SHAPE_COUNT:
-	{
-		size_t* input_data = static_cast<size_t*>(data);
-		*input_data = scene->GetShapeCount();
-		break;
-	}
-	case RPR_SCENE_SHAPE_LIST:
-	{
-		scene->GetShapeList(data);
-		break;
-	}
-	case RPR_SCENE_CAMERA:
-	{
-		rpr_camera* input_data = static_cast<rpr_camera*>(data);
-		*input_data = scene->GetCamera();
-	}
-	}
+    if (out_size_ret)
+    {
+        *out_size_ret = size_ret;
+    }
+    if (out_data)
+    {
+        memcpy(out_data, &data[0], size_ret);
+    }
 
     return RPR_SUCCESS;
 }
 
 rpr_int rprSceneGetEnvironmentOverride(rpr_scene scene, rpr_environment_override overrride, rpr_light * out_light)
 {
-    UNIMLEMENTED_FUNCTION
+    UNSUPPORTED_FUNCTION
 }
 
 rpr_int rprSceneSetEnvironmentOverride(rpr_scene scene, rpr_environment_override overrride, rpr_light light)
 {
-    UNIMLEMENTED_FUNCTION
+    UNSUPPORTED_FUNCTION
 }
 
 rpr_int rprSceneSetBackgroundImage(rpr_scene scene, rpr_image image)
 {
-    UNIMLEMENTED_FUNCTION
+    UNSUPPORTED_FUNCTION
 }
 
 rpr_int rprSceneGetBackgroundImage(rpr_scene scene, rpr_image * out_image)
 {
-    UNIMLEMENTED_FUNCTION
+    UNSUPPORTED_FUNCTION
 }
 
 rpr_int rprSceneSetCamera(rpr_scene in_scene, rpr_camera in_camera)
@@ -1640,7 +1956,7 @@ rpr_int rprMaterialNodeSetInputImageData(rpr_material_node in_node, rpr_char con
     return RPR_SUCCESS;
 }
 
-rpr_int rprMaterialNodeGetInfo(rpr_material_node in_node, rpr_material_node_info in_info, size_t in_size, void * in_data, size_t * in_out_size)
+rpr_int rprMaterialNodeGetInfo(rpr_material_node in_node, rpr_material_node_info in_info, size_t in_size, void * out_data, size_t * out_size)
 {
     MaterialObject* mat = WrapObject::Cast<MaterialObject>(in_node);
     if (!mat)
@@ -1668,17 +1984,25 @@ rpr_int rprMaterialNodeGetInfo(rpr_material_node in_node, rpr_material_node_info
         memcpy(&data[0], &value, size_ret);
         break;
     }
+    case RPR_OBJECT_NAME:
+    {
+        std::string name = mat->GetName();
+        size_ret = name.size() + 1;
+        data.resize(size_ret);
+        memcpy(&data[0], name.c_str(), size_ret);
+        break;
+    }
     default:
         UNIMLEMENTED_FUNCTION
     }
 
-    if (in_out_size)
+    if (out_size)
     {
-        *in_out_size = size_ret;
+        *out_size = size_ret;
     }
-    if (in_data)
+    if (out_data)
     {
-        memcpy(in_data, &data[0], size_ret);
+        memcpy(out_data, &data[0], size_ret);
     }
     return RPR_SUCCESS;
 }
