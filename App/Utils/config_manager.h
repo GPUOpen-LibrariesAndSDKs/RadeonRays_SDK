@@ -19,17 +19,51 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
-#pragma once
-#include <exception>
-#include <stdexcept>
+#ifndef CONFIG_MANAGER_H
+#define CONFIG_MANAGER_H
 
-class Exception
-    : public std::runtime_error
+#include "CLW.h"
+#include <vector>
+
+namespace Baikal
+{
+    class PtRenderer;
+    class AoRenderer;
+}
+
+class ConfigManager
 {
 public:
-    Exception(int error, char const* msg)
-        : std::runtime_error(msg)
-        , m_error(error){};
 
-    int m_error;
+    enum DeviceType
+    {
+        kPrimary,
+        kSecondary
+    };
+
+    enum Mode
+    {
+        kUseAll,
+        kUseGpus,
+        kUseSingleGpu,
+        kUseSingleCpu,
+        kUseCpus
+    };
+
+    struct Config
+    {
+        DeviceType type;
+        int devidx;
+        Baikal::PtRenderer* renderer;
+        CLWContext context;
+        bool caninterop;
+
+    };
+
+    static void CreateConfigs(Mode mode, bool interop, std::vector<Config>& renderers, int initial_num_bounces);
+
+private:
+
 };
+
+#endif // CONFIG_MANAGER_H

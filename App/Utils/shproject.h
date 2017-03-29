@@ -19,17 +19,17 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
-#pragma once
-#include <exception>
-#include <stdexcept>
+#ifndef SHPROJECT_H
+#define SHPROJECT_H
 
-class Exception
-    : public std::runtime_error
-{
-public:
-    Exception(int error, char const* msg)
-        : std::runtime_error(msg)
-        , m_error(error){};
+#include <string>
 
-    int m_error;
-};
+#include "math/mathutils.h"
+
+///< The function projects latitude-longitude environment map to SH basis up to lmax band
+void ShProjectEnvironmentMap(RadeonRays::float3 const* envmap, int width, int height, int lmax, RadeonRays::float3* coeffs);
+
+///< The function evaluates SH functions and dumps values to latitude-longitude map
+void ShEvaluateAndDump(int width, int height, int lmax, RadeonRays::float3 const* coeffs, RadeonRays::float3* envmap);
+
+#endif // SHPROJECT_H

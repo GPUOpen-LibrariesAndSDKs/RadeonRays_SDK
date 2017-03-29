@@ -19,17 +19,12 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
-#pragma once
-#include <exception>
-#include <stdexcept>
 
-class Exception
-    : public std::runtime_error
+uniform sampler2D g_Texture;
+
+varying vec2 Texcoord;
+
+void main()
 {
-public:
-    Exception(int error, char const* msg)
-        : std::runtime_error(msg)
-        , m_error(error){};
-
-    int m_error;
-};
+    gl_FragColor = texture2D(g_Texture, Texcoord);
+}
