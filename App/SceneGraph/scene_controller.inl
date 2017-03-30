@@ -17,6 +17,52 @@ namespace Baikal
 {
     template <typename CompiledScene>
     inline
+    void SceneController<CompiledScene>::SplitMeshesAndInstances(Iterator* shape_iter, std::set<Mesh const*>& meshes, std::set<Instance const*>& instances, std::set<Mesh const*>& excluded_meshes)
+    {
+        // Clear all sets
+        meshes.clear();
+        instances.clear();
+        excluded_meshes.clear();
+
+        // Prepare instance check lambda
+        auto is_instance = [](Shape const* shape)
+        {
+            if (dynamic_cast<Instance const*>(shape))
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        };
+
+        for (; shape_iter->IsValid(); shape_iter->Next())
+        {
+            auto shape = shape_iter->ItemAs<Shape const>();
+
+            if (!is_instance(shape))
+            {
+                meshes.emplace(static_cast<Mesh const*>(shape));
+            }
+            else
+            {
+                instances.emplace(static_cast<Instance const*>(shape));
+            }
+        }
+
+        for (auto& i : instances)
+        {
+            auto base_mesh = static_cast<Mesh const*>(i->GetBaseShape());
+            if (meshes.find(base_mesh) == meshes.cend())
+            {
+                excluded_meshes.emplace(base_mesh);
+            }
+        }
+    }
+
+    template <typename CompiledScene>
+    inline
     SceneController<CompiledScene>::SceneController()
     {
     }

@@ -69,6 +69,7 @@ THE SOFTWARE.
 #include "SceneGraph/scene1.h"
 #include "Renderers/PT/ptrenderer.h"
 #include "Renderers/AO/aorenderer.h"
+#include "Renderers/Realtime/rsrenderer.h"
 #include "CLW/clwoutput.h"
 #include "Utils/config_manager.h"
 #include "SceneGraph/scene1.h"
@@ -86,6 +87,8 @@ char const* g_path =
 "../Resources/CornellBox";
 char const* g_modelname = "orig.objm";
 char const* g_envmapname = "../Resources/Textures/studio015.hdr";
+
+#define CHECK_GL_ERROR {auto err = glGetError(); assert(err == GL_NO_ERROR);}
 
 std::unique_ptr<ShaderManager>    g_shader_manager;
 std::unique_ptr<Baikal::PerspectiveCamera> g_camera;
@@ -162,6 +165,7 @@ static bool     g_is_end_pressed = false;
 static bool     g_is_mouse_tracking = false;
 static float2   g_mouse_pos = float2(0, 0);
 static float2   g_mouse_delta = float2(0, 0);
+static bool     g_realtime = true;
 
 
 // CLW stuff
@@ -177,43 +181,55 @@ void Render()
     try
     {
         {
-            glDisable(GL_DEPTH_TEST);
-            glViewport(0, 0, g_window_width, g_window_height);
+            glDisable(GL_DEPTH_TEST); CHECK_GL_ERROR;
+            glViewport(0, 0, g_window_width, g_window_height); CHECK_GL_ERROR;
 
-            glClear(GL_COLOR_BUFFER_BIT);
+            glClear(GL_COLOR_BUFFER_BIT); CHECK_GL_ERROR;
 
-            glBindBuffer(GL_ARRAY_BUFFER, g_vertex_buffer);
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g_index_buffer);
+            glBindBuffer(GL_ARRAY_BUFFER, g_vertex_buffer); CHECK_GL_ERROR;
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g_index_buffer); CHECK_GL_ERROR;
 
-            GLuint program = g_shader_manager->GetProgram("../App/GLSL/simple");
-            glUseProgram(program);
+            GLuint program = g_shader_manager->GetProgram("../App/GLSL/simple"); CHECK_GL_ERROR;
+            glUseProgram(program); CHECK_GL_ERROR;
 
             GLuint texloc = glGetUniformLocation(program, "g_Texture");
             assert(texloc >= 0);
+            CHECK_GL_ERROR;
 
             glUniform1i(texloc, 0);
+            CHECK_GL_ERROR;
 
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, g_texture);
 
-            GLuint position_attr = glGetAttribLocation(program, "inPosition");
-            GLuint texcoord_attr = glGetAttribLocation(program, "inTexcoord");
+            auto texture = g_texture;
 
-            glVertexAttribPointer(position_attr, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 5, 0);
-            glVertexAttribPointer(texcoord_attr, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void*)(sizeof(float) * 3));
+            if (g_realtime)
+            {
+                auto output = reinterpret_cast<Baikal::GlOutput*>(g_outputs[g_primary].output);
+                texture = output->GetGlTexture();
+            }
 
-            glEnableVertexAttribArray(position_attr);
-            glEnableVertexAttribArray(texcoord_attr);
+            glActiveTexture(GL_TEXTURE0); CHECK_GL_ERROR;
+            glBindTexture(GL_TEXTURE_2D, texture); CHECK_GL_ERROR;
+
+            GLuint position_attr = glGetAttribLocation(program, "inPosition"); CHECK_GL_ERROR;
+            GLuint texcoord_attr = glGetAttribLocation(program, "inTexcoord"); CHECK_GL_ERROR;
+
+            glVertexAttribPointer(position_attr, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 5, 0); CHECK_GL_ERROR;
+            glVertexAttribPointer(texcoord_attr, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void*)(sizeof(float) * 3)); CHECK_GL_ERROR;
+
+            glEnableVertexAttribArray(position_attr); CHECK_GL_ERROR;
+            glEnableVertexAttribArray(texcoord_attr); CHECK_GL_ERROR;
 
             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, nullptr);
+            CHECK_GL_ERROR;
 
-            glDisableVertexAttribArray(texcoord_attr);
-            glBindTexture(GL_TEXTURE_2D, 0);
-            glBindBuffer(GL_ARRAY_BUFFER, 0);
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-            glUseProgram(0);
+            glDisableVertexAttribArray(texcoord_attr); CHECK_GL_ERROR;
+            glBindTexture(GL_TEXTURE_2D, 0); CHECK_GL_ERROR;
+            glBindBuffer(GL_ARRAY_BUFFER, 0); CHECK_GL_ERROR;
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0); CHECK_GL_ERROR;
+            glUseProgram(0); CHECK_GL_ERROR;
 
-            glFinish();
+            glFinish(); CHECK_GL_ERROR;
         }
 
         glutSwapBuffers();
@@ -229,17 +245,17 @@ void InitGraphics()
 {
     g_shader_manager.reset(new ShaderManager());
 
-    glClearColor(0.0, 0.0, 0.0, 0.0);
-    glCullFace(GL_NONE);
-    glDisable(GL_DEPTH_TEST);
-    glEnable(GL_TEXTURE_2D);
+    glClearColor(0.0, 0.0, 0.0, 0.0); CHECK_GL_ERROR;
+    glDisable(GL_CULL_FACE); CHECK_GL_ERROR;
+    glDisable(GL_DEPTH_TEST); CHECK_GL_ERROR;
+    glEnable(GL_TEXTURE_2D); CHECK_GL_ERROR;
 
-    glGenBuffers(1, &g_vertex_buffer);
-    glGenBuffers(1, &g_index_buffer);
+    glGenBuffers(1, &g_vertex_buffer); CHECK_GL_ERROR;
+    glGenBuffers(1, &g_index_buffer); CHECK_GL_ERROR;
 
     // create Vertex buffer
-    glBindBuffer(GL_ARRAY_BUFFER, g_vertex_buffer);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g_index_buffer);
+    glBindBuffer(GL_ARRAY_BUFFER, g_vertex_buffer); CHECK_GL_ERROR;
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g_index_buffer); CHECK_GL_ERROR;
 
     float quad_vdata[] =
     {
@@ -256,21 +272,21 @@ void InitGraphics()
     };
 
     // fill data
-    glBufferData(GL_ARRAY_BUFFER, sizeof(quad_vdata), quad_vdata, GL_STATIC_DRAW);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(quad_idata), quad_idata, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quad_vdata), quad_vdata, GL_STATIC_DRAW); CHECK_GL_ERROR;
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(quad_idata), quad_idata, GL_STATIC_DRAW); CHECK_GL_ERROR;
 
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0); CHECK_GL_ERROR;
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0); CHECK_GL_ERROR;
 
 
-    glGenTextures(1, &g_texture);
-    glBindTexture(GL_TEXTURE_2D, g_texture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glGenTextures(1, &g_texture); CHECK_GL_ERROR;
+    glBindTexture(GL_TEXTURE_2D, g_texture); CHECK_GL_ERROR;
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST); CHECK_GL_ERROR;
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST); CHECK_GL_ERROR;
 
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, g_window_width, g_window_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, g_window_width, g_window_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr); CHECK_GL_ERROR;
 
-    glBindTexture(GL_TEXTURE_2D, 0);
+    glBindTexture(GL_TEXTURE_2D, 0); CHECK_GL_ERROR;
 }
 
 void InitCl()
@@ -520,7 +536,7 @@ void OnKeyUp(int key, int x, int y)
         ++g_num_bounces;
         for (int i = 0; i < g_cfgs.size(); ++i)
         {
-            g_cfgs[i].renderer->SetNumBounces(g_num_bounces);
+            //g_cfgs[i].renderer->SetNumBounces(g_num_bounces);
             g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
         }
         g_samplecount = 0;
@@ -533,7 +549,7 @@ void OnKeyUp(int key, int x, int y)
             --g_num_bounces;
             for (int i = 0; i < g_cfgs.size(); ++i)
             {
-                g_cfgs[i].renderer->SetNumBounces(g_num_bounces);
+                //g_cfgs[i].renderer->SetNumBounces(g_num_bounces);
                 g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
             }
             g_samplecount = 0;
@@ -780,37 +796,37 @@ void Update()
 
     //if (std::chrono::duration_cast<std::chrono::seconds>(time - updatetime).count() > 1)
     //{
-    for (int i = 0; i < g_cfgs.size(); ++i)
-    {
-        if (g_cfgs[i].type == ConfigManager::kPrimary)
-            continue;
+    //for (int i = 0; i < g_cfgs.size(); ++i)
+    //{
+    //    if (g_cfgs[i].type == ConfigManager::kPrimary)
+    //        continue;
 
-        int desired = 1;
-        if (std::atomic_compare_exchange_strong(&g_ctrl[i].newdata, &desired, 0))
-        {
-            {
-                //std::unique_lock<std::mutex> lock(g_ctrl[i].datamutex);
-                //std::cout << "Start updating acc buffer\n"; std::cout.flush();
-                g_cfgs[g_primary].context.WriteBuffer(0, g_outputs[g_primary].copybuffer, &g_outputs[i].fdata[0], g_window_width * g_window_height);
-                //std::cout << "Finished updating acc buffer\n"; std::cout.flush();
-            }
+    //    int desired = 1;
+    //    if (std::atomic_compare_exchange_strong(&g_ctrl[i].newdata, &desired, 0))
+    //    {
+    //        {
+    //            //std::unique_lock<std::mutex> lock(g_ctrl[i].datamutex);
+    //            //std::cout << "Start updating acc buffer\n"; std::cout.flush();
+    //            g_cfgs[g_primary].context.WriteBuffer(0, g_outputs[g_primary].copybuffer, &g_outputs[i].fdata[0], g_window_width * g_window_height);
+    //            //std::cout << "Finished updating acc buffer\n"; std::cout.flush();
+    //        }
 
-            CLWKernel acckernel = g_cfgs[g_primary].renderer->GetAccumulateKernel();
+    //        CLWKernel acckernel = g_cfgs[g_primary].renderer->GetAccumulateKernel();
 
-            int argc = 0;
-            acckernel.SetArg(argc++, g_outputs[g_primary].copybuffer);
-            acckernel.SetArg(argc++, g_window_width * g_window_width);
-            acckernel.SetArg(argc++, g_outputs[g_primary].output->data());
+    //        int argc = 0;
+    //        acckernel.SetArg(argc++, g_outputs[g_primary].copybuffer);
+    //        acckernel.SetArg(argc++, g_window_width * g_window_width);
+    //        acckernel.SetArg(argc++, g_outputs[g_primary].output->data());
 
-            int globalsize = g_window_width * g_window_height;
-            g_cfgs[g_primary].context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, acckernel);
-        }
-    }
+    //        int globalsize = g_window_width * g_window_height;
+    //        g_cfgs[g_primary].context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, acckernel);
+    //    }
+    //}
 
     //updatetime = time;
     //}
 
-    if (!g_interop)
+    if (!g_interop && !g_realtime)
     {
         g_outputs[g_primary].output->GetData(&g_outputs[g_primary].fdata[0]);
 
@@ -832,7 +848,7 @@ void Update()
 
         glBindTexture(GL_TEXTURE_2D, 0);
     }
-    else
+    /*else
     {
         std::vector<cl_mem> objects;
         objects.push_back(g_cl_interop_image);
@@ -852,7 +868,7 @@ void Update()
 
         g_cfgs[g_primary].context.ReleaseGLObjects(0, objects);
         g_cfgs[g_primary].context.Finish(0);
-    }
+    }*/
 
 
     if (g_benchmark)

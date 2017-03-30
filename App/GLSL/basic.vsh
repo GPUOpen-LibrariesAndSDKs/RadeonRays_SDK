@@ -19,52 +19,22 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
-#ifndef CONFIG_MANAGER_H
-#define CONFIG_MANAGER_H
+attribute vec3 inPosition;
+attribute vec3 inNormal;
+attribute vec2 inUv;
 
-#include "CLW.h"
-#include <vector>
+uniform mat4 g_View;
+uniform mat4 g_Proj;
+uniform mat4 g_World;
 
-namespace Baikal
+varying vec3 WorldPos;
+varying vec3 Normal;
+varying vec2 Uv;
+
+void main()
 {
-    class PtRenderer;
-    class AoRenderer;
-    class RsRenderer;
+    WorldPos = inPosition;
+    Uv = inUv;
+    Normal = g_World * vec4(inNormal, 0.0);
+    gl_Position = g_Proj * g_View * g_World * vec4(inPosition, 1.0);
 }
-
-class ConfigManager
-{
-public:
-
-    enum DeviceType
-    {
-        kPrimary,
-        kSecondary
-    };
-
-    enum Mode
-    {
-        kUseAll,
-        kUseGpus,
-        kUseSingleGpu,
-        kUseSingleCpu,
-        kUseCpus
-    };
-
-    struct Config
-    {
-        DeviceType type;
-        int devidx;
-        Baikal::RsRenderer* renderer;
-        CLWContext context;
-        bool caninterop;
-
-    };
-
-    static void CreateConfigs(Mode mode, bool interop, std::vector<Config>& renderers, int initial_num_bounces);
-
-private:
-
-};
-
-#endif // CONFIG_MANAGER_H

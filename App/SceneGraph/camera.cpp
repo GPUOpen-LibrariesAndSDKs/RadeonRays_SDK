@@ -203,4 +203,25 @@ namespace Baikal
         m_p = c - dir;
         SetDirty(true);
     }
+
+    matrix PerspectiveCamera::GetViewMatrix() const
+    {
+        matrix cam_matrix = matrix(
+            m_right.x, m_right.y, m_right.z, 0,
+            m_up.x, m_up.y, m_up.z, 0,
+            -m_forward.x, -m_forward.y, -m_forward.z, 0,
+            0, 0, 0, 1);
+
+        cam_matrix.m03 = -dot(m_right, m_p);
+        cam_matrix.m13 = -dot(m_up, m_p);
+        cam_matrix.m23 = -dot(-m_forward, m_p);
+        return cam_matrix.transpose();
+    }
+
+    matrix PerspectiveCamera::GetProjectionMatrix() const
+    {
+        auto aspect = m_dim.x / m_dim.y;
+        auto fovy = 2.f * atan2(m_dim.y * 0.5f, m_focal_length);
+        return perspective_proj_fovy_lh_gl(fovy, aspect, m_focal_length, m_zcap.y).transpose();
+    }
 }

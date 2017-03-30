@@ -30,6 +30,7 @@
 
 #include <memory>
 #include <map>
+#include <set>
 
 namespace Baikal
 {
@@ -39,8 +40,10 @@ namespace Baikal
     class Material;
     class Light;
     class Texture;
-    
-    
+    class Iterator;
+    class Mesh;
+    class Instance;
+
     /**
      \brief Tracks changes of a scene and serialized data if needed.
      
@@ -57,12 +60,16 @@ namespace Baikal
         
         // Given a scene this method produces (or loads from cache) corresponding GPU representation.
         CompiledScene& CompileScene(Scene1 const& scene, Collector& mat_collector, Collector& tex_collector) const;
-        
+
+        // Helper method to split iterable shapes into shapes and instances sets
+        static void SplitMeshesAndInstances(Iterator* shape_iter, std::set<Mesh const*>& meshes, std::set<Instance const*>& instances, std::set<Mesh const*>& excluded_meshes);
+
     protected:
         // Recompile the scene from scratch, i.e. not loading from cache.
         // All the buffers are recreated and reloaded.
         void RecompileFull(Scene1 const& scene, Collector& mat_collector, Collector& tex_collector, CompiledScene& out) const;
-        
+
+
     private:
         // Update camera data only.
         virtual void UpdateCamera(Scene1 const& scene, Collector& mat_collector, Collector& tex_collector, CompiledScene& out) const = 0;

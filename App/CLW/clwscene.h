@@ -29,7 +29,6 @@ namespace Baikal
         CLWBuffer<int> indices;
 
         CLWBuffer<Shape> shapes;
-
         CLWBuffer<Material> materials;
         CLWBuffer<Light> lights;
         CLWBuffer<int> materialids;

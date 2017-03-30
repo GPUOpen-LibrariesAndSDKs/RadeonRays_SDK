@@ -45,56 +45,12 @@ namespace Baikal
         IntersectionApi::Delete(m_api);
     }
 
-    static void SplitMeshesAndInstances(Iterator* shape_iter, std::set<Mesh const*>& meshes, std::set<Instance const*>& instances, std::set<Mesh const*>& excluded_meshes)
-    {
-        // Clear all sets
-        meshes.clear();
-        instances.clear();
-        excluded_meshes.clear();
-
-        // Prepare instance check lambda
-        auto is_instance = [](Shape const* shape)
-        {
-            if (dynamic_cast<Instance const*>(shape))
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
-        };
-
-        for (; shape_iter->IsValid(); shape_iter->Next())
-        {
-            auto shape = shape_iter->ItemAs<Shape const>();
-
-            if (!is_instance(shape))
-            {
-                meshes.emplace(static_cast<Mesh const*>(shape));
-            }
-            else
-            {
-                instances.emplace(static_cast<Instance const*>(shape));
-            }
-        }
-
-        for (auto& i : instances)
-        {
-            auto base_mesh = static_cast<Mesh const*>(i->GetBaseShape());
-            if (meshes.find(base_mesh) == meshes.cend())
-            {
-                excluded_meshes.emplace(base_mesh);
-            }
-        }
-    }
-
     static std::size_t GetShapeIdx(Iterator* shape_iter, Shape const* shape)
     {
         std::set<Mesh const*> meshes;
         std::set<Mesh const*> excluded_meshes;
         std::set<Instance const*> instances;
-        SplitMeshesAndInstances(shape_iter, meshes, instances, excluded_meshes);
+        ClwSceneController::SplitMeshesAndInstances(shape_iter, meshes, instances, excluded_meshes);
 
         std::size_t idx = 0;
         for (auto& i : meshes)
