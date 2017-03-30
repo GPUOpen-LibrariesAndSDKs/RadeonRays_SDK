@@ -30,10 +30,10 @@ THE SOFTWARE.
 #include "WrapObject/MaterialObject.h"
 #include "WrapObject/Exception.h"
 
-#include "Scene/scene1.h"
-#include "Scene/iterator.h"
-#include "Scene/material.h"
-#include "Scene/light.h"
+#include "SceneGraph/scene1.h"
+#include "SceneGraph/iterator.h"
+#include "SceneGraph/material.h"
+#include "SceneGraph/light.h"
 
 namespace
 {

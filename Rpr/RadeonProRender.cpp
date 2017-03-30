@@ -922,7 +922,7 @@ rpr_int rprShapeSetDisplacementScale(rpr_shape shape, rpr_float minscale, rpr_fl
 
 rpr_int rprShapeSetObjectGroupID(rpr_shape shape, rpr_uint objectGroupID)
 {
-	UNIMLEMENTED_FUNCTION
+    UNSUPPORTED_FUNCTION
 }
 
 rpr_int rprShapeSetDisplacementImage(rpr_shape shape, rpr_image image)
@@ -1048,6 +1048,7 @@ rpr_int rprShapeGetInfo(rpr_shape in_shape, rpr_shape_info in_info, size_t in_si
     case RPR_SHAPE_TRANSFORM:
     {
         RadeonRays::matrix value = shape->GetTransform();
+        value = value.transpose();
         size_ret = sizeof(value);
         data.resize(size_ret);
         memcpy(&data[0], &value, size_ret);
@@ -1144,18 +1145,16 @@ rpr_int rprMeshGetInfo(rpr_shape in_mesh, rpr_mesh_info in_mesh_info, size_t in_
     }
     case RPR_MESH_VERTEX_ARRAY:
     {
-        const RadeonRays::float3* value = mesh->GetVertexData();
-        size_ret = sizeof(RadeonRays::float3) * mesh->GetVertexCount();
+        size_ret = sizeof(float) * 3 * mesh->GetVertexCount();
         data.resize(size_ret);
-        memcpy(&data[0], &value, size_ret);
+        mesh->GetVertexData(reinterpret_cast<float*>(data.data()));
         break;
     }
     case RPR_MESH_NORMAL_ARRAY:
     {
-        const RadeonRays::float3* value = mesh->GetNormalData();
-        size_ret = sizeof(RadeonRays::float3) * mesh->GetNormalCount();
+        size_ret = sizeof(float) * 3 * mesh->GetNormalCount();
         data.resize(size_ret);
-        memcpy(&data[0], &value, size_ret);
+        mesh->GetNormalData(reinterpret_cast<float*>(data.data()));
         break;
 
     }
@@ -1164,7 +1163,7 @@ rpr_int rprMeshGetInfo(rpr_shape in_mesh, rpr_mesh_info in_mesh_info, size_t in_
         const RadeonRays::float2* value = mesh->GetUVData();
         size_ret = sizeof(RadeonRays::float2) * mesh->GetUVCount();
         data.resize(size_ret);
-        memcpy(&data[0], &value, size_ret);
+        memcpy(&data[0], value, size_ret);
         break;
     }
     case RPR_MESH_VERTEX_INDEX_ARRAY:
@@ -1172,18 +1171,18 @@ rpr_int rprMeshGetInfo(rpr_shape in_mesh, rpr_mesh_info in_mesh_info, size_t in_
     case RPR_MESH_NORMAL_INDEX_ARRAY:
     {
         const uint32_t* value = mesh->GetIndicesData();
-        size_ret = sizeof(uint32_t) * mesh->GetVertexCount();
+        size_ret = sizeof(uint32_t) * mesh->GetIndicesCount();
         data.resize(size_ret);
-        memcpy(&data[0], &value, size_ret);
+        memcpy(&data[0], value, size_ret);
         break;
     }
     case RPR_MESH_NUM_FACE_VERTICES_ARRAY:
     {
         //only triangles used in Baikal mesh
-        std::vector<int32_t> value(mesh->GetVertexCount() / 3, 3);
-        size_ret = sizeof(value);
+        std::vector<int32_t> value(mesh->GetIndicesCount() / 3, 3);
+        size_ret = sizeof(int32_t) * value.size();
         data.resize(size_ret);
-        memcpy(&data[0], &value, size_ret);
+        memcpy(&data[0], value.data(), size_ret);
         break;
     }
     default:
@@ -1493,6 +1492,7 @@ rpr_int rprLightGetInfo(rpr_light in_light, rpr_light_info in_info, size_t in_si
     case RPR_LIGHT_TRANSFORM:
     {
         RadeonRays::matrix value = light->GetTransform();
+        value = value.transpose();
         size_ret = sizeof(value);
         data.resize(size_ret);
         memcpy(&data[0], &value, size_ret);
@@ -1500,7 +1500,7 @@ rpr_int rprLightGetInfo(rpr_light in_light, rpr_light_info in_info, size_t in_si
     }
     case RPR_ENVIRONMENT_LIGHT_IMAGE:
     {
-        RadeonRays::matrix value = light->GetTransform();
+        MaterialObject* value = light->GetEnvTexture();
         size_ret = sizeof(value);
         data.resize(size_ret);
         memcpy(&data[0], &value, size_ret);
@@ -2036,7 +2036,8 @@ rpr_int rprMaterialNodeGetInputInfo(rpr_material_node in_node, rpr_int in_input_
     }
     case RPR_MATERIAL_NODE_INPUT_VALUE:
     {
-        data.resize(sizeof(size_t));
+        //sizeof(RadeonRays::float4) should be enough to store any input data
+        data.resize(sizeof(RadeonRays::float4));
         mat->GetInput(in_input_idx, data.data(), &size_ret);
         break;
     }

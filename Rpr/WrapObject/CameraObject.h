@@ -22,7 +22,7 @@ THE SOFTWARE.
 #pragma once
 
 #include "WrapObject.h"
-#include "Scene/camera.h"
+#include "SceneGraph/camera.h"
 
 #include "math/matrix.h"
 #include "RadeonProRender.h"
@@ -42,13 +42,13 @@ public:
     //camera data
     //Note: some values are converted between meters and mm
     void SetFocalLength(rpr_float flen) { m_cam->SetFocalLength(flen / 1000.f); }
-    rpr_float GetFocalLength() { return m_cam->GetFocalLength(); }
+    rpr_float GetFocalLength() { return m_cam->GetFocalLength() * 1000.f; }
 
     void SetFocusDistance(rpr_float fdist) { m_cam->SetFocusDistance(fdist); }
     rpr_float GetFocusDistance() { return m_cam->GetFocusDistance(); }
 
-    void SetSensorSize(RadeonRays::float2 size) { m_cam->SetSensorSize(size * 0.001); }
-    RadeonRays::float2 GetSensorSize() { return m_cam->GetSensorSize() * 1000; }
+    void SetSensorSize(RadeonRays::float2 size) { m_cam->SetSensorSize(size * 0.001f); }
+    RadeonRays::float2 GetSensorSize() { return m_cam->GetSensorSize() * 1000.f; }
 
     void GetLookAt(RadeonRays::float3& eye,
                 RadeonRays::float3& at,

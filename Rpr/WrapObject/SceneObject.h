@@ -22,9 +22,9 @@ THE SOFTWARE.
 #pragma once
 
 #include "WrapObject/WrapObject.h"
-#include "Scene/scene1.h"
-#include "Scene/shape.h"
-#include "Scene/light.h"
+#include "SceneGraph/scene1.h"
+#include "SceneGraph/shape.h"
+#include "SceneGraph/light.h"
 
 #include <vector>
 

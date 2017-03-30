@@ -23,10 +23,10 @@ THE SOFTWARE.
 #include <map>
 
 #include "math/int2.h"
-#include "App/Scene/texture.h"
-#include "App/Scene/material.h"
-#include "App/Scene/IO/image_io.h"
-#include "App/Scene/iterator.h"
+#include "App/SceneGraph/texture.h"
+#include "App/SceneGraph/material.h"
+#include "App/SceneGraph/IO/image_io.h"
+#include "App/SceneGraph/iterator.h"
 #include "WrapObject/MaterialObject.h"
 #include "WrapObject/Exception.h"
 
@@ -627,7 +627,7 @@ void MaterialObject::GetInput(int i, void* out, size_t* out_size)
 rpr_image_desc MaterialObject::GetTextureDesc() const
 {
     RadeonRays::int2 size = m_tex->GetSize();
-    rpr_uint depth = m_tex->GetSizeInBytes() / size.x / size.y;
+    rpr_uint depth = (rpr_uint)m_tex->GetSizeInBytes() / size.x / size.y;
     return {(rpr_uint)size.x, (rpr_uint)size.y, depth, 0, 0};
 }
 char const* MaterialObject::GetTextureData() const

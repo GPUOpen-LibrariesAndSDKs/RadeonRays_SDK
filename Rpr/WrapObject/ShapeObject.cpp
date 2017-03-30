@@ -25,7 +25,7 @@ THE SOFTWARE.
 
 #include "WrapObject/ShapeObject.h"
 #include "WrapObject/Exception.h"
-#include "App/Scene/shape.h"
+#include "App/SceneGraph/shape.h"
 
 
 using namespace Baikal;
@@ -46,7 +46,7 @@ namespace
 				count +=in_num_face_vertices[i];
 			}
 			result.resize(count * size);
-			std::fill(result.begin(), result.end(), 0);
+			std::fill(result.begin(), result.end(), 0.f);
 
 			return result;
 		}
@@ -191,14 +191,23 @@ uint64_t ShapeObject::GetVertexCount()
     return mesh->GetNumVertices();
 }
 
-const RadeonRays::float3* ShapeObject::GetVertexData() const
+void ShapeObject::GetVertexData(float* out) const
 {
     Baikal::Mesh* mesh = dynamic_cast<Baikal::Mesh*>(m_shape);
     if (!mesh)
     {
         throw Exception(RPR_ERROR_INTERNAL_ERROR, "ShapeObject: mesh is nullptr.");
     }
-    return mesh->GetVertices();
+
+    //need to copy data, because RadeonRays::float3 contains 4 float,
+    //but we need only 3
+    const RadeonRays::float3 * data = mesh->GetVertices();
+    for (int i = 0; i < mesh->GetNumVertices(); ++i)
+    {
+        out[3 * i] = data[i].x;
+        out[3 * i + 1] = data[i].y;
+        out[3 * i + 2] = data[i].z;
+    }
 }
 
 
@@ -211,14 +220,23 @@ uint64_t ShapeObject::GetNormalCount()
     }
     return mesh->GetNumNormals();
 }
-const RadeonRays::float3* ShapeObject::GetNormalData() const
+void ShapeObject::GetNormalData(float* out) const
 {
     Baikal::Mesh* mesh = dynamic_cast<Baikal::Mesh*>(m_shape);
     if (!mesh)
     {
         throw Exception(RPR_ERROR_INTERNAL_ERROR, "ShapeObject: mesh is nullptr.");
     }
-    return mesh->GetNormals();
+    
+    //need to copy data, because RadeonRays::float3 contains 4 float,
+    //but we need only 3
+    const RadeonRays::float3 * data = mesh->GetNormals();
+    for (int i = 0; i < mesh->GetNumNormals(); ++i)
+    {
+        out[3 * i] = data[i].x;
+        out[3 * i + 1] = data[i].y;
+        out[3 * i + 2] = data[i].z;
+    }
 }
 
 
@@ -248,4 +266,14 @@ const uint32_t* ShapeObject::GetIndicesData() const
         throw Exception(RPR_ERROR_INTERNAL_ERROR, "ShapeObject: mesh is nullptr.");
     }
     return mesh->GetIndices();
+}
+
+uint64_t ShapeObject::GetIndicesCount() const
+{
+    Baikal::Mesh* mesh = dynamic_cast<Baikal::Mesh*>(m_shape);
+    if (!mesh)
+    {
+        throw Exception(RPR_ERROR_INTERNAL_ERROR, "ShapeObject: mesh is nullptr.");
+    }
+    return mesh->GetNumIndices();
 }

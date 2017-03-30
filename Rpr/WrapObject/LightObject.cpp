@@ -23,12 +23,12 @@ THE SOFTWARE.
 #include "WrapObject/MaterialObject.h"
 #include "WrapObject/Exception.h"
 #include "radeon_rays.h"
-#include "App/Scene/light.h"
+#include "App/SceneGraph/light.h"
 #include "RadeonProRender.h"
 
 void LightObject::SetTransform(const RadeonRays::matrix& t)
 {
-    m_light->SetPosition(RadeonRays::float3(t.m30, t.m31, t.m32, t.m33));
+    m_light->SetPosition(RadeonRays::float3(t.m03, t.m13, t.m23, t.m33));
     //float3(0, 0, -1) is a default direction vector
     m_light->SetDirection(t * RadeonRays::float3(0, 0, -1));
 }

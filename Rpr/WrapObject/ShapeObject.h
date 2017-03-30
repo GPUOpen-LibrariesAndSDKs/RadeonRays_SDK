@@ -22,7 +22,7 @@ THE SOFTWARE.
 #pragma once
 
 #include "RadeonProRender.h"
-#include "App/Scene/shape.h"
+#include "App/SceneGraph/shape.h"
 #include "WrapObject/WrapObject.h"
 #include "WrapObject/MaterialObject.h"
 
@@ -50,7 +50,7 @@ public:
 
     ShapeObject* CreateInstance();
 
-    bool IsInstance() { return m_base_obj; }
+    bool IsInstance() { return m_base_obj != nullptr; }
     
     //Set/Get methods
     void SetTransform(const RadeonRays::matrix& m) { m_shape->SetTransform(m); };
@@ -60,15 +60,16 @@ public:
     MaterialObject* GetMaterial() { return m_current_mat; }
     
     uint64_t GetVertexCount();
-    const RadeonRays::float3* GetVertexData() const;
+    void GetVertexData(float* out) const;
     
     uint64_t GetNormalCount();
-    const RadeonRays::float3* GetNormalData() const;
+    void GetNormalData(float* out) const;
     
     uint64_t GetUVCount();
     const RadeonRays::float2* GetUVData() const;
 
     const uint32_t* GetIndicesData() const;
+    uint64_t GetIndicesCount() const;
 
     ShapeObject* GetBaseShape() { return m_base_obj; }
     Baikal::Shape* GetShape() { return m_shape; }
