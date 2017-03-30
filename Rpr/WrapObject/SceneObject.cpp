@@ -24,11 +24,11 @@ THE SOFTWARE.
 #include "WrapObject/ShapeObject.h"
 #include "WrapObject/LightObject.h"
 #include "WrapObject/CameraObject.h"
-#include "App/Scene/scene1.h"
-#include "App/Scene/light.h"
-#include "App/Scene/shape.h"
-#include "App/Scene/material.h"
-#include "App/Scene/iterator.h"
+#include "App/SceneGraph/scene1.h"
+#include "App/SceneGraph/light.h"
+#include "App/SceneGraph/shape.h"
+#include "App/SceneGraph/material.h"
+#include "App/SceneGraph/iterator.h"
 
 #include <assert.h>
 

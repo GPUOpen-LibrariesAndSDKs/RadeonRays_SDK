@@ -21,7 +21,7 @@ THE SOFTWARE.
 ********************************************************************/
 
 #include "WrapObject/CameraObject.h"
-#include "Scene/camera.h"
+#include "SceneGraph/camera.h"
 #include "radeon_rays.h"
 
 using namespace Baikal;
@@ -75,6 +75,6 @@ void CameraObject::GetLookAt(RadeonRays::float3& eye,
     RadeonRays::float3& up)
 {
     eye = m_cam->GetPosition();
-    at = m_cam->GetForwardVector();
+    at = m_cam->GetForwardVector() + eye;
     up = m_cam->GetUpVector();
 }
