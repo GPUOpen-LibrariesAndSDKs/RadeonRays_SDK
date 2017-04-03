@@ -109,6 +109,8 @@ namespace Baikal
             float primary_rays_time_in_ms;
             float secondary_rays_time_in_ms;
             float shadow_rays_time_in_ms;
+            //msamples per second
+            float samples_pes_sec;
         };
         
         virtual void RunBenchmark(Scene1 const& scene, std::uint32_t num_passes, BenchmarkStats& stats) {}
