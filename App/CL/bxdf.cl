@@ -26,7 +26,7 @@ THE SOFTWARE.
 #include <../App/CL/texture.cl>
 #include <../App/CL/payload.cl>
 
-#define DENOM_EPS 0.0f
+#define DENOM_EPS 1e-8f
 #define ROUGHNESS_EPS 0.0001f
 
 
@@ -338,7 +338,12 @@ float3 MicrofacetGGX_Evaluate(
     float denom = (4.f * costhetao * costhetai);
 
     // F(eta) * D * G * ks / (4 * cosa * cosi)
-    return denom > 0.f ? F * ks * MicrofacetDistribution_GGX_G(roughness, wi, wo, wh) * MicrofacetDistribution_GGX_D(roughness, wh) / denom : 0.f;
+    //return denom > 0.f ? F * ks * MicrofacetDistribution_GGX_G(roughness, wi, wo, wh) * MicrofacetDistribution_GGX_D(roughness, wh) / denom : 0.f;
+    
+    float3 res = denom > 0.f ? F * ks * MicrofacetDistribution_GGX_G(roughness, wi, wo, wh) * MicrofacetDistribution_GGX_D(roughness, wh) / denom : 0.f;
+    if (length(res) < 0.1f)
+        res = 0.f;
+    return res;
 }
 
 

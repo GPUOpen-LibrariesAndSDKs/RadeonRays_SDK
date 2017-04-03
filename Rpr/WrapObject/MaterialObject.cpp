@@ -492,7 +492,21 @@ void MaterialObject::SetInputValue(const std::string& input_name, const RadeonRa
 
     //translate material name
     m_mat->SetInputValue(name, val);
-    
+
+    //if rougness is to small replace microfacet by ideal reflect
+    if (m_type == Type::kMicrofacet && name == "roughness")
+    {
+        if (val.sqnorm() < 1e-6f)
+        {
+            SingleBxdf* bxdf_mat = dynamic_cast<SingleBxdf*>(m_mat);
+            bxdf_mat->SetBxdfType(Baikal::SingleBxdf::BxdfType::kIdealReflect);
+        }
+        else
+        {
+            SingleBxdf* bxdf_mat = dynamic_cast<SingleBxdf*>(m_mat);
+            bxdf_mat->SetBxdfType(Baikal::SingleBxdf::BxdfType::kMicrofacetGGX);
+        }
+    }
     //handle blend material case
     if (m_type == kBlend && name == "weight")
     {

@@ -49,13 +49,14 @@ THE SOFTWARE.
 
 #include "math/mathutils.h"
 
-#include "tiny_obj_loader.h"
-#include "perspective_camera.h"
-#include "Scene/scene.h"
-#include "PT/ptrenderer.h"
-#include "AO/aorenderer.h"
+#include "Utils/tiny_obj_loader.h"
+#include "SceneGraph/camera.h"
+#include "SceneGraph/scene1.h"
+#include "Renderers/PT/ptrenderer.h"
+#include "Renderers/AO/aorenderer.h"
 #include "CLW/clwoutput.h"
-#include "config_manager.h"
+#include "Utils/config_manager.h"
+#include "SceneGraph/IO/scene_io.h"
 
 using namespace RadeonRays;
 
@@ -64,7 +65,11 @@ char const* kHelpMessage =
 "App [-p path_to_models][-f model_name][-b][-r][-ns number_of_shadow_rays][-ao ao_radius][-w window_width][-h window_height][-nb number_of_indirect_bounces]";
 char const* g_path =
 "../Resources/bmw";
-char const* g_modelname = "i8.obj";
+//"../Resources/CornellBox";
+
+char const* g_modelname = 
+"i8.obj";
+//"orig.objm";
 
 int g_window_width = 800;
 int g_window_height = 600;
@@ -91,7 +96,7 @@ float g_camera_aperture = 0.f;
 
 
 bool g_recording_enabled = false;
-int g_frame_count = 200;
+int g_pass_count = 200;
 
 ConfigManager::Mode g_mode = ConfigManager::Mode::kUseSingleGpu;
 
@@ -122,7 +127,8 @@ std::vector<std::thread> g_renderthreads;
 int g_primary = -1;
 
 
-std::unique_ptr<Baikal::Scene> g_scene;
+std::unique_ptr<Baikal::Scene1> g_scene;
+std::unique_ptr<Baikal::PerspectiveCamera> g_camera;
 
 // CLW stuff
 CLWImage2D g_cl_interop_image;
@@ -171,30 +177,31 @@ void InitData()
     basepath += "/";
     std::string filename = basepath + g_modelname;
 
-    g_scene.reset(Baikal::Scene::LoadFromObj(filename, basepath));
+    std::unique_ptr<Baikal::SceneIo> scene_io(Baikal::SceneIo::CreateSceneIoObj());
+    g_scene.reset(scene_io->LoadScene(filename, basepath));
 
-    g_scene->camera_.reset(new PerspectiveCamera(
+    g_camera.reset(new Baikal::PerspectiveCamera(
         g_camera_pos
         , g_camera_at
         , g_camera_up));
-
+    g_scene->SetCamera(g_camera.get());
     // Adjust sensor size based on current aspect ratio
     float aspect = (float)g_window_width / g_window_height;
     g_camera_sensor_size.y = g_camera_sensor_size.x / aspect;
 
-    g_scene->camera_->SetSensorSize(g_camera_sensor_size);
-    g_scene->camera_->SetDepthRange(g_camera_zcap);
-    g_scene->camera_->SetFocalLength(g_camera_focal_length);
-    g_scene->camera_->SetFocusDistance(g_camera_focus_distance);
-    g_scene->camera_->SetAperture(g_camera_aperture);
+    g_camera->SetSensorSize(g_camera_sensor_size);
+    g_camera->SetDepthRange(g_camera_zcap);
+    g_camera->SetFocalLength(g_camera_focal_length);
+    g_camera->SetFocusDistance(g_camera_focus_distance);
+    g_camera->SetAperture(g_camera_aperture);
 
-    std::cout << "Camera type: " << (g_scene->camera_->GetAperture() > 0.f ? "Physical" : "Pinhole") << "\n";
-    std::cout << "Lens focal length: " << g_scene->camera_->GetFocalLength() * 1000.f << "mm\n";
-    std::cout << "Lens focus distance: " << g_scene->camera_->GetFocusDistance() << "m\n";
-    std::cout << "F-Stop: " << 1.f / (g_scene->camera_->GetAperture() * 10.f) << "\n";
+    std::cout << "Camera type: " << (g_camera->GetAperture() > 0.f ? "Physical" : "Pinhole") << "\n";
+    std::cout << "Lens focal length: " << g_camera->GetFocalLength() * 1000.f << "mm\n";
+    std::cout << "Lens focus distance: " << g_camera->GetFocusDistance() << "m\n";
+    std::cout << "F-Stop: " << 1.f / (g_camera->GetAperture() * 10.f) << "\n";
     std::cout << "Sensor size: " << g_camera_sensor_size.x * 1000.f << "x" << g_camera_sensor_size.y * 1000.f << "mm\n";
 
-    g_scene->SetEnvironment("../Resources/Textures/studio015.hdr", "", g_envmapmul);
+    //g_scene->SetEnvironment("../Resources/Textures/studio015.hdr", "", g_envmapmul);
 
 #pragma omp parallel for
     for (int i = 0; i < g_cfgs.size(); ++i)
@@ -263,10 +270,8 @@ Baikal::Renderer::BenchmarkStats Update()
     }
 
     {
-        auto const kNumBenchmarkPasses = 100U;
-
         Baikal::Renderer::BenchmarkStats stats;
-        g_cfgs[g_primary].renderer->RunBenchmark(*g_scene.get(), kNumBenchmarkPasses, stats);
+        g_cfgs[g_primary].renderer->RunBenchmark(*g_scene.get(), g_pass_count, stats);
 
         return stats;
     }
@@ -380,8 +385,8 @@ int main(int argc, char * argv[])
     g_cspeed = cspeed ? (atof(cspeed) > 0) : g_cspeed;
 
 
-    char* frame_count = GetCmdOption(argv, argv + argc, "-fc");
-    g_frame_count = frame_count ? (atoi(frame_count)) : g_frame_count;
+    char* pass_count = GetCmdOption(argv, argv + argc, "-fc");
+    g_pass_count = pass_count ? (atoi(pass_count)) : g_pass_count;
 
     char* cfg = GetCmdOption(argv, argv + argc, "-config");
 
@@ -419,24 +424,15 @@ int main(int argc, char * argv[])
         StartRenderThreads();
 
         Baikal::Renderer::BenchmarkStats stats = Update();
-        for (int i = 1; i < g_frame_count; ++i)
-        {
-            Baikal::Renderer::BenchmarkStats iter_stats = Update();
-            stats.primary_rays_time_in_ms += iter_stats.primary_rays_time_in_ms;
-            stats.secondary_rays_time_in_ms += iter_stats.secondary_rays_time_in_ms;
-            stats.shadow_rays_time_in_ms += iter_stats.shadow_rays_time_in_ms;
-        }
-        stats.primary_rays_time_in_ms /= g_frame_count;
-        stats.secondary_rays_time_in_ms /= g_frame_count;
-        stats.shadow_rays_time_in_ms /= g_frame_count;
 
         auto numrays = stats.resolution.x * stats.resolution.y;
         std::cout << "Baikal renderer benchmark\n";
-        std::cout << "Iterations: " << g_frame_count << std::endl;
+        std::cout << "Iterations: " << g_pass_count << std::endl;
         std::cout << "Number of primary rays: " << numrays << std::endl;
         std::cout << "Primary rays: " << (float)(numrays / (stats.primary_rays_time_in_ms * 0.001f) * 0.000001f) << "mrays/s ( " << stats.primary_rays_time_in_ms << "ms )\n";
         std::cout << "Secondary rays: " << (float)(numrays / (stats.secondary_rays_time_in_ms * 0.001f) * 0.000001f) << "mrays/s ( " << stats.secondary_rays_time_in_ms << "ms )\n";
         std::cout << "Shadow rays: " << (float)(numrays / (stats.shadow_rays_time_in_ms * 0.001f) * 0.000001f) << "mrays/s ( " << stats.shadow_rays_time_in_ms << "ms )\n";
+        std::cout << "Samples: " << stats.samples_pes_sec << "msamples/s\n";
     }
     catch (std::runtime_error& err)
     {

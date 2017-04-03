@@ -709,5 +709,16 @@ namespace Baikal
 
         //
         m_context.Flush(0);
+
+        //samples statisticks
+        m_output->Clear(0.f);
+        start = std::chrono::high_resolution_clock::now();
+        for (auto i = 0U; i < num_passes; ++i)
+        {
+            Render(scene);
+        }
+        delta = std::chrono::high_resolution_clock::now() - start;
+
+        stats.samples_pes_sec = m_output->width() * m_output->height() / ((float)std::chrono::duration_cast<std::chrono::milliseconds>(delta).count() / num_passes) / 1000.f;
     }
 }
