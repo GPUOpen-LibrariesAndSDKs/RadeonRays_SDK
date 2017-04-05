@@ -57,6 +57,9 @@ namespace Baikal
         // Run render benchmark
         void RunBenchmark(Scene1 const& scene, std::uint32_t num_passes, BenchmarkStats& stats) override;
 
+    private:
+        void RenderBackground(GlScene const& scene);
+
     public:
         // Scene tracker
         GlSceneController m_scene_controller;
@@ -75,19 +78,20 @@ namespace Baikal
     {
     public:
         GlOutput(std::uint32_t w, std::uint32_t h);
+        GlOutput(std::uint32_t w, std::uint32_t h, std::vector<GLenum> attachmennt_formats);
+        ~GlOutput();
 
         void GetData(RadeonRays::float3* data) const;
 
         void Clear(RadeonRays::float3 const& val);
 
-        GLuint GetGlTexture() const;
-
         GLuint GetGlFramebuffer() const;
 
     private:
-        GLuint m_texture;
         GLuint m_frame_buffer;
         GLuint m_depth_buffer;
+        std::vector<GLuint> m_color_buffers;
+
         std::uint32_t m_width;
         std::uint32_t m_height;
     };

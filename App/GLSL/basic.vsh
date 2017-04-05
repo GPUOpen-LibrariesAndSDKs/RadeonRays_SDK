@@ -33,7 +33,7 @@ varying vec2 Uv;
 
 void main()
 {
-    WorldPos = inPosition;
+    WorldPos = g_World * vec4(inPosition, 1.0);
     Uv = inUv;
     Normal = g_World * vec4(inNormal, 0.0);
     gl_Position = g_Proj * g_View * g_World * vec4(inPosition, 1.0);

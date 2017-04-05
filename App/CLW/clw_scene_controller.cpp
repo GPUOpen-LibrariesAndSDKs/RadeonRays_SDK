@@ -232,9 +232,6 @@ namespace Baikal
 
         // Unmap camera buffer
         m_context.UnmapBuffer(0, out.camera, data);
-
-        // Drop camera dirty flag
-        camera->SetDirty(false);
     }
 
     void ClwSceneController::UpdateShapes(Scene1 const& scene, Collector& mat_collector, Collector& tex_collector, ClwScene& out) const
@@ -387,9 +384,6 @@ namespace Baikal
             std::fill(matids + num_matids_written, matids + num_matids_written + mesh_num_indices / 3, matidx);
 
             num_matids_written += mesh_num_indices / 3;
-
-            // Drop dirty flag
-            mesh->SetDirty(false);
         }
 
         // Excluded shapes are handled in almost the same way
@@ -447,9 +441,6 @@ namespace Baikal
             std::fill(matids + num_matids_written, matids + num_matids_written + mesh_num_indices / 3, -1);
 
             num_matids_written += mesh_num_indices / 3;
-
-            // Drop dirty flag
-            mesh->SetDirty(false);
         }
 
         // Handle instances
@@ -489,9 +480,6 @@ namespace Baikal
             std::fill(matids + num_matids_written, matids + num_matids_written + mesh_num_indices / 3, mat_idx);
 
             num_matids_written += mesh_num_indices / 3;
-
-            // Drop dirty flag
-            instance->SetDirty(false);
         }
 
         m_context.UnmapBuffer(0, out.vertices, vertices);
@@ -500,9 +488,9 @@ namespace Baikal
         m_context.UnmapBuffer(0, out.indices, indices);
         m_context.UnmapBuffer(0, out.materialids, matids);
         m_context.UnmapBuffer(0, out.shapes, shapes).Wait();
-        
+
         UpdateIntersector(scene, out);
-        
+
         ReloadIntersector(scene, out);
     }
     
@@ -531,9 +519,6 @@ namespace Baikal
 
         // Serialize
         {
-            // Update material bundle first to be able to track differences
-            out.material_bundle.reset(mat_collector.CreateBundle());
-
             // Create material iterator
             std::unique_ptr<Iterator> mat_iter(mat_collector.CreateIterator());
 
@@ -586,9 +571,6 @@ namespace Baikal
 
         // Map GPU materials buffer
         m_context.MapBuffer(0, out.textures, CL_MAP_WRITE, &textures).Wait();
-
-        // Update material bundle first to be able to track differences
-        out.texture_bundle.reset(tex_collector.CreateBundle());
 
         // Create material iterator
         std::unique_ptr<Iterator> tex_iter(tex_collector.CreateIterator());
@@ -858,8 +840,6 @@ namespace Baikal
         default:
             break;
         }
-
-        material->SetDirty(false);
     }
 
     // Convert Light:: types to ClwScene:: types
@@ -990,8 +970,6 @@ namespace Baikal
                 {
                     out.envmapidx = static_cast<int>(num_lights_written - 1);
                 }
-
-                light->SetDirty(false);
             }
         }
 

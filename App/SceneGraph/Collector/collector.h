@@ -60,8 +60,7 @@ namespace Baikal
     public:
         using ExpandFunc = std::function<std::set<void const*>(void const*)>;
         using ChangedFunc = std::function<bool(void const*)>;
-        using FinalizeFunc = std::function<void(void const*)>;
-        
+
         // Constructor
         Collector();
         // Destructor
@@ -83,9 +82,7 @@ namespace Baikal
         Bundle* CreateBundle() const;
         // Get item index within a collection
         std::uint32_t GetItemIndex(void const* item) const;
-        // Finalization function
-        void Finalize(FinalizeFunc finalize_func);
-    
+
         // Disallow copies and moves
         Collector(Collector const&) = delete;
         Collector& operator = (Collector const&) = delete;

@@ -88,9 +88,13 @@ char const* g_path =
 char const* g_modelname = "orig.objm";
 char const* g_envmapname = "../Resources/Textures/studio015.hdr";
 
+#ifdef DEBUG
 #define CHECK_GL_ERROR {auto err = glGetError(); assert(err == GL_NO_ERROR);}
+#else
+#define CHECK_GL_ERROR
+#endif
 
-std::unique_ptr<ShaderManager>    g_shader_manager;
+std::unique_ptr<ShaderManager> g_shader_manager;
 std::unique_ptr<Baikal::PerspectiveCamera> g_camera;
 
 GLuint g_vertex_buffer;
@@ -205,29 +209,36 @@ void Render()
             if (g_realtime)
             {
                 auto output = reinterpret_cast<Baikal::GlOutput*>(g_outputs[g_primary].output);
-                texture = output->GetGlTexture();
+
+                glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0); CHECK_GL_ERROR;
+                glBindFramebuffer(GL_READ_FRAMEBUFFER, reinterpret_cast<Baikal::GlOutput*>(g_outputs[g_primary].output)->GetGlFramebuffer()); CHECK_GL_ERROR;
+                glDrawBuffer(GL_BACK); CHECK_GL_ERROR;
+                glBlitFramebuffer(0, 0, output->width(), output->height(), 0, 0, output->width(), output->height(), GL_COLOR_BUFFER_BIT, GL_NEAREST); CHECK_GL_ERROR;
             }
+            else
+            {
 
-            glActiveTexture(GL_TEXTURE0); CHECK_GL_ERROR;
-            glBindTexture(GL_TEXTURE_2D, texture); CHECK_GL_ERROR;
+                glActiveTexture(GL_TEXTURE0); CHECK_GL_ERROR;
+                glBindTexture(GL_TEXTURE_2D, g_texture); CHECK_GL_ERROR;
 
-            GLuint position_attr = glGetAttribLocation(program, "inPosition"); CHECK_GL_ERROR;
-            GLuint texcoord_attr = glGetAttribLocation(program, "inTexcoord"); CHECK_GL_ERROR;
+                GLuint position_attr = glGetAttribLocation(program, "inPosition"); CHECK_GL_ERROR;
+                GLuint texcoord_attr = glGetAttribLocation(program, "inTexcoord"); CHECK_GL_ERROR;
 
-            glVertexAttribPointer(position_attr, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 5, 0); CHECK_GL_ERROR;
-            glVertexAttribPointer(texcoord_attr, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void*)(sizeof(float) * 3)); CHECK_GL_ERROR;
+                glVertexAttribPointer(position_attr, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 5, 0); CHECK_GL_ERROR;
+                glVertexAttribPointer(texcoord_attr, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void*)(sizeof(float) * 3)); CHECK_GL_ERROR;
 
-            glEnableVertexAttribArray(position_attr); CHECK_GL_ERROR;
-            glEnableVertexAttribArray(texcoord_attr); CHECK_GL_ERROR;
+                glEnableVertexAttribArray(position_attr); CHECK_GL_ERROR;
+                glEnableVertexAttribArray(texcoord_attr); CHECK_GL_ERROR;
 
-            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, nullptr);
-            CHECK_GL_ERROR;
+                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, nullptr);
+                CHECK_GL_ERROR;
 
-            glDisableVertexAttribArray(texcoord_attr); CHECK_GL_ERROR;
-            glBindTexture(GL_TEXTURE_2D, 0); CHECK_GL_ERROR;
-            glBindBuffer(GL_ARRAY_BUFFER, 0); CHECK_GL_ERROR;
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0); CHECK_GL_ERROR;
-            glUseProgram(0); CHECK_GL_ERROR;
+                glDisableVertexAttribArray(texcoord_attr); CHECK_GL_ERROR;
+                glBindTexture(GL_TEXTURE_2D, 0); CHECK_GL_ERROR;
+                glBindBuffer(GL_ARRAY_BUFFER, 0); CHECK_GL_ERROR;
+                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0); CHECK_GL_ERROR;
+                glUseProgram(0); CHECK_GL_ERROR;
+            }
 
             glFinish(); CHECK_GL_ERROR;
         }

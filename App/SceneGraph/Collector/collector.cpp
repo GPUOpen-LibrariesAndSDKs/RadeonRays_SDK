@@ -68,15 +68,6 @@ namespace Baikal
             m_impl->m_map[i] = idx++;
         }
     }
-    
-    void Collector::Finalize(FinalizeFunc finalize_func)
-    {
-        for (auto& i : m_impl->m_set)
-        {
-            finalize_func(i);
-        }
-    }
-    
     bool Collector::NeedsUpdate(Bundle const* bundle, ChangedFunc changed_func) const
     {
         auto bundle_impl = static_cast<BundleImpl const*>(bundle);

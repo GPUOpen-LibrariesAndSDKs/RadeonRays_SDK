@@ -89,10 +89,16 @@ namespace Baikal
         GLint gloss_texture_idx;
         RadeonRays::float3 diffuse_color;
         RadeonRays::float3 gloss_color;
+        float ior;
+        float gloss_roughness;
+        float diffuse_roughness;
 
         GlMaterialData()
             : diffuse_texture_idx(-1)
             , gloss_texture_idx(-1)
+            , ior(1.33f)
+            , gloss_roughness(1.f)
+            , diffuse_roughness(0.f)
         {
         }
     };
@@ -102,7 +108,7 @@ namespace Baikal
         GLuint texture;
 
         GlTexureData()
-            : texture(0)
+            : texture(0xFFFFFFFFU)
         {
         }
     };
@@ -116,12 +122,14 @@ namespace Baikal
 
     struct GlScene
     {
-        RadeonRays::matrix view_transform;
-        RadeonRays::matrix proj_transform;
+        PerspectiveCamera const* camera;
 
         std::map<Shape const*, GlShapeData> shapes;
         std::vector<GlMaterialData> materials;
         std::vector<GlTexureData> textures;
+
+        GLint ibl_texture_idx;
+        GLfloat ibl_multiplier;
 
         std::unique_ptr<Bundle> material_bundle;
         std::unique_ptr<Bundle> texture_bundle;

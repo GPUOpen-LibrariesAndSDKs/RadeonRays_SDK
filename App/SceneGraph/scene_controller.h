@@ -91,6 +91,15 @@ namespace Baikal
         // Scene cache map (CPU scene -> GPU scene mapping)
         mutable std::map<Scene1 const*, CompiledScene> m_scene_cache;
     };
+
+    template <typename Iterator> inline void DropDirties(Iterator* iter)
+    {
+        for (iter->Reset(); iter->IsValid(); iter->Next())
+        {
+            auto obj = iter->ItemAs<SceneObject const>();
+            obj->SetDirty(false);
+        }
+    }
 }
 
 #include "scene_controller.inl"

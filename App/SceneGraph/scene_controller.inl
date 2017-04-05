@@ -209,14 +209,7 @@ namespace Baikal
             
             // Drop all dirty flags for the scene
             scene.ClearDirtyFlags();
-            
-            // Drop dirty flags for materials
-            mat_collector.Finalize([](void const* item)
-                                   {
-                                       auto material = reinterpret_cast<Material const*>(item);
-                                       material->SetDirty(false);
-                                   });
-            
+
             // Return the scene
             return res.first->second;
         }
@@ -241,6 +234,8 @@ namespace Baikal
             if (dirty & Scene1::kCamera || camera_changed)
             {
                 UpdateCamera(scene, mat_collector, tex_collector, out);
+
+                camera->SetDirty(false);
             }
             
             {
@@ -272,6 +267,8 @@ namespace Baikal
                 if (dirty & Scene1::kLights || lights_changed)
                 {
                     UpdateLights(scene, mat_collector, tex_collector, out);
+
+                    DropDirties(light_iter.get());
                 }
             }
             
@@ -302,6 +299,8 @@ namespace Baikal
                 if (dirty & Scene1::kShapes || shapes_changed)
                 {
                     UpdateShapes(scene, mat_collector, tex_collector, out);
+
+                    DropDirties(shape_iter.get());
                 }
             }
             
@@ -316,7 +315,13 @@ namespace Baikal
                                           }
                                           ))
             {
+                // Update material bundle first to be able to track differences
+                out.material_bundle.reset(mat_collector.CreateBundle());
+
                 UpdateMaterials(scene, mat_collector, tex_collector, out);
+
+                std::unique_ptr<Iterator> mat_iter(mat_collector.CreateIterator());
+                DropDirties(mat_iter.get());
             }
             
             // If textures need an update, do it.
@@ -326,7 +331,13 @@ namespace Baikal
                 auto tex = reinterpret_cast<Texture const*>(ptr);
                 return tex->IsDirty(); })))
             {
+                // Update material bundle first to be able to track differences
+                out.texture_bundle.reset(tex_collector.CreateBundle());
+
                 UpdateTextures(scene, mat_collector, tex_collector, out);
+
+                std::unique_ptr<Iterator> tex_iter(tex_collector.CreateIterator());
+                DropDirties(tex_iter.get());
             }
             
             // Set current scene
@@ -339,14 +350,7 @@ namespace Baikal
             
             // Make sure to clear dirty flags
             scene.ClearDirtyFlags();
-            
-            // Clear material dirty flags
-            mat_collector.Finalize([](void const* item)
-                                   {
-                                       auto material = reinterpret_cast<Material const*>(item);
-                                       material->SetDirty(false);
-                                   });
-            
+
             // Return the scene
             return out;
         }
@@ -357,13 +361,30 @@ namespace Baikal
     void SceneController<CompiledScene>::RecompileFull(Scene1 const& scene, Collector& mat_collector, Collector& tex_collector, CompiledScene& out) const
     {
         UpdateCamera(scene, mat_collector, tex_collector, out);
-        
+
+        scene.GetCamera()->SetDirty(false);
+
         UpdateLights(scene, mat_collector, tex_collector, out);
-        
+
+        std::unique_ptr<Iterator> light_iter(scene.CreateLightIterator());
+        DropDirties(light_iter.get());
+
         UpdateShapes(scene, mat_collector, tex_collector, out);
+
+        std::unique_ptr<Iterator> shape_iter(scene.CreateShapeIterator());
+        DropDirties(shape_iter.get());
         
         UpdateMaterials(scene, mat_collector, tex_collector, out);
-        
+
+        std::unique_ptr<Iterator> mat_iter(mat_collector.CreateIterator());
+        DropDirties(mat_iter.get());
+
         UpdateTextures(scene, mat_collector, tex_collector, out);
+
+        std::unique_ptr<Iterator> tex_iter(tex_collector.CreateIterator());
+        DropDirties(tex_iter.get());
+
+        // Make sure to clear dirty flags
+        scene.ClearDirtyFlags();
     }
 }
