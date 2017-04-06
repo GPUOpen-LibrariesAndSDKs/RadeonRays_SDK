@@ -69,7 +69,7 @@ namespace Baikal
     
     template <typename CompiledScene>
     inline
-    CompiledScene& SceneController<CompiledScene>::CompileScene(Scene1 const& scene, Collector& mat_collector, Collector& tex_collector) const
+    CompiledScene& SceneController<CompiledScene>::CompileScene(Scene1 const& scene, Collector& mat_collector, Collector& tex_collector, bool clear_ditry_flags) const
     {
         // The overall approach is:
         // 1) Check if materials have changed, update collector if yes
@@ -208,7 +208,11 @@ namespace Baikal
             m_current_scene = &scene;
             
             // Drop all dirty flags for the scene
-            scene.ClearDirtyFlags();
+
+            if (clear_ditry_flags)
+            {
+                scene.ClearDirtyFlags();
+            }
 
             // Return the scene
             return res.first->second;
@@ -218,24 +222,27 @@ namespace Baikal
             // Exctract cached scene entry
             auto& out = iter->second;
             auto dirty = scene.GetDirtyFlags();
-            
+
             // Check if we have valid camera
             auto camera = scene.GetCamera();
-            
+
             if (!camera)
             {
                 throw std::runtime_error("No camera in the scene");
             }
-            
+
             // Check if camera parameters have been changed
             auto camera_changed = camera->IsDirty();
-            
+
             // Update camera if needed
             if (dirty & Scene1::kCamera || camera_changed)
             {
                 UpdateCamera(scene, mat_collector, tex_collector, out);
 
-                camera->SetDirty(false);
+                if (clear_ditry_flags)
+                {
+                    camera->SetDirty(false);
+                }
             }
             
             {
@@ -268,7 +275,10 @@ namespace Baikal
                 {
                     UpdateLights(scene, mat_collector, tex_collector, out);
 
-                    DropDirties(light_iter.get());
+                    if (clear_ditry_flags)
+                    {
+                        DropDirties(light_iter.get());
+                    }
                 }
             }
             
@@ -300,7 +310,10 @@ namespace Baikal
                 {
                     UpdateShapes(scene, mat_collector, tex_collector, out);
 
-                    DropDirties(shape_iter.get());
+                    if (clear_ditry_flags)
+                    {
+                        DropDirties(shape_iter.get());
+                    }
                 }
             }
             
@@ -320,8 +333,11 @@ namespace Baikal
 
                 UpdateMaterials(scene, mat_collector, tex_collector, out);
 
-                std::unique_ptr<Iterator> mat_iter(mat_collector.CreateIterator());
-                DropDirties(mat_iter.get());
+                if (clear_ditry_flags)
+                {
+                    std::unique_ptr<Iterator> mat_iter(mat_collector.CreateIterator());
+                    DropDirties(mat_iter.get());
+                }
             }
             
             // If textures need an update, do it.
@@ -336,8 +352,11 @@ namespace Baikal
 
                 UpdateTextures(scene, mat_collector, tex_collector, out);
 
-                std::unique_ptr<Iterator> tex_iter(tex_collector.CreateIterator());
-                DropDirties(tex_iter.get());
+                if (clear_ditry_flags)
+                {
+                    std::unique_ptr<Iterator> tex_iter(tex_collector.CreateIterator());
+                    DropDirties(tex_iter.get());
+                }
             }
             
             // Set current scene
@@ -349,7 +368,10 @@ namespace Baikal
             }
             
             // Make sure to clear dirty flags
-            scene.ClearDirtyFlags();
+            if (clear_ditry_flags)
+            {
+                scene.ClearDirtyFlags();
+            }
 
             // Return the scene
             return out;

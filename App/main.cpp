@@ -217,7 +217,6 @@ void Render()
             }
             else
             {
-
                 glActiveTexture(GL_TEXTURE0); CHECK_GL_ERROR;
                 glBindTexture(GL_TEXTURE_2D, g_texture); CHECK_GL_ERROR;
 

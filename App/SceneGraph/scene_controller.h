@@ -59,7 +59,7 @@ namespace Baikal
         virtual ~SceneController() = default;
         
         // Given a scene this method produces (or loads from cache) corresponding GPU representation.
-        CompiledScene& CompileScene(Scene1 const& scene, Collector& mat_collector, Collector& tex_collector) const;
+        CompiledScene& CompileScene(Scene1 const& scene, Collector& mat_collector, Collector& tex_collector, bool clear_ditry_flags = true) const;
 
         // Helper method to split iterable shapes into shapes and instances sets
         static void SplitMeshesAndInstances(Iterator* shape_iter, std::set<Mesh const*>& meshes, std::set<Instance const*>& instances, std::set<Mesh const*>& excluded_meshes);

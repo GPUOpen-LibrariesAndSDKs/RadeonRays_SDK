@@ -32,6 +32,8 @@ THE SOFTWARE.
 namespace Baikal
 {
     class Output;
+    class PtRenderer;
+
     ///< Renderer implementation
     class RsRenderer : public Renderer
     {
@@ -59,6 +61,7 @@ namespace Baikal
 
     private:
         void RenderBackground(GlScene const& scene);
+        void ResolveGI(GlScene const& scene, int radius);
 
     public:
         // Scene tracker
@@ -78,7 +81,6 @@ namespace Baikal
     {
     public:
         GlOutput(std::uint32_t w, std::uint32_t h);
-        GlOutput(std::uint32_t w, std::uint32_t h, std::vector<GLenum> attachmennt_formats);
         ~GlOutput();
 
         void GetData(RadeonRays::float3* data) const;
@@ -90,7 +92,7 @@ namespace Baikal
     private:
         GLuint m_frame_buffer;
         GLuint m_depth_buffer;
-        std::vector<GLuint> m_color_buffers;
+        GLuint m_color_buffer;
 
         std::uint32_t m_width;
         std::uint32_t m_height;

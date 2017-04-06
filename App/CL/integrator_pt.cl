@@ -216,8 +216,6 @@ __kernel void ShadeVolume(
     }
 }
 
-
-
 // Handle ray-surface interaction possibly generating path continuation.
 // This is only applied to non-scattered paths.
 __kernel void ShadeSurface(
@@ -274,7 +272,8 @@ __kernel void ShadeSurface(
     // Indirect rays
     __global ray* indirectrays,
     // Radiance
-    __global float3* output
+    __global float3* output,
+    __global float4* world_pos
 )
 {
     int globalid = get_global_id(0);
@@ -310,7 +309,7 @@ __kernel void ShadeSurface(
         } 
 
         // Fetch incoming ray direction
-        float3 wi = -normalize(rays[hitidx].d.xyz);      
+        float3 wi = -normalize(rays[hitidx].d.xyz);
 
         Sampler sampler;
 #if SAMPLER == SOBOL 
@@ -337,7 +336,7 @@ __kernel void ShadeSurface(
         Material_Select(&scene, wi, &sampler, TEXTURE_ARGS, SAMPLER_ARGS, &diffgeo);
 
         // Terminate if emissive
-        if (Bxdf_IsEmissive(&diffgeo))
+        if (Bxdf_IsEmissive(&diffgeo) && bounce > 1)
         {
             if (!backfacing)
             {
@@ -397,6 +396,12 @@ __kernel void ShadeSurface(
         //DifferentialGeometry_ApplyNormalMap(&diffgeo, TEXTURE_ARGS);
         DifferentialGeometry_CalculateTangentTransforms(&diffgeo);
 
+        if (bounce == 0)
+        {
+            world_pos[pixelidx].xyz += diffgeo.p;
+            world_pos[pixelidx].w += 1.f;
+        }
+
         float ndotwi = fabs(dot(diffgeo.n, wi));
 
         float lightpdf = 0.f;
@@ -453,7 +458,7 @@ __kernel void ShadeSurface(
             {
                 radiance *= Volume_Transmittance(&volumes[volidx], &shadowrays[globalid], shadow_ray_length);
                 radiance += Volume_Emission(&volumes[volidx], &shadowrays[globalid], shadow_ray_length) * throughput;
-            }  
+            }
              
             // And write the light sample 
             lightsamples[globalid] = REASONABLE_RADIANCE(radiance);
@@ -576,7 +581,9 @@ __kernel void GatherLightSamples(
     // throughput
     __global Path const* paths,
     // Radiance sample buffer
-    __global float4* output
+    __global float4* output,
+    __global float4* shadow,
+    int pass
 )
 {
     int globalid = get_global_id(0);
@@ -586,7 +593,6 @@ __kernel void GatherLightSamples(
         // Get pixel id for this sample set
         int pixelidx = pixelindices[globalid];
 
-
         // Prepare accumulator variable
         float3 radiance = make_float3(0.f, 0.f, 0.f);
 
@@ -595,8 +601,22 @@ __kernel void GatherLightSamples(
             // If shadow ray didn't hit anything and reached skydome
             if (shadowhits[globalid] == -1)
             {
-                // Add its contribution to radiance accumulator
-                radiance += lightsamples[globalid];
+                if (pass == 0)
+                {
+                    shadow[pixelidx] += 1.f;
+                }
+                else
+                {
+                    // Add its contribution to radiance accumulator
+                    radiance += lightsamples[globalid];
+                }
+            }
+            else
+            {
+                if (pass == 0)
+                {
+                    shadow[pixelidx].w += 1.f;
+                }
             }
         }
 

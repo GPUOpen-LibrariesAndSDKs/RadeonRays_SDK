@@ -312,11 +312,6 @@ vec3 GetOrthoVector(vec3 N)
 
 void main()
 {
-    vec3 LightPos = vec3(0.0, 600.0, 0.0);
-    vec3 L = normalize(LightPos - WorldPos);
-    float LightDistance = length(LightPos - WorldPos);
-    float LightAttenuation = 1.0 / (LightDistance * LightDistance);
-    vec3 LightIntensity = 3000.0 * vec3(100.0, 95.0, 94.0);
     vec3 V = normalize(CameraPosition - WorldPos);
     vec3 N = Normal;
     if (dot(V, N) < 0.f)

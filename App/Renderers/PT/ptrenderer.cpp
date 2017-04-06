@@ -223,11 +223,14 @@ namespace Baikal
             if (pass == 0)
                 ShadeBackground(clwscene, pass);
 
-            // Intersect shadow rays
-            api->QueryOcclusion(m_render_data->fr_shadowrays, m_render_data->fr_hitcount, maxrays, m_render_data->fr_shadowhits, nullptr, nullptr);
+            //if (pass > 0)
+            {
+                // Intersect shadow rays
+                api->QueryOcclusion(m_render_data->fr_shadowrays, m_render_data->fr_hitcount, maxrays, m_render_data->fr_shadowhits, nullptr, nullptr);
 
-            // Gather light samples and account for visibility
-            GatherLightSamples(clwscene, pass);
+                // Gather light samples and account for visibility
+                GatherLightSamples(clwscene, pass);
+            }
 
             //
             m_context.Flush(0);
@@ -382,6 +385,7 @@ namespace Baikal
         shadekernel.SetArg(argc++, m_render_data->paths);
         shadekernel.SetArg(argc++, m_render_data->rays[(pass + 1) & 0x1]);
         shadekernel.SetArg(argc++, m_output->data());
+        shadekernel.SetArg(argc++, m_output->position());
 
         // Run shading kernel
         {
@@ -504,6 +508,8 @@ namespace Baikal
         gatherkernel.SetArg(argc++, m_render_data->lightsamples);
         gatherkernel.SetArg(argc++, m_render_data->paths);
         gatherkernel.SetArg(argc++, m_output->data());
+        gatherkernel.SetArg(argc++, m_output->shadow());
+        gatherkernel.SetArg(argc++, pass);
 
         // Run shading kernel
         {
