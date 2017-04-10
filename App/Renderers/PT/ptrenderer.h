@@ -49,12 +49,10 @@ namespace Baikal
         void DeleteOutput(Output* output) const override;
         // Clear output
         void Clear(RadeonRays::float3 const& val, Output& output) const override;
-        // Do necessary precalculation and initialization
-        void Preprocess(Scene1 const& scene) override;
         // Render the scene into the output
         void Render(Scene1 const& scene) override;
         // Set output
-        void SetOutput(Output* output) override;
+        void SetOutput(OutputType type, Output* output) override;
         // Set number of light bounces
         void SetNumBounces(int num_bounces);
         // Interop function
@@ -69,7 +67,7 @@ namespace Baikal
         // Resize output-dependent buffers
         void ResizeWorkingSet(Output const& output);
         // Generate rays
-        void GeneratePrimaryRays(ClwScene const& scene);
+        void GeneratePrimaryRays(ClwScene const& scene, Output const& output);
         // Shade first hit
         void ShadeSurface(ClwScene const& scene, int pass);
         // Evaluate volume
@@ -86,12 +84,12 @@ namespace Baikal
         void ShadeVolume(ClwScene const& scene, int pass);
         // Shade background
         void ShadeBackground(ClwScene const& scene, int pass);
+        // Fill arbitrary output values
+        void FillAOVs(ClwScene const& scene);
 
     public:
         // CL context
         CLWContext m_context;
-        // Output object
-        ClwOutput* m_output;
         // Scene tracker
         ClwSceneController m_scene_controller;
 

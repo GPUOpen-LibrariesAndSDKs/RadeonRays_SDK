@@ -93,7 +93,6 @@ namespace Baikal
     // Constructor
     AoRenderer::AoRenderer(CLWContext context, int devidx)
         : m_context(context)
-        , m_output(nullptr)
         , m_render_data(new RenderData)
         , m_vidmemws(0)
         , m_resetsampler(true)
@@ -149,10 +148,6 @@ namespace Baikal
         m_resetsampler = true;
     }
 
-    void AoRenderer::Preprocess(Scene1 const& scene)
-    {
-    }
-
     // Render the scene into the output
     void AoRenderer::Render(Scene1 const& scene)
     {
@@ -162,11 +157,15 @@ namespace Baikal
         Collector tex_collector;
         auto& clwscene = m_scene_controller.CompileScene(scene, mat_collector, tex_collector);
 
-        // Check output
-        assert(m_output);
-
         // Number of rays to generate
-        int maxrays = m_output->width() * m_output->height();
+        auto output = GetOutput(OutputType::kColor);
+
+        if (!output)
+        {
+            throw std::runtime_error("No output specified");
+        }
+
+        int maxrays = output->width() * output->height();
 
         // Generate primary
         GeneratePrimaryRays(clwscene);
@@ -215,14 +214,15 @@ namespace Baikal
         }
     }
 
-    void AoRenderer::SetOutput(Output* output)
+    void AoRenderer::SetOutput(OutputType type, Output* output)
     {
-        if (!m_output || m_output->width() < output->width() || m_output->height() < output->height())
+        auto current_output = GetOutput(type);
+        if (!current_output || current_output->width() < output->width() || current_output->height() < output->height())
         {
             ResizeWorkingSet(*output);
         }
 
-        m_output = static_cast<ClwOutput*>(output);
+        Renderer::SetOutput(type, output);
     }
 
     void AoRenderer::ResizeWorkingSet(Output const& output)
@@ -289,10 +289,12 @@ namespace Baikal
         // Fetch kernel
         CLWKernel genkernel = m_render_data->program.GetKernel("PerspectiveCamera_GeneratePaths");
 
+        auto output = GetOutput(OutputType::kColor);
+
         // Set kernel parameters
         genkernel.SetArg(0, scene.camera);
-        genkernel.SetArg(1, m_output->width());
-        genkernel.SetArg(2, m_output->height());
+        genkernel.SetArg(1, output->width());
+        genkernel.SetArg(2, output->height());
         genkernel.SetArg(3, (int)rand_uint());
         genkernel.SetArg(4, m_render_data->rays);
         genkernel.SetArg(5, m_render_data->samplers);
@@ -302,7 +304,7 @@ namespace Baikal
 
         // Run generation kernel
         {
-            size_t gs[] = { static_cast<size_t>((m_output->width() + 7) / 8 * 8), static_cast<size_t>((m_output->height() + 7) / 8 * 8) };
+            size_t gs[] = { static_cast<size_t>((output->width() + 7) / 8 * 8), static_cast<size_t>((output->height() + 7) / 8 * 8) };
             size_t ls[] = { 8, 8 };
 
             m_context.Launch2D(0, gs, ls, genkernel);
@@ -313,6 +315,8 @@ namespace Baikal
     {
         // Fetch kernel
         CLWKernel samplekernel = m_render_data->program.GetKernel("SampleOcclusion");
+
+        auto output = GetOutput(OutputType::kColor);
 
         // Set kernel parameters
         int argc = 0;
@@ -334,7 +338,7 @@ namespace Baikal
 
         // Run shading kernel
         {
-            int globalsize = m_output->width() * m_output->height();
+            int globalsize = output->width() * output->height();
             m_context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, samplekernel);
         }
     }
@@ -344,16 +348,18 @@ namespace Baikal
         // Fetch kernel
         CLWKernel gatherkernel = m_render_data->program.GetKernel("GatherOcclusion");
 
+        auto output = static_cast<ClwOutput*>(GetOutput(OutputType::kColor));
+
         // Set kernel parameters
         int argc = 0;
         gatherkernel.SetArg(argc++, m_render_data->pixelindices[0]);
         gatherkernel.SetArg(argc++, m_render_data->hitcount);
         gatherkernel.SetArg(argc++, m_render_data->shadowhits);
-        gatherkernel.SetArg(argc++, m_output->data());
+        gatherkernel.SetArg(argc++, output->data());
 
         // Run shading kernel
         {
-            int globalsize = m_output->width() * m_output->height();
+            int globalsize = output->width() * output->height();
             m_context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, gatherkernel);
         }
     }
@@ -362,6 +368,8 @@ namespace Baikal
     {
         // Fetch kernel
         CLWKernel restorekernel = m_render_data->program.GetKernel("RestorePixelIndices");
+
+        auto output = static_cast<ClwOutput*>(GetOutput(OutputType::kColor));
 
         // Set kernel parameters
         int argc = 0;
@@ -372,7 +380,7 @@ namespace Baikal
 
         // Run shading kernel
         {
-            int globalsize = m_output->width() * m_output->height();
+            int globalsize = output->width() * output->height();
             m_context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, restorekernel);
         }
     }
@@ -381,6 +389,8 @@ namespace Baikal
     {
         // Fetch kernel
         CLWKernel restorekernel = m_render_data->program.GetKernel("FilterPathStream");
+
+        auto output = static_cast<ClwOutput*>(GetOutput(OutputType::kColor));
 
         // Set kernel parameters
         int argc = 0;
@@ -391,7 +401,7 @@ namespace Baikal
 
         // Run shading kernel
         {
-            int globalsize = m_output->width() * m_output->height();
+            int globalsize = output->width() * output->height();
             m_context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, restorekernel);
         }
 

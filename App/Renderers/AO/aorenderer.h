@@ -48,12 +48,10 @@ namespace Baikal
         void DeleteOutput(Output* output) const override;
         // Clear output
         void Clear(RadeonRays::float3 const& val, Output& output) const override;
-        // Do necessary precalculation and initialization
-        void Preprocess(Scene1 const& scene) override;
         // Render the scene into the output
         void Render(Scene1 const& scene) override;
         // Set output
-        void SetOutput(Output* output) override;
+        void SetOutput(OutputType type, Output* output) override;
         // Interop function
         CLWKernel GetCopyKernel();
         // Add function
@@ -76,8 +74,6 @@ namespace Baikal
     public:
         // CL context
         CLWContext m_context;
-        // Output object
-        ClwOutput* m_output;
         // Flag to reset the sampler
         mutable bool m_resetsampler;
         // Scene tracker

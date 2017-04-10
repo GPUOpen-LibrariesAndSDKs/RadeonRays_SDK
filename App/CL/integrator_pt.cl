@@ -310,7 +310,7 @@ __kernel void ShadeSurface(
         } 
 
         // Fetch incoming ray direction
-        float3 wi = -normalize(rays[hitidx].d.xyz);      
+        float3 wi = -normalize(rays[hitidx].d.xyz);
 
         Sampler sampler;
 #if SAMPLER == SOBOL 
@@ -330,8 +330,8 @@ __kernel void ShadeSurface(
         Scene_FillDifferentialGeometry(&scene, &isect,&diffgeo);
 
         // Check if we are hitting from the inside
-        float ngdotwi = dot(diffgeo.ng, wi);    
-        bool backfacing = ngdotwi < 0.f; 
+        float ngdotwi = dot(diffgeo.ng, wi);
+        bool backfacing = ngdotwi < 0.f;
 
         // Select BxDF
         Material_Select(&scene, wi, &sampler, TEXTURE_ARGS, SAMPLER_ARGS, &diffgeo);
@@ -351,7 +351,6 @@ __kernel void ShadeSurface(
                     // TODO: num_lights should be num_emissies instead, presence of analytical lights breaks this code
                     float bxdflightpdf = denom > 0.f ? (ld * ld / denom / num_lights) : 0.f;
                     weight = BalanceHeuristic(1, extra.x, 1, bxdflightpdf);
-
                 }
 
                 // In this case we hit after an application of MIS process at previous step.
@@ -382,19 +381,7 @@ __kernel void ShadeSurface(
         }
 
 
-        // TODO: this is test code, need to
-        // maintain proper volume stack here
-        //if (Bxdf_IsBtdf(&diffgeo)) 
-        //{
-        //    // If we entering set the volume
-        //    path->volume = !backfacing ? 0 : -1; 
-        //}
-           
-        // Check if we need to apply normal map
-        //ApplyNormalMap(&diffgeo, TEXTURE_ARGS);
-        DifferentialGeometry_ApplyBumpMap(&diffgeo, TEXTURE_ARGS);
-
-        //DifferentialGeometry_ApplyNormalMap(&diffgeo, TEXTURE_ARGS);
+        DifferentialGeometry_ApplyBumpNormalMap(&diffgeo, TEXTURE_ARGS);
         DifferentialGeometry_CalculateTangentTransforms(&diffgeo);
 
         float ndotwi = fabs(dot(diffgeo.n, wi));
@@ -776,5 +763,164 @@ __kernel void ApplyGammaAndCopyData(
         float4 v = data[gid];
         float4 val = clamp(native_powr(v / v.w, 1.f / gamma), 0.f, 1.f);
         write_imagef(img, make_int2(gidx, gidy), val);
+    }
+}
+
+// Fill AOVs
+__kernel void FillAOVs(
+    // Ray batch
+    __global ray const* rays,
+    // Intersection data
+    __global Intersection const* isects,
+    // Number of pixels
+    int num_items,
+    // Vertices
+    __global float3 const* vertices,
+    // Normals
+    __global float3 const* normals,
+    // UVs
+    __global float2 const* uvs,
+    // Indices
+    __global int const* indices,
+    // Shapes
+    __global Shape const* shapes,
+    // Material IDs
+    __global int const* materialids,
+    // Materials
+    __global Material const* materials,
+    // Textures
+    TEXTURE_ARG_LIST,
+    // Environment texture index
+    int env_light_idx,
+    // Emissives
+    __global Light const* lights,
+    // Number of emissive objects
+    int num_lights,
+    // RNG seed
+    uint rngseed,
+    // Sampler states
+    __global uint* random,
+    // Sobol matrices
+    __global uint const* sobolmat,
+    // Frame
+    int frame,
+    // World position flag
+    int world_position_enabled,
+    // World position AOV
+    __global float4* aov_world_position,
+    // World normal flag
+    int world_shading_normal_enabled,
+    // World normal AOV
+    __global float4* aov_world_shading_normal,
+    // World true normal flag
+    int world_geometric_normal_enabled,
+    // World true normal AOV
+    __global float4* aov_world_geometric_normal,
+    // UV flag
+    int uv_enabled,
+    // UV AOV
+    __global float4* aov_uv,
+    // Wireframe flag
+    int wireframe_enabled,
+    // Wireframe AOV
+    __global float4* aov_wireframe
+)
+{
+    int globalid = get_global_id(0);
+
+    Scene scene =
+    {
+        vertices,
+        normals,
+        uvs,
+        indices,
+        shapes,
+        materialids,
+        materials,
+        lights,
+        env_light_idx,
+        num_lights
+    };
+
+    // Only applied to active rays after compaction
+    if (globalid < num_items)
+    {
+        Intersection isect = isects[globalid];
+
+        if (isect.shapeid > -1)
+        {
+            // Fetch incoming ray direction
+            float3 wi = -normalize(rays[globalid].d.xyz);
+
+            Sampler sampler;
+#if SAMPLER == SOBOL 
+            uint scramble = random[globalid] * 0x1fe3434f;
+            Sampler_Init(&sampler, frame, SAMPLE_DIM_SURFACE_OFFSET, scramble);
+#elif SAMPLER == RANDOM
+            uint scramble = globalid * rngseed;
+            Sampler_Init(&sampler, scramble);
+#elif SAMPLER == CMJ
+            uint rnd = random[globalid];
+            uint scramble = rnd * 0x1fe3434f * ((frame + 331 * rnd) / (CMJ_DIM * CMJ_DIM));
+            Sampler_Init(&sampler, frame % (CMJ_DIM * CMJ_DIM), SAMPLE_DIM_SURFACE_OFFSET, scramble);
+#endif
+
+            // Fill surface data
+            DifferentialGeometry diffgeo;
+            Scene_FillDifferentialGeometry(&scene, &isect, &diffgeo);
+
+            if (world_position_enabled)
+            {
+                aov_world_position[globalid].xyz += diffgeo.p;
+                aov_world_position[globalid].w += 1.f;
+            }
+
+            if (world_shading_normal_enabled)
+            {
+                float ngdotwi = dot(diffgeo.ng, wi);
+                bool backfacing = ngdotwi < 0.f;
+
+                // Select BxDF
+                Material_Select(&scene, wi, &sampler, TEXTURE_ARGS, SAMPLER_ARGS, &diffgeo);
+
+                float s = Bxdf_IsBtdf(&diffgeo) ? (-sign(ngdotwi)) : 1.f;
+                if (backfacing && !Bxdf_IsBtdf(&diffgeo))
+                {
+                    //Reverse normal and tangents in this case
+                    //but not for BTDFs, since BTDFs rely
+                    //on normal direction in order to arrange   
+                    //indices of refraction
+                    diffgeo.n = -diffgeo.n;
+                    diffgeo.dpdu = -diffgeo.dpdu;
+                    diffgeo.dpdv = -diffgeo.dpdv;
+                }
+
+                DifferentialGeometry_ApplyBumpNormalMap(&diffgeo, TEXTURE_ARGS);
+                DifferentialGeometry_CalculateTangentTransforms(&diffgeo);
+
+                aov_world_shading_normal[globalid].xyz += diffgeo.n;
+                aov_world_shading_normal[globalid].w += 1.f;
+            }
+
+            if (world_geometric_normal_enabled)
+            {
+                aov_world_geometric_normal[globalid].xyz += diffgeo.ng;
+                aov_world_geometric_normal[globalid].w += 1.f;
+            }
+
+            if (wireframe_enabled)
+            {
+                bool hit = (isect.uvwt.x < 1e-2) || (isect.uvwt.y < 1e-2) || (1.f - isect.uvwt.x - isect.uvwt.y < 1e-2);
+                float3 value = hit ? make_float3(1.f, 1.f, 1.f) : make_float3(0.f, 0.f, 0.f);
+                aov_wireframe[globalid].xyz += value;
+                aov_wireframe[globalid].w += 1.f;
+            }
+
+            if (uv_enabled)
+            {
+                aov_uv[globalid].xyz += diffgeo.uv.xyy;
+                aov_uv[globalid].w += 1.f;
+            }
+        }
     }
 }

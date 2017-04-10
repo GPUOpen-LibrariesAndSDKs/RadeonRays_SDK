@@ -403,12 +403,9 @@ void InitData()
 #pragma omp parallel for
     for (int i = 0; i < g_cfgs.size(); ++i)
     {
-        //g_cfgs[i].renderer->SetNumBounces(g_num_bounces);
-        g_cfgs[i].renderer->Preprocess(*g_scene);
-
         g_outputs[i].output = (Baikal::ClwOutput*)g_cfgs[i].renderer->CreateOutput(g_window_width, g_window_height);
 
-        g_cfgs[i].renderer->SetOutput(g_outputs[i].output);
+        g_cfgs[i].renderer->SetOutput(Baikal::Renderer::OutputType::kColor, g_outputs[i].output);
 
         g_outputs[i].fdata.resize(g_window_width * g_window_height);
         g_outputs[i].udata.resize(g_window_width * g_window_height * 4);
