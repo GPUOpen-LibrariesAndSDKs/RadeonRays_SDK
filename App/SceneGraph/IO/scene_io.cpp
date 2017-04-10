@@ -238,7 +238,7 @@ namespace Baikal
         }
 
         // TODO: temporary code, add IBL
-        Texture* ibl_texture = image_io->LoadImage("../Resources/Textures/studio015.hdr");
+        Texture* ibl_texture = image_io->LoadImage("../Resources/Textures/ennis.hdr");
         scene->AttachAutoreleaseObject(ibl_texture);
 
         ImageBasedLight* ibl = new ImageBasedLight();
@@ -252,8 +252,14 @@ namespace Baikal
         light->SetEmittedRadiance(2.f * RadeonRays::float3(1.f, 1.f, 1.f));
         scene->AttachAutoreleaseObject(light);
 
+        DirectionalLight* light1 = new DirectionalLight();
+        light1->SetDirection(RadeonRays::float3(0.3f, -1.f, -0.5f));
+        light1->SetEmittedRadiance(RadeonRays::float3(1.f, 0.8f, 0.65f));
+        scene->AttachAutoreleaseObject(light1);
+
         scene->AttachLight(light);
-        scene->AttachLight(ibl);
+        scene->AttachLight(light1);
+        //scene->AttachLight(ibl);
 
         return scene;
     }

@@ -295,11 +295,11 @@ __kernel void ShadeSurface(
 
     // Only applied to active rays after compaction
     if (globalid < *numhits)
-    {
+    { 
         // Fetch index
         int hitidx = hitindices[globalid];
         int pixelidx = pixelindices[globalid];
-        Intersection isect = isects[hitidx];
+        Intersection isect = isects[hitidx]; 
 
         __global Path* path = paths + pixelidx;
 
@@ -412,19 +412,20 @@ __kernel void ShadeSurface(
         float lightweight = 1.f;
 
         int light_idx = Scene_SampleLight(&scene, Sampler_Sample1D(&sampler, SAMPLER_ARGS), &selection_pdf);
+        bool light_singular = Light_IsSingular(&scene.lights[light_idx]);
 
-        float3 throughput = Path_GetThroughput(path);
+        float3 throughput = Path_GetThroughput(path); 
 
         // Sample bxdf
         float3 bxdf = Bxdf_Sample(&diffgeo, wi, TEXTURE_ARGS, Sampler_Sample2D(&sampler, SAMPLER_ARGS), &bxdfwo, &bxdfpdf);
 
         // If we have light to sample we can hopefully do mis
-        if (light_idx > -1)
+        //if (light_idx > -1)
         {
             // Sample light
             float3 le = Light_Sample(light_idx, &scene, &diffgeo, TEXTURE_ARGS, Sampler_Sample2D(&sampler, SAMPLER_ARGS), &lightwo, &lightpdf);
             lightbxdfpdf = Bxdf_GetPdf(&diffgeo, wi, normalize(lightwo), TEXTURE_ARGS);
-            lightweight = Light_IsSingular(&scene.lights[light_idx]) ? 1.f : BalanceHeuristic(1, lightpdf, 1, lightbxdfpdf);
+            lightweight = light_singular ? 1.f : BalanceHeuristic(1, lightpdf, 1, lightbxdfpdf);
 
             // Apply MIS to account for both
             if (NON_BLACK(le) && lightpdf > 0.0f && !Bxdf_IsSingular(&diffgeo))   
@@ -480,7 +481,7 @@ __kernel void ShadeSurface(
 
         if (Bxdf_IsSingular(&diffgeo)) 
         {
-            Path_SetSpecularFlag(path);  
+            Path_SetSpecularFlag(path);   
         }
 
         bxdfwo = normalize(bxdfwo); 
@@ -535,7 +536,7 @@ __kernel void ShadeBackgroundEnvMap(
     {
         int pixelidx = pixelindices[globalid];
 
-        // In case of a miss
+        //In case of a miss
         if (isects[globalid].shapeid < 0 && env_light_idx != -1)
         {
             // Multiply by throughput
@@ -548,7 +549,7 @@ __kernel void ShadeBackgroundEnvMap(
             else
             {
                 output[pixelidx].xyz += light.multiplier * Texture_SampleEnvMap(rays[globalid].d.xyz, TEXTURE_ARGS_IDX(light.tex)) *
-                    Volume_Transmittance(&volumes[volidx], &rays[globalid], rays[globalid].o.w);
+                    Volume_Transmittance(&volumes[volidx], &rays[globalid], rays[globalid].o.w); 
 
                 output[pixelidx].xyz += Volume_Emission(&volumes[volidx], &rays[globalid], rays[globalid].o.w);
             }
@@ -602,7 +603,7 @@ __kernel void GatherLightSamples(
 
         // Divide by number of light samples (samples already have built-in throughput)
         output[pixelidx].xyz += radiance;
-    }
+    }  
 }
 
 
@@ -691,13 +692,13 @@ __kernel void FilterPathStream(
             else
             {
                 Path_Kill(path);
-                predicate[globalid] = 0;
+                predicate[globalid]  = 0;
             }
         }
         else
         {
-            predicate[globalid] = 0;
-        }
+            predicate[globalid] = 0; ;
+        }     
     }
 }
 

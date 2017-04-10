@@ -176,64 +176,99 @@ namespace Baikal
         // Check output
         assert(m_output);
 
-        // Number of rays to generate
-        int maxrays = m_output->width() * m_output->height();
-
-        // Generate primary
-        GeneratePrimaryRays(clwscene);
-
-        // Copy compacted indices to track reverse indices
-        m_context.CopyBuffer(0, m_render_data->iota, m_render_data->pixelindices[0], 0, 0, m_render_data->iota.GetElementCount());
-        m_context.CopyBuffer(0, m_render_data->iota, m_render_data->pixelindices[1], 0, 0, m_render_data->iota.GetElementCount());
-        m_context.FillBuffer(0, m_render_data->hitcount, maxrays, 1);
-
-        // Initialize first pass
-        for (int pass = 0; pass < static_cast<int>(m_num_bounces); ++pass)
+        //for (int s = 0; s < 8; ++s)
         {
-            // Clear ray hits buffer
-            m_context.FillBuffer(0, m_render_data->hits, 0, m_render_data->hits.GetElementCount());
+            // Number of rays to generate
+            //int maxrays = m_output->width() * m_output->height();
+            int2 tile_size = int2(m_output->width(), m_output->height());
+            int num_rays = tile_size.x * tile_size.y;
 
-            // Intersect ray batch
-            api->QueryIntersection(m_render_data->fr_rays[pass & 0x1], m_render_data->fr_hitcount, maxrays, m_render_data->fr_intersections, nullptr, nullptr);
+            // Generate primary
+            GeneratePrimaryRays(clwscene, tile_size);
 
-            // Apply scattering
-            EvaluateVolume(clwscene, pass);
+            // Copy compacted indices to track reverse indices
+            std::vector<int> tile_indices(tile_size.x * tile_size.y);
+            auto img_width = m_output->width();
+            for (int i = 0; i < tile_size.y; ++i)
+                for (int j = 0; j < tile_size.x; ++j)
+                {
+                    tile_indices[tile_size.x * i + j] = img_width * i + j;
+                }
 
-            if (pass > 0 && clwscene.envmapidx > -1)
+            //m_context.CopyBuffer(0, m_render_data->iota, m_render_data->pixelindices[0], 0, 0, m_render_data->iota.GetElementCount());
+            //m_context.CopyBuffer(0, m_render_data->iota, m_render_data->pixelindices[1], 0, 0, m_render_data->iota.GetElementCount());
+            //m_context.WriteBuffer(0, m_render_data->iota, &tile_indices[0], tile_indices.size());
+            m_context.WriteBuffer(0, m_render_data->pixelindices[0], &tile_indices[0], tile_indices.size());
+            m_context.WriteBuffer(0, m_render_data->pixelindices[1], &tile_indices[0], tile_indices.size());
+            m_context.FillBuffer(0, m_render_data->hitcount, num_rays, 1);
+
+            // Initialize first pass
+            for (int pass = 0; pass < static_cast<int>(m_num_bounces); ++pass)
             {
-                ShadeMiss(clwscene, pass);
+                // Clear ray hits buffer
+                m_context.FillBuffer(0, m_render_data->hits, 0, m_render_data->hits.GetElementCount());
+                m_context.Finish(0);
+
+                // Intersect ray batch
+                api->QueryIntersection(m_render_data->fr_rays[pass & 0x1], m_render_data->fr_hitcount, num_rays, m_render_data->fr_intersections, nullptr, nullptr);
+                m_context.Finish(0);
+
+                // Apply scattering
+                EvaluateVolume(clwscene, pass, tile_size);
+
+                //m_context.Finish(0);
+
+                if (pass > 0 && clwscene.envmapidx > -1)
+                {
+                    ShadeMiss(clwscene, pass, tile_size);
+
+                    m_context.Finish(0);
+                }
+
+                // Convert intersections to predicates
+                FilterPathStream(pass, tile_size);
+                m_context.Finish(0);
+
+                // Compact batch
+                m_render_data->pp.Compact(0, m_render_data->hits, m_render_data->iota, m_render_data->compacted_indices, num_rays, m_render_data->hitcount);
+                std::vector<int> data(num_rays);
+                int numhits;
+                m_context.ReadBuffer(0, m_render_data->compacted_indices, &data[0], num_rays).Wait();
+                m_context.ReadBuffer(0, m_render_data->hitcount, &numhits, 1).Wait();
+
+                // Advance indices to keep pixel indices up to date
+                RestorePixelIndices(pass, tile_size);
+                m_context.Finish(0);
+
+                // Shade hits
+                ShadeVolume(clwscene, pass, tile_size);
+                //m_context.Finish(0);
+
+                // Shade hits
+                ShadeSurface(clwscene, pass, tile_size);
+                m_context.Finish(0);
+
+                // Shade missing rays
+                if (pass == 0)
+                {
+                    ShadeBackground(clwscene, pass, tile_size);
+                    m_context.Finish(0);
+                }
+
+                // Intersect shadow rays
+                api->QueryOcclusion(m_render_data->fr_shadowrays, m_render_data->fr_hitcount, num_rays, m_render_data->fr_shadowhits, nullptr, nullptr);
+                m_context.Finish(0);
+
+                // Gather light samples and account for visibility
+                GatherLightSamples(clwscene, pass, tile_size);
+                m_context.Finish(0);
+
+                //
+                m_context.Flush(0);
             }
 
-            // Convert intersections to predicates
-            FilterPathStream(pass);
-
-            // Compact batch
-            m_render_data->pp.Compact(0, m_render_data->hits, m_render_data->iota, m_render_data->compacted_indices, m_render_data->hitcount);
-
-            // Advance indices to keep pixel indices up to date
-            RestorePixelIndices(pass);
-
-            // Shade hits
-            ShadeVolume(clwscene, pass);
-
-            // Shade hits
-            ShadeSurface(clwscene, pass);
-
-            // Shade missing rays
-            if (pass == 0)
-                ShadeBackground(clwscene, pass);
-
-            // Intersect shadow rays
-            api->QueryOcclusion(m_render_data->fr_shadowrays, m_render_data->fr_hitcount, maxrays, m_render_data->fr_shadowhits, nullptr, nullptr);
-
-            // Gather light samples and account for visibility
-            GatherLightSamples(clwscene, pass);
-
-            //
-            m_context.Flush(0);
+            ++m_framecnt;
         }
-
-        ++m_framecnt;
     }
 
     void PtRenderer::SetOutput(Output* output)
@@ -319,7 +354,7 @@ namespace Baikal
         std::cout << "Vidmem usage (working set): " << m_vidmemws / (1024 * 1024) << "Mb\n";
     }
 
-    void PtRenderer::GeneratePrimaryRays(ClwScene const& scene)
+    void PtRenderer::GeneratePrimaryRays(ClwScene const& scene, int2 const& tile_size)
     {
         // Fetch kernel
         std::string kernel_name = (scene.camera_type == CameraType::kDefault) ? "PerspectiveCamera_GeneratePaths" : "PerspectiveCameraDof_GeneratePaths";
@@ -331,6 +366,8 @@ namespace Baikal
         genkernel.SetArg(argc++, scene.camera);
         genkernel.SetArg(argc++, m_output->width());
         genkernel.SetArg(argc++, m_output->height());
+        genkernel.SetArg(argc++, tile_size.x);
+        genkernel.SetArg(argc++, tile_size.y);
         genkernel.SetArg(argc++, (int)rand_uint());
         genkernel.SetArg(argc++, m_framecnt);
         genkernel.SetArg(argc++, m_render_data->rays[0]);
@@ -340,14 +377,14 @@ namespace Baikal
 
         // Run generation kernel
         {
-            size_t gs[] = { static_cast<size_t>((m_output->width() + 7) / 8 * 8), static_cast<size_t>((m_output->height() + 7) / 8 * 8) };
+            size_t gs[] = { static_cast<size_t>((tile_size.x + 7) / 8 * 8), static_cast<size_t>((tile_size.y + 7) / 8 * 8) };
             size_t ls[] = { 8, 8 };
 
             m_context.Launch2D(0, gs, ls, genkernel);
         }
     }
 
-    void PtRenderer::ShadeSurface(ClwScene const& scene, int pass)
+    void PtRenderer::ShadeSurface(ClwScene const& scene, int pass, int2 const& tile_size)
     {
         // Fetch kernel
         CLWKernel shadekernel = m_render_data->program.GetKernel("ShadeSurface");
@@ -385,12 +422,12 @@ namespace Baikal
 
         // Run shading kernel
         {
-            int globalsize = m_output->width() * m_output->height();
+            int globalsize = tile_size.x * tile_size.y;
             m_context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, shadekernel);
         }
     }
 
-    void PtRenderer::ShadeVolume(ClwScene const& scene, int pass)
+    void PtRenderer::ShadeVolume(ClwScene const& scene, int pass, int2 const& tile_size)
     {
         // Fetch kernel
         CLWKernel shadekernel = m_render_data->program.GetKernel("ShadeVolume");
@@ -428,13 +465,13 @@ namespace Baikal
 
         // Run shading kernel
         {
-            int globalsize = m_output->width() * m_output->height();
+            int globalsize = tile_size.x * tile_size.y;
             m_context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, shadekernel);
         }
 
     }
 
-    void PtRenderer::EvaluateVolume(ClwScene const& scene, int pass)
+    void PtRenderer::EvaluateVolume(ClwScene const& scene, int pass, int2 const& tile_size)
     {
         // Fetch kernel
         CLWKernel evalkernel = m_render_data->program.GetKernel("EvaluateVolume");
@@ -458,24 +495,22 @@ namespace Baikal
 
         // Run shading kernel
         {
-            int globalsize = m_output->width() * m_output->height();
+            int globalsize = tile_size.x * tile_size.y;
             m_context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, evalkernel);
         }
     }
 
-    void PtRenderer::ShadeBackground(ClwScene const& scene, int pass)
+    void PtRenderer::ShadeBackground(ClwScene const& scene, int pass, int2 const& tile_size)
     {
         // Fetch kernel
         CLWKernel misskernel = m_render_data->program.GetKernel("ShadeBackgroundEnvMap");
-
-        int numrays = m_output->width() * m_output->height();
 
         // Set kernel parameters
         int argc = 0;
         misskernel.SetArg(argc++, m_render_data->rays[pass & 0x1]);
         misskernel.SetArg(argc++, m_render_data->intersections);
         misskernel.SetArg(argc++, m_render_data->pixelindices[(pass + 1) & 0x1]);
-        misskernel.SetArg(argc++, numrays);
+        misskernel.SetArg(argc++, tile_size.x * tile_size.y);
         misskernel.SetArg(argc++, scene.lights);
         misskernel.SetArg(argc++, scene.envmapidx);
         misskernel.SetArg(argc++, scene.textures);
@@ -486,12 +521,12 @@ namespace Baikal
 
         // Run shading kernel
         {
-            int globalsize = m_output->width() * m_output->height();
+            int globalsize = tile_size.x * tile_size.y;
             m_context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, misskernel);
         }
     }
 
-    void PtRenderer::GatherLightSamples(ClwScene const& scene, int pass)
+    void PtRenderer::GatherLightSamples(ClwScene const& scene, int pass, int2 const& tile_size)
     {
         // Fetch kernel
         CLWKernel gatherkernel = m_render_data->program.GetKernel("GatherLightSamples");
@@ -507,12 +542,12 @@ namespace Baikal
 
         // Run shading kernel
         {
-            int globalsize = m_output->width() * m_output->height();
+            int globalsize = tile_size.x * tile_size.y;
             m_context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, gatherkernel);
         }
     }
 
-    void PtRenderer::RestorePixelIndices(int pass)
+    void PtRenderer::RestorePixelIndices(int pass, int2 const& tile_size)
     {
         // Fetch kernel
         CLWKernel restorekernel = m_render_data->program.GetKernel("RestorePixelIndices");
@@ -526,12 +561,12 @@ namespace Baikal
 
         // Run shading kernel
         {
-            int globalsize = m_output->width() * m_output->height();
+            int globalsize = tile_size.x * tile_size.y;
             m_context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, restorekernel);
         }
     }
 
-    void PtRenderer::FilterPathStream(int pass)
+    void PtRenderer::FilterPathStream(int pass, int2 const& tile_size)
     {
         // Fetch kernel
         CLWKernel restorekernel = m_render_data->program.GetKernel("FilterPathStream");
@@ -546,7 +581,7 @@ namespace Baikal
 
         // Run shading kernel
         {
-            int globalsize = m_output->width() * m_output->height();
+            int globalsize = tile_size.x * tile_size.y;
             m_context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, restorekernel);
         }
 
@@ -566,12 +601,10 @@ namespace Baikal
     }
 
     // Shade background
-    void PtRenderer::ShadeMiss(ClwScene const& scene, int pass)
+    void PtRenderer::ShadeMiss(ClwScene const& scene, int pass, int2 const& tile_size)
     {
         // Fetch kernel
         CLWKernel misskernel = m_render_data->program.GetKernel("ShadeMiss");
-
-        //int numrays = m_output->width() * m_output->height();
 
         // Set kernel parameters
         int argc = 0;
@@ -589,7 +622,7 @@ namespace Baikal
 
         // Run shading kernel
         {
-            int globalsize = m_output->width() * m_output->height();
+            int globalsize = tile_size.x * tile_size.y;
             m_context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, misskernel);
         }
 
@@ -608,9 +641,10 @@ namespace Baikal
 
         // Number of rays to generate
         int maxrays = m_output->width() * m_output->height();
+        int2 tile_size = int2(m_output->width(), m_output->height());
 
         // Generate primary
-        GeneratePrimaryRays(clwscene);
+        GeneratePrimaryRays(clwscene, tile_size);
 
         // Copy compacted indices to track reverse indices
         m_context.CopyBuffer(0, m_render_data->iota, m_render_data->pixelindices[0], 0, 0, m_render_data->iota.GetElementCount());
@@ -636,19 +670,19 @@ namespace Baikal
         stats.primary_rays_time_in_ms = (float)std::chrono::duration_cast<std::chrono::milliseconds>(delta).count() / num_passes;
 
         // Convert intersections to predicates
-        FilterPathStream(0);
+        FilterPathStream(0, tile_size);
 
         // Compact batch
-        m_render_data->pp.Compact(0, m_render_data->hits, m_render_data->iota, m_render_data->compacted_indices, m_render_data->hitcount);
+        m_render_data->pp.Compact(0, m_render_data->hits, m_render_data->iota, m_render_data->compacted_indices, maxrays, m_render_data->hitcount);
 
         // Advance indices to keep pixel indices up to date
-        RestorePixelIndices(0);
+        RestorePixelIndices(0, tile_size);
 
         // Shade hits
-        ShadeSurface(clwscene, 0);
+        ShadeSurface(clwscene, 0, tile_size);
 
         // Shade missing rays
-        ShadeMiss(clwscene, 0);
+        ShadeMiss(clwscene, 0, tile_size);
 
         // Intersect ray batch
         start = std::chrono::high_resolution_clock::now();
@@ -665,7 +699,7 @@ namespace Baikal
         stats.shadow_rays_time_in_ms = (float)std::chrono::duration_cast<std::chrono::milliseconds>(delta).count() / num_passes;
 
         // Gather light samples and account for visibility
-        GatherLightSamples(clwscene, 0);
+        GatherLightSamples(clwscene, 0, tile_size);
 
         //
         m_context.Flush(0);
@@ -688,24 +722,24 @@ namespace Baikal
         stats.secondary_rays_time_in_ms = (float)std::chrono::duration_cast<std::chrono::milliseconds>(delta).count() / num_passes;
 
         // Convert intersections to predicates
-        FilterPathStream(1);
+        FilterPathStream(1, tile_size);
 
         // Compact batch
-        m_render_data->pp.Compact(0, m_render_data->hits, m_render_data->iota, m_render_data->compacted_indices, m_render_data->hitcount);
+        m_render_data->pp.Compact(0, m_render_data->hits, m_render_data->iota, m_render_data->compacted_indices, maxrays, m_render_data->hitcount);
 
         // Advance indices to keep pixel indices up to date
-        RestorePixelIndices(1);
+        RestorePixelIndices(1, tile_size);
 
         // Shade hits
-        ShadeSurface(clwscene, 1);
+        ShadeSurface(clwscene, 1, tile_size);
 
         // Shade missing rays
-        ShadeMiss(clwscene, 1);
+        ShadeMiss(clwscene, 1, tile_size);
 
         api->QueryOcclusion(m_render_data->fr_shadowrays, m_render_data->fr_hitcount, maxrays, m_render_data->fr_shadowhits, nullptr, nullptr);
 
         // Gather light samples and account for visibility
-        GatherLightSamples(clwscene, 0);
+        GatherLightSamples(clwscene, 0, tile_size);
 
         //
         m_context.Flush(0);

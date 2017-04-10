@@ -37,6 +37,8 @@ void PerspectiveCamera_GeneratePaths(
     // Image resolution
     int img_width,
     int img_height,
+    int tile_width,
+    int tile_height,
     // RNG seed value
     uint rng_seed,
     // Current frame
@@ -55,10 +57,10 @@ void PerspectiveCamera_GeneratePaths(
     global_id.y  = get_global_id(1);
 
     // Check borders
-    if (global_id.x < img_width && global_id.y < img_height)
+    if (global_id.x < tile_width && global_id.y < tile_height)
     {
         // Get pointer to ray & path handles
-        GLOBAL ray* my_ray = rays + global_id.y * img_width + global_id.x;
+        GLOBAL ray* my_ray = rays + global_id.y * tile_width + global_id.x;
         GLOBAL Path* my_path = paths + global_id.y * img_width + global_id.x;
 
         // Initialize sampler
@@ -123,6 +125,8 @@ KERNEL void PerspectiveCameraDof_GeneratePaths(
     // Image resolution
     int img_width,
     int img_height,
+    int tile_width,
+    int tile_height,
     // RNG seed value
     uint rng_seed,
     // Current frame
@@ -140,10 +144,10 @@ KERNEL void PerspectiveCameraDof_GeneratePaths(
     global_id.y = get_global_id(1);
 
     // Check borders
-    if (global_id.x < img_width && global_id.y < img_height)
+    if (global_id.x < tile_width && global_id.y < tile_height)
     {
         // Get pointer to ray & path handles
-        GLOBAL ray* my_ray = rays + global_id.y * img_width + global_id.x;
+        GLOBAL ray* my_ray = rays + global_id.y * tile_width + global_id.x;
         GLOBAL Path* my_path = paths + global_id.y * img_width + global_id.x;
 
         // Initialize sampler

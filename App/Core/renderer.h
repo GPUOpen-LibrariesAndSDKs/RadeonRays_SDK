@@ -70,21 +70,28 @@ namespace Baikal
          \param output Output to clear
          */
         virtual void Clear(RadeonRays::float3 const& val, Output& output) const = 0;
-        
+
         /**
          \brief Do necessary scene dependent computations and caching.
          
          \param scene The scene to process
          */
         virtual void Preprocess(Scene1 const& scene) = 0;
-        
+
         /**
          \brief Render single iteration.
          
          \param scene Scene to render
          */
         virtual void Render(Scene1 const& scene) = 0;
-        
+
+        /**
+        \brief Render single iteration.
+
+        \param scene Scene to render
+        */
+        //virtual void RenderTile(Scene1 const& scene, int2 const& tile_origin, int2 const& tile_size){}
+
         /**
          \brief Set the output for rendering.
          
@@ -92,14 +99,12 @@ namespace Baikal
          */
         virtual void SetOutput(Output* output) = 0;
 
-        
         /**
             Disallow copies and moves.
          */
         Renderer(Renderer const&) = delete;
         Renderer& operator = (Renderer const&) = delete;
-        
-        
+
         // Temporary functionality
         struct BenchmarkStats
         {

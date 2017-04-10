@@ -21,11 +21,13 @@ THE SOFTWARE.
 ********************************************************************/
 #pragma once
 
+#include "math/int2.h"
 #include "Core/renderer.h"
 #include "CLW/clwscene.h"
 #include "CLW/clw_scene_controller.h"
 
 #include "CLW.h"
+
 
 namespace Baikal
 {
@@ -69,23 +71,23 @@ namespace Baikal
         // Resize output-dependent buffers
         void ResizeWorkingSet(Output const& output);
         // Generate rays
-        void GeneratePrimaryRays(ClwScene const& scene);
+        void GeneratePrimaryRays(ClwScene const& scene, int2 const& tile_size);
         // Shade first hit
-        void ShadeSurface(ClwScene const& scene, int pass);
+        void ShadeSurface(ClwScene const& scene, int pass, int2 const& tile_size);
         // Evaluate volume
-        void EvaluateVolume(ClwScene const& scene, int pass);
+        void EvaluateVolume(ClwScene const& scene, int pass, int2 const& tile_size);
         // Handle missing rays
-        void ShadeMiss(ClwScene const& scene, int pass);
+        void ShadeMiss(ClwScene const& scene, int pass, int2 const& tile_size);
         // Gather light samples and account for visibility
-        void GatherLightSamples(ClwScene const& scene, int pass);
+        void GatherLightSamples(ClwScene const& scene, int pass, int2 const& tile_size);
         // Restore pixel indices after compaction
-        void RestorePixelIndices(int pass);
+        void RestorePixelIndices(int pass, int2 const& tile_size);
         // Convert intersection info to compaction predicate
-        void FilterPathStream(int pass);
+        void FilterPathStream(int pass, int2 const& tile_size);
         // Integrate volume
-        void ShadeVolume(ClwScene const& scene, int pass);
+        void ShadeVolume(ClwScene const& scene, int pass, int2 const& tile_size);
         // Shade background
-        void ShadeBackground(ClwScene const& scene, int pass);
+        void ShadeBackground(ClwScene const& scene, int pass, int2 const& tile_size);
 
     public:
         // CL context

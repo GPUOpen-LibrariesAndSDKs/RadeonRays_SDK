@@ -190,7 +190,7 @@ namespace Baikal
             FilterPathStream();
 
             // Compact batch
-            m_render_data->pp.Compact(0, m_render_data->hits, m_render_data->iota, m_render_data->compacted_indices, m_render_data->hitcount);
+            m_render_data->pp.Compact(0, m_render_data->hits, m_render_data->iota, m_render_data->compacted_indices, maxrays, m_render_data->hitcount);
 
             /*int cnt = 0;
             m_context.ReadBuffer(0, m_render_data->hitcount[0], &cnt, 1).Wait();
