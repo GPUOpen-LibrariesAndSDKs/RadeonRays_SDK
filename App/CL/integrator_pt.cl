@@ -368,7 +368,7 @@ __kernel void ShadeSurface(
 
 
         float s = Bxdf_IsBtdf(&diffgeo) ? (-sign(ngdotwi)) : 1.f; 
-        if (backfacing && !Bxdf_IsBtdf(&diffgeo))
+        if (backfacing && !Bxdf_IsBtdf(&diffgeo)) 
         {
             //Reverse normal and tangents in this case
             //but not for BTDFs, since BTDFs rely
@@ -823,7 +823,11 @@ __kernel void FillAOVs(
     // Wireframe flag
     int wireframe_enabled,
     // Wireframe AOV
-    __global float4* aov_wireframe
+    __global float4* aov_wireframe,
+    // Albedo flag
+    int albedo_enabled,
+    // Wireframe AOV
+    __global float4* aov_albedo
 )
 {
     int globalid = get_global_id(0);
@@ -920,6 +924,20 @@ __kernel void FillAOVs(
             {
                 aov_uv[globalid].xyz += diffgeo.uv.xyy;
                 aov_uv[globalid].w += 1.f;
+            }
+
+            if (albedo_enabled)
+            {
+                float ngdotwi = dot(diffgeo.ng, wi);
+                bool backfacing = ngdotwi < 0.f;
+
+                // Select BxDF
+                Material_Select(&scene, wi, &sampler, TEXTURE_ARGS, SAMPLER_ARGS, &diffgeo);
+
+                const float3 kd = Texture_GetValue3f(diffgeo.mat.kx.xyz, diffgeo.uv, TEXTURE_ARGS_IDX(diffgeo.mat.kxmapidx));
+
+                aov_albedo[globalid].xyz += kd;
+                aov_albedo[globalid].w += 1.f;
             }
         }
     }

@@ -78,6 +78,10 @@ project "App"
 --      print ">> App: CL kernels embedded"
 --    end
 
+    if _OPTIONS["denoiser"] then
+        defines{"ENABLE_DENOISER"}
+    end
+
     configuration {"x32", "Debug"}
         targetdir "../Bin/Debug/x86"
     configuration {"x64", "Debug"}

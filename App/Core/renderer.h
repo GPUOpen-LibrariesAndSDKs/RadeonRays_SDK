@@ -55,6 +55,7 @@ namespace Baikal
             kWorldGeometricNormal,
             kUv,
             kWireframe,
+            kAlbedo,
             kMax
         };
 

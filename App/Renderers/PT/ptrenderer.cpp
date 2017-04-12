@@ -252,7 +252,21 @@ namespace Baikal
 
     void PtRenderer::SetOutput(OutputType type, Output* output)
     {
-        auto current_output = GetOutput(type);
+        // Find first non-zero output
+        auto current_output = GetOutput(Renderer::OutputType::kColor);
+        if (!current_output)
+        {
+            for (auto i = 0U; i < static_cast<std::uint32_t>(Renderer::OutputType::kMax); ++i)
+            {
+                current_output = GetOutput(static_cast<Renderer::OutputType>(i));
+
+                if (current_output)
+                {
+                    break;
+                }
+            }
+        }
+
         if (!current_output || current_output->width() < output->width() || current_output->height() < output->height())
         {
             ResizeWorkingSet(*output);

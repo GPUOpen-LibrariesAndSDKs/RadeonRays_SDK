@@ -31,6 +31,11 @@ newoption {
 }
 
 newoption {
+    trigger = "denoiser",
+    description = "Use denoising on output"
+}
+
+newoption {
     trigger = "package",
     description = "Package the library for a binary release"
 }

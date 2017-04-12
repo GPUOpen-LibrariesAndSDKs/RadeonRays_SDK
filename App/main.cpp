@@ -75,6 +75,10 @@ THE SOFTWARE.
 #include "SceneGraph/IO/scene_io.h"
 #include "SceneGraph/IO/material_io.h"
 
+#ifdef ENABLE_DENOISER
+#include "PostEffects/bilateral_denoiser.h"
+#endif
+
 Baikal::Scene1 scene;
 
 using namespace RadeonRays;
@@ -129,6 +133,15 @@ using namespace tinyobj;
 struct OutputData
 {
     Baikal::ClwOutput* output;
+
+#ifdef ENABLE_DENOISER
+    Baikal::ClwOutput* output_position;
+    Baikal::ClwOutput* output_normal;
+    Baikal::ClwOutput* output_albedo;
+    Baikal::ClwOutput* output_denoised;
+    Baikal::BilateralDenoiser* denoiser;
+#endif
+
     std::vector<float3> fdata;
     std::vector<unsigned char> udata;
     CLWBuffer<float3> copybuffer;
@@ -405,7 +418,21 @@ void InitData()
     {
         g_outputs[i].output = (Baikal::ClwOutput*)g_cfgs[i].renderer->CreateOutput(g_window_width, g_window_height);
 
+#ifdef ENABLE_DENOISER
+        g_outputs[i].output_denoised = (Baikal::ClwOutput*)g_cfgs[i].renderer->CreateOutput(g_window_width, g_window_height);
+        g_outputs[i].output_normal = (Baikal::ClwOutput*)g_cfgs[i].renderer->CreateOutput(g_window_width, g_window_height);
+        g_outputs[i].output_position = (Baikal::ClwOutput*)g_cfgs[i].renderer->CreateOutput(g_window_width, g_window_height);
+        g_outputs[i].output_albedo = (Baikal::ClwOutput*)g_cfgs[i].renderer->CreateOutput(g_window_width, g_window_height);
+        g_outputs[i].denoiser = new Baikal::BilateralDenoiser(g_cfgs[i].context);
+#endif
+
         g_cfgs[i].renderer->SetOutput(Baikal::Renderer::OutputType::kColor, g_outputs[i].output);
+
+#ifdef ENABLE_DENOISER
+        g_cfgs[i].renderer->SetOutput(Baikal::Renderer::OutputType::kWorldShadingNormal, g_outputs[i].output_normal);
+        g_cfgs[i].renderer->SetOutput(Baikal::Renderer::OutputType::kWorldPosition, g_outputs[i].output_position);
+        g_cfgs[i].renderer->SetOutput(Baikal::Renderer::OutputType::kAlbedo, g_outputs[i].output_albedo);
+#endif
 
         g_outputs[i].fdata.resize(g_window_width * g_window_height);
         g_outputs[i].udata.resize(g_window_width * g_window_height * 4);
@@ -744,7 +771,7 @@ void Update()
 
     if (update)
     {
-        if (g_num_samples > -1)
+        //if (g_num_samples > -1)
         {
             g_samplecount = 0;
         }
@@ -752,7 +779,16 @@ void Update()
         for (int i = 0; i < g_cfgs.size(); ++i)
         {
             if (i == g_primary)
+            {
                 g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
+
+#ifdef ENABLE_DENOISER
+                g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output_normal);
+                g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output_position);
+                g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output_albedo);
+#endif
+
+            }
             else
                 g_ctrl[i].clear.store(true);
         }
@@ -767,6 +803,26 @@ void Update()
     if (g_num_samples == -1 || g_samplecount < g_num_samples)
     {
         g_cfgs[g_primary].renderer->Render(*g_scene.get());
+
+#ifdef ENABLE_DENOISER
+        Baikal::PostEffect::InputSet input_set;
+        input_set[Baikal::Renderer::OutputType::kColor] = g_outputs[g_primary].output;
+        input_set[Baikal::Renderer::OutputType::kWorldShadingNormal] = g_outputs[g_primary].output_normal;
+        input_set[Baikal::Renderer::OutputType::kWorldPosition] = g_outputs[g_primary].output_position;
+        input_set[Baikal::Renderer::OutputType::kAlbedo] = g_outputs[g_primary].output_albedo;
+        auto radius = 10U - RadeonRays::clamp((g_samplecount / 32), 1U, 9U);
+        auto position_sensitivity = 5.f + 10.f * (radius / 10.f);
+        auto normal_sensitivity = 0.1f + (radius / 10.f) * 0.15f;
+        auto color_sensitivity = (radius / 10.f) * 5.f;
+        auto albedo_sensitivity = 0.05f + (radius / 10.f) * 0.1f;
+        g_outputs[g_primary].denoiser->SetParameter("radius", radius);
+        g_outputs[g_primary].denoiser->SetParameter("color_sensitivity", color_sensitivity);
+        g_outputs[g_primary].denoiser->SetParameter("normal_sensitivity", normal_sensitivity);
+        g_outputs[g_primary].denoiser->SetParameter("position_sensitivity", position_sensitivity);
+        g_outputs[g_primary].denoiser->SetParameter("albedo_sensitivity", albedo_sensitivity);
+        g_outputs[g_primary].denoiser->Apply(input_set, *g_outputs[g_primary].output_denoised);
+#endif
+
         ++g_samplecount;
     }
     else if (g_samplecount == g_num_samples)
@@ -809,7 +865,11 @@ void Update()
 
     if (!g_interop)
     {
+#ifdef ENABLE_DENOISER
+        g_outputs[g_primary].output_denoised->GetData(&g_outputs[g_primary].fdata[0]);
+#else
         g_outputs[g_primary].output->GetData(&g_outputs[g_primary].fdata[0]);
+#endif
 
         float gamma = 2.2f;
         for (int i = 0; i < (int)g_outputs[g_primary].fdata.size(); ++i)
@@ -837,14 +897,20 @@ void Update()
 
         CLWKernel copykernel = g_cfgs[g_primary].renderer->GetCopyKernel();
 
+#ifdef ENABLE_DENOISER
+        auto output = g_outputs[g_primary].output_denoised;
+#else
+        auto output = g_outputs[g_primary].output;
+#endif
+
         int argc = 0;
-        copykernel.SetArg(argc++, g_outputs[g_primary].output->data());
-        copykernel.SetArg(argc++, g_outputs[g_primary].output->width());
-        copykernel.SetArg(argc++, g_outputs[g_primary].output->height());
+        copykernel.SetArg(argc++, output->data());
+        copykernel.SetArg(argc++, output->width());
+        copykernel.SetArg(argc++, output->height());
         copykernel.SetArg(argc++, 2.2f);
         copykernel.SetArg(argc++, g_cl_interop_image);
 
-        int globalsize = g_outputs[g_primary].output->width() * g_outputs[g_primary].output->height();
+        int globalsize = output->width() * output->height();
         g_cfgs[g_primary].context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, copykernel);
 
         g_cfgs[g_primary].context.ReleaseGLObjects(0, objects);
