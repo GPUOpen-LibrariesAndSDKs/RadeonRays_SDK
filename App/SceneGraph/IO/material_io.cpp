@@ -455,8 +455,11 @@ namespace Baikal
             auto shape = reinterpret_cast<Shape const*>(item);
             auto material = shape->GetMaterial();
 
-            // Push to stack as an initializer
-            material_stack.push(material);
+            if (material)
+            {
+                // Push to stack as an initializer
+                material_stack.push(material);
+            }
 
             // Drain the stack
             while (!material_stack.empty())
@@ -553,7 +556,7 @@ namespace Baikal
         {
             auto material = shape_iter->ItemAs<Shape const>()->GetMaterial();
 
-            if (serialized_mats.find(material) == serialized_mats.cend())
+            if (material && serialized_mats.find(material) == serialized_mats.cend())
             {
                 auto name = material->GetName();
                 printer.OpenElement("Mapping");

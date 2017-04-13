@@ -216,7 +216,11 @@ namespace Baikal
 
             // Set material
             auto idx = objshapes[s].mesh.material_ids[0];
-            mesh->SetMaterial(materials[idx]);
+
+            if (idx > 0)
+            {
+                mesh->SetMaterial(materials[idx]);
+            }
 
             // Attach to the scene
             scene->AttachShape(mesh);
@@ -225,7 +229,7 @@ namespace Baikal
             scene->AttachAutoreleaseObject(mesh);
 
             // If the mesh has emissive material we need to add area light for it
-            if (emissives.find(materials[idx]) != emissives.cend())
+            if (idx > 0 && emissives.find(materials[idx]) != emissives.cend())
             {
                 // Add area light for each polygon of emissive mesh
                 for (int l = 0; l < mesh->GetNumIndices() / 3 ;++l)
@@ -238,18 +242,18 @@ namespace Baikal
         }
 
         // TODO: temporary code, add IBL
-        Texture* ibl_texture = image_io->LoadImage("../Resources/Textures/studio015.hdr");
+        Texture* ibl_texture = image_io->LoadImage("../Resources/Textures/Garage.hdr");
         scene->AttachAutoreleaseObject(ibl_texture);
 
         ImageBasedLight* ibl = new ImageBasedLight();
         ibl->SetTexture(ibl_texture);
-        ibl->SetMultiplier(1.f);
+        ibl->SetMultiplier(3.f);
         scene->AttachAutoreleaseObject(ibl);
 
         // TODO: temporary code to add directional light
         DirectionalLight* light = new DirectionalLight();
-        light->SetDirection(RadeonRays::float3(-0.3f, -1.f, -0.4f));
-        light->SetEmittedRadiance(2.f * RadeonRays::float3(1.f, 1.f, 1.f));
+        light->SetDirection(RadeonRays::normalize(RadeonRays::float3(-1.1f, -0.6f, -0.2f)));
+        light->SetEmittedRadiance(3.5f * RadeonRays::float3(1.f, 1.f, 1.f));
         scene->AttachAutoreleaseObject(light);
 
         scene->AttachLight(light);
