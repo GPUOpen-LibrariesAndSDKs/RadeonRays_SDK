@@ -23,7 +23,6 @@ THE SOFTWARE.
 #define DENOISE_CL
 
 #include <../App/CL/common.cl>
-#include <../App/CL/utils.cl>
 
 // Similarity function
 inline float C(float3 x1, float3 x2, float sigma)
@@ -91,9 +90,13 @@ void BilateralDenoise_main(
 
                     if (length(n) > 0.f)
                     {
-                        filtered_color += c * C(p, position, sigma_position) * C(c, color, sigma_color) * C(n, normal, sigma_normal) * 
-                            C(a, albedo, sigma_albedo);
-                        sum += C(p, position, sigma_position) * C(c, color, sigma_color) * C(n, normal, sigma_normal) * C(a, albedo, sigma_albedo);
+                        filtered_color += c * C(p, position, sigma_position) *
+                        C(c, color, sigma_color) *
+                        C(n, normal, sigma_normal) *
+                        C(a, albedo, sigma_albedo);
+                        sum += C(p, position, sigma_position) * C(c, color, sigma_color) *
+                        C(n, normal, sigma_normal) *
+                        C(a, albedo, sigma_albedo);
                     }
                 }
             }
