@@ -64,6 +64,22 @@ public:
         {
             context_ = CLWContext::Create(platforms[0].GetDevice(0));
         }
+        
+        std::string buildopts;
+        
+        buildopts_.append(" -cl-mad-enable -cl-fast-relaxed-math -cl-std=CL1.2 -I . ");
+        
+        buildopts_.append(
+#if defined(__APPLE__)
+                         "-D APPLE "
+#elif defined(_WIN32) || defined (WIN32)
+                         "-D WIN32 "
+#elif defined(__linux__)
+                         "-D __linux__ "
+#else
+                         ""
+#endif
+                         );
     }
     
     virtual void TearDown()
@@ -74,6 +90,8 @@ public:
     CLWContext context_;
     // Is that AMD platform?
     bool amdctx_;
+    //
+    std::string buildopts_;
 };
 
 // The test checks buffer creation functionality
@@ -169,7 +187,7 @@ TEST_F(CLW, ExclusiveScanSmall)
     context_.WriteBuffer(0, devinput, &hostarray[0], arraysize).Wait();
 
     // Create parallel prims object
-    CLWParallelPrimitives prims(context_);
+    CLWParallelPrimitives prims(context_, buildopts_.c_str());
 
     // Perform scan
     prims.ScanExclusiveAdd(0, devinput, devoutput).Wait();
@@ -215,7 +233,7 @@ TEST_F(CLW, ExclusiveScanLarge)
     context_.WriteBuffer(0, devinput, &hostarray[0], arraysize).Wait();
 
     // Create parallel prims object
-    CLWParallelPrimitives prims(context_);
+    CLWParallelPrimitives prims(context_, buildopts_.c_str());
 
     // Perform scan
     prims.ScanExclusiveAdd(0, devinput, devoutput).Wait();
@@ -263,7 +281,7 @@ TEST_F(CLW, ExclusiveScanRandom)
         context_.WriteBuffer(0, devinput, &hostarray[0], arraysize).Wait();
 
         // Create parallel prims object
-        CLWParallelPrimitives prims(context_);
+        CLWParallelPrimitives prims(context_, buildopts_.c_str());
 
         // Perform scan
         prims.ScanExclusiveAdd(0, devinput, devoutput).Wait();
@@ -305,7 +323,7 @@ TEST_F(CLW, CompactIdentity)
     context_.WriteBuffer(0, devinput, &hostarray[0], arraysize).Wait();
 
     // Create parallel prims object
-    CLWParallelPrimitives prims(context_);
+    CLWParallelPrimitives prims(context_, buildopts_.c_str());
 
     int num;
     // Perform compact
@@ -348,7 +366,7 @@ TEST_F(CLW, RadixSortLarge)
     context_.WriteBuffer(0, devinput, &hostarray[0], arraysize).Wait();
 
     // Create parallel prims object
-    CLWParallelPrimitives prims(context_);
+    CLWParallelPrimitives prims(context_, buildopts_.c_str());
 
     // Perform scan
     prims.SortRadix(0, devinput, devoutput).Wait();

@@ -32,6 +32,9 @@ THE SOFTWARE.
 #include "buffer.h"
 #include "event.h"
 
+#include <functional>
+#include <memory>
+
 namespace RadeonRays
 {
     class World;
@@ -52,7 +55,7 @@ namespace RadeonRays
         // which is going to be used by an intersector.
         Intersector(Calc::Device* device);
         // Destructor.
-        virtual ~Intersector() = default;
+        virtual ~Intersector();
 
         /** 
         \brief Check if the intersector is compatible with a given world.
@@ -154,7 +157,7 @@ namespace RadeonRays
         // Device to use
         Calc::Device* m_device;
         // Buffer holding ray count
-        Calc::Buffer* m_counter; 
+        std::unique_ptr<Calc::Buffer, std::function<void(Calc::Buffer*)>> m_counter;
     };
 }
 

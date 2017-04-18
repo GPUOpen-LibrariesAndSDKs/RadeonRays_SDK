@@ -4,10 +4,16 @@
 namespace RadeonRays
 {
     Intersector::Intersector(Calc::Device *device)
-        : m_device(device), m_counter(device->CreateBuffer(sizeof(int), Calc::BufferType::kRead))
+        : m_device(device),
+        m_counter(device->CreateBuffer(sizeof(int), Calc::BufferType::kRead),
+                  [device](Calc::Buffer* buffer) { device->DeleteBuffer(buffer); })
     {
     }
 
+    Intersector::~Intersector()
+    {
+    }
+    
     void Intersector::SetWorld(World const &world)
     {
         Process(world);
@@ -22,19 +28,21 @@ namespace RadeonRays
     {
         return true;
     }
-
+    
     void Intersector::QueryIntersection(std::uint32_t queue_idx, Calc::Buffer const *rays, std::uint32_t num_rays,
         Calc::Buffer *hits, Calc::Event const *wait_event, Calc::Event **event) const
     {
-        m_device->WriteBuffer(m_counter, 0, 0, sizeof(num_rays), &num_rays, nullptr);
-        Intersect(queue_idx, rays, m_counter, num_rays, hits, wait_event, event);
+        m_device->WriteBuffer(m_counter.get(), 0, 0, sizeof(num_rays), &num_rays, nullptr);
+        m_device->Finish(0);
+        Intersect(queue_idx, rays, m_counter.get(), num_rays, hits, wait_event, event);
     }
 
     void Intersector::QueryOcclusion(std::uint32_t queue_idx, Calc::Buffer const *rays, std::uint32_t num_rays,
         Calc::Buffer *hits, Calc::Event const *wait_event, Calc::Event **event) const
     {
-        m_device->WriteBuffer(m_counter, 0, 0, sizeof(num_rays), &num_rays, nullptr);
-        Occluded(queue_idx, rays, m_counter, num_rays, hits, wait_event, event);
+        m_device->WriteBuffer(m_counter.get(), 0, 0, sizeof(num_rays), &num_rays, nullptr);
+        m_device->Finish(0);
+        Occluded(queue_idx, rays, m_counter.get(), num_rays, hits, wait_event, event);
     }
 
     void Intersector::QueryIntersection(std::uint32_t queue_idx, Calc::Buffer const *rays, Calc::Buffer const *num_rays,
