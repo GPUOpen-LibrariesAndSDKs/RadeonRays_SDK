@@ -23,7 +23,6 @@ THE SOFTWARE.
 
 #include "CLW.h"
 #include "Renderers/PT/ptrenderer.h"
-#include "Renderers/AO/aorenderer.h"
 
 #ifndef APP_BENCHMARK
 

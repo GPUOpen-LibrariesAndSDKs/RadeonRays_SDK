@@ -35,48 +35,54 @@ void PerspectiveCamera_GeneratePaths(
     // Camera
     GLOBAL Camera const* restrict camera,
     // Image resolution
-    int img_width,
-    int img_height,
+    int output_width,
+    int output_height,
+	// Pixel domain buffer
+	GLOBAL int const* restrict pixel_idx,
+	// Size of pixel domain buffer
+	GLOBAL int const* restrict num_pixels,
     // RNG seed value
     uint rng_seed,
     // Current frame
     uint frame,
     // Rays to generate
-    GLOBAL ray* rays,
+    GLOBAL ray* restrict rays,
     // RNG data
-    GLOBAL uint* random,
+    GLOBAL uint* restrict random,
     GLOBAL uint const* restrict sobolmat,
     // Path buffer
-    GLOBAL Path* paths
+    GLOBAL Path* restrict paths
 )
 {
-    int2 global_id;
-    global_id.x  = get_global_id(0);
-    global_id.y  = get_global_id(1);
+    int global_id = get_global_id(0);
 
     // Check borders
-    if (global_id.x < img_width && global_id.y < img_height)
+    if (global_id < *num_pixels)
     {
+		int idx = pixel_idx[global_id];
+		int y = idx / output_width;
+		int x = idx % output_width;
+
         // Get pointer to ray & path handles
-        GLOBAL ray* my_ray = rays + global_id.y * img_width + global_id.x;
-        GLOBAL Path* my_path = paths + global_id.y * img_width + global_id.x;
+        GLOBAL ray* my_ray = rays + global_id;
+        GLOBAL Path* my_path = paths + y * output_width + x;
 
         // Initialize sampler
         Sampler sampler;
 #if SAMPLER == SOBOL
-        uint scramble = random[global_id.x + img_width * global_id.y] * 0x1fe3434f;
+        uint scramble = random[x + output_width * y] * 0x1fe3434f;
 
         if (frame & 0xF)
         {
-            random[global_id.x + img_width * global_id.y] = WangHash(scramble);
+            random[x + output_width * y] = WangHash(scramble);
         }
 
         Sampler_Init(&sampler, frame, SAMPLE_DIM_CAMERA_OFFSET, scramble);
 #elif SAMPLER == RANDOM
-        uint scramble = global_id.x + img_width * global_id.y * rng_seed;
+        uint scramble = x + output_width * y * rng_seed;
         Sampler_Init(&sampler, scramble);
 #elif SAMPLER == CMJ
-        uint rnd = random[global_id.x + img_width * global_id.y];
+        uint rnd = random[x + output_width * y];
         uint scramble = rnd * 0x1fe3434f * ((frame + 133 * rnd) / (CMJ_DIM * CMJ_DIM));
         Sampler_Init(&sampler, frame % (CMJ_DIM * CMJ_DIM), SAMPLE_DIM_CAMERA_OFFSET, scramble);
 #endif
@@ -86,8 +92,8 @@ void PerspectiveCamera_GeneratePaths(
 
         // Calculate [0..1] image plane sample
         float2 img_sample;
-        img_sample.x = (float)global_id.x / img_width + sample0.x / img_width;
-        img_sample.y = (float)global_id.y / img_height + sample0.y / img_height;
+        img_sample.x = (float)x / output_width + sample0.x / output_width;
+        img_sample.y = (float)y / output_height + sample0.y / output_height;
 
         // Transform into [-0.5, 0.5]
         float2 h_sample = img_sample - make_float2(0.5f, 0.5f);
@@ -118,62 +124,69 @@ void PerspectiveCamera_GeneratePaths(
 // Physical camera implemenation.
 // This kernel is being used if aperture > 0.
 KERNEL void PerspectiveCameraDof_GeneratePaths(
-    // Camera
-    GLOBAL Camera const* camera,
-    // Image resolution
-    int img_width,
-    int img_height,
-    // RNG seed value
-    uint rng_seed,
-    // Current frame
-    uint frame,
-    // Rays to generate
-    GLOBAL ray* rays,
-    // RNG data
-    GLOBAL uint* random,
-    GLOBAL uint const* restrict sobolmat,
-    GLOBAL Path* paths
+	// Camera
+	GLOBAL Camera const* restrict camera,
+	// Image resolution
+	int output_width,
+	int output_height,
+	// Pixel domain buffer
+	GLOBAL int const* restrict pixel_idx,
+	// Size of pixel domain buffer
+	GLOBAL int const* restrict num_pixels,
+	// RNG seed value
+	uint rng_seed,
+	// Current frame
+	uint frame,
+	// Rays to generate
+	GLOBAL ray* restrict rays,
+	// RNG data
+	GLOBAL uint* restrict random,
+	GLOBAL uint const* restrict sobolmat,
+	// Path buffer
+	GLOBAL Path* restrict paths
     )
 {
-    int2 global_id;
-    global_id.x = get_global_id(0);
-    global_id.y = get_global_id(1);
+	int global_id = get_global_id(0);
 
-    // Check borders
-    if (global_id.x < img_width && global_id.y < img_height)
-    {
-        // Get pointer to ray & path handles
-        GLOBAL ray* my_ray = rays + global_id.y * img_width + global_id.x;
-        GLOBAL Path* my_path = paths + global_id.y * img_width + global_id.x;
+	// Check borders
+	if (global_id < *num_pixels)
+	{
+		int idx = pixel_idx[global_id];
+		int y = idx / output_width;
+		int x = idx % output_width;
 
-        // Initialize sampler
-        Sampler sampler;
+		// Get pointer to ray & path handles
+		GLOBAL ray* my_ray = rays + global_id;
+		GLOBAL Path* my_path = paths + y * output_width + x;
+
+		// Initialize sampler
+		Sampler sampler;
 #if SAMPLER == SOBOL
-        uint scramble = random[global_id.x + img_width * global_id.y] * 0x1fe3434f;
+		uint scramble = random[x + output_width * y] * 0x1fe3434f;
 
-        if (frame & 0xF)
-        {
-            random[global_id.x + img_width * global_id.y] = WangHash(scramble);
-        }
+		if (frame & 0xF)
+		{
+			random[x + output_width * y] = WangHash(scramble);
+		}
 
-        Sampler_Init(&sampler, frame, SAMPLE_DIM_CAMERA_OFFSET, scramble);
+		Sampler_Init(&sampler, frame, SAMPLE_DIM_CAMERA_OFFSET, scramble);
 #elif SAMPLER == RANDOM
-        uint scramble = global_id.x + img_width * global_id.y * rng_seed;
-        Sampler_Init(&sampler, scramble);
+		uint scramble = x + output_width * y * rng_seed;
+		Sampler_Init(&sampler, scramble);
 #elif SAMPLER == CMJ
-        uint rnd = random[global_id.x + img_width * global_id.y];
-        uint scramble = rnd * 0x1fe3434f * ((frame + 133 * rnd) / (CMJ_DIM * CMJ_DIM));
-        Sampler_Init(&sampler, frame % (CMJ_DIM * CMJ_DIM), SAMPLE_DIM_CAMERA_OFFSET, scramble);
+		uint rnd = random[x + output_width * y];
+		uint scramble = rnd * 0x1fe3434f * ((frame + 133 * rnd) / (CMJ_DIM * CMJ_DIM));
+		Sampler_Init(&sampler, frame % (CMJ_DIM * CMJ_DIM), SAMPLE_DIM_CAMERA_OFFSET, scramble);
 #endif
 
         // Generate pixel and lens samples
         float2 sample0 = Sampler_Sample2D(&sampler, SAMPLER_ARGS);
         float2 sample1 = Sampler_Sample2D(&sampler, SAMPLER_ARGS);
 
-        // Calculate [0..1] image plane sample
-        float2 img_sample;
-        img_sample.x = (float)global_id.x / img_width + sample0.x / img_width;
-        img_sample.y = (float)global_id.y / img_height + sample0.y / img_height;
+		// Calculate [0..1] image plane sample
+		float2 img_sample;
+		img_sample.x = (float)x / output_width + sample0.x / output_width;
+		img_sample.y = (float)y / output_height + sample0.y / output_height;
 
         // Transform into [-0.5, 0.5]
         float2 h_sample = img_sample - make_float2(0.5f, 0.5f);

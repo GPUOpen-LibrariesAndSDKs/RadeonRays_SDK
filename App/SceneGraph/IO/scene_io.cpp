@@ -256,7 +256,13 @@ namespace Baikal
         light->SetEmittedRadiance(3.5f * RadeonRays::float3(1.f, 1.f, 1.f));
         scene->AttachAutoreleaseObject(light);
 
+        DirectionalLight* light1 = new DirectionalLight();
+        light1->SetDirection(RadeonRays::float3(0.3f, -1.f, -0.5f));
+        light1->SetEmittedRadiance(RadeonRays::float3(1.f, 0.8f, 0.65f));
+        scene->AttachAutoreleaseObject(light1);
+
         scene->AttachLight(light);
+        //scene->AttachLight(light1);
         scene->AttachLight(ibl);
 
         return scene;

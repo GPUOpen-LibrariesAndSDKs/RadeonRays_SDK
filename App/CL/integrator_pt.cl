@@ -772,8 +772,10 @@ __kernel void FillAOVs(
     __global ray const* rays,
     // Intersection data
     __global Intersection const* isects,
+	// Pixel indices
+	__global int const* pixel_idx,
     // Number of pixels
-    int num_items,
+    __global int const* num_items,
     // Vertices
     __global float3 const* vertices,
     // Normals
@@ -847,9 +849,10 @@ __kernel void FillAOVs(
     };
 
     // Only applied to active rays after compaction
-    if (globalid < num_items)
+    if (globalid < *num_items)
     {
         Intersection isect = isects[globalid];
+		int idx = pixel_idx[globalid];
 
         if (isect.shapeid > -1)
         {
@@ -875,8 +878,8 @@ __kernel void FillAOVs(
 
             if (world_position_enabled)
             {
-                aov_world_position[globalid].xyz += diffgeo.p;
-                aov_world_position[globalid].w += 1.f;
+                aov_world_position[idx].xyz += diffgeo.p;
+                aov_world_position[idx].w += 1.f;
             }
 
             if (world_shading_normal_enabled)
@@ -902,28 +905,28 @@ __kernel void FillAOVs(
                 DifferentialGeometry_ApplyBumpNormalMap(&diffgeo, TEXTURE_ARGS);
                 DifferentialGeometry_CalculateTangentTransforms(&diffgeo);
 
-                aov_world_shading_normal[globalid].xyz += diffgeo.n;
-                aov_world_shading_normal[globalid].w += 1.f;
+                aov_world_shading_normal[idx].xyz += diffgeo.n;
+                aov_world_shading_normal[idx].w += 1.f;
             }
 
             if (world_geometric_normal_enabled)
             {
-                aov_world_geometric_normal[globalid].xyz += diffgeo.ng;
-                aov_world_geometric_normal[globalid].w += 1.f;
+                aov_world_geometric_normal[idx].xyz += diffgeo.ng;
+                aov_world_geometric_normal[idx].w += 1.f;
             }
 
             if (wireframe_enabled)
             {
                 bool hit = (isect.uvwt.x < 1e-2) || (isect.uvwt.y < 1e-2) || (1.f - isect.uvwt.x - isect.uvwt.y < 1e-2);
                 float3 value = hit ? make_float3(1.f, 1.f, 1.f) : make_float3(0.f, 0.f, 0.f);
-                aov_wireframe[globalid].xyz += value;
-                aov_wireframe[globalid].w += 1.f;
+                aov_wireframe[idx].xyz += value;
+                aov_wireframe[idx].w += 1.f;
             }
 
             if (uv_enabled)
             {
-                aov_uv[globalid].xyz += diffgeo.uv.xyy;
-                aov_uv[globalid].w += 1.f;
+                aov_uv[idx].xyz += diffgeo.uv.xyy;
+                aov_uv[idx].w += 1.f;
             }
 
             if (albedo_enabled)
@@ -936,9 +939,41 @@ __kernel void FillAOVs(
 
                 const float3 kd = Texture_GetValue3f(diffgeo.mat.kx.xyz, diffgeo.uv, TEXTURE_ARGS_IDX(diffgeo.mat.kxmapidx));
 
-                aov_albedo[globalid].xyz += kd;
-                aov_albedo[globalid].w += 1.f;
+                aov_albedo[idx].xyz += kd;
+                aov_albedo[idx].w += 1.f;
             }
         }
     }
+}
+
+__kernel void GenerateTileDomain(
+	int output_width,
+	int output_height,
+	int tile_offset_x,
+	int tile_offset_y,
+	int tile_width,
+	int tile_height,
+	int subtile_width,
+	int subtile_height,
+	__global int* pixelidx0,
+	__global int* pixelidx1,
+	__global int* count
+)
+{
+	int tile_x = get_global_id(0);
+	int tile_y = get_global_id(1);
+	int tile_start_idx = output_width * tile_offset_y + tile_offset_x;
+
+	if (tile_x < tile_width && tile_y < tile_height)
+	{
+		// TODO: implement subtile support
+		int idx = tile_start_idx + tile_y * output_width + tile_x;
+		pixelidx0[tile_y * tile_width + tile_x] = idx;
+		pixelidx1[tile_y * tile_width + tile_x] = idx;
+	}
+
+	if (tile_x == 0 && tile_y == 0)
+	{
+		*count = tile_width * tile_height;
+	}
 }

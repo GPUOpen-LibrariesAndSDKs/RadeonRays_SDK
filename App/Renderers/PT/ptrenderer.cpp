@@ -42,7 +42,9 @@ namespace Baikal
 {
     using namespace RadeonRays;
     
-    static int const kMaxLightSamples = 1;
+    int constexpr kMaxLightSamples = 1;
+	int constexpr kTileSizeX = 1024;
+	int constexpr kTileSizeY = 1024;
     
     struct PtRenderer::PathState
     {
@@ -161,9 +163,35 @@ namespace Baikal
     {
         m_num_bounces = num_bounces;
     }
+
+	void PtRenderer::Render(Scene1 const& scene)
+	{
+		auto output = FindFirstNonZeroOutput();
+		auto output_size = int2(output->width(), output->height());
+		
+		if (output_size.x > kTileSizeX || output_size.y > kTileSizeY)
+		{
+			auto num_tiles_x = (output_size.x + kTileSizeX - 1) / kTileSizeX;
+			auto num_tiles_y = (output_size.y + kTileSizeY - 1) / kTileSizeY;
+
+			for (auto x = 0; x < num_tiles_x; ++x)
+				for (auto y = 0; y < num_tiles_y; ++y)
+				{
+					auto tile_offset = int2(x * kTileSizeX, y * kTileSizeY);
+					auto tile_size = int2(std::min(kTileSizeX, output_size.x - tile_offset.x),
+										  std::min(kTileSizeY, output_size.y - tile_offset.y));
+
+					RenderTile(scene, tile_offset, tile_size);
+				}	
+		}
+		else
+		{
+			RenderTile(scene, int2(), output_size);
+		}
+	}
     
     // Render the scene into the output
-    void PtRenderer::Render(Scene1 const& scene)
+    void PtRenderer::RenderTile(Scene1 const& scene, int2 const& tile_origin, int2 const& tile_size)
     {
         auto api = m_scene_controller.GetIntersectionApi();
         auto& clwscene = m_scene_controller.CompileScene(scene, m_render_data->mat_collector, m_render_data->tex_collector);
@@ -173,16 +201,15 @@ namespace Baikal
         
         if (output)
         {
-            int maxrays = output->width() * output->height();
-            
-            // Generate primary
-            GeneratePrimaryRays(clwscene, *output);
-            
-            // Copy compacted indices to track reverse indices
-            m_context.CopyBuffer(0, m_render_data->iota, m_render_data->pixelindices[0], 0, 0, m_render_data->iota.GetElementCount());
-            m_context.CopyBuffer(0, m_render_data->iota, m_render_data->pixelindices[1], 0, 0, m_render_data->iota.GetElementCount());
-            m_context.FillBuffer(0, m_render_data->hitcount, maxrays, 1);
-            
+			auto num_rays = tile_size.x * tile_size.y;
+			auto output_size = int2(output->width(), output->height());
+
+			// Generate tile domain
+			GenerateTileDomain(output_size, tile_origin, tile_size, tile_size);
+
+			// Generate primary
+			GeneratePrimaryRays(clwscene, *output, tile_size);
+
             // Initialize first pass
             for (int pass = 0; pass < static_cast<int>(m_num_bounces); ++pass)
             {
@@ -190,40 +217,40 @@ namespace Baikal
                 m_context.FillBuffer(0, m_render_data->hits, 0, m_render_data->hits.GetElementCount());
                 
                 // Intersect ray batch
-                api->QueryIntersection(m_render_data->fr_rays[pass & 0x1], m_render_data->fr_hitcount, maxrays, m_render_data->fr_intersections, nullptr, nullptr);
+                api->QueryIntersection(m_render_data->fr_rays[pass & 0x1], m_render_data->fr_hitcount, num_rays, m_render_data->fr_intersections, nullptr, nullptr);
                 
                 // Apply scattering
-                EvaluateVolume(clwscene, pass);
+                EvaluateVolume(clwscene, pass, tile_size);
                 
                 if (pass > 0 && clwscene.envmapidx > -1)
                 {
-                    ShadeMiss(clwscene, pass);
+                    ShadeMiss(clwscene, pass, tile_size);
                 }
                 
                 // Convert intersections to predicates
-                FilterPathStream(pass);
+                FilterPathStream(pass, tile_size);
                 
                 // Compact batch
-                m_render_data->pp.Compact(0, m_render_data->hits, m_render_data->iota, m_render_data->compacted_indices, m_render_data->hitcount);
+                m_render_data->pp.Compact(0, m_render_data->hits, m_render_data->iota, m_render_data->compacted_indices, num_rays, m_render_data->hitcount);
                 
                 // Advance indices to keep pixel indices up to date
-                RestorePixelIndices(pass);
+                RestorePixelIndices(pass, tile_size);
                 
                 // Shade hits
-                ShadeVolume(clwscene, pass);
+                ShadeVolume(clwscene, pass, tile_size);
                 
                 // Shade hits
-                ShadeSurface(clwscene, pass);
+                ShadeSurface(clwscene, pass, tile_size);
                 
                 // Shade missing rays
                 if (pass == 0)
-                ShadeBackground(clwscene, pass);
+					ShadeBackground(clwscene, pass, tile_size);
                 
                 // Intersect shadow rays
-                api->QueryOcclusion(m_render_data->fr_shadowrays, m_render_data->fr_hitcount, maxrays, m_render_data->fr_shadowhits, nullptr, nullptr);
+                api->QueryOcclusion(m_render_data->fr_shadowrays, m_render_data->fr_hitcount, num_rays, m_render_data->fr_shadowhits, nullptr, nullptr);
                 
                 // Gather light samples and account for visibility
-                GatherLightSamples(clwscene, pass);
+                GatherLightSamples(clwscene, pass, tile_size);
                 
                 //
                 m_context.Flush(0);
@@ -231,41 +258,69 @@ namespace Baikal
         }
         
         // Check if we have other outputs, than color
-        bool aov_pass_needed = false;
-        for (auto i = 1U; i < static_cast<std::uint32_t>(Renderer::OutputType::kMax); ++i)
-        {
-            if (GetOutput(static_cast<Renderer::OutputType>(i)))
-            {
-                aov_pass_needed = true;
-                break;
-            }
-        }
-        
+		bool aov_pass_needed = (FindFirstNonZeroOutput(false) != nullptr);  
         if (aov_pass_needed)
         {
-            FillAOVs(clwscene);
+			int num_rays = tile_size.x * tile_size.y;
+            FillAOVs(clwscene, tile_origin, tile_size);
             m_context.Flush(0);
         }
         
         ++m_framecnt;
     }
+
+	void PtRenderer::GenerateTileDomain(int2 const& output_size, int2 const& tile_origin, 
+		int2 const& tile_size, int2 const& subtile_size)
+	{
+		// Fetch kernel
+		CLWKernel generate_kernel = m_render_data->program.GetKernel("GenerateTileDomain");
+
+		// Set kernel parameters
+		int argc = 0;
+		generate_kernel.SetArg(argc++, output_size.x);
+		generate_kernel.SetArg(argc++, output_size.y);
+		generate_kernel.SetArg(argc++, tile_origin.x);
+		generate_kernel.SetArg(argc++, tile_origin.y);
+		generate_kernel.SetArg(argc++, tile_size.x);
+		generate_kernel.SetArg(argc++, tile_size.y);
+		generate_kernel.SetArg(argc++, subtile_size.x);
+		generate_kernel.SetArg(argc++, subtile_size.y);
+		generate_kernel.SetArg(argc++, m_render_data->pixelindices[0]);
+		generate_kernel.SetArg(argc++, m_render_data->pixelindices[1]);
+		generate_kernel.SetArg(argc++, m_render_data->hitcount);
+
+		// Run shading kernel
+		{
+			size_t gs[] = { static_cast<size_t>((tile_size.x + 7) / 8 * 8), static_cast<size_t>((tile_size.y + 7) / 8 * 8) };
+			size_t ls[] = { 8, 8 };
+
+			m_context.Launch2D(0, gs, ls, generate_kernel);
+		}
+	}
+
+	Output* PtRenderer::FindFirstNonZeroOutput(bool include_color) const
+	{
+		// Find first non-zero output
+		auto current_output = include_color ? GetOutput(Renderer::OutputType::kColor) : nullptr;
+		if (!current_output)
+		{
+			for (auto i = 1U; i < static_cast<std::uint32_t>(Renderer::OutputType::kMax); ++i)
+			{
+				current_output = GetOutput(static_cast<Renderer::OutputType>(i));
+
+				if (current_output)
+				{
+					break;
+				}
+			}
+		}
+
+		return current_output;
+	}
     
     void PtRenderer::SetOutput(OutputType type, Output* output)
     {
-        // Find first non-zero output
-        auto current_output = GetOutput(Renderer::OutputType::kColor);
-        if (!current_output)
-        {
-            for (auto i = 0U; i < static_cast<std::uint32_t>(Renderer::OutputType::kMax); ++i)
-            {
-                current_output = GetOutput(static_cast<Renderer::OutputType>(i));
-                
-                if (current_output)
-                {
-                    break;
-                }
-            }
-        }
+		auto current_output = FindFirstNonZeroOutput();
         
         if (!current_output || current_output->width() < output->width() || current_output->height() < output->height())
         {
@@ -348,40 +403,32 @@ namespace Baikal
         std::cout << "Vidmem usage (working set): " << m_vidmemws / (1024 * 1024) << "Mb\n";
     }
     
-    void PtRenderer::FillAOVs(ClwScene const& scene)
+    void PtRenderer::FillAOVs(ClwScene const& scene, int2 const& tile_origin, int2 const& tile_size)
     {
         auto api = m_scene_controller.GetIntersectionApi();
         
         // Find first non-zero AOV to get buffer dimensions
-        auto output = GetOutput(OutputType::kColor);
-        if (!output)
-        {
-            for (auto i = 1U; i < static_cast<std::uint32_t>(Renderer::OutputType::kMax); ++i)
-            {
-                output = GetOutput(static_cast<Renderer::OutputType>(i));
-                
-                if (output)
-                {
-                    break;
-                }
-            }
-        }
-        
-        int num_items = output->width() * output->height();
-        
-        // Generate primary
-        GeneratePrimaryRays(scene, *output);
+		auto output = FindFirstNonZeroOutput();
+		auto output_size = int2(output->width(), output->height());
+
+		// Generate tile domain
+		GenerateTileDomain(output_size, tile_origin, tile_size, tile_size);
+
+		// Generate primary
+		GeneratePrimaryRays(scene, *output, tile_size);
+
+		auto num_rays = tile_size.x * tile_size.y;
         
         // Intersect ray batch
-        m_context.FillBuffer(0, m_render_data->hitcount, num_items, 1);
-        api->QueryIntersection(m_render_data->fr_rays[0], m_render_data->fr_hitcount, num_items, m_render_data->fr_intersections, nullptr, nullptr);
+        api->QueryIntersection(m_render_data->fr_rays[0], m_render_data->fr_hitcount, num_rays, m_render_data->fr_intersections, nullptr, nullptr);
         
         CLWKernel fill_kernel = m_render_data->program.GetKernel("FillAOVs");
         
         auto argc = 0U;
         fill_kernel.SetArg(argc++, m_render_data->rays[0]);
         fill_kernel.SetArg(argc++, m_render_data->intersections);
-        fill_kernel.SetArg(argc++, num_items);
+		fill_kernel.SetArg(argc++, m_render_data->pixelindices[0]);
+        fill_kernel.SetArg(argc++, m_render_data->hitcount);
         fill_kernel.SetArg(argc++, scene.vertices);
         fill_kernel.SetArg(argc++, scene.normals);
         fill_kernel.SetArg(argc++, scene.uvs);
@@ -415,23 +462,26 @@ namespace Baikal
         
         // Run AOV kernel
         {
-            int globalsize = output->width() * output->height();
+			int globalsize = tile_size.x * tile_size.y;
             m_context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, fill_kernel);
         }
     }
     
-    void PtRenderer::GeneratePrimaryRays(ClwScene const& scene, Output const& output)
+
+    void PtRenderer::GeneratePrimaryRays(ClwScene const& scene, Output const& output, int2 const& tile_size)
     {
         // Fetch kernel
         std::string kernel_name = (scene.camera_type == CameraType::kDefault) ? "PerspectiveCamera_GeneratePaths" : "PerspectiveCameraDof_GeneratePaths";
         
         CLWKernel genkernel = m_render_data->program.GetKernel(kernel_name);
-        
+
         // Set kernel parameters
         int argc = 0;
         genkernel.SetArg(argc++, scene.camera);
         genkernel.SetArg(argc++, output.width());
         genkernel.SetArg(argc++, output.height());
+        genkernel.SetArg(argc++, m_render_data->pixelindices[0]);
+        genkernel.SetArg(argc++, m_render_data->hitcount);
         genkernel.SetArg(argc++, (int)rand_uint());
         genkernel.SetArg(argc++, m_framecnt);
         genkernel.SetArg(argc++, m_render_data->rays[0]);
@@ -439,16 +489,13 @@ namespace Baikal
         genkernel.SetArg(argc++, m_render_data->sobolmat);
         genkernel.SetArg(argc++, m_render_data->paths);
         
-        // Run generation kernel
-        {
-            size_t gs[] = { static_cast<size_t>((output.width() + 7) / 8 * 8), static_cast<size_t>((output.height() + 7) / 8 * 8) };
-            size_t ls[] = { 8, 8 };
-            
-            m_context.Launch2D(0, gs, ls, genkernel);
-        }
+		{
+			int globalsize = tile_size.x * tile_size.y;
+			m_context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, genkernel);
+		}
     }
     
-    void PtRenderer::ShadeSurface(ClwScene const& scene, int pass)
+    void PtRenderer::ShadeSurface(ClwScene const& scene, int pass, int2 const& tile_size)
     {
         // Fetch kernel
         CLWKernel shadekernel = m_render_data->program.GetKernel("ShadeSurface");
@@ -488,12 +535,13 @@ namespace Baikal
         
         // Run shading kernel
         {
-            int globalsize = output->width() * output->height();
+			int globalsize = tile_size.x * tile_size.y;
             m_context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, shadekernel);
         }
     }
-    
-    void PtRenderer::ShadeVolume(ClwScene const& scene, int pass)
+ 
+
+    void PtRenderer::ShadeVolume(ClwScene const& scene, int pass, int2 const& tile_size)
     {
         // Fetch kernel
         CLWKernel shadekernel = m_render_data->program.GetKernel("ShadeVolume");
@@ -533,13 +581,12 @@ namespace Baikal
         
         // Run shading kernel
         {
-            int globalsize = output->width() * output->height();
+            int globalsize = tile_size.x * tile_size.y;
             m_context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, shadekernel);
-        }
-        
+        }   
     }
-    
-    void PtRenderer::EvaluateVolume(ClwScene const& scene, int pass)
+
+    void PtRenderer::EvaluateVolume(ClwScene const& scene, int pass, int2 const& tile_size)
     {
         // Fetch kernel
         CLWKernel evalkernel = m_render_data->program.GetKernel("EvaluateVolume");
@@ -565,42 +612,40 @@ namespace Baikal
         
         // Run shading kernel
         {
-            int globalsize = output->width() * output->height();
+			int globalsize = tile_size.x * tile_size.y;
             m_context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, evalkernel);
         }
     }
-    
-    void PtRenderer::ShadeBackground(ClwScene const& scene, int pass)
-    {
-        // Fetch kernel
-        CLWKernel misskernel = m_render_data->program.GetKernel("ShadeBackgroundEnvMap");
-        
-        auto output = static_cast<ClwOutput*>(GetOutput(OutputType::kColor));
-        
-        int numrays = output->width() * output->height();
-        
-        // Set kernel parameters
-        int argc = 0;
-        misskernel.SetArg(argc++, m_render_data->rays[pass & 0x1]);
-        misskernel.SetArg(argc++, m_render_data->intersections);
-        misskernel.SetArg(argc++, m_render_data->pixelindices[(pass + 1) & 0x1]);
-        misskernel.SetArg(argc++, numrays);
-        misskernel.SetArg(argc++, scene.lights);
-        misskernel.SetArg(argc++, scene.envmapidx);
-        misskernel.SetArg(argc++, scene.textures);
-        misskernel.SetArg(argc++, scene.texturedata);
-        misskernel.SetArg(argc++, m_render_data->paths);
-        misskernel.SetArg(argc++, scene.volumes);
-        misskernel.SetArg(argc++, output->data());
-        
-        // Run shading kernel
-        {
-            int globalsize = output->width() * output->height();
-            m_context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, misskernel);
-        }
-    }
-    
-    void PtRenderer::GatherLightSamples(ClwScene const& scene, int pass)
+   
+
+	void PtRenderer::ShadeBackground(ClwScene const& scene, int pass, int2 const& tile_size)
+	{
+		// Fetch kernel
+		CLWKernel misskernel = m_render_data->program.GetKernel("ShadeBackgroundEnvMap");
+
+		auto output = static_cast<ClwOutput*>(GetOutput(OutputType::kColor));
+
+		// Set kernel parameters
+		int argc = 0;
+		misskernel.SetArg(argc++, m_render_data->rays[pass & 0x1]);
+		misskernel.SetArg(argc++, m_render_data->intersections);
+		misskernel.SetArg(argc++, m_render_data->pixelindices[(pass + 1) & 0x1]);
+		misskernel.SetArg(argc++, tile_size.x * tile_size.y);
+		misskernel.SetArg(argc++, scene.lights);
+		misskernel.SetArg(argc++, scene.envmapidx);
+		misskernel.SetArg(argc++, scene.textures);
+		misskernel.SetArg(argc++, scene.texturedata);
+		misskernel.SetArg(argc++, m_render_data->paths);
+		misskernel.SetArg(argc++, scene.volumes);
+		misskernel.SetArg(argc++, output->data());
+
+		{
+			int globalsize = tile_size.x * tile_size.y;
+			m_context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, misskernel);
+		}
+	}
+
+    void PtRenderer::GatherLightSamples(ClwScene const& scene, int pass, int2 const& tile_size)
     {
         // Fetch kernel
         CLWKernel gatherkernel = m_render_data->program.GetKernel("GatherLightSamples");
@@ -618,17 +663,16 @@ namespace Baikal
         
         // Run shading kernel
         {
-            int globalsize = output->width() * output->height();
-            m_context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, gatherkernel);
+			int globalsize = tile_size.x * tile_size.y;
+			m_context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, gatherkernel);
         }
     }
-    
-    void PtRenderer::RestorePixelIndices(int pass)
+
+
+    void PtRenderer::RestorePixelIndices(int pass, int2 const& tile_size)
     {
         // Fetch kernel
         CLWKernel restorekernel = m_render_data->program.GetKernel("RestorePixelIndices");
-        
-        auto output = static_cast<ClwOutput*>(GetOutput(OutputType::kColor));
         
         // Set kernel parameters
         int argc = 0;
@@ -639,17 +683,15 @@ namespace Baikal
         
         // Run shading kernel
         {
-            int globalsize = output->width() * output->height();
+            int globalsize = tile_size.x * tile_size.y;
             m_context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, restorekernel);
         }
     }
-    
-    void PtRenderer::FilterPathStream(int pass)
+
+    void PtRenderer::FilterPathStream(int pass, int2 const& tile_size)
     {
         // Fetch kernel
         CLWKernel restorekernel = m_render_data->program.GetKernel("FilterPathStream");
-        
-        auto output = static_cast<ClwOutput*>(GetOutput(OutputType::kColor));
         
         // Set kernel parameters
         int argc = 0;
@@ -661,13 +703,9 @@ namespace Baikal
         
         // Run shading kernel
         {
-            int globalsize = output->width() * output->height();
+            int globalsize = tile_size.x * tile_size.y;
             m_context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, restorekernel);
         }
-        
-        //int cnt = 0;
-        //m_context.ReadBuffer(0, m_render_data->debug, &cnt, 1).Wait();
-        //std::cout << "Pass " << pass << " killed " << cnt << "\n";
     }
     
     CLWKernel PtRenderer::GetCopyKernel()
@@ -681,15 +719,13 @@ namespace Baikal
     }
     
     // Shade background
-    void PtRenderer::ShadeMiss(ClwScene const& scene, int pass)
+    void PtRenderer::ShadeMiss(ClwScene const& scene, int pass, int2 const& tile_size)
     {
         // Fetch kernel
         CLWKernel misskernel = m_render_data->program.GetKernel("ShadeMiss");
         
         auto output = static_cast<ClwOutput*>(GetOutput(OutputType::kColor));
-        
-        //int numrays = m_output->width() * m_output->height();
-        
+
         // Set kernel parameters
         int argc = 0;
         misskernel.SetArg(argc++, m_render_data->rays[pass & 0x1]);
@@ -706,7 +742,7 @@ namespace Baikal
         
         // Run shading kernel
         {
-            int globalsize = output->width() * output->height();
+            int globalsize = tile_size.x * tile_size.y;
             m_context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, misskernel);
         }
         
@@ -724,10 +760,11 @@ namespace Baikal
         
         // Number of rays to generate
         int maxrays = output->width() * output->height();
-        
+        int2 tile_size = int2(output->width(), output->height());
+
         // Generate primary
-        GeneratePrimaryRays(clwscene, *output);
-        
+        GeneratePrimaryRays(clwscene, *output, tile_size);
+
         // Copy compacted indices to track reverse indices
         m_context.CopyBuffer(0, m_render_data->iota, m_render_data->pixelindices[0], 0, 0, m_render_data->iota.GetElementCount());
         m_context.CopyBuffer(0, m_render_data->iota, m_render_data->pixelindices[1], 0, 0, m_render_data->iota.GetElementCount());
@@ -752,20 +789,20 @@ namespace Baikal
         stats.primary_rays_time_in_ms = (float)std::chrono::duration_cast<std::chrono::milliseconds>(delta).count() / num_passes;
         
         // Convert intersections to predicates
-        FilterPathStream(0);
-        
+        FilterPathStream(0, tile_size);
+
         // Compact batch
-        m_render_data->pp.Compact(0, m_render_data->hits, m_render_data->iota, m_render_data->compacted_indices, m_render_data->hitcount);
-        
+        m_render_data->pp.Compact(0, m_render_data->hits, m_render_data->iota, m_render_data->compacted_indices, maxrays, m_render_data->hitcount);
+
         // Advance indices to keep pixel indices up to date
-        RestorePixelIndices(0);
-        
+        RestorePixelIndices(0, tile_size);
+
         // Shade hits
-        ShadeSurface(clwscene, 0);
-        
+        ShadeSurface(clwscene, 0, tile_size);
+
         // Shade missing rays
-        ShadeMiss(clwscene, 0);
-        
+        ShadeMiss(clwscene, 0, tile_size);
+
         // Intersect ray batch
         start = std::chrono::high_resolution_clock::now();
         
@@ -781,8 +818,8 @@ namespace Baikal
         stats.shadow_rays_time_in_ms = (float)std::chrono::duration_cast<std::chrono::milliseconds>(delta).count() / num_passes;
         
         // Gather light samples and account for visibility
-        GatherLightSamples(clwscene, 0);
-        
+        GatherLightSamples(clwscene, 0, tile_size);
+
         //
         m_context.Flush(0);
         
@@ -804,25 +841,26 @@ namespace Baikal
         stats.secondary_rays_time_in_ms = (float)std::chrono::duration_cast<std::chrono::milliseconds>(delta).count() / num_passes;
         
         // Convert intersections to predicates
-        FilterPathStream(1);
-        
+        FilterPathStream(1, tile_size);
+
         // Compact batch
-        m_render_data->pp.Compact(0, m_render_data->hits, m_render_data->iota, m_render_data->compacted_indices, m_render_data->hitcount);
-        
+        m_render_data->pp.Compact(0, m_render_data->hits, m_render_data->iota, m_render_data->compacted_indices, maxrays, m_render_data->hitcount);
+
         // Advance indices to keep pixel indices up to date
-        RestorePixelIndices(1);
-        
+        RestorePixelIndices(1, tile_size);
+
         // Shade hits
-        ShadeSurface(clwscene, 1);
-        
+        ShadeSurface(clwscene, 1, tile_size);
+
         // Shade missing rays
-        ShadeMiss(clwscene, 1);
-        
+        ShadeMiss(clwscene, 1, tile_size);
+
         api->QueryOcclusion(m_render_data->fr_shadowrays, m_render_data->fr_hitcount, maxrays, m_render_data->fr_shadowhits, nullptr, nullptr);
         
         // Gather light samples and account for visibility
-        GatherLightSamples(clwscene, 0);
-        
+
+        GatherLightSamples(clwscene, 0, tile_size);
+
         //
         m_context.Flush(0);
     }

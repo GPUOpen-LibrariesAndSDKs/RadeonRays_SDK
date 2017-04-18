@@ -29,9 +29,9 @@ namespace Baikal
         // Create intersection API
         m_api = CreateFromOpenClContext(m_context, id, queue);
 
-        m_api->SetOption("acc.type", "bvh");
+        m_api->SetOption("acc.type", "fatbvh");
         m_api->SetOption("bvh.builder", "sah");
-        m_api->SetOption("bvh.sah.num_bins", 64.f);
+        m_api->SetOption("bvh.sah.num_bins", 16.f);
     }
     
     Material const* ClwSceneController::GetDefaultMaterial() const

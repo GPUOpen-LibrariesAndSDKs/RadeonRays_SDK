@@ -93,6 +93,13 @@ namespace Baikal
         virtual void Render(Scene1 const& scene) = 0;
 
         /**
+        \brief Render single iteration.
+
+        \param scene Scene to render
+        */
+		virtual void RenderTile(Scene1 const& scene, RadeonRays::int2 const& tile_origin, RadeonRays::int2 const& tile_size) = 0;
+
+        /**
          \brief Set the output for rendering.
 
          \param output The output to render into.

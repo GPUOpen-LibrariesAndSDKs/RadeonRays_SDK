@@ -55,10 +55,8 @@ CLWParallelPrimitives::~CLWParallelPrimitives()
     ReclaimDeviceMemory();
 }
 
-CLWEvent CLWParallelPrimitives::ScanExclusiveAddWG(unsigned int deviceIdx, CLWBuffer<cl_int> input, CLWBuffer<cl_int> output)
+CLWEvent CLWParallelPrimitives::ScanExclusiveAddWG(unsigned int deviceIdx, CLWBuffer<cl_int> input, CLWBuffer<cl_int> output, int numElems)
 {
-    cl_uint numElems = (cl_uint)input.GetElementCount();
-
     CLWKernel topLevelScan = program_.GetKernel("scan_exclusive_int4");
 
     topLevelScan.SetArg(0, input);
@@ -70,10 +68,8 @@ CLWEvent CLWParallelPrimitives::ScanExclusiveAddWG(unsigned int deviceIdx, CLWBu
 }
 
 
-CLWEvent CLWParallelPrimitives::ScanExclusiveAddTwoLevel(unsigned int deviceIdx, CLWBuffer<cl_int> input, CLWBuffer<cl_int> output)
+CLWEvent CLWParallelPrimitives::ScanExclusiveAddTwoLevel(unsigned int deviceIdx, CLWBuffer<cl_int> input, CLWBuffer<cl_int> output, int numElems)
 {
-    cl_uint numElems = (cl_uint)input.GetElementCount();
-
     int GROUP_BLOCK_SIZE_SCAN = (WG_SIZE << 3);
     int GROUP_BLOCK_SIZE_DISTRIBUTE = (WG_SIZE << 2);
 
@@ -352,10 +348,8 @@ CLWEvent CLWParallelPrimitives::SegmentedScanExclusiveAddFourLevel(unsigned int 
 
 
 
-CLWEvent CLWParallelPrimitives::ScanExclusiveAddThreeLevel(unsigned int deviceIdx, CLWBuffer<cl_int> input, CLWBuffer<cl_int> output)
+CLWEvent CLWParallelPrimitives::ScanExclusiveAddThreeLevel(unsigned int deviceIdx, CLWBuffer<cl_int> input, CLWBuffer<cl_int> output, int numElems)
 {
-    cl_uint numElems = (cl_uint)input.GetElementCount();
-
     int GROUP_BLOCK_SIZE_SCAN = (WG_SIZE << 3);
     int GROUP_BLOCK_SIZE_DISTRIBUTE = (WG_SIZE << 2);
 
@@ -410,10 +404,8 @@ CLWEvent CLWParallelPrimitives::ScanExclusiveAddThreeLevel(unsigned int deviceId
 
 
 
-CLWEvent CLWParallelPrimitives::ScanExclusiveAddWG(unsigned int deviceIdx, CLWBuffer<cl_float> input, CLWBuffer<cl_float> output)
+CLWEvent CLWParallelPrimitives::ScanExclusiveAddWG(unsigned int deviceIdx, CLWBuffer<cl_float> input, CLWBuffer<cl_float> output, int numElems)
 {
-    cl_uint numElems = (cl_uint)input.GetElementCount();
-
     CLWKernel topLevelScan = program_.GetKernel("scan_exclusive_float4");
 
     topLevelScan.SetArg(0, input);
@@ -440,10 +432,8 @@ CLWEvent CLWParallelPrimitives::SegmentedScanExclusiveAddWG(unsigned int deviceI
 }
 
 
-CLWEvent CLWParallelPrimitives::ScanExclusiveAddTwoLevel(unsigned int deviceIdx, CLWBuffer<cl_float> input, CLWBuffer<cl_float> output)
+CLWEvent CLWParallelPrimitives::ScanExclusiveAddTwoLevel(unsigned int deviceIdx, CLWBuffer<cl_float> input, CLWBuffer<cl_float> output, int numElems)
 {
-    cl_uint numElems = (cl_uint)input.GetElementCount();
-
     int GROUP_BLOCK_SIZE_SCAN = (WG_SIZE << 3);
     int GROUP_BLOCK_SIZE_DISTRIBUTE = (WG_SIZE << 2);
 
@@ -481,10 +471,8 @@ CLWEvent CLWParallelPrimitives::ScanExclusiveAddTwoLevel(unsigned int deviceIdx,
     return context_.Launch1D(0, NUM_GROUPS_BOTTOM_LEVEL_DISTRIBUTE * WG_SIZE, WG_SIZE, distributeSums);
 }
 
-CLWEvent CLWParallelPrimitives::ScanExclusiveAddThreeLevel(unsigned int deviceIdx, CLWBuffer<cl_float> input, CLWBuffer<cl_float> output)
+CLWEvent CLWParallelPrimitives::ScanExclusiveAddThreeLevel(unsigned int deviceIdx, CLWBuffer<cl_float> input, CLWBuffer<cl_float> output, int numElems)
 {
-cl_uint numElems = (cl_uint)input.GetElementCount();
-
     int GROUP_BLOCK_SIZE_SCAN = (WG_SIZE << 3);
     int GROUP_BLOCK_SIZE_DISTRIBUTE = (WG_SIZE << 2);
 
@@ -537,23 +525,19 @@ cl_uint numElems = (cl_uint)input.GetElementCount();
     return context_.Launch1D(0, NUM_GROUPS_BOTTOM_LEVEL_DISTRIBUTE * WG_SIZE, WG_SIZE, distributeSums);
 }
 
-CLWEvent CLWParallelPrimitives::ScanExclusiveAdd(unsigned int deviceIdx, CLWBuffer<cl_int> input, CLWBuffer<cl_int> output)
+CLWEvent CLWParallelPrimitives::ScanExclusiveAdd(unsigned int deviceIdx, CLWBuffer<cl_int> input, CLWBuffer<cl_int> output, int numElems)
 {
-    assert(input.GetElementCount() == output.GetElementCount());
-
-    cl_uint numElems = (cl_uint)input.GetElementCount();
-
     if (numElems < NUM_SCAN_ELEMS_PER_WG)
     {
-        return ScanExclusiveAddWG(deviceIdx, input, output);
+        return ScanExclusiveAddWG(deviceIdx, input, output, numElems);
     }
     else if (numElems < NUM_SCAN_ELEMS_PER_WG * NUM_SCAN_ELEMS_PER_WG)
     {
-        return ScanExclusiveAddTwoLevel(deviceIdx, input, output);
+        return ScanExclusiveAddTwoLevel(deviceIdx, input, output, numElems);
     }
     else if (numElems < NUM_SCAN_ELEMS_PER_WG * NUM_SCAN_ELEMS_PER_WG * NUM_SCAN_ELEMS_PER_WG)
     {
-        return ScanExclusiveAddThreeLevel(deviceIdx, input, output);
+        return ScanExclusiveAddThreeLevel(deviceIdx, input, output, numElems);
     }
     else
     {
@@ -563,23 +547,19 @@ CLWEvent CLWParallelPrimitives::ScanExclusiveAdd(unsigned int deviceIdx, CLWBuff
     return CLWEvent::Create(nullptr);
 }
 
-CLWEvent CLWParallelPrimitives::ScanExclusiveAdd(unsigned int deviceIdx, CLWBuffer<cl_float> input, CLWBuffer<cl_float> output)
+CLWEvent CLWParallelPrimitives::ScanExclusiveAdd(unsigned int deviceIdx, CLWBuffer<cl_float> input, CLWBuffer<cl_float> output, int numElems)
 {
-    assert(input.GetElementCount() == output.GetElementCount());
-
-    cl_uint numElems = (cl_uint)input.GetElementCount();
-
     if (numElems <= NUM_SCAN_ELEMS_PER_WG)
     {
-        return ScanExclusiveAddWG(deviceIdx, input, output);
+        return ScanExclusiveAddWG(deviceIdx, input, output, numElems);
     }
     else if (numElems <= NUM_SCAN_ELEMS_PER_WG * NUM_SCAN_ELEMS_PER_WG)
     {
-        return ScanExclusiveAddTwoLevel(deviceIdx, input, output);
+        return ScanExclusiveAddTwoLevel(deviceIdx, input, output, numElems);
     }
     else if (numElems <= NUM_SCAN_ELEMS_PER_WG * NUM_SCAN_ELEMS_PER_WG * NUM_SCAN_ELEMS_PER_WG)
     {
-        return ScanExclusiveAddThreeLevel(deviceIdx, input, output);
+        return ScanExclusiveAddThreeLevel(deviceIdx, input, output, numElems);
     }
     else
     {
@@ -698,7 +678,7 @@ CLWEvent CLWParallelPrimitives::SortRadix(unsigned int deviceIdx, CLWBuffer<cl_i
         context_.Launch1D(0, NUM_BLOCKS*WG_SIZE, WG_SIZE, histogramKernel);
 
         // Scan histograms
-        ScanExclusiveAdd(0, deviceHistograms, deviceHistograms);
+        ScanExclusiveAdd(0, deviceHistograms, deviceHistograms, numElems);
 
         //context_.ReadBuffer(0, deviceHistograms, &hist[0], 16).Wait();
 
@@ -765,7 +745,7 @@ CLWEvent CLWParallelPrimitives::SortRadix(unsigned int deviceIdx, CLWBuffer<char
         context_.Launch1D(0, NUM_BLOCKS*WG_SIZE, WG_SIZE, histogramKernel);
 
         // Scan histograms
-        ScanExclusiveAdd(0, deviceHistograms, deviceHistograms);
+        ScanExclusiveAdd(0, deviceHistograms, deviceHistograms, numElems);
 
         //context_.ReadBuffer(0, deviceHistograms, &hist[0], 16).Wait();
 
@@ -833,7 +813,7 @@ CLWEvent CLWParallelPrimitives::SortRadix(unsigned int deviceIdx, CLWBuffer<cl_i
         context_.Launch1D(0, NUM_BLOCKS*WG_SIZE, WG_SIZE, histogramKernel);
 
         // Scan histograms
-        ScanExclusiveAdd(0, deviceHistograms, deviceHistograms);
+        ScanExclusiveAdd(0, deviceHistograms, deviceHistograms, numElems);
 
         // Scatter keys
         scatterKeys.SetArg(0, offset);
@@ -903,15 +883,12 @@ void CLWParallelPrimitives::ReclaimTempFloatBuffer(CLWBuffer<cl_float> buffer)
     floatBufferCache_[buffer.GetElementCount()] = buffer;
 }
 
-CLWEvent CLWParallelPrimitives::Compact(unsigned int deviceIdx, CLWBuffer<cl_int> predicate, CLWBuffer<cl_int> input, CLWBuffer<cl_int> output, cl_int& newSize)
+CLWEvent CLWParallelPrimitives::Compact(unsigned int deviceIdx, CLWBuffer<cl_int> predicate, CLWBuffer<cl_int> input, CLWBuffer<cl_int> output, int numElems, cl_int& newSize)
 {
     /// Scan predicate array first to temp buffer
-
-    size_t numElems = predicate.GetElementCount();
-
     CLWBuffer<cl_int> addresses = GetTempIntBuffer(numElems);
 
-    ScanExclusiveAdd(deviceIdx, predicate, addresses).Wait();
+    ScanExclusiveAdd(deviceIdx, predicate, addresses, numElems).Wait();
 
     /// New size = scanned[last] + perdicate[last]
     /// TODO: remove this sync
@@ -937,15 +914,12 @@ CLWEvent CLWParallelPrimitives::Compact(unsigned int deviceIdx, CLWBuffer<cl_int
     return context_.Launch1D(deviceIdx, NUM_BLOCKS * WG_SIZE, WG_SIZE, compactKernel);
 }
 
-CLWEvent CLWParallelPrimitives::Compact(unsigned int deviceIdx, CLWBuffer<cl_int> predicate, CLWBuffer<cl_int> input, CLWBuffer<cl_int> output, CLWBuffer<cl_int> newSize)
+CLWEvent CLWParallelPrimitives::Compact(unsigned int deviceIdx, CLWBuffer<cl_int> predicate, CLWBuffer<cl_int> input, CLWBuffer<cl_int> output, int numElems, CLWBuffer<cl_int> newSize)
 {
     /// Scan predicate array first to temp buffer
-
-    size_t numElems = predicate.GetElementCount();
-
     CLWBuffer<cl_int> addresses = GetTempIntBuffer(numElems);
 
-    ScanExclusiveAdd(deviceIdx, predicate, addresses);
+    ScanExclusiveAdd(deviceIdx, predicate, addresses, numElems);
 
     int NUM_BLOCKS = (int)((numElems + WG_SIZE - 1) / WG_SIZE);
 
@@ -965,9 +939,8 @@ CLWEvent CLWParallelPrimitives::Compact(unsigned int deviceIdx, CLWBuffer<cl_int
 }
 
 
-CLWEvent CLWParallelPrimitives::Copy(unsigned int deviceIdx, CLWBuffer<cl_int> input, CLWBuffer<cl_int> output)
+CLWEvent CLWParallelPrimitives::Copy(unsigned int deviceIdx, CLWBuffer<cl_int> input, CLWBuffer<cl_int> output, int numElems)
 {
-    int numElems = (int)input.GetElementCount();
     int ELEMS_PER_WI = 4;
     int GROUP_BLOCK_SIZE = (WG_SIZE * ELEMS_PER_WI);
     int NUM_BLOCKS =  (numElems + GROUP_BLOCK_SIZE - 1)/ GROUP_BLOCK_SIZE;
@@ -975,7 +948,7 @@ CLWEvent CLWParallelPrimitives::Copy(unsigned int deviceIdx, CLWBuffer<cl_int> i
     CLWKernel copyKernel = program_.GetKernel("copy");
 
     copyKernel.SetArg(0, input);
-    copyKernel.SetArg(1, (cl_uint)input.GetElementCount());
+    copyKernel.SetArg(1, numElems);
     copyKernel.SetArg(2, output);
 
     return context_.Launch1D(0, NUM_BLOCKS * WG_SIZE, WG_SIZE, copyKernel);
