@@ -80,6 +80,11 @@ newoption {
     description = "Add tutorials projects"
 }
 
+newoption {
+    trigger     = "safe_math",
+    description = "use safe math"
+}
+
 if not _OPTIONS["use_opencl"] and not _OPTIONS["use_vulkan"] and not _OPTIONS["use_embree"] then
     _OPTIONS["use_opencl"] = 1
 end
@@ -157,7 +162,7 @@ else
 
     if( _OPTIONS["static_library"]) then
         defines{ "RR_STATIC_LIBRARY=1" }
-	print ">> Building Radeon Rays as a static library";
+    print ">> Building Radeon Rays as a static library";
     end
 
     if _OPTIONS["use_opencl"] then
@@ -194,7 +199,7 @@ else
         defines{"USE_OPENCL=1"}
     end
     if _OPTIONS["use_vulkan"] then
-	print ">> Vulkan backend enabled"
+    print ">> Vulkan backend enabled"
         defines{"USE_VULKAN=1"}
         vulkanPath = ""
         vulkanSDKPath = os.getenv( "VK_SDK_PATH" );
@@ -238,6 +243,10 @@ else
         if fileExists("./Anvil_premake/anvil.lua") then
             dofile("./Anvil_premake/anvil.lua")
         end
+    end
+
+    if _OPTIONS["safe_math"] then
+        defines { "USE_SAFE_MATH" }
     end
 
     if fileExists("./RadeonRays/RadeonRays.lua") then
@@ -286,5 +295,4 @@ else
             dofile("./Tutorials/Tutorials.lua")
         end
     end
-
 end

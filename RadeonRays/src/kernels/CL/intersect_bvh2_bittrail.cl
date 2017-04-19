@@ -162,7 +162,7 @@ occluded_main(
         if (ray_is_active(&r))
         {
             // Precompute inverse direction and origin / dir for bbox testing
-            float3 const invdir = native_recip(r.d.xyz);
+            float3 const invdir = safe_invdir(r);
             float3 const oxinvdir = -r.o.xyz * invdir;
             // Intersection parametric distance
             float const t_max = r.o.w;
@@ -304,7 +304,7 @@ KERNEL void intersect_main(
         if (ray_is_active(&r))
         {
             // Precompute inverse direction and origin / dir for bbox testing
-            float3 const invdir = native_recip(r.d.xyz);
+            float3 const invdir = safe_invdir(r);
             float3 const oxinvdir = -r.o.xyz * invdir;
             // Intersection parametric distance
             float t_max = r.o.w;

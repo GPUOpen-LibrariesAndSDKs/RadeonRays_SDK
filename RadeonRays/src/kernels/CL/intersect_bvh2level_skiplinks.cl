@@ -164,15 +164,15 @@ KERNEL void intersect_main(
         if (ray_is_active(&r))
         {
             // Precompute invdir for bbox testing
-            float3 invdir = native_recip(r.d.xyz);
+            float3 invdir = safe_invdir(r);
             float3 invdirtop = invdir;
             float t_max = r.o.w;
 
             // We need to keep original ray around for returns from bottom hierarchy
             ray top_ray = r;
-
             // Fetch top level BVH index
             int addr = root_idx;
+
             // Set top index
             int top_addr = INVALID_IDX;
             // Current shape ID
@@ -181,11 +181,11 @@ KERNEL void intersect_main(
             int closest_shape_id = INVALID_IDX;
             int closest_prim_id = INVALID_IDX;
             float2 closest_barycentrics;
-
             while (addr != INVALID_IDX)
             {
                 // Fetch next node
                 bvh_node node = nodes[addr];
+
                 // Intersect against bbox
                 float2 s = fast_intersect_bbox1(node, invdir, -r.o.xyz * invdir, t_max);
 
@@ -247,14 +247,14 @@ KERNEL void intersect_main(
 
                                 r = transform_ray(r, wmi0, wmi1, wmi2, wmi3);
                                 // Recalc invdir
-                                invdir = native_recip(r.d.xyz);
+                                invdir = safe_invdir(r);
                                 // And continue traversal of the bottom level BVH
                                 continue;
                             }
-                            /*else
+                            else
                             {
                                 addr = INVALID_IDX;
-                            }*/
+                            }
                         }
                     }
                     // Traverse child nodes otherwise.
@@ -334,7 +334,7 @@ KERNEL void occluded_main(
         if (ray_is_active(&r))
         {
             // Precompute invdir for bbox testing
-            float3 invdir = native_recip(r.d.xyz);
+            float3 invdir = safe_invdir(r);
             float3 invdirtop = invdir;
             float const t_max = r.o.w;
 
@@ -405,7 +405,7 @@ KERNEL void occluded_main(
 
                                 r = transform_ray(r, wmi0, wmi1, wmi2, wmi3);
                                 // Recalc invdir
-                                invdir = native_recip(r.d.xyz);
+                                invdir = safe_invdir(r);;
                                 // And continue traversal of the bottom level BVH
                                 continue;
                             }
