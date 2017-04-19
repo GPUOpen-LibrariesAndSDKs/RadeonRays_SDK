@@ -28,14 +28,13 @@ THE SOFTWARE.
 #define NOMINMAX
 #include <Windows.h>
 #include "GL/glew.h"
-#include "GLFW/glfw3.h"
 #else
 #include <CL/cl.h>
 #include <GL/glew.h>
 #include <GL/glx.h>
 #endif
 
-
+#include "GLFW/glfw3.h"
 #include "ImGUI/imgui.h"
 #include "ImGUI/imgui_impl_glfw_gl3.h"
 

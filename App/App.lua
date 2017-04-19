@@ -1,7 +1,7 @@
 project "App"
     kind "ConsoleApp"
     location "../App"
-    links {"RadeonRays", "CLW", "Calc", "glfw3"}
+    links {"RadeonRays", "CLW", "Calc"}
     files { "../App/**.inl", "../App/**.h", "../App/**.cpp", "../App/**.cl", "../App/**.fsh", "../App/**.vsh" }
 
     includedirs{ "../RadeonRays/include", "../CLW", ".", "../3rdparty/glfw/include"}
@@ -16,7 +16,7 @@ project "App"
 
     if os.is("windows") then
         includedirs { "../3rdparty/glew/include", "../3rdparty/freeglut/include", "../3rdparty/oiio/include" }
-        links {"RadeonRays",}
+        links {"RadeonRays", "glfw3"}
         if not _OPTIONS["benchmark"] then
             links {"glew", "OpenGL32"}
 
@@ -38,7 +38,7 @@ project "App"
         buildoptions "-std=c++11"
         links {"OpenImageIO", "pthread"}
         if not _OPTIONS["benchmark"] then
-            links{"GLEW", "GL", "glfw3"}
+            links{"GLEW", "GL", "glfw"}
         end
         os.execute("rm -rf obj");
     end
