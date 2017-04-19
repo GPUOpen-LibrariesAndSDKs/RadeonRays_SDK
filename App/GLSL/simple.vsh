@@ -20,10 +20,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
 
-attribute vec3 inPosition;
-attribute vec2 inTexcoord;
+ #version 330
 
-varying vec2 Texcoord;
+layout (location=0) in vec3 inPosition;
+layout (location=1) in vec2 inTexcoord;
+
+smooth out vec2 Texcoord;
 
 void main()
 {
