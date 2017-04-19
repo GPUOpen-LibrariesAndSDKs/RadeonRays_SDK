@@ -23,18 +23,21 @@ THE SOFTWARE.
 
 #ifdef __APPLE__
 #include <OpenCL/OpenCL.h>
-#include <OpenGL/OpenGL.h>
+// #define GLFW_INCLUDE_GL3
+// #define GLFW_NO_GLU
+//#include "GLFW/glfw3.h"
 #elif WIN32
 #define NOMINMAX
 #include <Windows.h>
 #include "GL/glew.h"
+#include "GLFW/glfw3.h"
 #else
 #include <CL/cl.h>
 #include <GL/glew.h>
 #include <GL/glx.h>
+#include "GLFW/glfw3.h"
 #endif
 
-#include "GLFW/glfw3.h"
 #include "ImGUI/imgui.h"
 #include "ImGUI/imgui_impl_glfw_gl3.h"
 
@@ -97,6 +100,7 @@ std::unique_ptr<Baikal::PerspectiveCamera> g_camera;
 GLuint g_vertex_buffer;
 GLuint g_index_buffer;
 GLuint g_texture;
+GLuint g_vao;
 
 int g_window_width = 512;
 int g_window_height = 512;
@@ -130,6 +134,8 @@ ConfigManager::Mode g_mode = ConfigManager::Mode::kUseSingleGpu;
 Baikal::Renderer::OutputType g_ouput_type = Baikal::Renderer::OutputType::kColor;
 
 using namespace tinyobj;
+
+#define CHECK_GL_ERROR assert(glGetError() == 0)
 
 
 struct OutputData
@@ -192,43 +198,50 @@ void Render(GLFWwindow* window)
     try
     {
         {
-            glDisable(GL_DEPTH_TEST);
-            glViewport(0, 0, g_window_width, g_window_height);
+            int w, h;
+            glfwGetFramebufferSize(window, &w, &h);CHECK_GL_ERROR;
+            glDisable(GL_DEPTH_TEST);CHECK_GL_ERROR;
+            glViewport(0, 0, w, h);CHECK_GL_ERROR;
+            
 
-            glClear(GL_COLOR_BUFFER_BIT);
+            glClear(GL_COLOR_BUFFER_BIT);CHECK_GL_ERROR;
+            glBindVertexArray(g_vao);CHECK_GL_ERROR;
+            //glEnableClientState(GL_VERTEX_ARRAY);CHECK_GL_ERROR;
+            
+           
 
-            glBindBuffer(GL_ARRAY_BUFFER, g_vertex_buffer);
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g_index_buffer);
 
             GLuint program = g_shader_manager->GetProgram("../App/GLSL/simple");
-            glUseProgram(program);
+            glUseProgram(program);CHECK_GL_ERROR;
 
             GLuint texloc = glGetUniformLocation(program, "g_Texture");
             assert(texloc >= 0);
 
-            glUniform1i(texloc, 0);
+            glUniform1i(texloc, 0);CHECK_GL_ERROR;
 
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, g_texture);
+            glActiveTexture(GL_TEXTURE0);CHECK_GL_ERROR;
+            glBindTexture(GL_TEXTURE_2D, g_texture);CHECK_GL_ERROR;
 
-            GLuint position_attr = glGetAttribLocation(program, "inPosition");
-            GLuint texcoord_attr = glGetAttribLocation(program, "inTexcoord");
+            
+            glEnableVertexAttribArray(0);CHECK_GL_ERROR;
+            glEnableVertexAttribArray(1);CHECK_GL_ERROR;
+            
+            glBindBuffer(GL_ARRAY_BUFFER, g_vertex_buffer);CHECK_GL_ERROR;
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g_index_buffer);CHECK_GL_ERROR;
 
-            glVertexAttribPointer(position_attr, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 5, 0);
-            glVertexAttribPointer(texcoord_attr, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void*)(sizeof(float) * 3));
-
-            glEnableVertexAttribArray(position_attr);
-            glEnableVertexAttribArray(texcoord_attr);
-
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 5, 0);CHECK_GL_ERROR;
+            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void*)(sizeof(float) * 3));CHECK_GL_ERROR;
             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, nullptr);
 
-            glDisableVertexAttribArray(texcoord_attr);
-            glBindTexture(GL_TEXTURE_2D, 0);
-            glBindBuffer(GL_ARRAY_BUFFER, 0);
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-            glUseProgram(0);
+            glDisableVertexAttribArray(0);CHECK_GL_ERROR;
+            glDisableVertexAttribArray(1);CHECK_GL_ERROR;
+            glBindTexture(GL_TEXTURE_2D, 0);CHECK_GL_ERROR;
+            glBindBuffer(GL_ARRAY_BUFFER, 0);CHECK_GL_ERROR;
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);CHECK_GL_ERROR;
+            glUseProgram(0);CHECK_GL_ERROR;
+            glBindVertexArray(0);
 
-            glFinish();
+            glFinish();CHECK_GL_ERROR;
         }
     }
     catch (std::runtime_error& e)
@@ -242,17 +255,17 @@ void InitGraphics()
 {
     g_shader_manager.reset(new ShaderManager());
 
-    glClearColor(0.0, 0.0, 0.0, 0.0);
-    glCullFace(GL_NONE);
-    glDisable(GL_DEPTH_TEST);
-    glEnable(GL_TEXTURE_2D);
+    glClearColor(0.0, 0.5, 0.0, 0.0);CHECK_GL_ERROR;
+    glDisable(GL_DEPTH_TEST);CHECK_GL_ERROR;
 
-    glGenBuffers(1, &g_vertex_buffer);
-    glGenBuffers(1, &g_index_buffer);
+    glGenBuffers(1, &g_vertex_buffer);CHECK_GL_ERROR;
+    glGenBuffers(1, &g_index_buffer);CHECK_GL_ERROR;
+    
+    glGenVertexArrays(1, &g_vao);CHECK_GL_ERROR;
 
     // create Vertex buffer
-    glBindBuffer(GL_ARRAY_BUFFER, g_vertex_buffer);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g_index_buffer);
+    glBindBuffer(GL_ARRAY_BUFFER, g_vertex_buffer);CHECK_GL_ERROR;
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g_index_buffer);CHECK_GL_ERROR;
 
     float quad_vdata[] =
     {
@@ -269,21 +282,21 @@ void InitGraphics()
     };
 
     // fill data
-    glBufferData(GL_ARRAY_BUFFER, sizeof(quad_vdata), quad_vdata, GL_STATIC_DRAW);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(quad_idata), quad_idata, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quad_vdata), quad_vdata, GL_STATIC_DRAW);CHECK_GL_ERROR;
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(quad_idata), quad_idata, GL_STATIC_DRAW);CHECK_GL_ERROR;
 
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);CHECK_GL_ERROR;
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);CHECK_GL_ERROR;
 
 
-    glGenTextures(1, &g_texture);
-    glBindTexture(GL_TEXTURE_2D, g_texture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glGenTextures(1, &g_texture);CHECK_GL_ERROR;
+    glBindTexture(GL_TEXTURE_2D, g_texture);CHECK_GL_ERROR;
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);CHECK_GL_ERROR;
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);CHECK_GL_ERROR;
 
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, g_window_width, g_window_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, g_window_width, g_window_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);CHECK_GL_ERROR;
 
-    glBindTexture(GL_TEXTURE_2D, 0);
+    glBindTexture(GL_TEXTURE_2D, 0);CHECK_GL_ERROR;
 }
 
 void InitCl()
@@ -1070,20 +1083,20 @@ int main(int argc, char * argv[])
 	// Initialize GLFW
 	{
 		auto err = glfwInit();
-		if (err != GLFW_TRUE)
+		if (err != GL_TRUE)
 		{
 			std::cout << "GLFW initialization failed\n";
 			return -1;
 		}
 	}
 	// Setup window
-//	glfwSetErrorCallback(OnError);
-//	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-//	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-//	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-//#if __APPLE__
-//	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-//#endif
+	glfwSetErrorCallback(OnError);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+#if __APPLE__
+	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+#endif
 
 	// GLUT Window Initialization:
 	GLFWwindow* window = glfwCreateWindow(g_window_width, g_window_height, "Baikal standalone demo", nullptr, nullptr);

@@ -4,22 +4,23 @@ project "App"
     links {"RadeonRays", "CLW", "Calc"}
     files { "../App/**.inl", "../App/**.h", "../App/**.cpp", "../App/**.cl", "../App/**.fsh", "../App/**.vsh" }
 
-    includedirs{ "../RadeonRays/include", "../CLW", ".", "../3rdparty/glfw/include"}
+    includedirs{ "../RadeonRays/include", "../CLW", "."}
 
     if os.is("macosx") then
         sysincludedirs {"/usr/local/include"}
+        includedirs{"../3rdparty/glfw/include"}
         libdirs {"/usr/local/lib", "../3rdparty/glfw/lib/x64"}
-        linkoptions{ "-framework OpenGL" }
+        linkoptions{ "-framework OpenGL -framework CoreFoundation -framework CoreGraphics -framework IOKit -framework AppKit -framework QuartzCore" }
         buildoptions "-std=c++11 -stdlib=libc++"
-        links {"OpenImageIO"}
+        links {"OpenImageIO", "glfw3"}
     end
 
     if os.is("windows") then
-        includedirs { "../3rdparty/glew/include", "../3rdparty/freeglut/include", "../3rdparty/oiio/include" }
+        includedirs { "../3rdparty/glew/include", "../3rdparty/freeglut/include",
+        "../3rdparty/oiio/include", "../3rdparty/glfw/include"}
         links {"RadeonRays", "glfw3"}
         if not _OPTIONS["benchmark"] then
-            links {"glew", "OpenGL32"}
-
+            links {"glew", "OpenGL32", "glfw3"}
         end
             libdirs {   "../3rdparty/glew/lib/%{cfg.platform}",
                         "../3rdparty/freeglut/lib/%{cfg.platform}",

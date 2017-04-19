@@ -20,11 +20,15 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
 
+#version 330
+
 uniform sampler2D g_Texture;
 
-varying vec2 Texcoord;
+smooth in vec2 Texcoord;
+
+out vec4 OutputColor;
 
 void main()
 {
-    gl_FragColor = texture2D(g_Texture, Texcoord);
+    OutputColor = texture(g_Texture, Texcoord);
 }

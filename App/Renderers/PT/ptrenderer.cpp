@@ -261,7 +261,6 @@ namespace Baikal
 		bool aov_pass_needed = (FindFirstNonZeroOutput(false) != nullptr);  
         if (aov_pass_needed)
         {
-			int num_rays = tile_size.x * tile_size.y;
             FillAOVs(clwscene, tile_origin, tile_size);
             m_context.Flush(0);
         }
