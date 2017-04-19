@@ -63,7 +63,6 @@ namespace Baikal
         CLWKernel GetCopyKernel();
         // Add function
         CLWKernel GetAccumulateKernel();
-
         // Run render benchmark
         void RunBenchmark(Scene1 const& scene, std::uint32_t num_passes, BenchmarkStats& stats) override;
 

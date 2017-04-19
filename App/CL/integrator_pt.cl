@@ -917,7 +917,7 @@ __kernel void FillAOVs(
 
             if (wireframe_enabled)
             {
-                bool hit = (isect.uvwt.x < 1e-2) || (isect.uvwt.y < 1e-2) || (1.f - isect.uvwt.x - isect.uvwt.y < 1e-2);
+                bool hit = (isect.uvwt.x < 1e-3) || (isect.uvwt.y < 1e-3) || (1.f - isect.uvwt.x - isect.uvwt.y < 1e-3);
                 float3 value = hit ? make_float3(1.f, 1.f, 1.f) : make_float3(0.f, 0.f, 0.f);
                 aov_wireframe[idx].xyz += value;
                 aov_wireframe[idx].w += 1.f;

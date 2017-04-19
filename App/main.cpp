@@ -28,14 +28,16 @@ THE SOFTWARE.
 #define NOMINMAX
 #include <Windows.h>
 #include "GL/glew.h"
-#include "GLUT/GLUT.h"
+#include "GLFW/glfw3.h"
 #else
 #include <CL/cl.h>
 #include <GL/glew.h>
-#include <GL/glut.h>
 #include <GL/glx.h>
 #endif
 
+
+#include "ImGUI/imgui.h"
+#include "ImGUI/imgui_impl_glfw_gl3.h"
 
 #include <memory>
 #include <chrono>
@@ -124,7 +126,9 @@ bool g_recording_enabled = false;
 int g_frame_count = 0;
 bool g_benchmark = false;
 bool g_interop = true;
+bool g_gui_visible = true;
 ConfigManager::Mode g_mode = ConfigManager::Mode::kUseSingleGpu;
+Baikal::Renderer::OutputType g_ouput_type = Baikal::Renderer::OutputType::kColor;
 
 using namespace tinyobj;
 
@@ -184,7 +188,7 @@ bool CmdOptionExists(char** begin, char** end, const std::string& option);
 void ShowHelpAndDie();
 void SaveFrameBuffer(std::string const& name, float3 const* data);
 
-void Render()
+void Render(GLFWwindow* window)
 {
     try
     {
@@ -227,8 +231,6 @@ void Render()
 
             glFinish();
         }
-
-        glutSwapBuffers();
     }
     catch (std::runtime_error& e)
     {
@@ -448,10 +450,10 @@ void InitData()
 void Reshape(GLint w, GLint h)
 {
     // Disable window resize
-    glutReshapeWindow(g_window_width, g_window_height);
+    //glutReshapeWindow(g_window_width, g_window_height);
 }
 
-void OnMouseMove(int x, int y)
+void OnMouseMove(GLFWwindow* window, double x, double y)
 {
     if (g_is_mouse_tracking)
     {
@@ -460,113 +462,99 @@ void OnMouseMove(int x, int y)
     }
 }
 
-void OnMouseButton(int btn, int state, int x, int y)
+void OnMouseButton(GLFWwindow* window, int button, int action, int mods)
 {
-    if (btn == GLUT_LEFT_BUTTON)
-    {
-        if (state == GLUT_DOWN)
-        {
-            g_is_mouse_tracking = true;
-            g_mouse_pos = float2((float)x, (float)y);
-            g_mouse_delta = float2(0, 0);
-        }
-        else if (state == GLUT_UP && g_is_mouse_tracking)
-        {
-            g_is_mouse_tracking = true;
-            g_mouse_delta = float2(0, 0);
-        }
-    }
+	if (button == GLFW_MOUSE_BUTTON_RIGHT)
+	{
+		if (action == GLFW_PRESS)
+		{
+			g_is_mouse_tracking = true;
+
+			double x, y;
+			glfwGetCursorPos(window, &x, &y);
+			g_mouse_pos = float2((float)x, (float)y);
+			g_mouse_delta = float2(0, 0);
+		}
+		else if (action == GLFW_RELEASE && g_is_mouse_tracking)
+		{
+			g_is_mouse_tracking = false;
+			g_mouse_delta = float2(0, 0);
+		}
+	}
 }
 
-void OnKey(int key, int x, int y)
+void OnKey(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-    switch (key)
-    {
-    case GLUT_KEY_UP:
-        g_is_fwd_pressed = true;
-        break;
-    case GLUT_KEY_DOWN:
-        g_is_back_pressed = true;
-        break;
-    case GLUT_KEY_LEFT:
-        g_is_left_pressed = true;
-        break;
-    case GLUT_KEY_RIGHT:
-        g_is_right_pressed = true;
-        break;
-    case GLUT_KEY_HOME:
-        g_is_home_pressed = true;
-        break;
-    case GLUT_KEY_END:
-        g_is_end_pressed = true;
-        break;
-    case GLUT_KEY_F3:
-        g_benchmark = true;
-        break;
-    case GLUT_KEY_F4:
-        if (!g_interop)
-        {
-            std::ostringstream oss;
-            oss << "aov_color" << g_num_samples << ".png";
-            SaveFrameBuffer(oss.str(), &g_outputs[g_primary].fdata[0]);
-            break;
-        }
-    default:
-        break;
-    }
+	switch(key)
+	{
+    case GLFW_KEY_UP:
+		g_is_fwd_pressed = action == GLFW_PRESS ? true : false;
+		break;
+	case GLFW_KEY_DOWN:
+		g_is_back_pressed = action == GLFW_PRESS ? true : false;
+		break;
+	case GLFW_KEY_LEFT:
+		g_is_left_pressed = action == GLFW_PRESS ? true : false;
+		break;
+	case GLFW_KEY_RIGHT:
+		g_is_right_pressed = action == GLFW_PRESS ? true : false;
+		break;
+	case GLFW_KEY_HOME:
+		g_is_home_pressed = action == GLFW_PRESS ? true : false;
+		break;
+	case GLFW_KEY_END:
+		g_is_end_pressed = action == GLFW_PRESS ? true : false;
+		break;
+	case GLFW_KEY_F1:
+		g_gui_visible = action == GLFW_PRESS ? !g_gui_visible : g_gui_visible;
+		break;
+	case GLFW_KEY_F3:
+		g_benchmark = true;
+		break;
+	case GLFW_KEY_F4:
+		if (!g_interop)
+		{
+			std::ostringstream oss;
+			oss << "aov_color" << g_num_samples << ".png";
+			SaveFrameBuffer(oss.str(), &g_outputs[g_primary].fdata[0]);
+			break;
+		}
+	case GLFW_KEY_PAGE_DOWN:
+	{
+		if (action == GLFW_RELEASE)
+		{
+			++g_num_bounces;
+			for (int i = 0; i < g_cfgs.size(); ++i)
+			{
+				g_cfgs[i].renderer->SetNumBounces(g_num_bounces);
+				g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
+			}
+			g_samplecount = 0;
+			break;
+		}
+	}
+	case GLFW_KEY_PAGE_UP:
+	{
+		if (action == GLFW_RELEASE)
+		{
+			if (g_num_bounces > 1)
+			{
+				--g_num_bounces;
+				for (int i = 0; i < g_cfgs.size(); ++i)
+				{
+					g_cfgs[i].renderer->SetNumBounces(g_num_bounces);
+					g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
+				}
+				g_samplecount = 0;
+			}
+			break;
+		}
+	}
+	default:
+		break;
+	}
 }
 
-void OnKeyUp(int key, int x, int y)
-{
-    switch (key)
-    {
-    case GLUT_KEY_UP:
-        g_is_fwd_pressed = false;
-        break;
-    case GLUT_KEY_DOWN:
-        g_is_back_pressed = false;
-        break;
-    case GLUT_KEY_LEFT:
-        g_is_left_pressed = false;
-        break;
-    case GLUT_KEY_RIGHT:
-        g_is_right_pressed = false;
-        break;
-    case GLUT_KEY_HOME:
-        g_is_home_pressed = false;
-        break;
-    case GLUT_KEY_END:
-        g_is_end_pressed = false;
-        break;
-    case GLUT_KEY_PAGE_DOWN:
-    {
-        ++g_num_bounces;
-        for (int i = 0; i < g_cfgs.size(); ++i)
-        {
-            g_cfgs[i].renderer->SetNumBounces(g_num_bounces);
-            g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
-        }
-        g_samplecount = 0;
-        break;
-    }
-    case GLUT_KEY_PAGE_UP:
-    {
-        if (g_num_bounces > 1)
-        {
-            --g_num_bounces;
-            for (int i = 0; i < g_cfgs.size(); ++i)
-            {
-                g_cfgs[i].renderer->SetNumBounces(g_num_bounces);
-                g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
-            }
-            g_samplecount = 0;
-        }
-        break;
-    }
-    default:
-        break;
-    }
-}
 
 void OnLetterKey(unsigned char key, int x, int y)
 {
@@ -700,14 +688,14 @@ void OnLetterKey(unsigned char key, int x, int y)
     }
 }
 
-void Update()
+void Update(bool update_required)
 {
     static auto prevtime = std::chrono::high_resolution_clock::now();
     auto time = std::chrono::high_resolution_clock::now();
     auto dt = std::chrono::duration_cast<std::chrono::duration<double>>(time - prevtime);
     prevtime = time;
 
-    bool update = false;
+    bool update = update_required;
     float camrotx = 0.f;
     float camroty = 0.f;
 
@@ -932,8 +920,6 @@ void Update()
         std::cout << "Shadow rays: " << (float)(numrays / (stats.shadow_rays_time_in_ms * 0.001f) * 0.000001f) << "mrays/s ( " << stats.shadow_rays_time_in_ms << "ms )\n";
         g_benchmark = false;
     }
-
-    glutPostRedisplay();
 }
 
 void RenderThread(ControlData& cd)
@@ -971,7 +957,6 @@ void RenderThread(ControlData& cd)
     }
 }
 
-
 void StartRenderThreads()
 {
     for (int i = 0; i < g_cfgs.size(); ++i)
@@ -986,132 +971,273 @@ void StartRenderThreads()
     std::cout << g_cfgs.size() << " OpenCL submission threads started\n";
 }
 
+
+void OnError(int error, const char* description)
+{
+	std::cout << description << "\n";
+}
+
 int main(int argc, char * argv[])
 {
-    // Command line parsing
-    char* path = GetCmdOption(argv, argv + argc, "-p");
-    g_path = path ? path : g_path;
+	// Command line parsing
+	char* path = GetCmdOption(argv, argv + argc, "-p");
+	g_path = path ? path : g_path;
 
-    char* modelname = GetCmdOption(argv, argv + argc, "-f");
-    g_modelname = modelname ? modelname : g_modelname;
+	char* modelname = GetCmdOption(argv, argv + argc, "-f");
+	g_modelname = modelname ? modelname : g_modelname;
 
-    char* envmapname = GetCmdOption(argv, argv + argc, "-e");
-    g_envmapname = envmapname ? envmapname : g_envmapname;
+	char* envmapname = GetCmdOption(argv, argv + argc, "-e");
+	g_envmapname = envmapname ? envmapname : g_envmapname;
 
-    char* width = GetCmdOption(argv, argv + argc, "-w");
-    g_window_width = width ? atoi(width) : g_window_width;
+	char* width = GetCmdOption(argv, argv + argc, "-w");
+	g_window_width = width ? atoi(width) : g_window_width;
 
-    char* height = GetCmdOption(argv, argv + argc, "-h");
-    g_window_height = width ? atoi(height) : g_window_height;
+	char* height = GetCmdOption(argv, argv + argc, "-h");
+	g_window_height = width ? atoi(height) : g_window_height;
 
-    char* aorays = GetCmdOption(argv, argv + argc, "-ao");
-    g_ao_radius = aorays ? (float)atof(aorays) : g_ao_radius;
+	char* aorays = GetCmdOption(argv, argv + argc, "-ao");
+	g_ao_radius = aorays ? (float)atof(aorays) : g_ao_radius;
 
-    char* bounces = GetCmdOption(argv, argv + argc, "-nb");
-    g_num_bounces = bounces ? atoi(bounces) : g_num_bounces;
+	char* bounces = GetCmdOption(argv, argv + argc, "-nb");
+	g_num_bounces = bounces ? atoi(bounces) : g_num_bounces;
 
-    char* camposx = GetCmdOption(argv, argv + argc, "-cpx");
-    g_camera_pos.x = camposx ? (float)atof(camposx) : g_camera_pos.x;
+	char* camposx = GetCmdOption(argv, argv + argc, "-cpx");
+	g_camera_pos.x = camposx ? (float)atof(camposx) : g_camera_pos.x;
 
-    char* camposy = GetCmdOption(argv, argv + argc, "-cpy");
-    g_camera_pos.y = camposy ? (float)atof(camposy) : g_camera_pos.y;
+	char* camposy = GetCmdOption(argv, argv + argc, "-cpy");
+	g_camera_pos.y = camposy ? (float)atof(camposy) : g_camera_pos.y;
 
-    char* camposz = GetCmdOption(argv, argv + argc, "-cpz");
-    g_camera_pos.z = camposz ? (float)atof(camposz) : g_camera_pos.z;
+	char* camposz = GetCmdOption(argv, argv + argc, "-cpz");
+	g_camera_pos.z = camposz ? (float)atof(camposz) : g_camera_pos.z;
 
-    char* camatx = GetCmdOption(argv, argv + argc, "-tpx");
-    g_camera_at.x = camatx ? (float)atof(camatx) : g_camera_at.x;
+	char* camatx = GetCmdOption(argv, argv + argc, "-tpx");
+	g_camera_at.x = camatx ? (float)atof(camatx) : g_camera_at.x;
 
-    char* camaty = GetCmdOption(argv, argv + argc, "-tpy");
-    g_camera_at.y = camaty ? (float)atof(camaty) : g_camera_at.y;
+	char* camaty = GetCmdOption(argv, argv + argc, "-tpy");
+	g_camera_at.y = camaty ? (float)atof(camaty) : g_camera_at.y;
 
-    char* camatz = GetCmdOption(argv, argv + argc, "-tpz");
-    g_camera_at.z = camatz ? (float)atof(camatz) : g_camera_at.z;
+	char* camatz = GetCmdOption(argv, argv + argc, "-tpz");
+	g_camera_at.z = camatz ? (float)atof(camatz) : g_camera_at.z;
 
-    char* envmapmul = GetCmdOption(argv, argv + argc, "-em");
-    g_envmapmul = envmapmul ? (float)atof(envmapmul) : g_envmapmul;
+	char* envmapmul = GetCmdOption(argv, argv + argc, "-em");
+	g_envmapmul = envmapmul ? (float)atof(envmapmul) : g_envmapmul;
 
-    char* numsamples = GetCmdOption(argv, argv + argc, "-ns");
-    g_num_samples = numsamples ? atoi(numsamples) : g_num_samples;
+	char* numsamples = GetCmdOption(argv, argv + argc, "-ns");
+	g_num_samples = numsamples ? atoi(numsamples) : g_num_samples;
 
-    char* camera_aperture = GetCmdOption(argv, argv + argc, "-a");
-    g_camera_aperture = camera_aperture ? (float)atof(camera_aperture) : g_camera_aperture;
+	char* camera_aperture = GetCmdOption(argv, argv + argc, "-a");
+	g_camera_aperture = camera_aperture ? (float)atof(camera_aperture) : g_camera_aperture;
 
-    char* camera_dist = GetCmdOption(argv, argv + argc, "-fd");
-    g_camera_focus_distance = camera_dist ? (float)atof(camera_dist) : g_camera_focus_distance;
+	char* camera_dist = GetCmdOption(argv, argv + argc, "-fd");
+	g_camera_focus_distance = camera_dist ? (float)atof(camera_dist) : g_camera_focus_distance;
 
-    char* camera_focal_length = GetCmdOption(argv, argv + argc, "-fl");
-    g_camera_focal_length = camera_focal_length ? (float)atof(camera_focal_length) : g_camera_focal_length;
+	char* camera_focal_length = GetCmdOption(argv, argv + argc, "-fl");
+	g_camera_focal_length = camera_focal_length ? (float)atof(camera_focal_length) : g_camera_focal_length;
 
-    char* interop = GetCmdOption(argv, argv + argc, "-interop");
-    g_interop = interop ? (atoi(interop) > 0) : g_interop;
+	char* interop = GetCmdOption(argv, argv + argc, "-interop");
+	g_interop = interop ? (atoi(interop) > 0) : g_interop;
 
-    char* cspeed = GetCmdOption(argv, argv + argc, "-cs");
-    g_cspeed = cspeed ? (float)atof(cspeed) : g_cspeed;
+	char* cspeed = GetCmdOption(argv, argv + argc, "-cs");
+	g_cspeed = cspeed ? (float)atof(cspeed) : g_cspeed;
 
 
-    char* cfg = GetCmdOption(argv, argv + argc, "-config");
+	char* cfg = GetCmdOption(argv, argv + argc, "-config");
 
-    if (cfg)
-    {
-        if (strcmp(cfg, "cpu") == 0)
-            g_mode = ConfigManager::Mode::kUseSingleCpu;
-        else if (strcmp(cfg, "gpu") == 0)
-            g_mode = ConfigManager::Mode::kUseSingleGpu;
-        else if (strcmp(cfg, "mcpu") == 0)
-            g_mode = ConfigManager::Mode::kUseCpus;
-        else if (strcmp(cfg, "mgpu") == 0)
-            g_mode = ConfigManager::Mode::kUseGpus;
-        else if (strcmp(cfg, "all") == 0)
-            g_mode = ConfigManager::Mode::kUseAll;
-    }
+	if (cfg)
+	{
+		if (strcmp(cfg, "cpu") == 0)
+			g_mode = ConfigManager::Mode::kUseSingleCpu;
+		else if (strcmp(cfg, "gpu") == 0)
+			g_mode = ConfigManager::Mode::kUseSingleGpu;
+		else if (strcmp(cfg, "mcpu") == 0)
+			g_mode = ConfigManager::Mode::kUseCpus;
+		else if (strcmp(cfg, "mgpu") == 0)
+			g_mode = ConfigManager::Mode::kUseGpus;
+		else if (strcmp(cfg, "all") == 0)
+			g_mode = ConfigManager::Mode::kUseAll;
+	}
 
-    if (aorays)
-    {
-        g_num_ao_rays = atoi(aorays);
-        g_ao_enabled = true;
-    }
+	if (aorays)
+	{
+		g_num_ao_rays = atoi(aorays);
+		g_ao_enabled = true;
+	}
 
-    if (CmdOptionExists(argv, argv + argc, "-r"))
-    {
-        g_progressive = true;
-    }
+	if (CmdOptionExists(argv, argv + argc, "-r"))
+	{
+		g_progressive = true;
+	}
 
-    // GLUT Window Initialization:
-    glutInit(&argc, (char**)argv);
-    glutInitWindowSize(g_window_width, g_window_height);
-    glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
-    glutCreateWindow("App");
+	// Initialize GLFW
+	{
+		auto err = glfwInit();
+		if (err != GLFW_TRUE)
+		{
+			std::cout << "GLFW initialization failed\n";
+			return -1;
+		}
+	}
+	// Setup window
+//	glfwSetErrorCallback(OnError);
+//	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+//	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+//	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+//#if __APPLE__
+//	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+//#endif
+
+	// GLUT Window Initialization:
+	GLFWwindow* window = glfwCreateWindow(g_window_width, g_window_height, "Baikal standalone demo", nullptr, nullptr);
+	glfwMakeContextCurrent(window);
 
 #ifndef __APPLE__
-    GLenum err = glewInit();
-    if (err != GLEW_OK)
-    {
-        std::cout << "GLEW initialization failed\n";
-        return -1;
-    }
+	{
+		GLenum err = glewInit();
+		if (err != GLEW_OK)
+		{
+			std::cout << "GLEW initialization failed\n";
+			return -1;
+		}
+	}
 #endif
+
+	ImGui_ImplGlfwGL3_Init(window, true);
 
     try
     {
         InitGraphics();
         InitCl();
         InitData();
+		glfwSetMouseButtonCallback(window, OnMouseButton);
+		glfwSetCursorPosCallback(window, OnMouseMove);
+		glfwSetKeyCallback(window, OnKey);
 
-        // Register callbacks:
-        glutDisplayFunc(Render);
-        glutReshapeFunc(Reshape);
+		StartRenderThreads();
 
-        glutSpecialFunc(OnKey);
-        glutSpecialUpFunc(OnKeyUp);
-        glutKeyboardFunc(OnLetterKey);
-        glutMouseFunc(OnMouseButton);
-        glutMotionFunc(OnMouseMove);
-        glutIdleFunc(Update);
+		// Collect some scene statistics
+		auto num_triangles = 0U;
+		auto num_instances = 0U;
+		{
+			std::unique_ptr<Baikal::Iterator> shape_iter(g_scene->CreateShapeIterator());
 
-        StartRenderThreads();
+			for (shape_iter; shape_iter->IsValid(); shape_iter->Next())
+			{
+				auto shape = shape_iter->ItemAs<Baikal::Shape const>();
+				auto mesh = dynamic_cast<Baikal::Mesh const*>(shape);
 
-        glutMainLoop();
+				if (mesh)
+				{
+					num_triangles += mesh->GetNumIndices() / 3;
+				}
+				else
+				{
+					++num_instances;
+				}
+			}
+		}
+
+		bool update = false;
+		while (!glfwWindowShouldClose(window))
+		{
+			
+			ImGui_ImplGlfwGL3_NewFrame();
+			Update(update);
+			Render(window);
+			update = false;
+
+			static float aperture = 0.0f;
+			static float focal_length = 35.f;
+			static float focus_distance = 1.f;
+			static int num_bounces = 5;
+			static char const* outputs = 
+				"Color\0"
+				"World position\0"
+				"Shading normal\0"
+				"Geometric normal\0"
+				"Texture coords\0"
+				"Wire\0"
+				"Albedo\0\0";
+
+			static int output = 0;
+
+			if (g_gui_visible)
+			{
+				ImGui::SetNextWindowSizeConstraints(ImVec2(350, 390), ImVec2(350, 390));
+				ImGui::Begin("Baikal settings");
+				ImGui::Text("Use arrow keys to move");
+				ImGui::Text("PgUp/Down to climb/descent");
+				ImGui::Text("Mouse+RMB to look around");
+				ImGui::Text("F1 to hide/show GUI");
+				ImGui::Separator();
+				ImGui::Text("Device vendor: %s", g_cfgs[g_primary].context.GetDevice(0).GetVendor().c_str());
+				ImGui::Text("Device name: %s", g_cfgs[g_primary].context.GetDevice(0).GetName().c_str());
+				ImGui::Text("OpenCL: %s", g_cfgs[g_primary].context.GetDevice(0).GetVersion().c_str());
+				ImGui::Separator();
+				ImGui::Text("Scene: %s", g_modelname);
+				ImGui::Text("Unique triangles: %d", num_triangles);
+				ImGui::Text("Number of instances: %d", num_instances);
+				ImGui::Separator();
+				ImGui::SliderInt("GI bounces", &num_bounces, 1, 10);
+				ImGui::SliderFloat("Aperture (mm)", &aperture, 0.0f, 100.0f);
+				ImGui::SliderFloat("Focal length (mm)", &focal_length, 5.f, 200.0f);
+				ImGui::SliderFloat("Focus distance(m)", &focus_distance, 0.05f, 20.f);
+
+				if (aperture != g_camera_aperture * 1000.f)
+				{
+					g_camera_aperture = aperture / 1000.f;
+					g_camera->SetAperture(g_camera_aperture);
+					update = true;
+				}
+
+				if (focus_distance != g_camera_focus_distance)
+				{
+					g_camera_focus_distance = focus_distance;
+					g_camera->SetFocusDistance(g_camera_focus_distance);
+					update = true;
+				}
+
+				if (focal_length != g_camera_focal_length * 1000.f)
+				{
+					g_camera_focal_length = focal_length / 1000.f;
+					g_camera->SetFocalLength(g_camera_focal_length);
+					update = true;
+				}
+
+				if (num_bounces != g_num_bounces)
+				{
+					g_num_bounces = num_bounces;
+					for (int i = 0; i < g_cfgs.size(); ++i)
+					{
+						g_cfgs[i].renderer->SetNumBounces(g_num_bounces);
+					}
+					update = true;
+				}
+
+				if (static_cast<Baikal::Renderer::OutputType>(output) != g_ouput_type)
+				{
+					auto tmp = static_cast<Baikal::Renderer::OutputType>(output);
+
+					for (int i = 0; i < g_cfgs.size(); ++i)
+					{
+						g_cfgs[i].renderer->SetOutput(g_ouput_type, nullptr);
+						g_cfgs[i].renderer->SetOutput(tmp, g_outputs[i].output);
+						g_ouput_type = tmp;
+					}
+
+					update = true;
+				}
+
+				ImGui::Combo("Output", &output, outputs);
+				ImGui::Text(" ");
+				ImGui::Text("Frame time %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+				ImGui::Text("Renderer performance %.3f Msamples/s", (ImGui::GetIO().Framerate * g_window_width * g_window_height) / 1000000.f);
+				ImGui::End();
+				ImGui::Render();
+			}
+
+			glfwSwapBuffers(window);
+			glfwPollEvents();
+		}
 
         for (int i = 0; i < g_cfgs.size(); ++i)
         {
@@ -1120,9 +1246,12 @@ int main(int argc, char * argv[])
 
             g_ctrl[i].stop.store(true);
         }
+
+		glfwDestroyWindow(window);
     }
     catch (std::runtime_error& err)
     {
+		glfwDestroyWindow(window);
         std::cout << err.what();
         return -1;
     }

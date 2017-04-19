@@ -1,30 +1,32 @@
 project "App"
     kind "ConsoleApp"
     location "../App"
-    links {"RadeonRays", "CLW", "Calc"}
+    links {"RadeonRays", "CLW", "Calc", "glfw3"}
     files { "../App/**.inl", "../App/**.h", "../App/**.cpp", "../App/**.cl", "../App/**.fsh", "../App/**.vsh" }
 
-    includedirs{ "../RadeonRays/include", "../CLW", "." }
+    includedirs{ "../RadeonRays/include", "../CLW", ".", "../3rdparty/glfw/include"}
 
     if os.is("macosx") then
         sysincludedirs {"/usr/local/include"}
-        libdirs {"/usr/local/lib"}
-        linkoptions{ "-framework OpenGL", "-framework GLUT" }
+        libdirs {"/usr/local/lib", "../3rdparty/glfw/lib/x64"}
+        linkoptions{ "-framework OpenGL" }
         buildoptions "-std=c++11 -stdlib=libc++"
         links {"OpenImageIO"}
     end
 
     if os.is("windows") then
-        includedirs { "../3rdparty/glew/include", "../3rdparty/freeglut/include", "../3rdparty/oiio/include"  }
+        includedirs { "../3rdparty/glew/include", "../3rdparty/freeglut/include", "../3rdparty/oiio/include" }
         links {"RadeonRays",}
         if not _OPTIONS["benchmark"] then
-            links {"freeglut", "glew"}
+            links {"glew", "OpenGL32"}
 
         end
             libdirs {   "../3rdparty/glew/lib/%{cfg.platform}",
                         "../3rdparty/freeglut/lib/%{cfg.platform}",
                         "../3rdparty/embree/lib/%{cfg.platform}",
-                        "../3rdparty/oiio/lib/%{cfg.platform}"}
+                        "../3rdparty/oiio/lib/%{cfg.platform}",
+			"../3rdparty/glfw/lib/%{cfg.platform}" }
+
         configuration {"Debug"}
             links {"OpenImageIOD"}
         configuration {"Release"}
@@ -34,9 +36,9 @@ project "App"
 
     if os.is("linux") then
         buildoptions "-std=c++11"
-        links {"OpenImageIO", "pthread",}
+        links {"OpenImageIO", "pthread"}
         if not _OPTIONS["benchmark"] then
-            links{"glut", "GLEW", "GL",}
+            links{"GLEW", "GL", "glfw3"}
         end
         os.execute("rm -rf obj");
     end
@@ -95,7 +97,7 @@ project "App"
     if os.is("windows") then
         postbuildcommands  {
           'copy "..\\3rdparty\\glew\\bin\\%{cfg.platform}\\glew32.dll" "%{cfg.buildtarget.directory}"',
-          'copy "..\\3rdparty\\freeglut\\bin\\%{cfg.platform}\\freeglut.dll" "%{cfg.buildtarget.directory}"',
+          'copy "..\\3rdparty\\glfw\\bin\\%{cfg.platform}\\glfw3.dll" "%{cfg.buildtarget.directory}"',
           'copy "..\\3rdparty\\embree\\bin\\%{cfg.platform}\\embree.dll" "%{cfg.buildtarget.directory}"',
           'copy "..\\3rdparty\\embree\\bin\\%{cfg.platform}\\tbb.dll" "%{cfg.buildtarget.directory}"',
           'copy "..\\3rdparty\\oiio\\bin\\%{cfg.platform}\\OpenImageIO.dll" "%{cfg.buildtarget.directory}"',

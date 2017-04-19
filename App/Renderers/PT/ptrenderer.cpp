@@ -320,12 +320,15 @@ namespace Baikal
     
     void PtRenderer::SetOutput(OutputType type, Output* output)
     {
-		auto current_output = FindFirstNonZeroOutput();
-        
-        if (!current_output || current_output->width() < output->width() || current_output->height() < output->height())
-        {
-            ResizeWorkingSet(*output);
-        }
+		if (output)
+		{
+			auto current_output = FindFirstNonZeroOutput();
+
+			if (!current_output || current_output->width() < output->width() || current_output->height() < output->height())
+			{
+				ResizeWorkingSet(*output);
+			}
+		}
         
         Renderer::SetOutput(type, output);
     }
