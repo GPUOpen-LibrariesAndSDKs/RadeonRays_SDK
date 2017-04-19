@@ -322,8 +322,9 @@ namespace Baikal
 		if (output)
 		{
 			auto current_output = FindFirstNonZeroOutput();
+			auto required_size = output->width() * output->height();
 
-			if (!current_output || current_output->width() < output->width() || current_output->height() < output->height())
+			if (required_size > m_render_data->paths.GetElementCount())
 			{
 				ResizeWorkingSet(*output);
 			}

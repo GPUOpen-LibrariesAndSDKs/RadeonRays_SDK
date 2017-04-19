@@ -256,7 +256,8 @@ void InitGraphics()
 {
     g_shader_manager.reset(new ShaderManager());
 
-    glClearColor(0.0, 0.5, 0.0, 0.0);CHECK_GL_ERROR;
+	glGetError();
+	glClearColor(0.0, 0.5, 0.0, 0.0); CHECK_GL_ERROR;
     glDisable(GL_DEPTH_TEST);CHECK_GL_ERROR;
 
     glGenBuffers(1, &g_vertex_buffer);CHECK_GL_ERROR;
