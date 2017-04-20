@@ -163,7 +163,7 @@ namespace RadeonRays
 
 #ifdef RR_EMBED_KERNELS
 #if USE_OPENCL
-#    include <RadeonRays/src/kernelcache/kernels_cl.h>
+#    include "RadeonRays/src/kernelcache/kernels_cl.h"
 #endif
 
 #if USE_VULKAN

@@ -34,6 +34,12 @@ THE SOFTWARE.
 #include <iostream>
 #include <assert.h>
 
+#ifdef RR_EMBED_KERNELS
+#if USE_OPENCL
+#    include "RadeonRays/src/kernelcache/kernels_cl.h"
+#endif
+#endif // RR_EMBED_KERNELS
+
 #define INITIAL_TRIANGLE_CAPACITY 100000
 
 namespace RadeonRays
