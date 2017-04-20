@@ -23,7 +23,7 @@ THE SOFTWARE.
 
 #ifdef __APPLE__
 #include <OpenCL/OpenCL.h>
-#define GLFW_INCLUDE_GL3
+#define GLFW_INCLUDE_GLCOREARB
 #define GLFW_NO_GLU
 #include "GLFW/glfw3.h"
 #elif WIN32
@@ -207,10 +207,6 @@ void Render(GLFWwindow* window)
 
             glClear(GL_COLOR_BUFFER_BIT); CHECK_GL_ERROR;
             glBindVertexArray(g_vao); CHECK_GL_ERROR;
-            //glEnableClientState(GL_VERTEX_ARRAY);CHECK_GL_ERROR;
-
-
-
 
             GLuint program = g_shader_manager->GetProgram("../App/GLSL/simple");
             glUseProgram(program); CHECK_GL_ERROR;
@@ -525,178 +521,6 @@ void OnKey(GLFWwindow* window, int key, int scancode, int action, int mods)
     case GLFW_KEY_F3:
         g_benchmark = action == GLFW_PRESS ? true : g_benchmark;
         break;
-    case GLFW_KEY_F4:
-        if (!g_interop)
-        {
-            std::ostringstream oss;
-            oss << "aov_color" << g_num_samples << ".png";
-            SaveFrameBuffer(oss.str(), &g_outputs[g_primary].fdata[0]);
-            break;
-        }
-    case GLFW_KEY_PAGE_DOWN:
-    {
-        if (action == GLFW_RELEASE)
-        {
-            ++g_num_bounces;
-            for (int i = 0; i < g_cfgs.size(); ++i)
-            {
-                g_cfgs[i].renderer->SetNumBounces(g_num_bounces);
-                g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
-            }
-            g_samplecount = 0;
-            break;
-        }
-    }
-    case GLFW_KEY_PAGE_UP:
-    {
-        if (action == GLFW_RELEASE)
-        {
-            if (g_num_bounces > 1)
-            {
-                --g_num_bounces;
-                for (int i = 0; i < g_cfgs.size(); ++i)
-                {
-                    g_cfgs[i].renderer->SetNumBounces(g_num_bounces);
-                    g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
-                }
-                g_samplecount = 0;
-            }
-            break;
-        }
-    }
-    default:
-        break;
-    }
-}
-
-
-void OnLetterKey(unsigned char key, int x, int y)
-{
-    switch (key)
-    {
-    case 'w':
-    {
-        float focal_length = g_camera->GetFocalLength();
-        focal_length += 0.001f;
-        g_camera->SetFocalLength(focal_length);
-
-        for (int i = 0; i < g_cfgs.size(); ++i)
-        {
-            g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
-        }
-
-        break;
-    }
-
-    case 's':
-    {
-        float focal_length = g_camera->GetFocalLength();
-
-        if (focal_length > 0.f)
-        {
-            focal_length -= 0.001f;
-            g_camera->SetFocalLength(focal_length);
-
-            for (int i = 0; i < g_cfgs.size(); ++i)
-            {
-                g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
-            }
-        }
-
-        break;
-    }
-
-    case 'q':
-    {
-
-        float aperture = g_camera->GetAperture();
-
-        if (aperture == 0.f)
-        {
-            g_camera->SetAperture(0.025f);
-        }
-        else
-        {
-            g_camera->SetAperture(0.0f);
-        }
-
-        for (int i = 0; i < g_cfgs.size(); ++i)
-        {
-            g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
-        }
-
-        break;
-    }
-
-    case 'd':
-    {
-        float aperture = g_camera->GetAperture();
-
-        if (aperture > 0.f)
-        {
-            aperture -= 0.001f;
-            g_camera->SetAperture(aperture);
-
-            for (int i = 0; i < g_cfgs.size(); ++i)
-            {
-                g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
-            }
-        }
-
-        break;
-    }
-
-    case 'a':
-    {
-        float aperture = g_camera->GetAperture();
-
-        if (aperture < 0.2f)
-        {
-            aperture += 0.001f;
-            g_camera->SetAperture(aperture);
-
-            for (int i = 0; i < g_cfgs.size(); ++i)
-            {
-                g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
-            }
-        }
-
-        break;
-    }
-
-    case 'z':
-    {
-        float focus_dist = g_camera->GetFocusDistance();
-
-        if (focus_dist > 0.f)
-        {
-            focus_dist -= 0.1f;
-            g_camera->SetFocusDistance(focus_dist);
-
-            for (int i = 0; i < g_cfgs.size(); ++i)
-            {
-                g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
-            }
-        }
-
-        break;
-    }
-
-    case 'x':
-    {
-        float focus_dist = g_camera->GetFocusDistance();
-
-        focus_dist += 0.1f;
-        g_camera->SetFocusDistance(focus_dist);
-
-        for (int i = 0; i < g_cfgs.size(); ++i)
-        {
-            g_cfgs[i].renderer->Clear(float3(0, 0, 0), *g_outputs[i].output);
-        }
-
-        break;
-    }
-
     default:
         break;
     }
@@ -1135,7 +959,7 @@ int main(int argc, char * argv[])
         {
             std::unique_ptr<Baikal::Iterator> shape_iter(g_scene->CreateShapeIterator());
 
-            for (shape_iter; shape_iter->IsValid(); shape_iter->Next())
+            for (; shape_iter->IsValid(); shape_iter->Next())
             {
                 auto shape = shape_iter->ItemAs<Baikal::Shape const>();
                 auto mesh = dynamic_cast<Baikal::Mesh const*>(shape);

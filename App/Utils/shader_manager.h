@@ -24,7 +24,9 @@ THE SOFTWARE.
 
 #ifdef __APPLE__
 #include <OpenCL/OpenCL.h>
-#include <OpenGL/gl3.h>
+#define GLFW_INCLUDE_GLCOREARB
+#define GLFW_NO_GLU
+#include "GLFW/glfw3.h"
 #elif WIN32
 #define NOMINMAX
 #include <Windows.h>

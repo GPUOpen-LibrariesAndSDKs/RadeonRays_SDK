@@ -321,7 +321,6 @@ namespace Baikal
     {
         if (output)
         {
-            auto current_output = FindFirstNonZeroOutput();
             auto required_size = output->width() * output->height();
 
             if (required_size > m_render_data->paths.GetElementCount())
