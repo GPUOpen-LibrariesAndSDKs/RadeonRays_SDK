@@ -77,7 +77,7 @@ project "RadeonRays"
 
         if _OPTIONS["use_opencl"] then
             os.execute( "python ../Tools/scripts/stringify.py " ..
-                                os.getcwd() .. "../RadeonRays/src/kernels/CL/ "  ..
+                                os.getcwd() .. "/../RadeonRays/src/kernels/CL/ "  ..
                                 ".cl " ..
                                 "opencl " ..
                                  "> ./src/kernelcache/kernels_cl.h"
