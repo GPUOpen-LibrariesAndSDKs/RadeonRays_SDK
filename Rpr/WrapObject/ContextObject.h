@@ -60,7 +60,7 @@ public:
 
     //render
     void Render();
-    void RenderTile();
+    void RenderTile(rpr_uint xmin, rpr_uint xmax, rpr_uint ymin, rpr_uint ymax);
 
     //create methods
     SceneObject* CreateScene();
@@ -81,5 +81,7 @@ public:
 private:
     //render configs
     std::vector<ConfigManager::Config> m_cfgs;
+    //know framefubbers used as AOV outputs
+    std::set<FramebufferObject*> m_output_framebuffers;
     SceneObject* m_current_scene;
 };

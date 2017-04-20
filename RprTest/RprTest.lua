@@ -16,7 +16,7 @@ project "RprTest"
     if os.is("windows") then
         includedirs { "../3rdparty/oiio/include"  }
         links {"RadeonRays",}
-        links {"freeglut", "glew"}
+        links {"glew"}
         libdirs {   "../3rdparty/glew/lib/%{cfg.platform}", 
                     "../3rdparty/freeglut/lib/%{cfg.platform}", 
                     "../3rdparty/embree/lib/%{cfg.platform}", 

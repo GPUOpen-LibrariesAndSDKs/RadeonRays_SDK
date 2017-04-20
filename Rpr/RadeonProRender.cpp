@@ -324,9 +324,18 @@ rpr_int rprContextRender(rpr_context in_context)
     return RPR_SUCCESS;
 }
 
-rpr_int rprContextRenderTile(rpr_context context, rpr_uint xmin, rpr_uint xmax, rpr_uint ymin, rpr_uint ymax)
+rpr_int rprContextRenderTile(rpr_context in_context, rpr_uint xmin, rpr_uint xmax, rpr_uint ymin, rpr_uint ymax)
 {
-    UNIMLEMENTED_FUNCTION
+    //cast data
+    ContextObject* context = WrapObject::Cast<ContextObject>(in_context);
+    if (!context)
+    {
+        return RPR_ERROR_INVALID_CONTEXT;
+    }
+
+    context->RenderTile(xmin, xmax, ymin, ymax);
+
+    return RPR_SUCCESS;
 }
 
 rpr_int rprContextClearMemory(rpr_context context)

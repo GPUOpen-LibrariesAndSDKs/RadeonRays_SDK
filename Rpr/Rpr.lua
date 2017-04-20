@@ -3,7 +3,7 @@ project "Rpr"
     location "../Rpr"
     links {"RadeonRays", "CLW", "Calc"}
     files { "../Rpr/**.h", "../Rpr/**.cpp", "../App/**.h", "../App/**.cpp" }
-    removefiles{"../App/main.cpp","../App/main_benchmark.cpp"}
+    removefiles{"../App/main.cpp","../App/main_benchmark.cpp", "../App/ImGUI/imgui_impl_glfw_gl3.cpp"}
     includedirs{ "../RadeonRays/include", "../CLW", "../App", "." }
 
     if os.is("macosx") then
@@ -15,11 +15,11 @@ project "Rpr"
     end
 
     if os.is("windows") then
-        includedirs { "../3rdparty/glew/include", "../3rdparty/freeglut/include", "../3rdparty/oiio/include"  }
+        includedirs { "../3rdparty/glew/include", "../3rdparty/oiio/include"  }
         linkoptions { '/DEF:"RadeonProRender.def"' }
 
         links {"RadeonRays",}
-        links {"freeglut", "glew"}
+        links {"glew", "OpenGL32"}
         libdirs {   "../3rdparty/glew/lib/%{cfg.platform}", 
                     "../3rdparty/freeglut/lib/%{cfg.platform}", 
                     "../3rdparty/embree/lib/%{cfg.platform}", 
@@ -78,7 +78,6 @@ project "Rpr"
     if os.is("windows") then
         postbuildcommands  { 
           'copy "..\\3rdparty\\glew\\bin\\%{cfg.platform}\\glew32.dll" "%{cfg.buildtarget.directory}"', 
-          'copy "..\\3rdparty\\freeglut\\bin\\%{cfg.platform}\\freeglut.dll" "%{cfg.buildtarget.directory}"', 
           'copy "..\\3rdparty\\embree\\bin\\%{cfg.platform}\\embree.dll" "%{cfg.buildtarget.directory}"',
           'copy "..\\3rdparty\\embree\\bin\\%{cfg.platform}\\tbb.dll" "%{cfg.buildtarget.directory}"',
           'copy "..\\3rdparty\\oiio\\bin\\%{cfg.platform}\\OpenImageIO.dll" "%{cfg.buildtarget.directory}"',
