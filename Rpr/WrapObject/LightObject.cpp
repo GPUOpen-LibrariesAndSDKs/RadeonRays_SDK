@@ -23,12 +23,12 @@ THE SOFTWARE.
 #include "WrapObject/MaterialObject.h"
 #include "WrapObject/Exception.h"
 #include "radeon_rays.h"
-#include "App/Scene/light.h"
+#include "App/SceneGraph/light.h"
 #include "RadeonProRender.h"
 
 void LightObject::SetTransform(const RadeonRays::matrix& t)
 {
-    m_light->SetPosition(RadeonRays::float3(t.m30, t.m31, t.m32, t.m33));
+    m_light->SetPosition(RadeonRays::float3(t.m03, t.m13, t.m23, t.m33));
     //float3(0, 0, -1) is a default direction vector
     m_light->SetDirection(t * RadeonRays::float3(0, 0, -1));
 }
@@ -53,6 +53,7 @@ RadeonRays::matrix LightObject::GetTransform()
 LightObject::LightObject(Type type)
     : m_type(type)
     , m_light(nullptr)
+    , m_env_tex(nullptr)
 {
     switch (type)
     {
@@ -84,20 +85,47 @@ void LightObject::SetRadiantPower(const RadeonRays::float3& p)
     m_light->SetEmittedRadiance(p);
 }
 
+RadeonRays::float3 LightObject::GetRadiantPower()
+{
+    return m_light->GetEmittedRadiance();
+}
+
+
 void LightObject::SetSpotConeShape(const RadeonRays::float2& cone)
 {
     Baikal::SpotLight* spot = dynamic_cast<Baikal::SpotLight*>(m_light);
     spot->SetConeShape(cone);
 }
 
+RadeonRays::float2 LightObject::GetSpotConeShape()
+{
+    Baikal::SpotLight* spot = dynamic_cast<Baikal::SpotLight*>(m_light);
+    return spot->GetConeShape();
+}
+
+
 void LightObject::SetEnvTexture(MaterialObject* img)
 {
     Baikal::ImageBasedLight* ibl = dynamic_cast<Baikal::ImageBasedLight*>(m_light);
     ibl->SetTexture(img->GetTexture());
+    m_env_tex = img;
 }
+
+MaterialObject* LightObject::GetEnvTexture()
+{
+    return m_env_tex;
+}
+
 
 void LightObject::SetEnvMultiplier(rpr_float mult)
 {
     Baikal::ImageBasedLight* ibl = dynamic_cast<Baikal::ImageBasedLight*>(m_light);
     ibl->SetMultiplier(mult);
 }
+
+rpr_float LightObject::GetEnvMultiplier()
+{
+    Baikal::ImageBasedLight* ibl = dynamic_cast<Baikal::ImageBasedLight*>(m_light);
+    return ibl->GetMultiplier();
+}
+

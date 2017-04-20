@@ -22,9 +22,9 @@ THE SOFTWARE.
 #pragma once
 
 #include "WrapObject/WrapObject.h"
-#include "Scene/scene1.h"
-#include "Scene/shape.h"
-#include "Scene/light.h"
+#include "SceneGraph/scene1.h"
+#include "SceneGraph/shape.h"
+#include "SceneGraph/light.h"
 
 #include <vector>
 
@@ -56,6 +56,9 @@ public:
 
 	void GetShapeList(void* out_list);
 	size_t GetShapeCount() { return m_scene->GetNumShapes(); }
+    
+    void GetLightList(void* out_list);
+    size_t GetLightCount() { return m_scene->GetNumLights(); }
 
 	void AddEmissive();
 	void RemoveEmissive();
@@ -64,6 +67,7 @@ private:
     Baikal::Scene1* m_scene;
     CameraObject* m_current_camera;
 	std::vector<Baikal::AreaLight*> m_emmisive_lights;//area lights fro emissive shapes
-	std::vector<ShapeObject*> m_shapes;
+    std::vector<ShapeObject*> m_shapes;
+    std::vector<LightObject*> m_lights;
 
 };

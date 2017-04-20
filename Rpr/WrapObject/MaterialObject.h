@@ -27,6 +27,7 @@ THE SOFTWARE.
 
 #include <string>
 #include <map>
+#include <set>
 
 namespace Baikal
 {
@@ -92,15 +93,30 @@ public:
     Type GetType() { return m_type; }
     Baikal::Texture* GetTexture() { return m_tex; }
     Baikal::Material* GetMaterial() { return m_mat; }
+    //rprMaterialGetInfo:
+    uint64_t GetInputCount();
+    rpr_uint GetInputType(int i);
+    void GetInput(int i, void* out, size_t* out_size);
+    std::string GetInputName(int i);
+
+    //rprImageGetInfo:
+    rpr_image_desc GetTextureDesc() const;
+    char const* GetTextureData() const;
+    rpr_image_format GetTextureFormat() const;
+
 private:
     void Clear();
     bool CheckInputMaterial();
 
+    //handle input materials, it need for correct rprMaterialGet* methods.
+    //Note: input_name is RPR input name
+    void SetInput(MaterialObject* input_mat, const std::string& input_name);
+
     //add and remove output materials
-    void AddOutput(MaterialObject* mat, const std::string& input_name);
-    void RemoveOutput(const std::string& input_name);
+    void AddOutput(MaterialObject* mat);
+    void RemoveOutput(MaterialObject* mat);
     void Notify();
-    void Update(MaterialObject* mat, const std::string& input_name);
+    void Update(MaterialObject* mat);
 
     //type - is type of input material
     std::string TranslatePropName(const std::string& in, Type type = Type::kDiffuse);
@@ -112,6 +128,9 @@ private:
         Baikal::Texture* m_tex;
         Baikal::Material* m_mat;
     };
-    //material + input name
-    std::map<std::string, MaterialObject*> m_out_mats;
+    //output materials
+    std::set<MaterialObject*> m_out_mats;
+
+    //input material + RPR input name. Required for rprMaterialGet* methods.
+    std::map<std::string, MaterialObject*> m_inputs;
 };

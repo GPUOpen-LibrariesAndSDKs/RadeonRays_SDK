@@ -24,8 +24,8 @@ THE SOFTWARE.
 #include "WrapObject/WrapObject.h"
 #include "WrapObject/LightObject.h"
 
-#include "App/config_manager.h"
-#include "App/PT/ptrenderer.h"
+#include "App/Utils/config_manager.h"
+#include "App/Renderers/PT/ptrenderer.h"
 
 #include <vector>
 #include "RadeonProRender.h"

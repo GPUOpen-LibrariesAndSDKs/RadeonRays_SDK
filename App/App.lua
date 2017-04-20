@@ -70,7 +70,7 @@ project "App"
     if _OPTIONS["benchmark"] then
         defines{"APP_BENCHMARK"}
         removefiles{"../App/main.cpp",
-                    "../App/shader_manager.cpp",}
+                    "../App/Utils/shader_manager.cpp",}
     else
         removefiles {"../App/main_benchmark.cpp"}
     end
