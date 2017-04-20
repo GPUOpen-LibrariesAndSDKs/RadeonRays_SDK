@@ -457,12 +457,6 @@ void InitData()
     g_cfgs[g_primary].renderer->Clear(float3(0, 0, 0), *g_outputs[g_primary].output);
 }
 
-void Reshape(GLint w, GLint h)
-{
-    // Disable window resize
-    //glutReshapeWindow(g_window_width, g_window_height);
-}
-
 void OnMouseMove(GLFWwindow* window, double x, double y)
 {
     if (g_is_mouse_tracking)
@@ -917,6 +911,7 @@ int main(int argc, char * argv[])
     }
     // Setup window
     glfwSetErrorCallback(OnError);
+    glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
