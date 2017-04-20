@@ -190,6 +190,24 @@ float fast_intersect_triangle(ray r, float3 v1, float3 v2, float3 v3, float t_ma
     }
 }
 
+INLINE
+float3 safe_invdir(ray r)
+{
+#ifdef USE_SAFE_MATH
+    float const dirx = r.d.x;
+    float const diry = r.d.y;
+    float const dirz = r.d.z;
+    float const ooeps = exp2(-80.0f); // Avoid div by zero.
+    float3 invdir;
+    invdir.x = 1.0f / (fabs(dirx) > ooeps ? dirx : copysign(ooeps, dirx));
+    invdir.y = 1.0f / (fabs(diry) > ooeps ? diry : copysign(ooeps, diry));
+    invdir.z = 1.0f / (fabs(dirz) > ooeps ? dirz : copysign(ooeps, dirz));
+    return invdir;
+#else
+    return native_recip(r.d.xyz);
+#endif
+}
+
 // Intersect rays vs bbox and return intersection span. 
 // Intersection criteria is ret.x <= ret.y
 INLINE
@@ -200,7 +218,7 @@ float2 fast_intersect_bbox1(bbox box, float3 invdir, float3 oxinvdir, float t_ma
     float3 const tmax = max(f, n);
     float3 const tmin = min(f, n);
     float const t1 = min(min3(tmax.x, tmax.y, tmax.z), t_max);
-    float const t0 = max(max3(tmin.x, tmin.y, tmin.z), 0.001f);
+    float const t0 = max(max3(tmin.x, tmin.y, tmin.z), 0.f);
     return make_float2(t0, t1);
 }
 
