@@ -30,10 +30,10 @@ THE SOFTWARE.
 #include "WrapObject/MaterialObject.h"
 #include "WrapObject/Exception.h"
 
-#include "Scene/scene1.h"
-#include "Scene/iterator.h"
-#include "Scene/material.h"
-#include "Scene/light.h"
+#include "SceneGraph/scene1.h"
+#include "SceneGraph/iterator.h"
+#include "SceneGraph/material.h"
+#include "SceneGraph/light.h"
 
 namespace
 {
@@ -93,6 +93,13 @@ namespace
     { RPR_CONTEXT_CPU_NAME,{ "cpuname", "Name of the CPU in context. Constant value.", RPR_PARAMETER_TYPE_STRING } },
     };
 
+    std::map<uint32_t, Baikal::Renderer::OutputType> kOutputTypeMap = { {RPR_AOV_COLOR, Baikal::Renderer::OutputType::kColor},
+                                                                        {RPR_AOV_GEOMETRIC_NORMAL, Baikal::Renderer::OutputType::kWorldGeometricNormal},
+                                                                        {RPR_AOV_SHADING_NORMAL, Baikal::Renderer::OutputType::kWorldShadingNormal},
+                                                                        {RPR_AOV_UV, Baikal::Renderer::OutputType::kUv},
+                                                                        {RPR_AOV_WORLD_COORDINATE, Baikal::Renderer::OutputType::kWorldPosition}, 
+                                                                        };
+
 }// anonymous
 
 ContextObject::ContextObject(rpr_creation_flags creation_flags)
@@ -146,53 +153,50 @@ void ContextObject::GetRenderStatistics(void * out_data, size_t * out_size_ret) 
 
 void ContextObject::SetAOV(rpr_int in_aov, FramebufferObject* buffer)
 {
-    switch (in_aov)
+    FramebufferObject* old_buf = GetAOV(in_aov);
+
+    auto aov = kOutputTypeMap.find(in_aov);
+    if (aov == kOutputTypeMap.end())
     {
-    case RPR_AOV_COLOR:
-        for (auto& c : m_cfgs)
-            c.renderer->SetOutput(buffer->GetOutput());
-        break;
-    case RPR_AOV_DEPTH:
-    case RPR_AOV_GEOMETRIC_NORMAL:
-    case RPR_AOV_MATERIAL_IDX:
-    case RPR_AOV_MAX:
-    case RPR_AOV_OBJECT_GROUP_ID:
-    case RPR_AOV_OBJECT_ID:
-    case RPR_AOV_OPACITY:
-    case RPR_AOV_SHADING_NORMAL:
-    case RPR_AOV_UV:
-    case RPR_AOV_WORLD_COORDINATE:
-        throw Exception(RPR_ERROR_UNSUPPORTED, "Context: only RPR_AOV_COLOR supported now");
-    default:
-        throw Exception(RPR_ERROR_INVALID_PARAMETER, "Context: unrecognized AOV");
+        throw Exception(RPR_ERROR_UNIMPLEMENTED, "Context: requested AOV not implemented.");
     }
+    
+    for (auto& c : m_cfgs)
+    {
+        c.renderer->SetOutput(aov->second, buffer->GetOutput());
+    }
+
+    //update registered output framebuffer
+    m_output_framebuffers.erase(old_buf);
+    m_output_framebuffers.insert(buffer);
 }
 
 
 FramebufferObject* ContextObject::GetAOV(rpr_int in_aov)
 {
-    switch (in_aov)
+    auto aov = kOutputTypeMap.find(in_aov);
+    if (aov == kOutputTypeMap.end())
     {
-    case RPR_AOV_COLOR:
-        //TODO: implement
-        throw Exception(RPR_ERROR_UNIMPLEMENTED, "Context: unimplemented");
-        break;
-    case RPR_AOV_DEPTH:
-    case RPR_AOV_GEOMETRIC_NORMAL:
-    case RPR_AOV_MATERIAL_IDX:
-    case RPR_AOV_MAX:
-    case RPR_AOV_OBJECT_GROUP_ID:
-    case RPR_AOV_OBJECT_ID:
-    case RPR_AOV_OPACITY:
-    case RPR_AOV_SHADING_NORMAL:
-    case RPR_AOV_UV:
-    case RPR_AOV_WORLD_COORDINATE:
-        throw Exception(RPR_ERROR_UNSUPPORTED, "Context: only RPR_AOV_COLOR supported now");
-    default:
-        throw Exception(RPR_ERROR_INVALID_PARAMETER, "Context: unrecognized AOV");
+        throw Exception(RPR_ERROR_UNIMPLEMENTED, "Context: requested AOV not implemented.");
     }
 
-    return nullptr;
+    Baikal::Output* out = m_cfgs[0].renderer->GetOutput(aov->second);
+    if (!out)
+    {
+        return nullptr;
+    }
+    
+    //find framebuffer
+    auto it = find_if(m_output_framebuffers.begin(), m_output_framebuffers.end(), [out](FramebufferObject* buff)
+    {
+        return buff->GetOutput() == out;
+    });
+    if (it == m_output_framebuffers.end())
+    {
+        throw Exception(RPR_ERROR_INTERNAL_ERROR, "Context: unknown framebuffer.");
+    }
+
+    return *it;
 }
 
 void ContextObject::Render()
@@ -206,6 +210,20 @@ void ContextObject::Render()
     }
 
 }
+
+void ContextObject::RenderTile(rpr_uint xmin, rpr_uint xmax, rpr_uint ymin, rpr_uint ymax)
+{
+    m_current_scene->AddEmissive();
+    const RadeonRays::int2 origin = { (int)xmin, (int)ymin };
+    const RadeonRays::int2 size = { (int)xmax - (int)xmin, (int)ymax - (int)ymin };
+    //render
+    for (auto& c : m_cfgs)
+    {
+        c.renderer->RenderTile(*m_current_scene->GetScene(), origin, size);
+    }
+}
+
+
 SceneObject* ContextObject::CreateScene()
 {
     return new SceneObject();

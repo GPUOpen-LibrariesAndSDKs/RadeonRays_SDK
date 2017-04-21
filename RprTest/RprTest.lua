@@ -5,20 +5,18 @@ project "RprTest"
     files { "../RprTest/**.h", "../RprTest/**.cpp", "../RprTest/**.cl", "../RprTest/**.fsh", "../RprTest/**.vsh" }
 
     includedirs{ "../Rpr", ".", "../RprLoadStore/" }
-    libdirs { "../Rpr/RprLoadStore/lib", }
 
     if os.is("macosx") then
         sysincludedirs {"/usr/local/include"}
         libdirs {"/usr/local/lib"}
-        linkoptions{ "-framework OpenGL", "-framework GLUT" }
         buildoptions "-std=c++11 -stdlib=libc++"
         links {"OpenImageIO"}
     end
 
     if os.is("windows") then
-        includedirs { "../3rdparty/glew/include", "../3rdparty/freeglut/include", "../3rdparty/oiio/include"  }
+        includedirs { "../3rdparty/oiio/include"  }
         links {"RadeonRays",}
-        links {"freeglut", "glew"}
+        links {"glew"}
         libdirs {   "../3rdparty/glew/lib/%{cfg.platform}", 
                     "../3rdparty/freeglut/lib/%{cfg.platform}", 
                     "../3rdparty/embree/lib/%{cfg.platform}", 
@@ -33,7 +31,6 @@ project "RprTest"
     if os.is("linux") then
         buildoptions "-std=c++11"
         links {"OpenImageIO", "pthread",}
-        links{"glut", "GLEW", "GL",}
         os.execute("rm -rf obj");
     end
 

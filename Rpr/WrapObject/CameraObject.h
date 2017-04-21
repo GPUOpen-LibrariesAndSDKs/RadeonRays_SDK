@@ -22,7 +22,7 @@ THE SOFTWARE.
 #pragma once
 
 #include "WrapObject.h"
-#include "Scene/camera.h"
+#include "SceneGraph/camera.h"
 
 #include "math/matrix.h"
 #include "RadeonProRender.h"
@@ -40,15 +40,28 @@ public:
     virtual ~CameraObject();
 
     //camera data
-    void SetFocalLength(rpr_float flen) { m_cam->SetFocalLength(flen); }
+    //Note: some values are converted between meters and mm
+    void SetFocalLength(rpr_float flen) { m_cam->SetFocalLength(flen / 1000.f); }
+    rpr_float GetFocalLength() { return m_cam->GetFocalLength() * 1000.f; }
+
     void SetFocusDistance(rpr_float fdist) { m_cam->SetFocusDistance(fdist); }
-    void SetSensorSize(RadeonRays::float2 size) { m_cam->SetSensorSize(size); }
+    rpr_float GetFocusDistance() { return m_cam->GetFocusDistance(); }
+
+    void SetSensorSize(RadeonRays::float2 size) { m_cam->SetSensorSize(size * 0.001f); }
+    RadeonRays::float2 GetSensorSize() { return m_cam->GetSensorSize() * 1000.f; }
+
+    void GetLookAt(RadeonRays::float3& eye,
+                RadeonRays::float3& at,
+                RadeonRays::float3& up);
     void LookAt(RadeonRays::float3 const& eye,
         RadeonRays::float3 const& at,
         RadeonRays::float3 const& up) { m_cam->LookAt(eye, at, up); };
 
-    void SetAperture(rpr_float fstop) { m_cam->SetAperture(fstop); }
-	void SetTransform(const RadeonRays::matrix& m);
+    void SetAperture(rpr_float fstop) { m_cam->SetAperture(fstop / 1000.f); }
+    rpr_float GetAperture() { return m_cam->GetAperture() * 1000.f; }
+
+    void SetTransform(const RadeonRays::matrix& m);
+
     Baikal::Camera* GetCamera() { return m_cam; }
 private:
     Baikal::PerspectiveCamera* m_cam;

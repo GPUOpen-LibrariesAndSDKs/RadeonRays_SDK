@@ -3,12 +3,12 @@
 #include "../RadeonRays/include/math/mathutils.h"
 #include "../RprLoadStore/RprLoadStore.h"
 
+#include <map>
 #include <cassert>
 #include <fstream>
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <iostream>
-#include "ObjViewer.h"
 
 using namespace RadeonRays;
 
@@ -296,7 +296,7 @@ void SimpleRenderTest()
     rpr_light light = NULL; status = rprContextCreateSpotLight(context, &light);
     assert(status == RPR_SUCCESS);
     matrix lightm = translation(float3(0, 16, 0)) * rotation_x(M_PI_2);
-    status = rprLightSetTransform(light, false, &lightm.m00);
+    status = rprLightSetTransform(light, true, &lightm.m00);
     assert(status == RPR_SUCCESS);
     status = rprSpotLightSetConeShape(light, M_PI_4, M_PI * 2.f / 3.f);
     assert(status == RPR_SUCCESS);
@@ -533,7 +533,7 @@ void ComplexRenderTest()
     rpr_light light = NULL; status = rprContextCreatePointLight(context, &light);
     assert(status == RPR_SUCCESS);
     matrix lightm = translation(float3(0, 6, 0)) * rotation_z(3.14f);
-    status = rprLightSetTransform(light, false, &lightm.m00);
+    status = rprLightSetTransform(light, true, &lightm.m00);
     assert(status == RPR_SUCCESS);
     status = rprPointLightSetRadiantPower3f(light, 100, 100, 100);
     assert(status == RPR_SUCCESS);
@@ -897,7 +897,7 @@ void DefaultMaterialTest()
     rpr_light light = NULL; status = rprContextCreatePointLight(context, &light);
     assert(status == RPR_SUCCESS);
     matrix lightm = translation(float3(0, 0, 6));
-    status = rprLightSetTransform(light, false, &lightm.m00);
+    status = rprLightSetTransform(light, true, &lightm.m00);
     assert(status == RPR_SUCCESS);
     status = rprPointLightSetRadiantPower3f(light, 200, 200, 200);
     assert(status == RPR_SUCCESS);
@@ -1021,7 +1021,7 @@ void NullShaderTest()
     rpr_light light = NULL; status = rprContextCreatePointLight(context, &light);
     assert(status == RPR_SUCCESS);
     matrix lightm = translation(float3(0, 0, 6));
-    status = rprLightSetTransform(light, false, &lightm.m00);
+    status = rprLightSetTransform(light, true, &lightm.m00);
     assert(status == RPR_SUCCESS);
     status = rprPointLightSetRadiantPower3f(light, 200, 200, 200);
     assert(status == RPR_SUCCESS);
@@ -1227,7 +1227,7 @@ void TiledRender()
     rpr_light light = NULL; status = rprContextCreatePointLight(context, &light);
     assert(status == RPR_SUCCESS);
     matrix lightm = translation(float3(0, 6, 0));
-    status = rprLightSetTransform(light, false, &lightm.m00);
+    status = rprLightSetTransform(light, true, &lightm.m00);
     assert(status == RPR_SUCCESS);
     status = rprPointLightSetRadiantPower3f(light, 60, 60, 60);
     assert(status == RPR_SUCCESS);
@@ -1249,7 +1249,8 @@ void TiledRender()
     //render
     for (int i = 0; i < kRenderIterations; ++i)
     {
-        status = rprContextRenderTile(context, 10, 750, 10, 550);
+        status = rprContextRenderTile(context, 10, desc.fb_width/2, 10, desc.fb_height/2);
+        //status = rprContextRender(context);
         assert(status == RPR_SUCCESS);
     }
 
@@ -1276,6 +1277,272 @@ void TiledRender()
     assert(status == RPR_SUCCESS);
 }
 
+void AOVTest()
+{
+    rpr_int status = RPR_SUCCESS;
+
+    //context, scene and mat. system
+    rpr_context	context;
+    status = rprCreateContext(RPR_API_VERSION, nullptr, 0, RPR_CREATION_FLAGS_ENABLE_GPU0, NULL, NULL, &context);
+    assert(status == RPR_SUCCESS);
+    rpr_material_system matsys = NULL;
+    status = rprContextCreateMaterialSystem(context, 0, &matsys);
+    assert(status == RPR_SUCCESS);
+    rpr_scene scene = NULL; status = rprContextCreateScene(context, &scene);
+    assert(status == RPR_SUCCESS);
+
+    struct Vertex
+    {
+        rpr_float pos[3];
+        rpr_float norm[3];
+        rpr_float tex[2];
+    };
+
+    Vertex cube[] =
+    {
+        { -1.0f, 1.0f, -1.0f, 0.f, 1.f, 0.f, 0.0f, 0.0f },
+        { 1.0f, 1.0f, -1.0f, 0.f, 1.f, 0.f, 1.0f, 0.0f },
+        { 1.0f, 1.0f, 1.0f , 0.f, 1.f, 0.f, 1.0f, 1.0f },
+        { -1.0f, 1.0f, 1.0f , 0.f, 1.f, 0.f, 0.0f, 1.0f },
+
+        { -1.0f, -1.0f, -1.0f , 0.f, -1.f, 0.f, 0.0f, 0.0f },
+        { 1.0f, -1.0f, -1.0f , 0.f, -1.f, 0.f, 1.0f, 0.0f },
+        { 1.0f, -1.0f, 1.0f , 0.f, -1.f, 0.f, 1.0f, 1.0f },
+        { -1.0f, -1.0f, 1.0f , 0.f, -1.f, 0.f, 0.0f, 1.0f },
+
+        { -1.0f, -1.0f, 1.0f , -1.f, 0.f, 0.f, 0.0f, 0.0f },
+        { -1.0f, -1.0f, -1.0f , -1.f, 0.f, 0.f, 1.0f, 0.0f },
+        { -1.0f, 1.0f, -1.0f , -1.f, 0.f, 0.f, 1.0f, 1.0f },
+        { -1.0f, 1.0f, 1.0f , -1.f, 0.f, 0.f, 0.0f, 1.0f },
+
+        { 1.0f, -1.0f, 1.0f ,  1.f, 0.f, 0.f, 0.0f, 0.0f },
+        { 1.0f, -1.0f, -1.0f ,  1.f, 0.f, 0.f, 1.0f, 0.0f },
+        { 1.0f, 1.0f, -1.0f ,  1.f, 0.f, 0.f, 1.0f, 1.0f },
+        { 1.0f, 1.0f, 1.0f ,  1.f, 0.f, 0.f, 0.0f, 1.0f },
+
+        { -1.0f, -1.0f, -1.0f ,  0.f, 0.f, -1.f ,0.0f, 0.0f },
+        { 1.0f, -1.0f, -1.0f ,  0.f, 0.f, -1.f ,1.0f, 0.0f },
+        { 1.0f, 1.0f, -1.0f ,  0.f, 0.f, -1.f, 1.0f, 1.0f },
+        { -1.0f, 1.0f, -1.0f ,  0.f, 0.f, -1.f, 0.0f, 1.0f },
+
+        { -1.0f, -1.0f, 1.0f , 0.f, 0.f, 1.f,0.0f, 0.0f },
+        { 1.0f, -1.0f, 1.0f , 0.f, 0.f,  1.f, 1.0f, 0.0f },
+        { 1.0f, 1.0f, 1.0f , 0.f, 0.f, 1.f, 1.0f, 1.0f },
+        { -1.0f, 1.0f, 1.0f , 0.f, 0.f, 1.f,0.0f, 1.0f },
+    };
+
+    Vertex plane[] =
+    {
+        { -15.f, 0.f, -15.f, 0.f, 1.f, 0.f, 0.f, 0.f },
+        { -15.f, 0.f,  15.f, 0.f, 1.f, 0.f, 0.f, 1.f },
+        { 15.f, 0.f,  15.f, 0.f, 1.f, 0.f, 1.f, 1.f },
+        { 15.f, 0.f, -15.f, 0.f, 1.f, 0.f, 1.f, 0.f },
+    };
+
+    rpr_int indices[] =
+    {
+        3,1,0,
+        2,1,3,
+
+        6,4,5,
+        7,4,6,
+
+        11,9,8,
+        10,9,11,
+
+        14,12,13,
+        15,12,14,
+
+        19,17,16,
+        18,17,19,
+
+        22,20,21,
+        23,20,22
+    };
+
+    rpr_int num_face_vertices[] =
+    {
+        3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3
+    };
+
+    rpr_shape mesh = NULL; status = rprContextCreateMesh(context,
+        (rpr_float const*)&cube[0], 24, sizeof(Vertex),
+        (rpr_float const*)((char*)&cube[0] + sizeof(rpr_float) * 3), 24, sizeof(Vertex),
+        (rpr_float const*)((char*)&cube[0] + sizeof(rpr_float) * 6), 24, sizeof(Vertex),
+        (rpr_int const*)indices, sizeof(rpr_int),
+        (rpr_int const*)indices, sizeof(rpr_int),
+        (rpr_int const*)indices, sizeof(rpr_int),
+        num_face_vertices, 12, &mesh);
+
+    assert(status == RPR_SUCCESS);
+
+    rpr_shape plane_mesh = NULL; status = rprContextCreateMesh(context,
+        (rpr_float const*)&plane[0], 4, sizeof(Vertex),
+        (rpr_float const*)((char*)&plane[0] + sizeof(rpr_float) * 3), 4, sizeof(Vertex),
+        (rpr_float const*)((char*)&plane[0] + sizeof(rpr_float) * 6), 4, sizeof(Vertex),
+        (rpr_int const*)indices, sizeof(rpr_int),
+        (rpr_int const*)indices, sizeof(rpr_int),
+        (rpr_int const*)indices, sizeof(rpr_int),
+        num_face_vertices, 2, &plane_mesh);
+
+    rpr_shape mesh1 = NULL; status = rprContextCreateInstance(context, mesh, &mesh1);
+    assert(status == RPR_SUCCESS);
+
+    //translate cubes
+    matrix m = translation(float3(-2, 1, 0));
+    status = rprShapeSetTransform(mesh1, true, &m.m00);
+    assert(status == RPR_SUCCESS);
+    matrix m1 = translation(float3(2, 1, 0)) * rotation_y(0.5);
+    status = rprShapeSetTransform(mesh, true, &m1.m00);
+    assert(status == RPR_SUCCESS);
+
+    //attach shapes
+    status = rprSceneAttachShape(scene, mesh);
+    assert(status == RPR_SUCCESS);
+    status = rprSceneAttachShape(scene, mesh1);
+    assert(status == RPR_SUCCESS);
+    status = rprSceneAttachShape(scene, plane_mesh);
+    assert(status == RPR_SUCCESS);
+
+    //camera
+    rpr_camera camera = NULL; status = rprContextCreateCamera(context, &camera);
+    assert(status == RPR_SUCCESS);
+    status = rprCameraLookAt(camera, 0, 3, 10, 0, 0, 0, 0, 1, 0);
+    assert(status == RPR_SUCCESS);
+    status = rprCameraSetSensorSize(camera, 22.5f, 15.f);
+    assert(status == RPR_SUCCESS);
+    status = rprCameraSetFocalLength(camera, 35.f);
+    assert(status == RPR_SUCCESS);
+    status = rprCameraSetFStop(camera, 6.4f);
+    assert(status == RPR_SUCCESS);
+    status = rprSceneSetCamera(scene, camera);
+    assert(status == RPR_SUCCESS);
+
+    status = rprContextSetScene(context, scene);
+    assert(status == RPR_SUCCESS);
+
+    //materials
+    rpr_material_node diffuse = NULL; status = rprMaterialSystemCreateNode(matsys, RPR_MATERIAL_NODE_DIFFUSE, &diffuse);
+    assert(status == RPR_SUCCESS);
+    status = rprMaterialNodeSetInputF(diffuse, "color", 0.9f, 0.9f, 0.f, 1.0f);
+    assert(status == RPR_SUCCESS);
+    rpr_image img = NULL; status = rprContextCreateImageFromFile(context, "../Resources/Textures/test_diffuse.jpg", &img);
+    assert(status == RPR_SUCCESS);
+    status = rprMaterialNodeSetInputImageData(diffuse, "color", img);
+    assert(status == RPR_SUCCESS);
+    rpr_material_node materialNodeTexture = NULL; status = rprMaterialSystemCreateNode(matsys, RPR_MATERIAL_NODE_IMAGE_TEXTURE, &materialNodeTexture);
+    assert(status == RPR_SUCCESS);
+    status = rprMaterialNodeSetInputImageData(materialNodeTexture, "data", img);
+    assert(status == RPR_SUCCESS);
+    status = rprMaterialNodeSetInputN(diffuse, "color", materialNodeTexture);
+    assert(status == RPR_SUCCESS);
+
+    status = rprShapeSetMaterial(mesh, diffuse);
+    assert(status == RPR_SUCCESS);
+    status = rprShapeSetMaterial(mesh1, diffuse);
+    assert(status == RPR_SUCCESS);
+    status = rprShapeSetMaterial(plane_mesh, diffuse);
+    assert(status == RPR_SUCCESS);
+
+    //light
+    rpr_light light = NULL; status = rprContextCreatePointLight(context, &light);
+    assert(status == RPR_SUCCESS);
+    matrix lightm = translation(float3(0, 6, 0)) * rotation_z(3.14f);
+    status = rprLightSetTransform(light, true, &lightm.m00);
+    assert(status == RPR_SUCCESS);
+    status = rprPointLightSetRadiantPower3f(light, 100, 100, 100);
+    assert(status == RPR_SUCCESS);
+    status = rprSceneAttachLight(scene, light);
+    assert(status == RPR_SUCCESS);
+
+    //result buffer
+    rpr_framebuffer_desc desc;
+    desc.fb_width = 800;
+    desc.fb_height = 600;
+    rpr_framebuffer_format fmt = { 4, RPR_COMPONENT_TYPE_FLOAT32 };
+
+    const std::map<int, std::string> kAovs = { {RPR_AOV_COLOR, "RPR_AOV_COLOR"},
+                                        { RPR_AOV_OPACITY, "RPR_AOV_OPACITY" },
+                                        { RPR_AOV_WORLD_COORDINATE, "RPR_AOV_WORLD_COORDINATE"},
+                                        { RPR_AOV_UV, "RPR_AOV_UV"},
+                                        { RPR_AOV_MATERIAL_IDX, "RPR_AOV_MATERIAL_IDX"},
+                                        { RPR_AOV_GEOMETRIC_NORMAL, "RPR_AOV_GEOMETRIC_NORMAL"},
+                                        { RPR_AOV_SHADING_NORMAL, "RPR_AOV_SHADING_NORMAL"},
+                                        { RPR_AOV_DEPTH, "RPR_AOV_DEPTH"},
+                                        { RPR_AOV_OBJECT_ID, "RPR_AOV_OBJECT_ID"},
+                                        { RPR_AOV_OBJECT_GROUP_ID, "RPR_AOV_OBJECT_GROUP_ID"},};
+    for (auto aov : kAovs)
+    {
+        rpr_framebuffer buf = NULL; status = rprContextCreateFrameBuffer(context, fmt, &desc, &buf);
+        assert(status == RPR_SUCCESS);
+        status = rprContextSetAOV(context, aov.first, buf);
+        //some AOVs not supported now
+        if (status == FR_ERROR_UNIMPLEMENTED)
+        {
+            std::cout << "AOVTest():Warning " << aov.second << " is unsupported" << std::endl;
+            status = rprObjectDelete(buf); buf = NULL;
+            continue;
+        }
+        status = rprFrameBufferClear(buf);
+        assert(status == RPR_SUCCESS);
+    }
+    
+    //render
+    for (int i = 0; i < kRenderIterations; ++i)
+    {
+        status = rprContextRender(context);
+        assert(status == RPR_SUCCESS);
+    }
+
+    for (auto aov : kAovs)
+    {
+        rpr_framebuffer buf = NULL; 
+        status = rprContextGetAOV(context, aov.first, &buf);
+        //some AOVs not supported now
+        if (status == FR_ERROR_UNIMPLEMENTED)
+        {
+            continue;
+        }
+        const std::string name = "Output/AOVTest_" + aov.second + ".jpg";
+        status = rprFrameBufferSaveToFile(buf, name.c_str());
+        assert(status == RPR_SUCCESS);
+    }
+
+
+    //cleanup
+    FR_MACRO_CLEAN_SHAPE_RELEASE(mesh, scene);
+    FR_MACRO_CLEAN_SHAPE_RELEASE(mesh1, scene);
+    FR_MACRO_CLEAN_SHAPE_RELEASE(plane_mesh, scene);
+    FR_MACRO_SAFE_FRDELETE(img);
+    FR_MACRO_SAFE_FRDELETE(materialNodeTexture);
+    status = rprSceneDetachLight(scene, light);
+    assert(status == RPR_SUCCESS);
+    status = rprObjectDelete(light); light = NULL;
+    assert(status == RPR_SUCCESS);
+    status = rprSceneSetCamera(scene, NULL);
+    assert(status == RPR_SUCCESS);
+    rprObjectDelete(diffuse);
+    status = rprObjectDelete(scene); scene = NULL;
+    assert(status == RPR_SUCCESS);
+    status = rprObjectDelete(camera); camera = NULL;
+    assert(status == RPR_SUCCESS);
+
+    for (auto aov : kAovs)
+    {
+        rpr_framebuffer buf = NULL;
+        status = rprContextGetAOV(context, aov.first, &buf);
+        //some AOVs not supported now
+        if (status == FR_ERROR_UNIMPLEMENTED)
+        {
+            continue;
+        }
+        status = rprObjectDelete(buf); buf = NULL;
+        assert(status == RPR_SUCCESS);
+    }
+
+    status = rprObjectDelete(matsys); matsys = NULL;
+    assert(status == RPR_SUCCESS);
+}
 void test_feature_cameraDOF()
 {
     rpr_int status = RPR_SUCCESS;
@@ -1397,7 +1664,7 @@ void test_feature_cameraDOF()
     rpr_light light = NULL; status = rprContextCreatePointLight(context, &light);
     assert(status == RPR_SUCCESS);
     matrix lightm = translation(float3(0.0f, +0.6f, 4.0f));
-    status = rprLightSetTransform(light, false, &lightm.m00);
+    status = rprLightSetTransform(light, true, &lightm.m00);
     assert(status == RPR_SUCCESS);
     status = rprPointLightSetRadiantPower3f(light, 1000, 1000, 1000);
     assert(status == RPR_SUCCESS);
@@ -1548,7 +1815,7 @@ void test_feature_ContextImageFromData()
     rpr_light light = NULL; status = rprContextCreatePointLight(context, &light);
     assert(status == RPR_SUCCESS);
     matrix lightm = translation(float3(0, 0, 4)) * rotation_z(3.14f);
-    status = rprLightSetTransform(light, false, &lightm.m00);
+    status = rprLightSetTransform(light, true, &lightm.m00);
     assert(status == RPR_SUCCESS);
     status = rprPointLightSetRadiantPower3f(light, 40, 40, 40);
     assert(status == RPR_SUCCESS);
@@ -1694,13 +1961,13 @@ void test_apiMecha_Light()
 
         matrix transform = translation(float3(-0.7f, 0.5f, 1.5f));
 
-        status = rprLightSetTransform(lightDir, false, &transform.m00);
+        status = rprLightSetTransform(lightDir, true, &transform.m00);
         assert(status == RPR_SUCCESS);
-        status = rprLightSetTransform(lightEnv, false, &transform.m00);
+        status = rprLightSetTransform(lightEnv, true, &transform.m00);
         assert(status == RPR_SUCCESS);
-        status = rprLightSetTransform(lightPoint, false, &transform.m00);
+        status = rprLightSetTransform(lightPoint, true, &transform.m00);
         assert(status == RPR_SUCCESS);
-        status = rprLightSetTransform(lightSpot, false, &transform.m00);
+        status = rprLightSetTransform(lightSpot, true, &transform.m00);
         assert(status == RPR_SUCCESS);
 
         size_t querrySize = 0;
@@ -1844,7 +2111,7 @@ void test_feature_LightDirectional()
     rpr_light light = NULL; status = rprContextCreateDirectionalLight(context, &light);
     assert(status == RPR_SUCCESS);
     matrix lightm = translation(float3(1.0f, 0.0f, 1.0f)) * rotation_y(0.5f*3.14f / 2.0f);
-    status = rprLightSetTransform(light, false, &lightm.m00);
+    status = rprLightSetTransform(light, true, &lightm.m00);
     assert(status == RPR_SUCCESS);
     status = rprDirectionalLightSetRadiantPower3f(light, 1.0f, 1.0f, 1.0f);
     assert(status == RPR_SUCCESS);
@@ -2191,7 +2458,7 @@ void BumpmapTest()
     rpr_light light = NULL; status = rprContextCreatePointLight(context, &light);
     assert(status == RPR_SUCCESS);
     matrix lightm = translation(float3(0, 6, 0));
-    status = rprLightSetTransform(light, false, &lightm.m00);
+    status = rprLightSetTransform(light, true, &lightm.m00);
     assert(status == RPR_SUCCESS);
     status = rprPointLightSetRadiantPower3f(light, 200, 200, 200);
     assert(status == RPR_SUCCESS);
@@ -2328,7 +2595,7 @@ void test_feature_shaderBumpmap()
     rpr_light light = NULL; status = rprContextCreatePointLight(context, &light);
     assert(status == RPR_SUCCESS);
     matrix lightm = translation(float3(0, 0, 4)) * rotation_z(3.14f);
-    status = rprLightSetTransform(light, false, &lightm.m00);
+    status = rprLightSetTransform(light, true, &lightm.m00);
     assert(status == RPR_SUCCESS);
     status = rprPointLightSetRadiantPower3f(light, 40, 40, 40);
     assert(status == RPR_SUCCESS);
@@ -2511,7 +2778,7 @@ void test_feature_shaderTypeLayered()
     rpr_light light = NULL; status = rprContextCreatePointLight(context, &light);
     assert(status == RPR_SUCCESS);
     matrix lightm = translation(float3(0, 0, 4)) * rotation_z(3.14f);
-    status = rprLightSetTransform(light, false, &lightm.m00);
+    status = rprLightSetTransform(light, true, &lightm.m00);
     assert(status == RPR_SUCCESS);
     status = rprPointLightSetRadiantPower3f(light, 40, 40, 40);
     assert(status == RPR_SUCCESS);
@@ -2813,26 +3080,26 @@ void UpdateMaterial()
 }
 int main(int argc, char* argv[])
 {
-	//MeshCreationTest();
+	MeshCreationTest();
     SimpleRenderTest();
     ComplexRenderTest();
     EnvLightClearTest();
     MemoryStatistics();
     DefaultMaterialTest();
     NullShaderTest();
-	//TiledRender();
+	TiledRender();
+    AOVTest();
     test_feature_cameraDOF();
     test_feature_ContextImageFromData();
-    //test_feature_multiUV();
-    test_apiMecha_Light();
+//    test_feature_multiUV();
+//    test_apiMecha_Light();
     test_feature_LightDirectional();
     InstancingTest();
     BumpmapTest();
     test_feature_shaderBumpmap();
     test_feature_shaderTypeLayered();
     UpdateMaterial();
-	LoadFrs("../Resources/frs/bath_new.frs");
-//RunObjViewer(argc, argv);
-
+	//LoadFrs("../Resources/frs/bath_new.frs");
+    
     return 0;
 }

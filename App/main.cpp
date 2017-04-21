@@ -23,9 +23,15 @@ THE SOFTWARE.
 
 #ifdef __APPLE__
 #include <OpenCL/OpenCL.h>
+<<<<<<< HEAD
+// #define GLFW_INCLUDE_GL3
+// #define GLFW_NO_GLU
+//#include "GLFW/glfw3.h"
+=======
 #define GLFW_INCLUDE_GLCOREARB
 #define GLFW_NO_GLU
 #include "GLFW/glfw3.h"
+>>>>>>> github/baikal-next
 #elif WIN32
 #define NOMINMAX
 #include <Windows.h>
@@ -37,7 +43,6 @@ THE SOFTWARE.
 #include <GL/glx.h>
 #include "GLFW/glfw3.h"
 #endif
-
 
 #include "ImGUI/imgui.h"
 #include "ImGUI/imgui_impl_glfw_gl3.h"

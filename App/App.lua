@@ -18,7 +18,7 @@ project "App"
     if os.is("windows") then
         includedirs { "../3rdparty/glew/include", "../3rdparty/freeglut/include",
         "../3rdparty/oiio/include", "../3rdparty/glfw/include"}
-        links {"RadeonRays"}
+        links {"RadeonRays", "glfw3"}
         if not _OPTIONS["benchmark"] then
             links {"glew", "OpenGL32", "glfw3"}
         end
@@ -39,7 +39,7 @@ project "App"
         buildoptions "-std=c++11"
         links {"OpenImageIO", "pthread"}
         if not _OPTIONS["benchmark"] then
-            links{"GLEW", "GL", "glfw3"}
+            links{"GLEW", "GL", "glfw"}
         end
         os.execute("rm -rf obj");
     end
@@ -70,7 +70,7 @@ project "App"
     if _OPTIONS["benchmark"] then
         defines{"APP_BENCHMARK"}
         removefiles{"../App/main.cpp",
-                    "../App/shader_manager.cpp",}
+                    "../App/Utils/shader_manager.cpp",}
     else
         removefiles {"../App/main_benchmark.cpp"}
     end
