@@ -19,52 +19,61 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
-#ifndef CONFIG_MANAGER_H
-#define CONFIG_MANAGER_H
+#ifndef VERTEX_CL
+#define VERTEX_CL
 
-#include "CLW.h"
-#include <vector>
-
-namespace Baikal
+// Path vertex type
+enum PathVertexType
 {
-    class PtRenderer;
-    class BdptRenderer;
-    using MyRenderer = PtRenderer;
-}
-
-class ConfigManager
-{
-public:
-
-    enum DeviceType
-    {
-        kPrimary,
-        kSecondary
-    };
-
-    enum Mode
-    {
-        kUseAll,
-        kUseGpus,
-        kUseSingleGpu,
-        kUseSingleCpu,
-        kUseCpus
-    };
-
-    struct Config
-    {
-        DeviceType type;
-        int devidx;
-        Baikal::MyRenderer* renderer;
-        CLWContext context;
-        bool caninterop;
-
-    };
-
-    static void CreateConfigs(Mode mode, bool interop, std::vector<Config>& renderers, int initial_num_bounces);
-
-private:
-
+    kCamera,
+    kSurface,
+    kVolume,
+    kLight
 };
 
-#endif // CONFIG_MANAGER_H
+// Path vertex descriptor
+typedef struct _PathVertex
+{
+    float3 position;
+    float3 shading_normal;
+    float3 geometric_normal;
+    float2 uv;
+    float pdf_forward;
+    float pdf_backward;
+    float3 flow;
+    float3 unused;
+    int type;
+    int material_index;
+    int flags;
+    int padding;
+} PathVertex;
+
+// Initialize path vertex
+INLINE
+void PathVertex_Init(
+    PathVertex* v, 
+    float3 p, 
+    float3 n,
+    float3 ng, 
+    float2 uv, 
+    float pdf_fwd,
+    float pdf_bwd, 
+    float3 flow, 
+    int type,
+    int matidx
+)
+{
+    v->position = p;
+    v->shading_normal = n;
+    v->geometric_normal = ng;
+    v->uv = uv;
+    v->pdf_forward = pdf_fwd;
+    v->pdf_backward = pdf_bwd;
+    v->flow = flow;
+    v->type = type;
+    v->material_index = matidx;
+    v->flags = 0;
+    v->unused = 0.f;
+}
+
+#endif

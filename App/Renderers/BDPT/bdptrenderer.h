@@ -36,13 +36,13 @@ namespace Baikal
     class SceneTracker;
 
     ///< Renderer implementation
-    class PtRenderer : public Renderer
+    class BdptRenderer : public Renderer
     {
     public:
         // Constructor
-        PtRenderer(CLWContext context, int devidx, int num_bounces);
+        BdptRenderer(CLWContext context, int devidx, int num_bounces);
         // Destructor
-        ~PtRenderer();
+        ~BdptRenderer();
 
         // Renderer overrides
         // Create output
@@ -93,6 +93,26 @@ namespace Baikal
         void GenerateTileDomain(int2 const& output_size, int2 const& tile_origin, int2 const& tile_size, int2 const& subtile_size);
         // Find non-zero AOV
         Output* FindFirstNonZeroOutput(bool include_color = true) const;
+        // Generate array of camera vertices for a given screen space tile 
+        // into m_render_data->eye_subpath and initialize m_render_data->eye_subpath_length to 1.
+        void GenerateCameraVertices(ClwScene const& scene, Output const& output, int2 const& tile_size);
+        // Generate array of light vertices for a given screen space tile 
+        // into m_render_data->light_subpath and initialize m_render_data->light_subpath_length to 1.
+        void GenerateLightVertices(ClwScene const& scene, Output const& output, int2 const& tile_size);
+
+        struct PathVertex;
+        // Perform random walk collection vertices into subpath buffer and adjusting subpath length
+        // Mode stands for radiance or importance transfer modes
+        void RandomWalk(ClwScene const& scene, int num_rays, CLWBuffer<PathVertex> subpath, CLWBuffer<int> subpath_length, int mode, int2 const& tile_size);
+        // Sample surface and store vertex into subpath buffer adjusting subpath_length
+        void SampleSurface(ClwScene const& scene, int pass, CLWBuffer<PathVertex> subpath, CLWBuffer<int> subpath_length, int mode, int2 const& tile_size);
+        // Connect path segments
+        void Connect(ClwScene const& scene, int eye_vertex_index, int light_vertex_index, int2 const& tile_size);
+        // Connect eye vetices directly to light sources
+        void ConnectDirect(ClwScene const& scene, int eye_vertex_index, int2 const& tile_size);
+        // Increment sample counter for a tile
+        void IncrementSampleCounter(ClwScene const& scene, int2 const& tile_size);
+
 
     public:
         // CL context
@@ -101,8 +121,9 @@ namespace Baikal
         ClwSceneController m_scene_controller;
 
         // GPU data
-        struct PathState;
+        struct PathVertex;
         struct RenderData;
+        struct PathState;
 
         std::unique_ptr<RenderData> m_render_data;
 

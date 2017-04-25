@@ -263,6 +263,8 @@ typedef struct _DifferentialGeometry
 
     // Material
     Material mat;
+    int material_index;
+    int transfer_mode;
 } DifferentialGeometry;
 
 

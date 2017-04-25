@@ -203,6 +203,8 @@ void Scene_FillDifferentialGeometry(// Scene
         diffgeo->dpdu = normalize(GetOrthoVector(diffgeo->n));
         diffgeo->dpdv = normalize(cross(diffgeo->n, diffgeo->dpdu));
     }
+
+    diffgeo->material_index = material_idx;
 }
 
 

@@ -813,7 +813,7 @@ CLWEvent CLWParallelPrimitives::SortRadix(unsigned int deviceIdx, CLWBuffer<cl_i
         context_.Launch1D(0, NUM_BLOCKS*WG_SIZE, WG_SIZE, histogramKernel);
 
         // Scan histograms
-        ScanExclusiveAdd(0, deviceHistograms, deviceHistograms, numElems);
+        ScanExclusiveAdd(0, deviceHistograms, deviceHistograms, deviceHistograms.GetElementCount());
 
         // Scatter keys
         scatterKeys.SetArg(0, offset);
@@ -832,11 +832,11 @@ CLWEvent CLWParallelPrimitives::SortRadix(unsigned int deviceIdx, CLWBuffer<cl_i
         // Swap pointers
         std::swap(fromKeys, toKeys);
     }
-    
+
     // Return buffers to memory manager
     ReclaimTempIntBuffer(deviceHistograms);
     ReclaimTempIntBuffer(deviceTempKeys);
-    
+
     // Return last copy event back to the user
     return event;
 }

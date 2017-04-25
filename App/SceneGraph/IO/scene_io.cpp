@@ -7,7 +7,6 @@
 #include "../texture.h"
 
 
-
 #include "Utils/tiny_obj_loader.h"
 
 namespace Baikal
@@ -261,8 +260,8 @@ namespace Baikal
         light1->SetEmittedRadiance(RadeonRays::float3(1.f, 0.8f, 0.65f));
         scene->AttachAutoreleaseObject(light1);
 
-        scene->AttachLight(light);
-        //scene->AttachLight(light1);
+        //scene->AttachLight(light);
+        scene->AttachLight(light1);
         scene->AttachLight(ibl);
 
         return scene;

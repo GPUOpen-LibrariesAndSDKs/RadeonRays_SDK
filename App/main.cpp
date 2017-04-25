@@ -78,6 +78,7 @@ THE SOFTWARE.
 #include "Utils/shader_manager.h"
 #include "SceneGraph/scene1.h"
 #include "Renderers/PT/ptrenderer.h"
+#include "Renderers/BDPT/bdptrenderer.h"
 #include "CLW/clwoutput.h"
 #include "Utils/config_manager.h"
 #include "SceneGraph/scene1.h"

@@ -304,10 +304,10 @@ __kernel void ShadeSurface(
         __global Path* path = paths + pixelidx;
 
         // Early exit for scattered paths
-        if (Path_IsScattered(path))
+        if (Path_IsScattered(path))  
         {
             return;
-        } 
+        }  
 
         // Fetch incoming ray direction
         float3 wi = -normalize(rays[hitidx].d.xyz);
@@ -362,7 +362,7 @@ __kernel void ShadeSurface(
             Ray_SetInactive(shadowrays + globalid);
             Ray_SetInactive(indirectrays + globalid);
 
-            lightsamples[globalid] = 0.f;
+            lightsamples[globalid] = 0.f; 
             return;
         }
 
@@ -619,7 +619,7 @@ __kernel void GatherOcclusion(
         float visibility = (shadowhits[globalid] == 1) ? 0.f : 1.f;
 
         output[pixelidx].xyz += visibility;
-        output[pixelidx].w += 1.f;
+        output[pixelidx].w += 1.f; 
     }
 }
 
@@ -947,33 +947,33 @@ __kernel void FillAOVs(
 }
 
 __kernel void GenerateTileDomain(
-	int output_width,
-	int output_height,
-	int tile_offset_x,
-	int tile_offset_y,
-	int tile_width,
-	int tile_height,
-	int subtile_width,
-	int subtile_height,
-	__global int* pixelidx0,
-	__global int* pixelidx1,
-	__global int* count
+    int output_width,
+    int output_height,
+    int tile_offset_x,
+    int tile_offset_y,
+    int tile_width,
+    int tile_height,
+    int subtile_width,
+    int subtile_height,
+    __global int* pixelidx0,
+    __global int* pixelidx1,
+    __global int* count
 )
 {
-	int tile_x = get_global_id(0);
-	int tile_y = get_global_id(1);
-	int tile_start_idx = output_width * tile_offset_y + tile_offset_x;
+    int tile_x = get_global_id(0);
+    int tile_y = get_global_id(1);
+    int tile_start_idx = output_width * tile_offset_y + tile_offset_x;
 
-	if (tile_x < tile_width && tile_y < tile_height)
-	{
-		// TODO: implement subtile support
-		int idx = tile_start_idx + tile_y * output_width + tile_x;
-		pixelidx0[tile_y * tile_width + tile_x] = idx;
-		pixelidx1[tile_y * tile_width + tile_x] = idx;
-	}
+    if (tile_x < tile_width && tile_y < tile_height)
+    {
+        // TODO: implement subtile support
+        int idx = tile_start_idx + tile_y * output_width + tile_x;
+        pixelidx0[tile_y * tile_width + tile_x] = idx;
+        pixelidx1[tile_y * tile_width + tile_x] = idx;
+    }
 
-	if (tile_x == 0 && tile_y == 0)
-	{
-		*count = tile_width * tile_height;
-	}
+    if (tile_x == 0 && tile_y == 0)
+    {
+        *count = tile_width * tile_height;
+    }
 }

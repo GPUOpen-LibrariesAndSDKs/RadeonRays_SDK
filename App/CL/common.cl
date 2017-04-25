@@ -47,4 +47,6 @@ THE SOFTWARE.
 
 #define CMJ_DIM 16
 
+#define BDPT_MAX_SUBPATH_LEN 3
+
 #endif // COMMON_CL
