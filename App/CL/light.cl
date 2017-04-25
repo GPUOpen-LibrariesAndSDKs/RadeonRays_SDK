@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include <../App/CL/scene.cl>
 
 
+INLINE
 bool IntersectTriangle(ray const* r, float3 v1, float3 v2, float3 v3, float* a, float* b)
 {
     const float3 e1 = v2 - v1;
@@ -139,12 +140,12 @@ float3 AreaLight_GetLe(// Emissive object
 {
     ray r;
     r.o.xyz = dg->p;
-    r.d.xyz = normalize(*wo);
+    r.d.xyz = *wo;
 
     int shapeidx = light->shapeidx;
     int primidx = light->primidx;
 
-    float v0, v1, v2;
+    float3 v0, v1, v2;
     Scene_GetTriangleVertices(scene, shapeidx, primidx, &v0, &v1, &v2);
 
     float a, b;
@@ -157,19 +158,17 @@ float3 AreaLight_GetLe(// Emissive object
         Scene_InterpolateAttributes(scene, shapeidx, primidx, make_float2(a, b), &p, &n, &tx, &area);
 
         float3 d = p - dg->p;
-        float  ld = length(d);
-        *wo = p - dg->p;
+        *wo = d;
 
         int mat_idx = Scene_GetMaterialIndex(scene, shapeidx, primidx);
         Material mat = scene->materials[mat_idx];
 
         const float3 ke = Texture_GetValue3f(mat.kx.xyz, tx, TEXTURE_ARGS_IDX(mat.kxmapidx));
-        float ndotv = dot(n, -(normalize(d)));
-        return  ke;
+        return ke;
     }
     else
     {
-        return 0.f;
+        return make_float3(0.f, 0.f, 0.f);
     }
 }
 
@@ -252,7 +251,7 @@ float AreaLight_GetPdf(// Emissive object
     int shapeidx = light->shapeidx;
     int primidx = light->primidx;
 
-    float v0, v1, v2;
+    float3 v0, v1, v2;
     Scene_GetTriangleVertices(scene, shapeidx, primidx, &v0, &v1, &v2);
 
     // Intersect ray against this area light
@@ -275,6 +274,50 @@ float AreaLight_GetPdf(// Emissive object
     {
         return 0.f;
     }
+}
+
+float3 AreaLight_SampleVertex(
+    // Emissive object
+    Light const* light,
+    // Scene
+    Scene const* scene,
+    // Textures
+    TEXTURE_ARG_LIST,
+    // Sample
+    float2 sample0,
+    float2 sample1,
+    // Direction to light source
+    float3* p,
+    float3* n,
+    float3* wo,
+    // PDF
+    float* pdf)
+{
+    int shapeidx = light->shapeidx;
+    int primidx = light->primidx;
+
+    // Generate sample on triangle
+    float r0 = sample0.x;
+    float r1 = sample0.y;
+
+    // Convert random to barycentric coords
+    float2 uv;
+    uv.x = native_sqrt(r0) * (1.f - r1);
+    uv.y = native_sqrt(r0) * r1;
+
+    float2 tx;
+    float area;
+    Scene_InterpolateAttributes(scene, shapeidx, primidx, uv, p, n, &tx, &area);
+
+    int mat_idx = Scene_GetMaterialIndex(scene, shapeidx, primidx);
+    Material mat = scene->materials[mat_idx];
+
+    const float3 ke = Texture_GetValue3f(mat.kx.xyz, tx, TEXTURE_ARGS_IDX(mat.kxmapidx));
+
+    *wo = Sample_MapToHemisphere(sample1, *n, 1.f);
+    *pdf = (1.f / area) * fabs(dot(*n, *wo)) / PI;
+
+    return ke;
 }
 
 /*
@@ -389,6 +432,31 @@ float PointLight_GetPdf(// Emissive object
     return 0.f;
 }
 
+/// Sample vertex on the light
+float3 PointLight_SampleVertex(
+    // Light object
+    Light const* light,
+    // Scene
+    Scene const* scene,
+    // Textures
+    TEXTURE_ARG_LIST,
+    // Sample
+    float2 sample0,
+    float2 sample1,
+    // Direction to light source
+    float3* p,
+    float3* n,
+    float3* wo,
+    // PDF
+    float* pdf)
+{
+    *p = light->p;
+    *n = make_float3(0.f, 1.f, 0.f);
+    *wo = Sample_MapToSphere(sample0);
+    *pdf = 1.f / (4.f * PI);
+    return light->intensity;
+}
+
 /*
  Spot light
  */
@@ -455,8 +523,6 @@ float SpotLight_GetPdf(// Emissive object
 {
     return 0.f;
 }
-
-
 
 
 /*
@@ -561,6 +627,40 @@ float Light_GetPdf(// Light index
     }
 
     return 0.f;
+}
+
+/// Sample vertex on the light
+float3 Light_SampleVertex(
+    // Light index
+    int idx,
+    // Scene
+    Scene const* scene,
+    // Textures
+    TEXTURE_ARG_LIST,
+    // Sample
+    float2 sample0,
+    float2 sample1,
+    // Point on the light
+    float3* p,
+    // Normal at light vertex
+    float3* n,
+    // Direction
+    float3* wo,
+    // PDF
+    float* pdf)
+{
+    Light light = scene->lights[idx];
+
+    switch (light.type)
+    {
+        case kArea:
+            return AreaLight_SampleVertex(&light, scene, TEXTURE_ARGS, sample0, sample1, p, n, wo, pdf);
+        case kPoint:
+            return PointLight_SampleVertex(&light, scene, TEXTURE_ARGS, sample0, sample1, p, n, wo, pdf);
+    }
+
+    *pdf = 0.f;
+    return make_float3(0.f, 0.f, 0.f);
 }
 
 /// Check if the light is singular
