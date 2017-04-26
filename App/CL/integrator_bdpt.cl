@@ -181,7 +181,7 @@ KERNEL void SampleSurface(
     // Ray batch
     GLOBAL ray const* rays,
     // Intersection data
-    GLOBAL Intersection const* isects,
+    GLOBAL Intersection const* intersections,
     // Hit indices
     GLOBAL int const* hit_indices,
     // Pixel indices
@@ -253,7 +253,7 @@ KERNEL void SampleSurface(
             // Fetch index
             int hit_idx = hit_indices[global_id];
             int pixel_idx = pixel_indices[global_id];
-            Intersection isect = isects[hit_idx];
+            Intersection isect = intersections[hit_idx];
 
             GLOBAL Path* path = paths + pixel_idx;
 
@@ -404,7 +404,7 @@ KERNEL void SampleSurface(
         }
     }
 
-    __kernel void ConnectDirect(
+    KERNEL void ConnectDirect(
         int eye_vertex_index,
         int num_rays,
         GLOBAL int const* pixel_indices,
@@ -508,8 +508,8 @@ KERNEL void SampleSurface(
 
             bool singular_light = Light_IsSingular(&scene.lights[light_idx]);
             bool singular_bxdf = Bxdf_IsSingular(&diffgeo);
-            lightweight = 1;// singular_light ? 1.f : BalanceHeuristic(1, lightpdf, 1, lightbxdfpdf);
-            bxdfweight = 1;// singular_bxdf ? 1.f : BalanceHeuristic(1, bxdfpdf, 1, bxdflightpdf);
+            lightweight = singular_light ? 1.f : BalanceHeuristic(1, lightpdf, 1, lightbxdfpdf);
+            bxdfweight = singular_bxdf ? 1.f : BalanceHeuristic(1, bxdfpdf, 1, bxdflightpdf);
 
             float3 radiance = 0.f; 
             float3 wo;
@@ -770,27 +770,24 @@ KERNEL void GenerateTileDomain(
 }
 
 ///< Restore pixel indices after compaction
-__kernel void FilterPathStream(
-    // Intersections
-    __global Intersection const* isects,
+KERNEL void FilterPathStream(
+    GLOBAL Intersection const* restrict intersections,
     // Number of compacted indices
-    __global int const* numitems,
-    // Pixel indices
-    __global int const* pixelindices,
-    // Paths
-    __global Path* paths,
-    // Predicate
-    __global int* predicate
+    GLOBAL int const* restrict num_items,
+    GLOBAL int const* restrict pixel_indices,
+    GLOBAL Path* restrict paths,
+    // 1 or 0 for each item (include or exclude)
+    GLOBAL int* restrict predicate
 )
 {
-    int globalid = get_global_id(0);
+    int global_id = get_global_id(0);
 
     // Handle only working subset
-    if (globalid < *numitems)
+    if (global_id < *num_items)
     {
-        int pixelidx = pixelindices[globalid];
+        int pixelidx = pixel_indices[global_id];
 
-        __global Path* path = paths + pixelidx;
+        GLOBAL Path* path = paths + pixelidx;
 
         if (Path_IsAlive(path))
         {
@@ -798,17 +795,17 @@ __kernel void FilterPathStream(
 
             if (!kill)
             {
-                predicate[globalid] = isects[globalid].shapeid >= 0 ? 1 : 0;
+                predicate[global_id] = intersections[global_id].shapeid >= 0 ? 1 : 0;
             }
             else
             {
                 Path_Kill(path);
-                predicate[globalid] = 0;
+                predicate[global_id] = 0;
             }
         }
         else
         {
-            predicate[globalid] = 0;
+            predicate[global_id] = 0;
         }
     }
 }
@@ -838,7 +835,7 @@ KERNEL void GatherContributions(
     int num_rays,
     GLOBAL int const* restrict pixel_indices,
     // Shadow rays hits
-    GLOBAL int const* restrict shadowhits,
+    GLOBAL int const* restrict shadow_hits,
     // Light samples
     GLOBAL float3 const* restrict contributions,
     // Radiance sample buffer
@@ -856,7 +853,7 @@ KERNEL void GatherContributions(
         // Start collecting samples
         {
             // If shadow ray global_id't hit anything and reached skydome
-            if (shadowhits[global_id] == -1)
+            if (shadow_hits[global_id] == -1)
             {
                 // Add its contribution to radiance accumulator
                 radiance += contributions[global_id];
@@ -866,46 +863,46 @@ KERNEL void GatherContributions(
     }
 }
 
-///< Restore pixel indices after compaction
-__kernel void RestorePixelIndices(
+// Restore pixel indices after compaction
+KERNEL void RestorePixelIndices(
     // Compacted indices
-    __global int const* compacted_indices,
+    GLOBAL int const* restrict compacted_indices,
     // Number of compacted indices
-    __global int* numitems,
+    GLOBAL int* restrict num_items,
     // Previous pixel indices
-    __global int const* previndices,
+    GLOBAL int const* restrict prev_indices,
     // New pixel indices
-    __global int* newindices
+    GLOBAL int* restrict new_indices
 )
 {
-    int globalid = get_global_id(0);
+    int global_id = get_global_id(0);
 
     // Handle only working subset
-    if (globalid < *numitems)
+    if (global_id < *num_items)
     {
-        newindices[globalid] = previndices[compacted_indices[globalid]];
+        new_indices[global_id] = prev_indices[compacted_indices[global_id]];
     }
 }
 
 // Copy data to interop texture if supported
-__kernel void ApplyGammaAndCopyData(
-    __global float4 const* data,
-    int imgwidth,
-    int imgheight,
+KERNEL void ApplyGammaAndCopyData(
+    //
+    GLOBAL float4 const* data,
+    int width,
+    int height,
     float gamma,
     write_only image2d_t img
 )
 {
-    int gid = get_global_id(0);
+    int global_id = get_global_id(0);
+    int x = global_id % width;
+    int y = global_id / width;
 
-    int gidx = gid % imgwidth;
-    int gidy = gid / imgwidth;
-
-    if (gidx < imgwidth && gidy < imgheight)
+    if (x < width && y < height)
     {
-        float4 v = data[gid];
+        float4 v = data[global_id];
         float4 val = clamp(native_powr(v / v.w, 1.f / gamma), 0.f, 1.f);
-        write_imagef(img, make_int2(gidx, gidy), val);
+        write_imagef(img, make_int2(x, y), val);
     }
 }
 
