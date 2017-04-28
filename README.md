@@ -1,3 +1,6 @@
+# Important
+**Sample renderer has been moved from RadeonRays repo into a separate one here:** [Baikal](https://github.com/GPUOpen-LibrariesAndSDKs/RadeonProRender-Baikal)
+
 # Summary
 Radeon Rays is ray intersection acceleration library provided by AMD which makes the most of the hardware and allows for efficient ray queries. Three backends support a range of use cases.
 
