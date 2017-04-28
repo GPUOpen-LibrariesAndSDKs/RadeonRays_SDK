@@ -324,6 +324,16 @@ namespace RadeonRays
             0, 0, 0, 1);
     }
 
+    inline matrix rotation(const float3& a, float ang)
+    {
+        float cos = std::cos(ang);
+        float sin = std::sin(ang);
+        return matrix(cos + a.x*a.x*(1-cos), a.x*a.y*(1-cos)-a.z*sin, a.x*a.z*(1-cos) + a.y*sin, 0,
+                    a.y*a.x*(1-cos)+a.z*sin, cos+ a.y*a.y*(1-cos), a.y*a.z*(1-cos) - a.x*sin, 0,
+                    a.z*a.x*(1-cos)-a.y*sin, a.z*a.y*(1-cos)+a.x*sin, cos + a.z*a.z*(1-cos), 0,
+                    0, 0, 0, 1);
+    }
+
     inline matrix scale(float3 const& v)
     {
         return matrix(v.x, 0, 0, 0, 0, v.y, 0, 0, 0, 0, v.z, 0, 0, 0, 0, 1.f);

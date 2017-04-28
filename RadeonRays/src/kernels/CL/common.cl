@@ -24,14 +24,33 @@ THE SOFTWARE.
 DEFINES
 **************************************************************************/
 #define PI 3.14159265358979323846f
+#define KERNEL __kernel
+#define GLOBAL __global
+#define INLINE __attribute__((always_inline))
+#define HIT_MARKER 1
+#define MISS_MARKER -1
+#define INVALID_IDX -1
 
-typedef struct _bbox
+/*************************************************************************
+EXTENSIONS
+**************************************************************************/
+#ifdef AMD_MEDIA_OPS
+#pragma OPENCL EXTENSION cl_amd_media_ops2 : enable
+#endif
+
+/*************************************************************************
+TYPES
+**************************************************************************/
+
+// Axis aligned bounding box
+typedef struct
 {
     float4 pmin;
     float4 pmax;
 } bbox;
 
-typedef struct _ray
+// Ray definition
+typedef struct
 {
     float4 o;
     float4 d;
@@ -39,47 +58,49 @@ typedef struct _ray
     int2 padding;
 } ray;
 
-typedef struct _Intersection
+// Intersection definition
+typedef struct
 {
-    int shapeid;
-    int primid;
-    int padding0;
-    int padding1;
+    int shape_id;
+    int prim_id;
+    int2 padding;
 
     float4 uvwt;
 } Intersection;
 
-typedef struct _ShapeData
+
+/*************************************************************************
+HELPER FUNCTIONS
+**************************************************************************/
+INLINE
+int ray_get_mask(ray const* r)
 {
-    int id;
-    int bvhidx;
-    int mask;
-    int padding1;
-    float4 m0;
-    float4 m1;
-    float4 m2;
-    float4 m3;
-    float4  linearvelocity;
-    float4  angularvelocity;
-} ShapeData;
+    return r->extra.x;
+}
 
-typedef bbox BvhNode;
-
-typedef struct _Face
+INLINE
+int ray_is_active(ray const* r)
 {
-    // Vertex indices
-    int idx[3];
-    int shapeidx;
-    // Primitive ID
-    int id;
-    // Idx count
-    int cnt;
+    return r->extra.y;
+}
 
-    int2 padding;
-} Face;
+INLINE
+float ray_get_maxt(ray const* r)
+{
+    return r->o.w;
+}
 
+INLINE
+float ray_get_time(ray const* r)
+{
+    return r->d.w;
+}
+
+/*************************************************************************
+FUNCTIONS
+**************************************************************************/
 #ifndef APPLE
-
+INLINE
 float4 make_float4(float x, float y, float z, float w)
 {
     float4 res;
@@ -89,7 +110,7 @@ float4 make_float4(float x, float y, float z, float w)
     res.w = w;
     return res;
 }
-
+INLINE
 float3 make_float3(float x, float y, float z)
 {
     float3 res;
@@ -98,7 +119,7 @@ float3 make_float3(float x, float y, float z)
     res.z = z;
     return res;
 }
-
+INLINE
 float2 make_float2(float x, float y)
 {
     float2 res;
@@ -106,7 +127,7 @@ float2 make_float2(float x, float y)
     res.y = y;
     return res;
 }
-
+INLINE
 int2 make_int2(int x, int y)
 {
     int2 res;
@@ -114,7 +135,7 @@ int2 make_int2(int x, int y)
     res.y = y;
     return res;
 }
-
+INLINE
 int3 make_int3(int x, int y, int z)
 {
     int3 res;
@@ -123,183 +144,98 @@ int3 make_int3(int x, int y, int z)
     res.z = z;
     return res;
 }
-
 #endif
 
-float3 transform_point(float3 p, float4 m0, float4 m1, float4 m2, float4 m3)
+INLINE float min3(float a, float b, float c)
 {
-    float3 res;
-    res.x = m0.s0 * p.x + m0.s1 * p.y + m0.s2 * p.z + m0.s3;
-    res.y = m1.s0 * p.x + m1.s1 * p.y + m1.s2 * p.z + m1.s3;
-    res.z = m2.s0 * p.x + m2.s1 * p.y + m2.s2 * p.z + m2.s3;
-    return res;
-}
-
-float3 transform_vector(float3 p, float4 m0, float4 m1, float4 m2, float4 m3)
-{
-    float3 res;
-    res.x = m0.s0 * p.x + m0.s1 * p.y + m0.s2 * p.z;
-    res.y = m1.s0 * p.x + m1.s1 * p.y + m1.s2 * p.z;
-    res.z = m2.s0 * p.x + m2.s1 * p.y + m2.s2 * p.z;
-    return res;
-}
-
-ray transform_ray(ray r, float4 m0, float4 m1, float4 m2, float4 m3)
-{
-    ray res;
-    res.o.xyz = transform_point(r.o.xyz, m0, m1, m2, m3);
-    res.d.xyz = transform_vector(r.d.xyz, m0, m1, m2, m3);
-    res.o.w = r.o.w;
-    res.d.w = r.d.w;
-    return res;
-}
-
-float4 quaternion_mul(float4 q1, float4 q2)
-{
-    float4 res;
-    res.x = q1.y*q2.z - q1.z*q2.y + q2.w*q1.x + q1.w*q2.x;
-    res.y = q1.z*q2.x - q1.x*q2.z + q2.w*q1.y + q1.w*q2.y;
-    res.z = q1.x*q2.y - q2.x*q1.y + q2.w*q1.z + q1.w*q2.z;
-    res.w = q1.w*q2.w - q1.x*q2.x - q1.y*q2.y - q1.z*q2.z;
-    return res;
-}
-
-float4 quaternion_conjugate(float4 q)
-{
-    return make_float4(-q.x, -q.y, -q.z, q.w);
-}
-
-float4 quaternion_inverse(float4 q)
-{
-    float sqnorm = q.x*q.x + q.y*q.y + q.z*q.z + q.w*q.w;
-    
-    if (sqnorm != 0.f)
-    {
-        return quaternion_conjugate(q) / sqnorm;
-    }
-    else
-    {
-        return make_float4(0.f, 0.f, 0.f, 1.f);
-    }
-}
-
-void rotate_ray(ray* r, float4 q)
-{
-    float4 qinv = quaternion_inverse(q);
-    float4 v = make_float4(r->o.x, r->o.y, r->o.z, 0);
-    v = quaternion_mul(qinv, quaternion_mul(v, q));
-    r->o.xyz = v.xyz;
-    v = make_float4(r->d.x, r->d.y, r->d.z, 0);
-    v = quaternion_mul(qinv, quaternion_mul(v, q));
-    r->d.xyz = v.xyz;
-}
-
-// Intersect Ray against triangle
-int IntersectTriangle(ray const* r, float3 v1, float3 v2, float3 v3, Intersection* isect)
-{
-    const float3 e1 = v2 - v1;
-    const float3 e2 = v3 - v1;
-    const float3 s1 = cross(r->d.xyz, e2);
-    const float  invd = native_recip(dot(s1, e1));
-    const float3 d = r->o.xyz - v1;
-    const float  b1 = dot(d, s1) * invd;
-    const float3 s2 = cross(d, e1);
-    const float  b2 = dot(r->d.xyz, s2) * invd;
-    const float temp = dot(e2, s2) * invd;
-    
-    if (b1 < 0.f || b1 > 1.f || b2 < 0.f || b1 + b2 > 1.f
-        || temp < 0.f || temp > isect->uvwt.w)
-    {
-        return 0;
-    }
-    else
-    {
-        isect->uvwt = make_float4(b1, b2, 0.f, temp);
-        return 1;
-    }
-}
-
-int IntersectTriangleP(ray const* r, float3 v1, float3 v2, float3 v3)
-{
-    const float3 e1 = v2 - v1;
-    const float3 e2 = v3 - v1;
-    const float3 s1 = cross(r->d.xyz, e2);
-    const float  invd = native_recip(dot(s1, e1));
-    const float3 d = r->o.xyz - v1;
-    const float  b1 = dot(d, s1) * invd;
-    const float3 s2 = cross(d, e1);
-    const float  b2 = dot(r->d.xyz, s2) * invd;
-    const float temp = dot(e2, s2) * invd;
-    
-    if (b1 < 0.f || b1 > 1.f || b2 < 0.f || b1 + b2 > 1.f
-        || temp < 0.f || temp > r->o.w)
-    {
-        return 0;
-    }
-    
-    return 1;
-}
-
 #ifdef AMD_MEDIA_OPS
-#pragma OPENCL EXTENSION cl_amd_media_ops2 : enable
-#endif
-
-// Intersect ray with the axis-aligned box
-int IntersectBox(ray const* r, float3 invdir, bbox box, float maxt)
-{
-    const float3 f = (box.pmax.xyz - r->o.xyz) * invdir;
-    const float3 n = (box.pmin.xyz - r->o.xyz) * invdir;
-
-    const float3 tmax = max(f, n);
-    const float3 tmin = min(f, n);
-
-#ifndef AMD_MEDIA_OPS
-    const float t1 = min(min(tmax.x, min(tmax.y, tmax.z)), maxt);
-    const float t0 = max(max(tmin.x, max(tmin.y, tmin.z)), 0.f);
+    return amd_min3(a, b, c);
 #else
-    const float t1 = min(amd_min3(tmax.x, tmax.y, tmax.z), maxt);
-    const float t0 = max(amd_max3(tmin.x, tmin.y, tmin.z), 0.f);
+    return min(min(a,b), c);
 #endif
-
-    return (t1 >= t0) ? 1 : 0;
 }
 
-float IntersectBoxF(ray const* r, float3 invdir, bbox box, float maxt)
+INLINE float max3(float a, float b, float c)
 {
-    const float3 f = (box.pmax.xyz - r->o.xyz) * invdir;
-    const float3 n = (box.pmin.xyz - r->o.xyz) * invdir;
-
-    const float3 tmax = max(f, n);
-    const float3 tmin = min(f, n);
-
-
-#ifndef AMD_MEDIA_OPS
-    const float t1 = min(min(tmax.x, min(tmax.y, tmax.z)), maxt);
-    const float t0 = max(max(tmin.x, max(tmin.y, tmin.z)), 0.f);
+#ifdef AMD_MEDIA_OPS
+    return amd_max3(a, b, c);
 #else
-    const float t1 = min(amd_min3(tmax.x, tmax.y, tmax.z), maxt);
-    const float t0 = max(amd_max3(tmin.x, tmin.y, tmin.z), 0.f);
+    return max(max(a,b), c);
 #endif
-
-    return (t1 >= t0) ? (t0 > 0.f ? t0 : t1) : -1.f;
 }
 
-int Ray_GetMask(ray const* r)
+
+// Intersect ray against a triangle and return intersection interval value if it is in
+// (0, t_max], return t_max otherwise.
+INLINE
+float fast_intersect_triangle(ray r, float3 v1, float3 v2, float3 v3, float t_max)
 {
-    return r->extra.x;
+    float3 const e1 = v2 - v1;
+    float3 const e2 = v3 - v1;
+    float3 const s1 = cross(r.d.xyz, e2);
+    float const invd = native_recip(dot(s1, e1));
+    float3 const d = r.o.xyz - v1;
+    float const b1 = dot(d, s1) * invd;
+    float3 const s2 = cross(d, e1);
+    float const b2 = dot(r.d.xyz, s2) * invd;
+    float const temp = dot(e2, s2) * invd;
+
+    if (b1 < 0.f || b1 > 1.f || b2 < 0.f || b1 + b2 > 1.f || temp < 0.f || temp > t_max)
+    {
+        return t_max;
+    }
+    else
+    {
+        return temp;
+    }
 }
 
-int Ray_IsActive(ray const* r)
+INLINE
+float3 safe_invdir(ray r)
 {
-    return r->extra.y;
+#ifdef USE_SAFE_MATH
+    float const dirx = r.d.x;
+    float const diry = r.d.y;
+    float const dirz = r.d.z;
+    float const ooeps = exp2(-80.0f); // Avoid div by zero.
+    float3 invdir;
+    invdir.x = 1.0f / (fabs(dirx) > ooeps ? dirx : copysign(ooeps, dirx));
+    invdir.y = 1.0f / (fabs(diry) > ooeps ? diry : copysign(ooeps, diry));
+    invdir.z = 1.0f / (fabs(dirz) > ooeps ? dirz : copysign(ooeps, dirz));
+    return invdir;
+#else
+    return native_recip(r.d.xyz);
+#endif
 }
 
-float Ray_GetMaxT(ray const* r)
+// Intersect rays vs bbox and return intersection span. 
+// Intersection criteria is ret.x <= ret.y
+INLINE
+float2 fast_intersect_bbox1(bbox box, float3 invdir, float3 oxinvdir, float t_max)
 {
-    return r->o.w;
+    float3 const f = mad(box.pmax.xyz, invdir, oxinvdir);
+    float3 const n = mad(box.pmin.xyz, invdir, oxinvdir);
+    float3 const tmax = max(f, n);
+    float3 const tmin = min(f, n);
+    float const t1 = min(min3(tmax.x, tmax.y, tmax.z), t_max);
+    float const t0 = max(max3(tmin.x, tmin.y, tmin.z), 0.f);
+    return make_float2(t0, t1);
 }
 
-float Ray_GetTime(ray const* r)
+// Given a point in triangle plane, calculate its barycentrics
+INLINE
+float2 triangle_calculate_barycentrics(float3 p, float3 v1, float3 v2, float3 v3)
 {
-    return r->d.w;
+    float3 const e1 = v2 - v1;
+    float3 const e2 = v3 - v1;
+    float3 const e = p - v1;
+    float const d00 = dot(e1, e1);
+    float const d01 = dot(e1, e2);
+    float const d11 = dot(e2, e2);
+    float const d20 = dot(e, e1);
+    float const d21 = dot(e, e2);
+    float const invdenom = native_recip(d00 * d11 - d01 * d01);
+    float const b1 = (d11 * d20 - d01 * d21) * invdenom;
+    float const b2 = (d00 * d21 - d01 * d20) * invdenom;
+    return make_float2(b1, b2);
 }

@@ -39,7 +39,7 @@ public:
     , errcode_(errcode)
     {
     }
-    
+
     cl_int errcode_;
 };
 

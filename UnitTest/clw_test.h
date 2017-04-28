@@ -64,6 +64,22 @@ public:
         {
             context_ = CLWContext::Create(platforms[0].GetDevice(0));
         }
+        
+        std::string buildopts;
+        
+        buildopts_.append(" -cl-mad-enable -cl-fast-relaxed-math -cl-std=CL1.2 -I . ");
+        
+        buildopts_.append(
+#if defined(__APPLE__)
+                         "-D APPLE "
+#elif defined(_WIN32) || defined (WIN32)
+                         "-D WIN32 "
+#elif defined(__linux__)
+                         "-D __linux__ "
+#else
+                         ""
+#endif
+                         );
     }
     
     virtual void TearDown()
@@ -74,6 +90,8 @@ public:
     CLWContext context_;
     // Is that AMD platform?
     bool amdctx_;
+    //
+    std::string buildopts_;
 };
 
 // The test checks buffer creation functionality
@@ -169,10 +187,56 @@ TEST_F(CLW, ExclusiveScanSmall)
     context_.WriteBuffer(0, devinput, &hostarray[0], arraysize).Wait();
 
     // Create parallel prims object
+    CLWParallelPrimitives prims(context_, buildopts_.c_str());
+
+    // Perform scan
+    prims.ScanExclusiveAdd(0, devinput, devoutput, arraysize).Wait();
+
+    // Read data back to host
+    context_.ReadBuffer(0, devoutput, &hostarray[0], arraysize).Wait();
+
+    // Check correctness
+    for (int i = 0; i < arraysize; ++i)
+    {
+        ASSERT_EQ(hostarray[i], hostarray_gold[i]);
+    }
+}
+
+// Checks for scan correctness
+TEST_F(CLW, ExclusiveScanSmallSizeDifference)
+{
+    // Init rand
+    std::srand((unsigned)std::time(0));
+    // Small array test
+    int arraysize = 4096;
+
+    // Device buffers
+    auto devinput = context_.CreateBuffer<cl_int>(250000, CL_MEM_READ_WRITE);
+    auto devoutput = context_.CreateBuffer<cl_int>(arraysize, CL_MEM_READ_WRITE);
+
+    // Host buffers
+    std::vector<int> hostarray(arraysize);
+    std::vector<int> hostarray_gold(arraysize);
+
+    // Fill host buffer with data
+    std::generate(hostarray.begin(), hostarray.end(), [] { return rand() % 1000; });
+
+    // Perform gold scan
+    int sum = 0;
+    for (int i = 0; i < arraysize; ++i)
+    {
+        hostarray_gold[i] = sum;
+        sum += hostarray[i];
+    }
+
+    // Send data to device
+    context_.WriteBuffer(0, devinput, &hostarray[0], arraysize).Wait();
+
+    // Create parallel prims object
     CLWParallelPrimitives prims(context_);
 
     // Perform scan
-    prims.ScanExclusiveAdd(0, devinput, devoutput).Wait();
+    prims.ScanExclusiveAdd(0, devinput, devoutput, arraysize).Wait();
 
     // Read data back to host
     context_.ReadBuffer(0, devoutput, &hostarray[0], arraysize).Wait();
@@ -215,10 +279,10 @@ TEST_F(CLW, ExclusiveScanLarge)
     context_.WriteBuffer(0, devinput, &hostarray[0], arraysize).Wait();
 
     // Create parallel prims object
-    CLWParallelPrimitives prims(context_);
+    CLWParallelPrimitives prims(context_, buildopts_.c_str());
 
     // Perform scan
-    prims.ScanExclusiveAdd(0, devinput, devoutput).Wait();
+    prims.ScanExclusiveAdd(0, devinput, devoutput, arraysize).Wait();
 
     // Read data back to host
     context_.ReadBuffer(0, devoutput, &hostarray[0], arraysize).Wait();
@@ -263,10 +327,10 @@ TEST_F(CLW, ExclusiveScanRandom)
         context_.WriteBuffer(0, devinput, &hostarray[0], arraysize).Wait();
 
         // Create parallel prims object
-        CLWParallelPrimitives prims(context_);
+        CLWParallelPrimitives prims(context_, buildopts_.c_str());
 
         // Perform scan
-        prims.ScanExclusiveAdd(0, devinput, devoutput).Wait();
+        prims.ScanExclusiveAdd(0, devinput, devoutput, arraysize).Wait();
 
         // Read data back to host
         context_.ReadBuffer(0, devoutput, &hostarray[0], arraysize).Wait();
@@ -305,11 +369,11 @@ TEST_F(CLW, CompactIdentity)
     context_.WriteBuffer(0, devinput, &hostarray[0], arraysize).Wait();
 
     // Create parallel prims object
-    CLWParallelPrimitives prims(context_);
+    CLWParallelPrimitives prims(context_, buildopts_.c_str());
 
     int num;
     // Perform compact
-    prims.Compact(0,  devpred, devinput, devoutput, num);
+    prims.Compact(0,  devpred, devinput, devoutput, arraysize, num);
 
 
     // Read data back to host
@@ -348,7 +412,7 @@ TEST_F(CLW, RadixSortLarge)
     context_.WriteBuffer(0, devinput, &hostarray[0], arraysize).Wait();
 
     // Create parallel prims object
-    CLWParallelPrimitives prims(context_);
+    CLWParallelPrimitives prims(context_, buildopts_.c_str());
 
     // Perform scan
     prims.SortRadix(0, devinput, devoutput).Wait();

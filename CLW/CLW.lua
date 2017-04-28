@@ -18,7 +18,7 @@ project "CLW"
     if _OPTIONS["embed_kernels"] then
         defines {"RR_EMBED_KERNELS=1"}
             os.execute( "python ../Tools/scripts/stringify.py " ..
-                                os.getcwd() .. "../CLW/CL/ "  .. 
+                                os.getcwd() .. "/../CLW/CL/ "  .. 
                                 ".cl " ..
                                 "opencl " ..
                                  "> ./kernelcache/clwkernels_cl.h"
