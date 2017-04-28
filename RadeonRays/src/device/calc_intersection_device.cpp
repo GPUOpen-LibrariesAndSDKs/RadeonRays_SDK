@@ -132,14 +132,14 @@ namespace RadeonRays
                         m_intersector_string = "hlbvh";
                     }
                 }
-                else if (acctype == "hashbvh")
+                /*else if (acctype == "hashbvh")
                 {
                     if (m_intersector_string != "hashbvh")
                     {
                         m_intersector.reset(new IntersectorBitTrail(m_device.get()));
                         m_intersector_string = "hashbvh";
                     }
-                }
+                }*/
             }
         }
 
