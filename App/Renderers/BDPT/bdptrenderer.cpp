@@ -113,6 +113,8 @@ namespace Baikal
         // Light samples collected 
         // after surface shading
         CLWBuffer<float3> lightsamples;
+        // Image plane coordinates for splatting
+        CLWBuffer<float2> image_plane_positions;
         // RNG data
         CLWBuffer<std::uint32_t> random;
         CLWBuffer<std::uint32_t> sobolmat;
@@ -356,21 +358,28 @@ namespace Baikal
 
             // Generate tile domain
             GenerateTileDomain(output_size, tile_origin, tile_size, tile_size);
-            //std::vector<PathVertex> light_vertices(num_rays);
-            //std::vector<int> light_length(num_rays);
-            //m_context.ReadBuffer(0, m_render_data->light_subpath, &light_vertices[0], num_rays).Wait();
-            //m_context.ReadBuffer(0, m_render_data->light_subpath_length, &light_length[0], num_rays).Wait();
+            std::vector<PathVertex> light_vertices(num_rays);
+            std::vector<int> light_length(num_rays);
+            m_context.ReadBuffer(0, m_render_data->light_subpath, &light_vertices[0], num_rays).Wait();
+            m_context.ReadBuffer(0, m_render_data->light_subpath_length, &light_length[0], num_rays).Wait();
+
+            //for (int c = 1; c < kMaxRandomWalkLength; ++c)
+            {
+                //ConnectDirect(clwscene, c, tile_size);
+            }
 
             for (int c = 1; c < kMaxRandomWalkLength; ++c)
+            {
+                for (int l = 1; l < kMaxRandomWalkLength; ++l)
                 {
-                    ConnectDirect(clwscene, c, tile_size);
+                    Connect(clwscene, c, l, tile_size);
                 }
+            }
 
-            for (int c = 1; c < kMaxRandomWalkLength; ++c)
-                     for (int l = 1; l < kMaxRandomWalkLength; ++l)
-                     {
-                         Connect(clwscene, c, l, tile_size);
-                     }
+            //for (int l = 1; l < 2; ++l)
+            //{
+            //    ConnectCaustic(clwscene, l, tile_size);
+            //}
 
             IncrementSampleCounter(clwscene, tile_size);
 
@@ -521,6 +530,62 @@ namespace Baikal
             gather_kernel.SetArg(argc++, m_render_data->pixelindices[0]);
             gather_kernel.SetArg(argc++, m_render_data->shadowhits);
             gather_kernel.SetArg(argc++, m_render_data->lightsamples);
+            gather_kernel.SetArg(argc++, output->data());
+
+            // Run generation kernel
+            {
+                int globalsize = num_rays;
+                m_context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, gather_kernel);
+            }
+        }
+    }
+
+    void BdptRenderer::ConnectCaustic(ClwScene const& scene, int light_vertex_index, int2 const& tile_size)
+    {
+        m_context.FillBuffer(0, m_render_data->shadowhits, 1, m_render_data->shadowhits.GetElementCount());
+
+
+        int num_rays = tile_size.x * tile_size.y;
+        auto output = static_cast<ClwOutput*>(GetOutput(OutputType::kColor));
+
+        {
+            // Fetch kernel
+            CLWKernel connect_kernel = m_render_data->program.GetKernel("ConnectCaustics");
+
+            int argc = 0;
+            connect_kernel.SetArg(argc++, num_rays);
+            connect_kernel.SetArg(argc++, light_vertex_index);
+            connect_kernel.SetArg(argc++, m_render_data->light_subpath);
+            connect_kernel.SetArg(argc++, m_render_data->light_subpath_length);
+            connect_kernel.SetArg(argc++, scene.camera);
+            connect_kernel.SetArg(argc++, scene.materials);
+            connect_kernel.SetArg(argc++, scene.textures);
+            connect_kernel.SetArg(argc++, scene.texturedata);
+            connect_kernel.SetArg(argc++, m_render_data->shadowrays);
+            connect_kernel.SetArg(argc++, m_render_data->lightsamples);
+            connect_kernel.SetArg(argc++, m_render_data->image_plane_positions);
+
+            // Run generation kernel
+            {
+                int globalsize = num_rays;
+                m_context.Launch1D(0, ((globalsize + 63) / 64) * 64, 64, connect_kernel);
+            }
+        }
+
+        m_scene_controller.GetIntersectionApi()
+            ->QueryOcclusion(m_render_data->fr_shadowrays, num_rays, m_render_data->fr_shadowhits, nullptr, nullptr);
+
+
+        {
+            CLWKernel gather_kernel = m_render_data->program.GetKernel("GatherCausticContributions");
+
+            int argc = 0;
+            gather_kernel.SetArg(argc++, num_rays);
+            gather_kernel.SetArg(argc++, output->width());
+            gather_kernel.SetArg(argc++, output->height());
+            gather_kernel.SetArg(argc++, m_render_data->shadowhits);
+            gather_kernel.SetArg(argc++, m_render_data->lightsamples);
+            gather_kernel.SetArg(argc++, m_render_data->image_plane_positions);
             gather_kernel.SetArg(argc++, output->data());
 
             // Run generation kernel
@@ -701,6 +766,9 @@ namespace Baikal
 
         m_render_data->lightsamples = m_context.CreateBuffer<float3>(output.width() * output.height() * kMaxLightSamples, CL_MEM_READ_WRITE);
         m_vidmemws += output.width() * output.height() * sizeof(float3)* kMaxLightSamples;
+
+        m_render_data->image_plane_positions = m_context.CreateBuffer<float2>(output.width() * output.height() * kMaxLightSamples, CL_MEM_READ_WRITE);
+        m_vidmemws += output.width() * output.height() * sizeof(float2)* kMaxLightSamples;
 
         m_render_data->paths = m_context.CreateBuffer<PathState>(output.width() * output.height(), CL_MEM_READ_WRITE);
         m_vidmemws += output.width() * output.height() * sizeof(PathState);

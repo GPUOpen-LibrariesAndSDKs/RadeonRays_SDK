@@ -160,9 +160,9 @@ KERNEL void GenerateLightVertices(
             n,
             n,
             0.f,
+            selection_pdf * light_pdf,
             1.f,
-            1.f,
-            ke / (selection_pdf * light_pdf),
+            100.f,//ke * fabs(dot(n, my_ray->d.xyz)) / selection_pdf * light_pdf,
             kLight,
             -1);
 
@@ -170,14 +170,14 @@ KERNEL void GenerateLightVertices(
         *my_vertex = v;
 
         // Initlize path data
-        my_path->throughput = make_float3(1.f, 1.f, 1.f);
+        my_path->throughput = ke * fabs(dot(n, my_ray->d.xyz)) / selection_pdf * light_pdf;
         my_path->volume = -1;
         my_path->flags = 0;
         my_path->active = 0xFF;
     }
 }
 
-KERNEL void SampleSurface(
+KERNEL void SampleSurface( 
     // Ray batch
     GLOBAL ray const* rays,
     // Intersection data
@@ -361,7 +361,7 @@ KERNEL void SampleSurface(
                     diffgeo.uv,
                     pdf_fwd,
                     0.f,
-                    throughput * t / bxdfpdf,
+                    my_prev_vertex->flow * t / bxdfpdf,
                     kSurface,
                     diffgeo.material_index);
 
@@ -508,8 +508,8 @@ KERNEL void SampleSurface(
 
             bool singular_light = Light_IsSingular(&scene.lights[light_idx]);
             bool singular_bxdf = Bxdf_IsSingular(&diffgeo);
-            lightweight = singular_light ? 1.f : BalanceHeuristic(1, lightpdf, 1, lightbxdfpdf);
-            bxdfweight = singular_bxdf ? 1.f : BalanceHeuristic(1, bxdfpdf, 1, bxdflightpdf);
+            lightweight = singular_light ? 1.f : BalanceHeuristic(1, lightpdf * selection_pdf, 1, lightbxdfpdf);
+            bxdfweight = singular_bxdf ? 1.f : BalanceHeuristic(1, bxdfpdf, 1, bxdflightpdf * selection_pdf);
 
             float3 radiance = 0.f; 
             float3 wo;
@@ -518,7 +518,7 @@ KERNEL void SampleSurface(
             {
                 // Otherwise save some intersector cycles
                 Ray_SetInactive(shadowrays + global_id);  
-                lightsamples[global_id] = 0;
+                lightsamples[global_id] = 0; 
                 return;
             }
 
@@ -527,15 +527,15 @@ KERNEL void SampleSurface(
             if (((singular_bxdf && !singular_light) || split < 0.5f) && bxdfpdf > 0.f)
             {
                 wo = CRAZY_HIGH_DISTANCE * bxdfwo; 
-                le = Light_GetLe(light_idx, &scene, &diffgeo, &wo, TEXTURE_ARGS);
                 float ndotwo = fabs(dot(diffgeo.n, normalize(wo)));
-                radiance = 2.f * le * bxdfweight * throughput * bxdf * ndotwo / bxdfpdf;
+                le = Light_GetLe(light_idx, &scene, &diffgeo, &wo, TEXTURE_ARGS);
+                radiance = 2.f * bxdfweight * le * throughput * bxdf * ndotwo / bxdfpdf;
             }
 
             if (((!singular_bxdf && singular_light) || split >= 0.5f) && lightpdf > 0.f) 
             {
                 wo = lightwo;
-                float ndotwo = fabs(dot(diffgeo.n, normalize(wo)));
+                float ndotwo = fabs(dot(diffgeo.n, normalize(wo)));  
                 radiance = 2.f * lightweight * le * Bxdf_Evaluate(&diffgeo, wi, normalize(wo), TEXTURE_ARGS) * throughput * ndotwo / lightpdf / selection_pdf;
             }
 
@@ -546,7 +546,7 @@ KERNEL void SampleSurface(
                 float3 shadow_ray_o = diffgeo.p + CRAZY_LOW_DISTANCE * diffgeo.n; 
                 float3 temp = diffgeo.p + wo - shadow_ray_o;
                 float3 shadow_ray_dir = normalize(temp);
-                float shadow_ray_length = length(temp);
+                float shadow_ray_length = 0.999f * length(temp);
                 int shadow_ray_mask = 0xFFFFFFFF;
 
                 Ray_Init(shadowrays + global_id, shadow_ray_o, shadow_ray_dir, shadow_ray_length, 0.f, shadow_ray_mask);
@@ -722,7 +722,7 @@ KERNEL void SampleSurface(
 
         float3 connect_ray_o = eye_dg.p + CRAZY_LOW_DISTANCE * eye_dg.n;
         float3 temp = light_dg.p - connect_ray_o;
-        float  connect_ray_length = length(temp);
+        float  connect_ray_length = 0.999f * length(temp);
         float3 connect_ray_dir = eye_wo;
 
         Ray_Init(&connection_rays[global_id], connect_ray_o, connect_ray_dir, connect_ray_length, 0.f, 0xFFFFFFFF);
@@ -863,6 +863,36 @@ KERNEL void GatherContributions(
     }
 }
 
+KERNEL void GatherCausticContributions(
+    int num_items,
+    int width,
+    int height,
+    GLOBAL int const* restrict shadow_hits,
+    GLOBAL float3 const* restrict contributions,
+    GLOBAL float2 const* restrict image_plane_positions,
+    GLOBAL float4* restrict output
+)
+{
+    int global_id = get_global_id(0);
+
+    if (global_id < num_items)
+    {
+        // Start collecting samples
+        {
+            // If shadow ray didn't hit anything and reached skydome
+            if (shadow_hits[global_id] == -1)
+            {
+                // Add its contribution to radiance accumulator
+                float3 radiance = contributions[global_id];
+                float2 uv = image_plane_positions[global_id];
+                int x = clamp((int)(uv.x * width), 0, width - 1);
+                int y = clamp((int)(uv.y * height), 0, height - 1);
+                output[y * width + x].xyz += radiance;
+            }
+        }
+    }
+}
+
 // Restore pixel indices after compaction
 KERNEL void RestorePixelIndices(
     // Compacted indices
@@ -905,5 +935,129 @@ KERNEL void ApplyGammaAndCopyData(
         write_imagef(img, make_int2(x, y), val);
     }
 }
+
+
+INLINE void atomic_add_float(volatile __global float* addr, float val)
+{
+    union {
+        unsigned int u32;
+        float        f32;
+    } next, expected, current;
+    current.f32 = *addr;
+    do {
+        expected.f32 = current.f32;
+        next.f32 = expected.f32 + val;
+        current.u32 = atomic_cmpxchg((volatile __global unsigned int *)addr,
+            expected.u32, next.u32);
+    } while (current.u32 != expected.u32);
+}
+
+KERNEL void ConnectCaustics(
+    int num_items,
+    int eye_vertex_index,
+    GLOBAL PathVertex const* restrict light_subpath,
+    GLOBAL int const* restrict light_subpath_length,
+    GLOBAL Camera const* restrict camera,
+    GLOBAL Material const* restrict materials,
+    TEXTURE_ARG_LIST,
+    GLOBAL ray* restrict connection_rays,
+    GLOBAL float4* restrict contributions,
+    GLOBAL float2* restrict image_plane_positions
+)
+{
+    int global_id = get_global_id(0);
+
+    if (global_id >= num_items)
+        return;
+
+    if (eye_vertex_index >= light_subpath_length[global_id])
+    {
+        contributions[global_id].xyz = 0.f;
+        Ray_SetInactive(connection_rays + global_id);
+        return;
+    }
+
+    GLOBAL PathVertex const* my_light_vertex = light_subpath + BDPT_MAX_SUBPATH_LEN * global_id + eye_vertex_index;
+    GLOBAL PathVertex const* my_prev_light_vertex = light_subpath + BDPT_MAX_SUBPATH_LEN * global_id + eye_vertex_index - 1;
+
+    DifferentialGeometry eye_dg;
+    eye_dg.p = camera->p;
+    eye_dg.n = camera->forward;
+    eye_dg.ng = camera->forward;
+    eye_dg.uv = 0.f;
+    eye_dg.dpdu = GetOrthoVector(eye_dg.n);
+    eye_dg.dpdv = cross(eye_dg.n, eye_dg.dpdu);
+    DifferentialGeometry_CalculateTangentTransforms(&eye_dg);
+
+    DifferentialGeometry light_dg;
+    light_dg.p = my_light_vertex->position;
+    light_dg.n = my_light_vertex->shading_normal;
+    light_dg.ng = my_light_vertex->geometric_normal;
+    light_dg.uv = my_light_vertex->uv;
+    light_dg.dpdu = GetOrthoVector(light_dg.n);
+    light_dg.dpdv = cross(light_dg.dpdu, light_dg.n);
+    light_dg.mat = materials[my_light_vertex->material_index];
+    light_dg.mat.fresnel = 1.f;
+    DifferentialGeometry_CalculateTangentTransforms(&light_dg);
+
+    float3 eye_wo = normalize(light_dg.p - eye_dg.p);
+    float3 light_wi = normalize(my_prev_light_vertex->position - light_dg.p);
+    float3 light_wo = -eye_wo;
+
+    float3 light_bxdf = Bxdf_Evaluate(&light_dg, light_wi, light_wo, TEXTURE_ARGS);
+    float light_pdf = Bxdf_GetPdf(&light_dg, light_wi, light_wo, TEXTURE_ARGS);
+    float light_dotnl = max(dot(light_dg.n, light_wo), 0.f);
+
+    float3 light_contribution = my_prev_light_vertex->flow * (light_bxdf) / my_light_vertex->pdf_forward;
+
+    //float w0 = camera_pdf / (camera_pdf + light_pdf);
+    //float w1 = light_pdf / (camera_pdf + light_pdf);
+
+    float dist = length(light_dg.p - eye_dg.p);
+    float3 val = (light_contribution) / (dist * dist);
+    contributions[global_id].xyz = REASONABLE_RADIANCE(val);
+
+    float  connect_ray_length = 0.99f * length(light_dg.p - eye_dg.p);
+    float3 connect_ray_dir = eye_wo;
+    float3 connect_ray_o = eye_dg.p;
+
+    Ray_Init(connection_rays + global_id, connect_ray_o, connect_ray_dir, connect_ray_length, 0.f, 0xFFFFFFFF);
+
+    ray r;
+    r.o.xyz = eye_dg.p;
+    r.o.w = CRAZY_HIGH_DISTANCE;
+    r.d.xyz = eye_wo;
+
+    float3 v0, v1, v2, v3;
+    float2 ext = 0.5f * camera->dim;
+    v0 = camera->p + camera->focal_length * camera->forward - ext.x * camera->right - ext.y * camera->up;
+    v1 = camera->p + camera->focal_length * camera->forward + ext.x * camera->right - ext.y * camera->up;
+    v2 = camera->p + camera->focal_length * camera->forward + ext.x * camera->right + ext.y * camera->up;
+    v3 = camera->p + camera->focal_length * camera->forward - ext.x * camera->right + ext.y * camera->up;
+
+    float a, b;
+    float3 p;
+    if (IntersectTriangle(&r, v0, v1, v2, &a, &b))
+    {
+        p = (1.f - a - b) * v0 + a * v1 + b * v2;
+    }
+    else if (IntersectTriangle(&r, v0, v2, v3, &a, &b))
+    {
+        p = (1.f - a - b) * v0 + a * v2 + b * v3;
+    }
+    else
+    {
+        contributions[global_id].xyz = 0.f;
+        Ray_SetInactive(connection_rays + global_id);
+        return;
+    }
+
+    float3 imgp = p - v0;
+    float2 impuv;
+    impuv.x = clamp(dot(imgp, v1 - v0) / dot(v1 - v0, v1 - v0), 0.f, 1.f);
+    impuv.y = clamp(dot(imgp, v3 - v0) / dot(v3 - v0, v3 - v0), 0.f, 1.f);
+    image_plane_positions[global_id] = impuv;
+}
+
 
 

@@ -110,6 +110,8 @@ namespace Baikal
         void Connect(ClwScene const& scene, int eye_vertex_index, int light_vertex_index, int2 const& tile_size);
         // Connect eye vetices directly to light sources
         void ConnectDirect(ClwScene const& scene, int eye_vertex_index, int2 const& tile_size);
+        // Connect light vetices directly to the eye
+        void ConnectCaustic(ClwScene const& scene, int light_vertex_index, int2 const& tile_size);
         // Increment sample counter for a tile
         void IncrementSampleCounter(ClwScene const& scene, int2 const& tile_size);
 
