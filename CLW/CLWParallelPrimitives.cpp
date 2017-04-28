@@ -30,7 +30,7 @@ THE SOFTWARE.
 
 #ifdef RR_EMBED_KERNELS
 #if USE_OPENCL
-#    include <CLW/kernelcache/clwkernels_cl.h>
+#include <CLW/kernelcache/clwkernels_cl.h>
 #endif
 #endif // RR_EMBED_KERNELS
 
