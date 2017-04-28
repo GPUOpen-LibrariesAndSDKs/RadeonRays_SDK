@@ -108,8 +108,13 @@ project "RadeonRays"
     end
 
     if _OPTIONS["enable_raymask"] then
-       	configuration {}
-	defines {"RR_RAY_MASK"}
+        configuration {}
+        defines {"RR_RAY_MASK"}
+    end
+
+    if _OPTIONS["safe_math"] then
+        configuration {}
+        defines { "USE_SAFE_MATH" }
     end
 
     if _OPTIONS["use_vulkan"] then

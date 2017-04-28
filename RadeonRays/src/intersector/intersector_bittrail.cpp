@@ -90,9 +90,13 @@ namespace RadeonRays
     {
         std::string buildopts =
 #ifdef RR_RAY_MASK
-            "-D RR_RAY_MASK";
+            "-D RR_RAY_MASK ";
 #else
             "";
+#endif
+        
+#ifdef USE_SAFE_MATH
+        buildopts.append("-D USE_SAFE_MATH ");
 #endif
 
 #ifndef RR_EMBED_KERNELS
