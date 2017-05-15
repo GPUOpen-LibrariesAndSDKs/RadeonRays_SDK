@@ -190,6 +190,54 @@ float fast_intersect_triangle(ray r, float3 v1, float3 v2, float3 v3, float t_ma
     }
 }
 
+
+// Intersect ray against a 'capsule', defined as the convex hull of two spheres 
+// at position v1.xyz, v2.xyz, with radii v1.w, v2.w
+// Return intersection interval value if it is in (0, t_max], return t_max otherwise.
+INLINE
+float intersect_capsule(ray r, float4 v1, float4 v2, float t_max)
+{
+	// For initial tests, just do a very crude test where we find the closest approach of the ray and cylinder axis.
+	// If this is a) less than the min radius, and b) projects onto axis between endpoints, then record a hit at the closest approach.
+	// There is no meaningful normal, but that is not needed for hair shading.
+	// (And RadeonRays doesnt't even provide (yet) a facility to record the normal at the hit, as it currently
+	// handles only triangles so the normal is implicit in the triangle vertices).
+	egerg
+
+	// line 1 = ray
+	float3 p1 = r.o.xyz;
+	float3 d1 = r.d.xyz;
+	
+	// line 2 = cylinder axis
+	float3 p2 = v1.xyz;
+	float3 d2 = normalize(v2.xyz - v1.xyz);
+
+	float3 r = p1 - p2;
+	float a = dot(d1, d1);
+	float b = dot(d1, d2);
+	float c = dot(d1, r);
+	float e = dot(d2, d2);
+	float f = dot(d2, r);
+	float d = a*e - b*b;
+	const float epsilon = 1.0e-6;
+	if (d<=epsilon)
+	{ // ray and capsule almost parallel
+		return t_max;
+	}
+
+	float t = (a*f - b*c)/d;
+	float capsuleLength = length(v2.xyz - v1.xyz);
+	if (t<0.0 || t>capsuleLength)
+	{
+		return t_max;
+	}
+
+	float s = (b*f - c*e)/d;
+	if (s<0.0) return t_max;
+	return s;
+}
+
+
 INLINE
 float3 safe_invdir(ray r)
 {

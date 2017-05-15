@@ -19,58 +19,47 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
-#ifndef INSTANCE_H
-#define INSTANCE_H
-
-#include <vector>
+#pragma once
+#include "calc.h"
+#include "device.h"
+#include "intersector.h"
 #include <memory>
-
-#include "shapeimpl.h"
-#include "math/float3.h"
-#include "math/float2.h"
-
 
 namespace RadeonRays
 {
-    ///< Instance represents a refernce to other primitive with different
-    ///< world transform. Intended to lower memory requirements for
-    ///< replicated geometry.
-    ///<
-    class Instance : public ShapeImpl
+    class Bvh;
+
+    /** 
+    \brief Curves (only) test intersector implementation using skip links BVH
+    */
+    class IntersectorCurves : public Intersector
     {
     public:
         // Constructor
-        Instance(Shape const* baseshape);
+		IntersectorCurves(Calc::Device* device);
 
-        // Get the shape this instance is based on
-        Shape const* GetBaseShape() const;
-
-        // Instance flag
-        bool is_instance() const;
     private:
-        /// Disallow to copy meshes, too heavy
-        Instance(Instance const& o);
-        Instance& operator = (Instance const& o);
+        // Preprocess implementation
+        void Process(World const& world) override;
 
-        /// Base shape
-        Shape const* shape_;
+        // Intersection implementation
+        void Intersect(std::uint32_t queue_idx, Calc::Buffer const *rays, Calc::Buffer const *num_rays, 
+                       std::uint32_t max_rays, Calc::Buffer *hits, 
+                       Calc::Event const *wait_event, Calc::Event **event) const override;
+
+        // Occulusion implementation
+        void Occluded(std::uint32_t queue_idx, Calc::Buffer const *rays, Calc::Buffer const *num_rays, 
+                      std::uint32_t max_rays, Calc::Buffer *hits, 
+                      Calc::Event const *wait_event, Calc::Event **event) const override;
+
+    private:
+
+        struct GpuData;
+
+        // Implementation data
+        std::unique_ptr<GpuData> m_gpudata;
+
+        // Bvh data structure
+        std::unique_ptr<Bvh> m_bvh;
     };
-
-    inline Instance::Instance(Shape const* baseshape)
-        : ShapeImpl(SHAPE_INSTANCED_MESH), shape_(baseshape)
-    {
-    }
-
-    inline Shape const* Instance::GetBaseShape() const
-    {
-        return shape_;
-    }
-
-    inline bool Instance::is_instance() const
-    {
-        return true;
-    }
-
 }
-
-#endif // MESH_H

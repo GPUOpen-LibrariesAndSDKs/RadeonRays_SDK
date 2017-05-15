@@ -70,6 +70,7 @@ namespace RadeonRays
 
         // Print BVH statistics
         virtual void PrintStatistics(std::ostream& os) const;
+
     protected:
         // Build function
         virtual void BuildImpl(bbox const* bounds, int numbounds);

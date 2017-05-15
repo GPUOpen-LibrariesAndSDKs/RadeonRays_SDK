@@ -45,10 +45,12 @@ namespace RadeonRays
         };
         
         // Constructor
-        ShapeImpl();
+        ShapeImpl(ShapeType type);
 
         // Destructor
         ~ShapeImpl() = 0;
+
+		virtual ShapeType getType() const;
 
         // This is needed since instances need special API handling
         virtual bool is_instance() const;
@@ -96,13 +98,14 @@ namespace RadeonRays
         float3 linearmotion_;
         quaternion angulrmotion_;
         int mask_;
+		ShapeType m_type;
         // Id
         Id id_;
         // State change
         mutable int statechange_;
     };
 
-    inline ShapeImpl::ShapeImpl()
+    inline ShapeImpl::ShapeImpl(ShapeType type) : m_type(type)
     {
         SetMask(0xFFFFFFFF);
     }
@@ -110,6 +113,11 @@ namespace RadeonRays
     inline ShapeImpl::~ShapeImpl()
     {
     }
+
+	inline Shape::ShapeType ShapeImpl::getType() const
+	{
+		return m_type;
+	}
     
     inline void ShapeImpl::SetTransform(matrix const& m, matrix const& minv)
     {
