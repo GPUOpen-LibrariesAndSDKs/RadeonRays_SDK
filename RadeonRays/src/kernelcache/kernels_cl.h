@@ -233,6 +233,51 @@ static const char g_build_hlbvh_opencl[]= \
 "    } \n"\
 "} \n"\
 " \n"\
+" \n"\
+"// Intersect ray against a 'capsule', defined as the convex hull of two spheres  \n"\
+"// at position v1.xyz, v2.xyz, with radii v1.w, v2.w \n"\
+"// Return intersection interval value if it is in (0, t_max], return t_max otherwise. \n"\
+"// On intersection, also returns u=[0,1] giving the location of the hit along the axis as (1-u)*v1 + u*v2 \n"\
+"INLINE \n"\
+"float intersect_capsule(ray R, float4 v1, float4 v2, float t_max, float* u) \n"\
+"{ \n"\
+"	// A rather crude test where we find the closest approach of the ray and capsule axis. \n"\
+"	// If this is a) less than the min radius, and b) projects onto the axis between the endpoints,  \n"\
+"	// then we record a hit at the closest approach. \n"\
+" \n"\
+"	float3 p1 = R.o.xyz; // line 1 = ray \n"\
+"	float3 d1 = R.d.xyz; \n"\
+"	float3 p2 = v1.xyz; // line 2 = cylinder axis \n"\
+"	float3 d2 = normalize(v2.xyz - v1.xyz); \n"\
+" \n"\
+"	float3 r = p1 - p2; \n"\
+"	float a = dot(d1, d1); \n"\
+"	float b = dot(d1, d2); \n"\
+"	float c = dot(d1, r); \n"\
+"	float e = dot(d2, d2); \n"\
+"	float f = dot(d2, r); \n"\
+"	float d = a*e - b*b; \n"\
+"	const float epsilon = 1.0e-6; \n"\
+"	if (d<=epsilon) return t_max; // ray and capsule almost parallel \n"\
+"		 \n"\
+"	float s = (b*f - c*e)/d; \n"\
+"	if (s<0.0) return t_max; // intersection behind ray \n"\
+" \n"\
+"	float t = (a*f - b*c)/d; \n"\
+"	float capsuleLength = length(v2.xyz - v1.xyz); \n"\
+"	if (t<0.0 || t>capsuleLength) return t_max; // intersection beyond capsule ends \n"\
+"	 \n"\
+"	float3 c1 = p1 + s*d1; \n"\
+"	float3 c2 = p2 + t*d2; \n"\
+"	float U = t/capsuleLength; \n"\
+"	float radius = (1.0-U)*v1.w + U*v2.w; \n"\
+"	if ( length(c2-c1) > radius ) return t_max; // intersection too far from axis \n"\
+" \n"\
+"	*u = U; \n"\
+"	return s; \n"\
+"} \n"\
+" \n"\
+" \n"\
 "INLINE \n"\
 "float3 safe_invdir(ray r) \n"\
 "{ \n"\
@@ -749,6 +794,51 @@ static const char g_common_opencl[]= \
 "    } \n"\
 "} \n"\
 " \n"\
+" \n"\
+"// Intersect ray against a 'capsule', defined as the convex hull of two spheres  \n"\
+"// at position v1.xyz, v2.xyz, with radii v1.w, v2.w \n"\
+"// Return intersection interval value if it is in (0, t_max], return t_max otherwise. \n"\
+"// On intersection, also returns u=[0,1] giving the location of the hit along the axis as (1-u)*v1 + u*v2 \n"\
+"INLINE \n"\
+"float intersect_capsule(ray R, float4 v1, float4 v2, float t_max, float* u) \n"\
+"{ \n"\
+"	// A rather crude test where we find the closest approach of the ray and capsule axis. \n"\
+"	// If this is a) less than the min radius, and b) projects onto the axis between the endpoints,  \n"\
+"	// then we record a hit at the closest approach. \n"\
+" \n"\
+"	float3 p1 = R.o.xyz; // line 1 = ray \n"\
+"	float3 d1 = R.d.xyz; \n"\
+"	float3 p2 = v1.xyz; // line 2 = cylinder axis \n"\
+"	float3 d2 = normalize(v2.xyz - v1.xyz); \n"\
+" \n"\
+"	float3 r = p1 - p2; \n"\
+"	float a = dot(d1, d1); \n"\
+"	float b = dot(d1, d2); \n"\
+"	float c = dot(d1, r); \n"\
+"	float e = dot(d2, d2); \n"\
+"	float f = dot(d2, r); \n"\
+"	float d = a*e - b*b; \n"\
+"	const float epsilon = 1.0e-6; \n"\
+"	if (d<=epsilon) return t_max; // ray and capsule almost parallel \n"\
+"		 \n"\
+"	float s = (b*f - c*e)/d; \n"\
+"	if (s<0.0) return t_max; // intersection behind ray \n"\
+" \n"\
+"	float t = (a*f - b*c)/d; \n"\
+"	float capsuleLength = length(v2.xyz - v1.xyz); \n"\
+"	if (t<0.0 || t>capsuleLength) return t_max; // intersection beyond capsule ends \n"\
+"	 \n"\
+"	float3 c1 = p1 + s*d1; \n"\
+"	float3 c2 = p2 + t*d2; \n"\
+"	float U = t/capsuleLength; \n"\
+"	float radius = (1.0-U)*v1.w + U*v2.w; \n"\
+"	if ( length(c2-c1) > radius ) return t_max; // intersection too far from axis \n"\
+" \n"\
+"	*u = U; \n"\
+"	return s; \n"\
+"} \n"\
+" \n"\
+" \n"\
 "INLINE \n"\
 "float3 safe_invdir(ray r) \n"\
 "{ \n"\
@@ -1043,6 +1133,51 @@ static const char g_intersect_bvh2level_skiplinks_opencl[]= \
 "        return temp; \n"\
 "    } \n"\
 "} \n"\
+" \n"\
+" \n"\
+"// Intersect ray against a 'capsule', defined as the convex hull of two spheres  \n"\
+"// at position v1.xyz, v2.xyz, with radii v1.w, v2.w \n"\
+"// Return intersection interval value if it is in (0, t_max], return t_max otherwise. \n"\
+"// On intersection, also returns u=[0,1] giving the location of the hit along the axis as (1-u)*v1 + u*v2 \n"\
+"INLINE \n"\
+"float intersect_capsule(ray R, float4 v1, float4 v2, float t_max, float* u) \n"\
+"{ \n"\
+"	// A rather crude test where we find the closest approach of the ray and capsule axis. \n"\
+"	// If this is a) less than the min radius, and b) projects onto the axis between the endpoints,  \n"\
+"	// then we record a hit at the closest approach. \n"\
+" \n"\
+"	float3 p1 = R.o.xyz; // line 1 = ray \n"\
+"	float3 d1 = R.d.xyz; \n"\
+"	float3 p2 = v1.xyz; // line 2 = cylinder axis \n"\
+"	float3 d2 = normalize(v2.xyz - v1.xyz); \n"\
+" \n"\
+"	float3 r = p1 - p2; \n"\
+"	float a = dot(d1, d1); \n"\
+"	float b = dot(d1, d2); \n"\
+"	float c = dot(d1, r); \n"\
+"	float e = dot(d2, d2); \n"\
+"	float f = dot(d2, r); \n"\
+"	float d = a*e - b*b; \n"\
+"	const float epsilon = 1.0e-6; \n"\
+"	if (d<=epsilon) return t_max; // ray and capsule almost parallel \n"\
+"		 \n"\
+"	float s = (b*f - c*e)/d; \n"\
+"	if (s<0.0) return t_max; // intersection behind ray \n"\
+" \n"\
+"	float t = (a*f - b*c)/d; \n"\
+"	float capsuleLength = length(v2.xyz - v1.xyz); \n"\
+"	if (t<0.0 || t>capsuleLength) return t_max; // intersection beyond capsule ends \n"\
+"	 \n"\
+"	float3 c1 = p1 + s*d1; \n"\
+"	float3 c2 = p2 + t*d2; \n"\
+"	float U = t/capsuleLength; \n"\
+"	float radius = (1.0-U)*v1.w + U*v2.w; \n"\
+"	if ( length(c2-c1) > radius ) return t_max; // intersection too far from axis \n"\
+" \n"\
+"	*u = U; \n"\
+"	return s; \n"\
+"} \n"\
+" \n"\
 " \n"\
 "INLINE \n"\
 "float3 safe_invdir(ray r) \n"\
@@ -1774,6 +1909,51 @@ static const char g_intersect_bvh2_bittrail_opencl[]= \
 "    } \n"\
 "} \n"\
 " \n"\
+" \n"\
+"// Intersect ray against a 'capsule', defined as the convex hull of two spheres  \n"\
+"// at position v1.xyz, v2.xyz, with radii v1.w, v2.w \n"\
+"// Return intersection interval value if it is in (0, t_max], return t_max otherwise. \n"\
+"// On intersection, also returns u=[0,1] giving the location of the hit along the axis as (1-u)*v1 + u*v2 \n"\
+"INLINE \n"\
+"float intersect_capsule(ray R, float4 v1, float4 v2, float t_max, float* u) \n"\
+"{ \n"\
+"	// A rather crude test where we find the closest approach of the ray and capsule axis. \n"\
+"	// If this is a) less than the min radius, and b) projects onto the axis between the endpoints,  \n"\
+"	// then we record a hit at the closest approach. \n"\
+" \n"\
+"	float3 p1 = R.o.xyz; // line 1 = ray \n"\
+"	float3 d1 = R.d.xyz; \n"\
+"	float3 p2 = v1.xyz; // line 2 = cylinder axis \n"\
+"	float3 d2 = normalize(v2.xyz - v1.xyz); \n"\
+" \n"\
+"	float3 r = p1 - p2; \n"\
+"	float a = dot(d1, d1); \n"\
+"	float b = dot(d1, d2); \n"\
+"	float c = dot(d1, r); \n"\
+"	float e = dot(d2, d2); \n"\
+"	float f = dot(d2, r); \n"\
+"	float d = a*e - b*b; \n"\
+"	const float epsilon = 1.0e-6; \n"\
+"	if (d<=epsilon) return t_max; // ray and capsule almost parallel \n"\
+"		 \n"\
+"	float s = (b*f - c*e)/d; \n"\
+"	if (s<0.0) return t_max; // intersection behind ray \n"\
+" \n"\
+"	float t = (a*f - b*c)/d; \n"\
+"	float capsuleLength = length(v2.xyz - v1.xyz); \n"\
+"	if (t<0.0 || t>capsuleLength) return t_max; // intersection beyond capsule ends \n"\
+"	 \n"\
+"	float3 c1 = p1 + s*d1; \n"\
+"	float3 c2 = p2 + t*d2; \n"\
+"	float U = t/capsuleLength; \n"\
+"	float radius = (1.0-U)*v1.w + U*v2.w; \n"\
+"	if ( length(c2-c1) > radius ) return t_max; // intersection too far from axis \n"\
+" \n"\
+"	*u = U; \n"\
+"	return s; \n"\
+"} \n"\
+" \n"\
+" \n"\
 "INLINE \n"\
 "float3 safe_invdir(ray r) \n"\
 "{ \n"\
@@ -2192,44 +2372,6 @@ static const char g_intersect_bvh2_curves_opencl[]= \
 "OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN \n"\
 "THE SOFTWARE. \n"\
 "********************************************************************/ \n"\
-"/** \n"\
-"    \\file intersect_bvh2_skiplinks.cl \n"\
-"    \\author Dmitry Kozlov \n"\
-"    \\version 1.0 \n"\
-"    \\brief Intersector implementation based on BVH with skip links. \n"\
-" \n"\
-"    IntersectorSkipLinks implementation is based on the following paper: \n"\
-"    \"Efficiency Issues for Ray Tracing\" Brian Smits \n"\
-"    http://www.cse.chalmers.se/edu/year/2016/course/course/TDA361/EfficiencyIssuesForRayTracing.pdf \n"\
-" \n"\
-"    Intersector is using binary BVH with a single bounding box per node. BVH layout guarantees \n"\
-"    that left child of an internal node lies right next to it in memory. Each BVH node has a  \n"\
-"    skip link to the node traversed next. The traversal pseude code is \n"\
-" \n"\
-"        while(addr is valid) \n"\
-"        { \n"\
-"            node <- fetch next node at addr \n"\
-"            if (rays intersects with node bbox) \n"\
-"            { \n"\
-"                if (node is leaf) \n"\
-"                    intersect leaf \n"\
-"                else \n"\
-"                { \n"\
-"                    addr <- addr + 1 (follow left child) \n"\
-"                    continue \n"\
-"                } \n"\
-"            } \n"\
-" \n"\
-"            addr <- skiplink at node (follow next) \n"\
-"        } \n"\
-" \n"\
-"    Pros: \n"\
-"        -Simple and efficient kernel with low VGPR pressure. \n"\
-"        -Can traverse trees of arbitrary depth. \n"\
-"    Cons: \n"\
-"        -Travesal order is fixed, so poor algorithmic characteristics. \n"\
-"        -Does not benefit from BVH quality optimizations. \n"\
-" */ \n"\
 " \n"\
 "/************************************************************************* \n"\
 " INCLUDES \n"\
@@ -2426,6 +2568,51 @@ static const char g_intersect_bvh2_curves_opencl[]= \
 "    } \n"\
 "} \n"\
 " \n"\
+" \n"\
+"// Intersect ray against a 'capsule', defined as the convex hull of two spheres  \n"\
+"// at position v1.xyz, v2.xyz, with radii v1.w, v2.w \n"\
+"// Return intersection interval value if it is in (0, t_max], return t_max otherwise. \n"\
+"// On intersection, also returns u=[0,1] giving the location of the hit along the axis as (1-u)*v1 + u*v2 \n"\
+"INLINE \n"\
+"float intersect_capsule(ray R, float4 v1, float4 v2, float t_max, float* u) \n"\
+"{ \n"\
+"	// A rather crude test where we find the closest approach of the ray and capsule axis. \n"\
+"	// If this is a) less than the min radius, and b) projects onto the axis between the endpoints,  \n"\
+"	// then we record a hit at the closest approach. \n"\
+" \n"\
+"	float3 p1 = R.o.xyz; // line 1 = ray \n"\
+"	float3 d1 = R.d.xyz; \n"\
+"	float3 p2 = v1.xyz; // line 2 = cylinder axis \n"\
+"	float3 d2 = normalize(v2.xyz - v1.xyz); \n"\
+" \n"\
+"	float3 r = p1 - p2; \n"\
+"	float a = dot(d1, d1); \n"\
+"	float b = dot(d1, d2); \n"\
+"	float c = dot(d1, r); \n"\
+"	float e = dot(d2, d2); \n"\
+"	float f = dot(d2, r); \n"\
+"	float d = a*e - b*b; \n"\
+"	const float epsilon = 1.0e-6; \n"\
+"	if (d<=epsilon) return t_max; // ray and capsule almost parallel \n"\
+"		 \n"\
+"	float s = (b*f - c*e)/d; \n"\
+"	if (s<0.0) return t_max; // intersection behind ray \n"\
+" \n"\
+"	float t = (a*f - b*c)/d; \n"\
+"	float capsuleLength = length(v2.xyz - v1.xyz); \n"\
+"	if (t<0.0 || t>capsuleLength) return t_max; // intersection beyond capsule ends \n"\
+"	 \n"\
+"	float3 c1 = p1 + s*d1; \n"\
+"	float3 c2 = p2 + t*d2; \n"\
+"	float U = t/capsuleLength; \n"\
+"	float radius = (1.0-U)*v1.w + U*v2.w; \n"\
+"	if ( length(c2-c1) > radius ) return t_max; // intersection too far from axis \n"\
+" \n"\
+"	*u = U; \n"\
+"	return s; \n"\
+"} \n"\
+" \n"\
+" \n"\
 "INLINE \n"\
 "float3 safe_invdir(ray r) \n"\
 "{ \n"\
@@ -2475,6 +2662,7 @@ static const char g_intersect_bvh2_curves_opencl[]= \
 "    float const b2 = (d00 * d21 - d01 * d20) * invdenom; \n"\
 "    return make_float2(b1, b2); \n"\
 "} \n"\
+" \n"\
 "/************************************************************************* \n"\
 "EXTENSIONS \n"\
 "**************************************************************************/ \n"\
@@ -2489,7 +2677,6 @@ static const char g_intersect_bvh2_curves_opencl[]= \
 "#define NEXT(x)     ((int)((x).pmax.w)) \n"\
 " \n"\
 " \n"\
-" \n"\
 "/************************************************************************* \n"\
 " TYPE DEFINITIONS \n"\
 " **************************************************************************/ \n"\
@@ -2497,35 +2684,24 @@ static const char g_intersect_bvh2_curves_opencl[]= \
 " \n"\
 "typedef struct \n"\
 "{ \n"\
-"    // Vertex indices \n"\
-"    int idx[3]; \n"\
-"    // Shape maks \n"\
-"    int shape_mask; \n"\
-"    // Shape ID \n"\
-"    int shape_id; \n"\
-"    // Primitive ID \n"\
-"    int prim_id; \n"\
-"} Face; \n"\
+"	int idx[2]; \n"\
+"	int shape_mask; \n"\
+"	int shape_id; \n"\
+"	int prim_id; \n"\
+"} Segment; \n"\
 " \n"\
 "__attribute__((reqd_work_group_size(64, 1, 1))) \n"\
 "KERNEL  \n"\
 "void intersect_main( \n"\
-"    // BVH nodes \n"\
-"    GLOBAL bvh_node const* restrict nodes, \n"\
-"    // Triangle vertices \n"\
-"    GLOBAL float3 const* restrict vertices, \n"\
-"    // Triangle indices \n"\
-"    GLOBAL Face const* restrict faces, \n"\
-"    // Rays  \n"\
-"    GLOBAL ray const* restrict rays, \n"\
-"    // Number of rays \n"\
-"    GLOBAL int const* restrict num_rays, \n"\
-"    // Hit data \n"\
-"    GLOBAL Intersection* hits \n"\
+"    GLOBAL bvh_node const* restrict nodes,   // BVH nodes \n"\
+"    GLOBAL float4 const* restrict vertices,  // Curve vertices \n"\
+"    GLOBAL Segment const* restrict segments, // Segment indices \n"\
+"    GLOBAL ray const* restrict rays,         // Rays \n"\
+"    GLOBAL int const* restrict num_rays,     // Number of rays \n"\
+"    GLOBAL Intersection* hits                // Hit data \n"\
 ") \n"\
 "{ \n"\
 "    int global_id = get_global_id(0); \n"\
-" \n"\
 "    if (global_id < *num_rays) \n"\
 "    { \n"\
 "        // Fetch ray \n"\
@@ -2536,39 +2712,42 @@ static const char g_intersect_bvh2_curves_opencl[]= \
 "            // Precompute inverse direction and origin / dir for bbox testing \n"\
 "            float3 const invdir = safe_invdir(r); \n"\
 "            float3 const oxinvdir = -r.o.xyz * invdir; \n"\
+" \n"\
 "            // Intersection parametric distance \n"\
 "            float t_max = r.o.w; \n"\
 " \n"\
 "            // Current node address \n"\
 "            int addr = 0; \n"\
-"            // Current closest face index \n"\
+" \n"\
+"            // Current closest segment index \n"\
 "            int isect_idx = INVALID_IDX; \n"\
+"			float U_COORD = 0.f; \n"\
 " \n"\
 "            while (addr != INVALID_IDX) \n"\
 "            { \n"\
 "                // Fetch next node \n"\
 "                bvh_node node = nodes[addr]; \n"\
+"				  \n"\
 "                // Intersect against bbox \n"\
 "                float2 s = fast_intersect_bbox1(node, invdir, oxinvdir, t_max); \n"\
-" \n"\
 "                if (s.x <= s.y) \n"\
-"                { \n"\
+"                {  \n"\
 "                    // Check if the node is a leaf \n"\
 "                    if (LEAFNODE(node)) \n"\
 "                    { \n"\
-"                        int const face_idx = STARTIDX(node); \n"\
-"                        Face const face = faces[face_idx]; \n"\
-"                        float3 const v1 = vertices[face.idx[0]]; \n"\
-"                        float3 const v2 = vertices[face.idx[1]]; \n"\
-"                        float3 const v3 = vertices[face.idx[2]]; \n"\
+"                        int const segment_idx = STARTIDX(node); \n"\
+"						Segment const segment = segments[segment_idx]; \n"\
+"                        float4 const v1 = vertices[segment.idx[0]]; \n"\
+"                        float4 const v2 = vertices[segment.idx[1]]; \n"\
 " \n"\
-"                        // Intersect triangle \n"\
-"                        float const f = fast_intersect_triangle(r, v1, v2, v3, t_max); \n"\
+"                        // Intersect capsule \n"\
+"                        float const f = intersect_capsule(r, v1, v2, t_max, &U_COORD); \n"\
+" \n"\
 "                        // If hit update closest hit distance and index \n"\
 "                        if (f < t_max) \n"\
 "                        { \n"\
 "                            t_max = f; \n"\
-"                            isect_idx = face_idx; \n"\
+"                            isect_idx = segment_idx; \n"\
 "                        } \n"\
 "                    } \n"\
 "                    else \n"\
@@ -2587,18 +2766,14 @@ static const char g_intersect_bvh2_curves_opencl[]= \
 "            if (isect_idx != INVALID_IDX) \n"\
 "            { \n"\
 "                // Fetch the node & vertices \n"\
-"                Face const face = faces[isect_idx]; \n"\
-"                float3 const v1 = vertices[face.idx[0]]; \n"\
-"                float3 const v2 = vertices[face.idx[1]]; \n"\
-"                float3 const v3 = vertices[face.idx[2]]; \n"\
-"                // Calculate hit position \n"\
-"                float3 const p = r.o.xyz + r.d.xyz * t_max; \n"\
-"                // Calculte barycentric coordinates \n"\
-"                float2 const uv = triangle_calculate_barycentrics(p, v1, v2, v3); \n"\
+"				Segment const segment = segments[isect_idx]; \n"\
+"                float4 const v1 = vertices[segment.idx[0]]; \n"\
+"                float4 const v2 = vertices[segment.idx[1]]; \n"\
+" \n"\
 "                // Update hit information \n"\
-"                hits[global_id].shape_id = face.shape_id; \n"\
-"                hits[global_id].prim_id = face.prim_id; \n"\
-"                hits[global_id].uvwt = make_float4(uv.x, uv.y, 0.f, t_max); \n"\
+"                hits[global_id].shape_id = segment.shape_id; \n"\
+"                hits[global_id].prim_id = segment.prim_id; \n"\
+"                hits[global_id].uvwt = make_float4(U_COORD, 0.f, 0.f, t_max); \n"\
 "            } \n"\
 "            else \n"\
 "            { \n"\
@@ -2613,18 +2788,12 @@ static const char g_intersect_bvh2_curves_opencl[]= \
 "__attribute__((reqd_work_group_size(64, 1, 1))) \n"\
 "KERNEL  \n"\
 "void occluded_main( \n"\
-"    // BVH nodes \n"\
-"    GLOBAL bvh_node const* restrict nodes, \n"\
-"    // Triangle vertices \n"\
-"    GLOBAL float3 const* restrict vertices, \n"\
-"    // Triangle indices \n"\
-"    GLOBAL Face const* restrict faces, \n"\
-"    // Rays  \n"\
-"    GLOBAL ray const* restrict rays, \n"\
-"    // Number of rays \n"\
-"    GLOBAL int const* restrict num_rays, \n"\
-"    // Hit data \n"\
-"    GLOBAL int* hits \n"\
+"	GLOBAL bvh_node const* restrict nodes,   // BVH nodes \n"\
+"	GLOBAL float4 const* restrict vertices,  // Curve vertices \n"\
+"	GLOBAL Segment const* restrict segments, // Segment indices \n"\
+"	GLOBAL ray const* restrict rays,         // Rays \n"\
+"	GLOBAL int const* restrict num_rays,     // Number of rays \n"\
+"	GLOBAL int* hits                         // Hit data \n"\
 ") \n"\
 "{ \n"\
 "    int global_id = get_global_id(0); \n"\
@@ -2640,32 +2809,34 @@ static const char g_intersect_bvh2_curves_opencl[]= \
 "            // Precompute inverse direction and origin / dir for bbox testing \n"\
 "            float3 const invdir = safe_invdir(r); \n"\
 "            float3 const oxinvdir = -r.o.xyz * invdir; \n"\
+" \n"\
 "            // Intersection parametric distance \n"\
 "            float t_max = r.o.w; \n"\
 " \n"\
 "            // Current node address \n"\
 "            int addr = 0; \n"\
-" \n"\
-"            while (addr != INVALID_IDX) \n"\
+"			/* \n"\
+"			while (addr != INVALID_IDX) \n"\
 "            { \n"\
 "                // Fetch next node \n"\
 "                bvh_node node = nodes[addr]; \n"\
+" \n"\
 "                // Intersect against bbox \n"\
 "                float2 s = fast_intersect_bbox1(node, invdir, oxinvdir, t_max); \n"\
-" \n"\
 "                if (s.x <= s.y) \n"\
 "                { \n"\
 "                    // Check if the node is a leaf \n"\
 "                    if (LEAFNODE(node)) \n"\
 "                    { \n"\
-"                        int const face_idx = STARTIDX(node); \n"\
-"                        Face const face = faces[face_idx]; \n"\
-"                        float3 const v1 = vertices[face.idx[0]]; \n"\
-"                        float3 const v2 = vertices[face.idx[1]]; \n"\
-"                        float3 const v3 = vertices[face.idx[2]]; \n"\
+"						int const segment_idx = STARTIDX(node); \n"\
+"						Segment const segment = segments[segment_idx]; \n"\
+"						float4 const v1 = vertices[segment.idx[0]]; \n"\
+"						float4 const v2 = vertices[segment.idx[1]]; \n"\
 " \n"\
-"                        // Intersect triangle \n"\
-"                        float const f = fast_intersect_triangle(r, v1, v2, v3, t_max); \n"\
+"						// Intersect capsule \n"\
+"						float u; \n"\
+"						float const f = intersect_capsule(r, v1, v2, t_max, &u); \n"\
+" \n"\
 "                        // If hit store the result and bail out \n"\
 "                        if (f < t_max) \n"\
 "                        { \n"\
@@ -2684,6 +2855,7 @@ static const char g_intersect_bvh2_curves_opencl[]= \
 " \n"\
 "                addr = NEXT(node); \n"\
 "            } \n"\
+"			*/ \n"\
 " \n"\
 "            // Finished traversal, but no intersection found \n"\
 "            hits[global_id] = MISS_MARKER; \n"\
@@ -2967,6 +3139,51 @@ static const char g_intersect_bvh2_short_stack_opencl[]= \
 "        return temp; \n"\
 "    } \n"\
 "} \n"\
+" \n"\
+" \n"\
+"// Intersect ray against a 'capsule', defined as the convex hull of two spheres  \n"\
+"// at position v1.xyz, v2.xyz, with radii v1.w, v2.w \n"\
+"// Return intersection interval value if it is in (0, t_max], return t_max otherwise. \n"\
+"// On intersection, also returns u=[0,1] giving the location of the hit along the axis as (1-u)*v1 + u*v2 \n"\
+"INLINE \n"\
+"float intersect_capsule(ray R, float4 v1, float4 v2, float t_max, float* u) \n"\
+"{ \n"\
+"	// A rather crude test where we find the closest approach of the ray and capsule axis. \n"\
+"	// If this is a) less than the min radius, and b) projects onto the axis between the endpoints,  \n"\
+"	// then we record a hit at the closest approach. \n"\
+" \n"\
+"	float3 p1 = R.o.xyz; // line 1 = ray \n"\
+"	float3 d1 = R.d.xyz; \n"\
+"	float3 p2 = v1.xyz; // line 2 = cylinder axis \n"\
+"	float3 d2 = normalize(v2.xyz - v1.xyz); \n"\
+" \n"\
+"	float3 r = p1 - p2; \n"\
+"	float a = dot(d1, d1); \n"\
+"	float b = dot(d1, d2); \n"\
+"	float c = dot(d1, r); \n"\
+"	float e = dot(d2, d2); \n"\
+"	float f = dot(d2, r); \n"\
+"	float d = a*e - b*b; \n"\
+"	const float epsilon = 1.0e-6; \n"\
+"	if (d<=epsilon) return t_max; // ray and capsule almost parallel \n"\
+"		 \n"\
+"	float s = (b*f - c*e)/d; \n"\
+"	if (s<0.0) return t_max; // intersection behind ray \n"\
+" \n"\
+"	float t = (a*f - b*c)/d; \n"\
+"	float capsuleLength = length(v2.xyz - v1.xyz); \n"\
+"	if (t<0.0 || t>capsuleLength) return t_max; // intersection beyond capsule ends \n"\
+"	 \n"\
+"	float3 c1 = p1 + s*d1; \n"\
+"	float3 c2 = p2 + t*d2; \n"\
+"	float U = t/capsuleLength; \n"\
+"	float radius = (1.0-U)*v1.w + U*v2.w; \n"\
+"	if ( length(c2-c1) > radius ) return t_max; // intersection too far from axis \n"\
+" \n"\
+"	*u = U; \n"\
+"	return s; \n"\
+"} \n"\
+" \n"\
 " \n"\
 "INLINE \n"\
 "float3 safe_invdir(ray r) \n"\
@@ -3640,6 +3857,51 @@ static const char g_intersect_bvh2_skiplinks_opencl[]= \
 "    } \n"\
 "} \n"\
 " \n"\
+" \n"\
+"// Intersect ray against a 'capsule', defined as the convex hull of two spheres  \n"\
+"// at position v1.xyz, v2.xyz, with radii v1.w, v2.w \n"\
+"// Return intersection interval value if it is in (0, t_max], return t_max otherwise. \n"\
+"// On intersection, also returns u=[0,1] giving the location of the hit along the axis as (1-u)*v1 + u*v2 \n"\
+"INLINE \n"\
+"float intersect_capsule(ray R, float4 v1, float4 v2, float t_max, float* u) \n"\
+"{ \n"\
+"	// A rather crude test where we find the closest approach of the ray and capsule axis. \n"\
+"	// If this is a) less than the min radius, and b) projects onto the axis between the endpoints,  \n"\
+"	// then we record a hit at the closest approach. \n"\
+" \n"\
+"	float3 p1 = R.o.xyz; // line 1 = ray \n"\
+"	float3 d1 = R.d.xyz; \n"\
+"	float3 p2 = v1.xyz; // line 2 = cylinder axis \n"\
+"	float3 d2 = normalize(v2.xyz - v1.xyz); \n"\
+" \n"\
+"	float3 r = p1 - p2; \n"\
+"	float a = dot(d1, d1); \n"\
+"	float b = dot(d1, d2); \n"\
+"	float c = dot(d1, r); \n"\
+"	float e = dot(d2, d2); \n"\
+"	float f = dot(d2, r); \n"\
+"	float d = a*e - b*b; \n"\
+"	const float epsilon = 1.0e-6; \n"\
+"	if (d<=epsilon) return t_max; // ray and capsule almost parallel \n"\
+"		 \n"\
+"	float s = (b*f - c*e)/d; \n"\
+"	if (s<0.0) return t_max; // intersection behind ray \n"\
+" \n"\
+"	float t = (a*f - b*c)/d; \n"\
+"	float capsuleLength = length(v2.xyz - v1.xyz); \n"\
+"	if (t<0.0 || t>capsuleLength) return t_max; // intersection beyond capsule ends \n"\
+"	 \n"\
+"	float3 c1 = p1 + s*d1; \n"\
+"	float3 c2 = p2 + t*d2; \n"\
+"	float U = t/capsuleLength; \n"\
+"	float radius = (1.0-U)*v1.w + U*v2.w; \n"\
+"	if ( length(c2-c1) > radius ) return t_max; // intersection too far from axis \n"\
+" \n"\
+"	*u = U; \n"\
+"	return s; \n"\
+"} \n"\
+" \n"\
+" \n"\
 "INLINE \n"\
 "float3 safe_invdir(ray r) \n"\
 "{ \n"\
@@ -4138,6 +4400,51 @@ static const char g_intersect_hlbvh_stack_opencl[]= \
 "        return temp; \n"\
 "    } \n"\
 "} \n"\
+" \n"\
+" \n"\
+"// Intersect ray against a 'capsule', defined as the convex hull of two spheres  \n"\
+"// at position v1.xyz, v2.xyz, with radii v1.w, v2.w \n"\
+"// Return intersection interval value if it is in (0, t_max], return t_max otherwise. \n"\
+"// On intersection, also returns u=[0,1] giving the location of the hit along the axis as (1-u)*v1 + u*v2 \n"\
+"INLINE \n"\
+"float intersect_capsule(ray R, float4 v1, float4 v2, float t_max, float* u) \n"\
+"{ \n"\
+"	// A rather crude test where we find the closest approach of the ray and capsule axis. \n"\
+"	// If this is a) less than the min radius, and b) projects onto the axis between the endpoints,  \n"\
+"	// then we record a hit at the closest approach. \n"\
+" \n"\
+"	float3 p1 = R.o.xyz; // line 1 = ray \n"\
+"	float3 d1 = R.d.xyz; \n"\
+"	float3 p2 = v1.xyz; // line 2 = cylinder axis \n"\
+"	float3 d2 = normalize(v2.xyz - v1.xyz); \n"\
+" \n"\
+"	float3 r = p1 - p2; \n"\
+"	float a = dot(d1, d1); \n"\
+"	float b = dot(d1, d2); \n"\
+"	float c = dot(d1, r); \n"\
+"	float e = dot(d2, d2); \n"\
+"	float f = dot(d2, r); \n"\
+"	float d = a*e - b*b; \n"\
+"	const float epsilon = 1.0e-6; \n"\
+"	if (d<=epsilon) return t_max; // ray and capsule almost parallel \n"\
+"		 \n"\
+"	float s = (b*f - c*e)/d; \n"\
+"	if (s<0.0) return t_max; // intersection behind ray \n"\
+" \n"\
+"	float t = (a*f - b*c)/d; \n"\
+"	float capsuleLength = length(v2.xyz - v1.xyz); \n"\
+"	if (t<0.0 || t>capsuleLength) return t_max; // intersection beyond capsule ends \n"\
+"	 \n"\
+"	float3 c1 = p1 + s*d1; \n"\
+"	float3 c2 = p2 + t*d2; \n"\
+"	float U = t/capsuleLength; \n"\
+"	float radius = (1.0-U)*v1.w + U*v2.w; \n"\
+"	if ( length(c2-c1) > radius ) return t_max; // intersection too far from axis \n"\
+" \n"\
+"	*u = U; \n"\
+"	return s; \n"\
+"} \n"\
+" \n"\
 " \n"\
 "INLINE \n"\
 "float3 safe_invdir(ray r) \n"\

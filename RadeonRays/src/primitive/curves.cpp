@@ -66,27 +66,35 @@ namespace RadeonRays
 	{
 		int viStart = segmentIndices_[2 * segmentidx];
 		int viEnd   = segmentIndices_[2 * segmentidx + 1];
-		float4 vStartL = vertices_[viStart];
-		float4   vEndL = vertices_[viEnd];
+		float4 vStaL = vertices_[viStart];
+		float4 vEndL = vertices_[viEnd];
 
 		// (NB, the .w component of the vectors, here containing radii, is not involved in this transform).
-		float3 vStartW = transform_point(vStartL, objectspace ? matrix() : worldmat_);
-		float3    vEndW = transform_point(vEndL, objectspace ? matrix() : worldmat_);
+		float3 vStaW = transform_point(vStaL, objectspace ? matrix() : worldmat_);
+		float3 vEndW = transform_point(vEndL, objectspace ? matrix() : worldmat_);
 
-		float rStart = vStartL.w;
-		float rEnd   = vEndL.w;
+		float rStaL = vStaW.w;
+		float rEndL = vEndL.w;
 
 		// We cannot non-uniformly scale the capsule primitive of each segment, so we must
 		// approximate by taking the maximum axis scale.
 		float worldScale = std::max(std::max(worldmat_.m00, worldmat_.m11), worldmat_.m22);
+		float rStaW = rStaL * worldScale;
+		float rEndW = rEndL * worldScale;
 
-		float3 segmentDir = (vEndW - vStartW);
+		float3 segmentDir = (vEndW - vStaW);
 		segmentDir.normalize();
 
-		vStartW -= segmentDir*rStart*worldScale;
-		vEndW   += segmentDir*rEnd*worldScale;
-
-		bounds = bbox(vStartW, vEndW);
+		bbox segmentBounds(vStaW, vEndW);
+		{
+			float3 sta_disp = float3(rStaW, rStaW, rStaW);
+			float3 end_disp = float3(rEndW, rEndW, rEndW);
+			bbox sta_box(vStaW-sta_disp, vStaW+sta_disp);
+			bbox end_box(vEndW-end_disp, vEndW+end_disp);
+			segmentBounds.grow(sta_box);
+			segmentBounds.grow(end_box);
+		}
+		bounds = segmentBounds;
 	}
 
 	Curves::~Curves()

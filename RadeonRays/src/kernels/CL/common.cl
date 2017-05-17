@@ -58,7 +58,8 @@ typedef struct
     int2 padding;
 } ray;
 
-// Intersection definition
+// Intersection definition 
+// (must match exactly the corresponding definition in RadeonRays)
 typedef struct
 {
     int shape_id;
@@ -194,22 +195,17 @@ float fast_intersect_triangle(ray r, float3 v1, float3 v2, float3 v3, float t_ma
 // Intersect ray against a 'capsule', defined as the convex hull of two spheres 
 // at position v1.xyz, v2.xyz, with radii v1.w, v2.w
 // Return intersection interval value if it is in (0, t_max], return t_max otherwise.
+// On intersection, also returns u=[0,1] giving the location of the hit along the axis as (1-u)*v1 + u*v2
 INLINE
-float intersect_capsule(ray r, float4 v1, float4 v2, float t_max)
+float intersect_capsule(ray R, float4 v1, float4 v2, float t_max, float* u)
 {
-	// For initial tests, just do a very crude test where we find the closest approach of the ray and cylinder axis.
-	// If this is a) less than the min radius, and b) projects onto axis between endpoints, then record a hit at the closest approach.
-	// There is no meaningful normal, but that is not needed for hair shading.
-	// (And RadeonRays doesnt't even provide (yet) a facility to record the normal at the hit, as it currently
-	// handles only triangles so the normal is implicit in the triangle vertices).
-	egerg
+	// A rather crude test where we find the closest approach of the ray and capsule axis.
+	// If this is a) less than the min radius, and b) projects onto the axis between the endpoints, 
+	// then we record a hit at the closest approach.
 
-	// line 1 = ray
-	float3 p1 = r.o.xyz;
-	float3 d1 = r.d.xyz;
-	
-	// line 2 = cylinder axis
-	float3 p2 = v1.xyz;
+	float3 p1 = R.o.xyz; // line 1 = ray
+	float3 d1 = R.d.xyz;
+	float3 p2 = v1.xyz; // line 2 = cylinder axis
 	float3 d2 = normalize(v2.xyz - v1.xyz);
 
 	float3 r = p1 - p2;
@@ -220,20 +216,22 @@ float intersect_capsule(ray r, float4 v1, float4 v2, float t_max)
 	float f = dot(d2, r);
 	float d = a*e - b*b;
 	const float epsilon = 1.0e-6;
-	if (d<=epsilon)
-	{ // ray and capsule almost parallel
-		return t_max;
-	}
+	if (d<=epsilon) return t_max; // ray and capsule almost parallel
+		
+	float s = (b*f - c*e)/d;
+	if (s<0.0) return t_max; // intersection behind ray
 
 	float t = (a*f - b*c)/d;
 	float capsuleLength = length(v2.xyz - v1.xyz);
-	if (t<0.0 || t>capsuleLength)
-	{
-		return t_max;
-	}
+	if (t<0.0 || t>capsuleLength) return t_max; // intersection beyond capsule ends
+	
+	float3 c1 = p1 + s*d1;
+	float3 c2 = p2 + t*d2;
+	float U = t/capsuleLength;
+	float radius = (1.0-U)*v1.w + U*v2.w;
+	if ( length(c2-c1) > radius ) return t_max; // intersection too far from axis
 
-	float s = (b*f - c*e)/d;
-	if (s<0.0) return t_max;
+	*u = U;
 	return s;
 }
 

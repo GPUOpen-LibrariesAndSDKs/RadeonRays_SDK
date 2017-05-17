@@ -958,7 +958,10 @@ static const char g_CLW_opencl[]= \
 "            barrier(CLK_LOCAL_MEM_FENCE); \n"\
 " \n"\
 "            // Reload values back to registers for the second bit pass \n"\
-"            localkeys = ((__local int4*)keys)[localid]; \n"\
+"            localkeys.x = keys[localid << 2]; \n"\
+"            localkeys.y = keys[(localid << 2) + 1]; \n"\
+"            localkeys.z = keys[(localid << 2) + 2]; \n"\
+"            localkeys.w = keys[(localid << 2) + 3]; \n"\
 " \n"\
 "            // Make sure everything is up to date \n"\
 "            barrier(CLK_LOCAL_MEM_FENCE); \n"\
@@ -972,7 +975,10 @@ static const char g_CLW_opencl[]= \
 "            barrier(CLK_LOCAL_MEM_FENCE); \n"\
 " \n"\
 "            // Reload values back to registers for the second bit pass \n"\
-"            localvals = ((__local int4*)keys)[localid]; \n"\
+"            localvals.x = keys[localid << 2]; \n"\
+"            localvals.y = keys[(localid << 2) + 1]; \n"\
+"            localvals.z = keys[(localid << 2) + 2]; \n"\
+"            localvals.w = keys[(localid << 2) + 3]; \n"\
 " \n"\
 "            // Make sure everything is up to date \n"\
 "            barrier(CLK_LOCAL_MEM_FENCE); \n"\

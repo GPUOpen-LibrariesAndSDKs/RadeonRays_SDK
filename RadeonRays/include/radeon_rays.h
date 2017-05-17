@@ -244,7 +244,7 @@ namespace RadeonRays
 		// where each 4-float vertex contains the vertex position as the .xyz components, and the curve width at that vertex as the .w component.
 		// segmentIndices is an int array of length 2*numSegments, with the start and end vertex index of each segment.
 		virtual Shape* CreateCurves(float const * vertices, int vnum, int vstride,
-			int const * segmentIndices, int  numSegments) const = 0;
+			int const * segmentIndices, int numSegments) const = 0;
 
         // Create an instance of a shape with its own transform (set via Shape interface).
         // The call is blocking, so the returned value is ready upon return.

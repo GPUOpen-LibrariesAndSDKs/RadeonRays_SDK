@@ -112,7 +112,7 @@ namespace RadeonRays
 #if USE_OPENCL
         if (device->GetPlatform() == Calc::Platform::kOpenCL)
         {
-            m_gpudata->executable = m_device->CompileExecutable(g_intersect_bvh2_skiplinks_opencl, std::strlen(g_intersect_bvh2_curves_opencl), buildopts.c_str());
+            m_gpudata->executable = m_device->CompileExecutable(g_intersect_bvh2_curves_opencl, std::strlen(g_intersect_bvh2_curves_opencl), buildopts.c_str());
         }
 #endif
 
@@ -222,7 +222,7 @@ namespace RadeonRays
 				}
             }
 
-            m_bvh->Build(&bounds[0], numcurves);
+            m_bvh->Build(&bounds[0], numsegments);
 
 #ifdef RR_PROFILE
             m_bvh->PrintStatistics(std::cout);
@@ -340,8 +340,6 @@ namespace RadeonRays
                     // Copy segment data to GPU buffer
 					segmentdata[i].idx[0] = segmentIndices[2*segmentidx+0] + segment_start_index;
 					segmentdata[i].idx[1] = segmentIndices[2*segmentidx+1] + segment_start_index;
-
-                    // Optimization: we are putting faceid here
 					segmentdata[i].shape_id   = curves->GetId();
 					segmentdata[i].shape_mask = curves->GetMask();
 					segmentdata[i].prim_id = segmentidx;
