@@ -101,7 +101,8 @@ static const char g_build_hlbvh_opencl[]= \
 "    int2 padding; \n"\
 "} ray; \n"\
 " \n"\
-"// Intersection definition \n"\
+"// Intersection definition  \n"\
+"// (must match exactly the corresponding definition in RadeonRays) \n"\
 "typedef struct \n"\
 "{ \n"\
 "    int shape_id; \n"\
@@ -242,8 +243,8 @@ static const char g_build_hlbvh_opencl[]= \
 "float intersect_capsule(ray R, float4 v1, float4 v2, float t_max, float* u) \n"\
 "{ \n"\
 "	// A rather crude test where we find the closest approach of the ray and capsule axis. \n"\
-"	// If this is a) less than the min radius, and b) projects onto the axis between the endpoints,  \n"\
-"	// then we record a hit at the closest approach. \n"\
+"	// If this a) projects onto the axis between the endpoints, and b) is less distance than the interpolated radius at this point  \n"\
+"	// then we record a hit at the closest approach (i.e. the corresponding U value on the axis). \n"\
 " \n"\
 "	float3 p1 = R.o.xyz; // line 1 = ray \n"\
 "	float3 d1 = R.d.xyz; \n"\
@@ -265,7 +266,7 @@ static const char g_build_hlbvh_opencl[]= \
 " \n"\
 "	float t = (a*f - b*c)/d; \n"\
 "	float capsuleLength = length(v2.xyz - v1.xyz); \n"\
-"	if (t<0.0 || t>capsuleLength) return t_max; // intersection beyond capsule ends \n"\
+"	if (t<-v1.w || t>capsuleLength+v2.w) return t_max; // intersection beyond capsule ends \n"\
 "	 \n"\
 "	float3 c1 = p1 + s*d1; \n"\
 "	float3 c2 = p2 + t*d2; \n"\
@@ -662,7 +663,8 @@ static const char g_common_opencl[]= \
 "    int2 padding; \n"\
 "} ray; \n"\
 " \n"\
-"// Intersection definition \n"\
+"// Intersection definition  \n"\
+"// (must match exactly the corresponding definition in RadeonRays) \n"\
 "typedef struct \n"\
 "{ \n"\
 "    int shape_id; \n"\
@@ -803,8 +805,8 @@ static const char g_common_opencl[]= \
 "float intersect_capsule(ray R, float4 v1, float4 v2, float t_max, float* u) \n"\
 "{ \n"\
 "	// A rather crude test where we find the closest approach of the ray and capsule axis. \n"\
-"	// If this is a) less than the min radius, and b) projects onto the axis between the endpoints,  \n"\
-"	// then we record a hit at the closest approach. \n"\
+"	// If this a) projects onto the axis between the endpoints, and b) is less distance than the interpolated radius at this point  \n"\
+"	// then we record a hit at the closest approach (i.e. the corresponding U value on the axis). \n"\
 " \n"\
 "	float3 p1 = R.o.xyz; // line 1 = ray \n"\
 "	float3 d1 = R.d.xyz; \n"\
@@ -826,7 +828,7 @@ static const char g_common_opencl[]= \
 " \n"\
 "	float t = (a*f - b*c)/d; \n"\
 "	float capsuleLength = length(v2.xyz - v1.xyz); \n"\
-"	if (t<0.0 || t>capsuleLength) return t_max; // intersection beyond capsule ends \n"\
+"	if (t<-v1.w || t>capsuleLength+v2.w) return t_max; // intersection beyond capsule ends \n"\
 "	 \n"\
 "	float3 c1 = p1 + s*d1; \n"\
 "	float3 c2 = p2 + t*d2; \n"\
@@ -1002,7 +1004,8 @@ static const char g_intersect_bvh2level_skiplinks_opencl[]= \
 "    int2 padding; \n"\
 "} ray; \n"\
 " \n"\
-"// Intersection definition \n"\
+"// Intersection definition  \n"\
+"// (must match exactly the corresponding definition in RadeonRays) \n"\
 "typedef struct \n"\
 "{ \n"\
 "    int shape_id; \n"\
@@ -1143,8 +1146,8 @@ static const char g_intersect_bvh2level_skiplinks_opencl[]= \
 "float intersect_capsule(ray R, float4 v1, float4 v2, float t_max, float* u) \n"\
 "{ \n"\
 "	// A rather crude test where we find the closest approach of the ray and capsule axis. \n"\
-"	// If this is a) less than the min radius, and b) projects onto the axis between the endpoints,  \n"\
-"	// then we record a hit at the closest approach. \n"\
+"	// If this a) projects onto the axis between the endpoints, and b) is less distance than the interpolated radius at this point  \n"\
+"	// then we record a hit at the closest approach (i.e. the corresponding U value on the axis). \n"\
 " \n"\
 "	float3 p1 = R.o.xyz; // line 1 = ray \n"\
 "	float3 d1 = R.d.xyz; \n"\
@@ -1166,7 +1169,7 @@ static const char g_intersect_bvh2level_skiplinks_opencl[]= \
 " \n"\
 "	float t = (a*f - b*c)/d; \n"\
 "	float capsuleLength = length(v2.xyz - v1.xyz); \n"\
-"	if (t<0.0 || t>capsuleLength) return t_max; // intersection beyond capsule ends \n"\
+"	if (t<-v1.w || t>capsuleLength+v2.w) return t_max; // intersection beyond capsule ends \n"\
 "	 \n"\
 "	float3 c1 = p1 + s*d1; \n"\
 "	float3 c2 = p2 + t*d2; \n"\
@@ -1777,7 +1780,8 @@ static const char g_intersect_bvh2_bittrail_opencl[]= \
 "    int2 padding; \n"\
 "} ray; \n"\
 " \n"\
-"// Intersection definition \n"\
+"// Intersection definition  \n"\
+"// (must match exactly the corresponding definition in RadeonRays) \n"\
 "typedef struct \n"\
 "{ \n"\
 "    int shape_id; \n"\
@@ -1918,8 +1922,8 @@ static const char g_intersect_bvh2_bittrail_opencl[]= \
 "float intersect_capsule(ray R, float4 v1, float4 v2, float t_max, float* u) \n"\
 "{ \n"\
 "	// A rather crude test where we find the closest approach of the ray and capsule axis. \n"\
-"	// If this is a) less than the min radius, and b) projects onto the axis between the endpoints,  \n"\
-"	// then we record a hit at the closest approach. \n"\
+"	// If this a) projects onto the axis between the endpoints, and b) is less distance than the interpolated radius at this point  \n"\
+"	// then we record a hit at the closest approach (i.e. the corresponding U value on the axis). \n"\
 " \n"\
 "	float3 p1 = R.o.xyz; // line 1 = ray \n"\
 "	float3 d1 = R.d.xyz; \n"\
@@ -1941,7 +1945,7 @@ static const char g_intersect_bvh2_bittrail_opencl[]= \
 " \n"\
 "	float t = (a*f - b*c)/d; \n"\
 "	float capsuleLength = length(v2.xyz - v1.xyz); \n"\
-"	if (t<0.0 || t>capsuleLength) return t_max; // intersection beyond capsule ends \n"\
+"	if (t<-v1.w || t>capsuleLength+v2.w) return t_max; // intersection beyond capsule ends \n"\
 "	 \n"\
 "	float3 c1 = p1 + s*d1; \n"\
 "	float3 c2 = p2 + t*d2; \n"\
@@ -2436,7 +2440,8 @@ static const char g_intersect_bvh2_curves_opencl[]= \
 "    int2 padding; \n"\
 "} ray; \n"\
 " \n"\
-"// Intersection definition \n"\
+"// Intersection definition  \n"\
+"// (must match exactly the corresponding definition in RadeonRays) \n"\
 "typedef struct \n"\
 "{ \n"\
 "    int shape_id; \n"\
@@ -2577,8 +2582,8 @@ static const char g_intersect_bvh2_curves_opencl[]= \
 "float intersect_capsule(ray R, float4 v1, float4 v2, float t_max, float* u) \n"\
 "{ \n"\
 "	// A rather crude test where we find the closest approach of the ray and capsule axis. \n"\
-"	// If this is a) less than the min radius, and b) projects onto the axis between the endpoints,  \n"\
-"	// then we record a hit at the closest approach. \n"\
+"	// If this a) projects onto the axis between the endpoints, and b) is less distance than the interpolated radius at this point  \n"\
+"	// then we record a hit at the closest approach (i.e. the corresponding U value on the axis). \n"\
 " \n"\
 "	float3 p1 = R.o.xyz; // line 1 = ray \n"\
 "	float3 d1 = R.d.xyz; \n"\
@@ -2600,7 +2605,7 @@ static const char g_intersect_bvh2_curves_opencl[]= \
 " \n"\
 "	float t = (a*f - b*c)/d; \n"\
 "	float capsuleLength = length(v2.xyz - v1.xyz); \n"\
-"	if (t<0.0 || t>capsuleLength) return t_max; // intersection beyond capsule ends \n"\
+"	if (t<-v1.w || t>capsuleLength+v2.w) return t_max; // intersection beyond capsule ends \n"\
 "	 \n"\
 "	float3 c1 = p1 + s*d1; \n"\
 "	float3 c2 = p2 + t*d2; \n"\
@@ -2676,6 +2681,8 @@ static const char g_intersect_bvh2_curves_opencl[]= \
 "#define LEAFNODE(x)     (((x).pmin.w) != -1.f) \n"\
 "#define NEXT(x)     ((int)((x).pmax.w)) \n"\
 " \n"\
+"///////// DEBUGGING! \n"\
+"#pragma OPENCL EXTENSION cl_amd_printf : enable \n"\
 " \n"\
 "/************************************************************************* \n"\
 " TYPE DEFINITIONS \n"\
@@ -2702,7 +2709,7 @@ static const char g_intersect_bvh2_curves_opencl[]= \
 ") \n"\
 "{ \n"\
 "    int global_id = get_global_id(0); \n"\
-"    if (global_id < *num_rays) \n"\
+"	if (global_id < *num_rays) \n"\
 "    { \n"\
 "        // Fetch ray \n"\
 "        ray const r = rays[global_id]; \n"\
@@ -2796,7 +2803,7 @@ static const char g_intersect_bvh2_curves_opencl[]= \
 "	GLOBAL int* hits                         // Hit data \n"\
 ") \n"\
 "{ \n"\
-"    int global_id = get_global_id(0); \n"\
+"	int global_id = get_global_id(0); \n"\
 " \n"\
 "    // Handle only working subset \n"\
 "    if (global_id < *num_rays) \n"\
@@ -2815,7 +2822,6 @@ static const char g_intersect_bvh2_curves_opencl[]= \
 " \n"\
 "            // Current node address \n"\
 "            int addr = 0; \n"\
-"			/* \n"\
 "			while (addr != INVALID_IDX) \n"\
 "            { \n"\
 "                // Fetch next node \n"\
@@ -2855,7 +2861,6 @@ static const char g_intersect_bvh2_curves_opencl[]= \
 " \n"\
 "                addr = NEXT(node); \n"\
 "            } \n"\
-"			*/ \n"\
 " \n"\
 "            // Finished traversal, but no intersection found \n"\
 "            hits[global_id] = MISS_MARKER; \n"\
@@ -3008,7 +3013,8 @@ static const char g_intersect_bvh2_short_stack_opencl[]= \
 "    int2 padding; \n"\
 "} ray; \n"\
 " \n"\
-"// Intersection definition \n"\
+"// Intersection definition  \n"\
+"// (must match exactly the corresponding definition in RadeonRays) \n"\
 "typedef struct \n"\
 "{ \n"\
 "    int shape_id; \n"\
@@ -3149,8 +3155,8 @@ static const char g_intersect_bvh2_short_stack_opencl[]= \
 "float intersect_capsule(ray R, float4 v1, float4 v2, float t_max, float* u) \n"\
 "{ \n"\
 "	// A rather crude test where we find the closest approach of the ray and capsule axis. \n"\
-"	// If this is a) less than the min radius, and b) projects onto the axis between the endpoints,  \n"\
-"	// then we record a hit at the closest approach. \n"\
+"	// If this a) projects onto the axis between the endpoints, and b) is less distance than the interpolated radius at this point  \n"\
+"	// then we record a hit at the closest approach (i.e. the corresponding U value on the axis). \n"\
 " \n"\
 "	float3 p1 = R.o.xyz; // line 1 = ray \n"\
 "	float3 d1 = R.d.xyz; \n"\
@@ -3172,7 +3178,7 @@ static const char g_intersect_bvh2_short_stack_opencl[]= \
 " \n"\
 "	float t = (a*f - b*c)/d; \n"\
 "	float capsuleLength = length(v2.xyz - v1.xyz); \n"\
-"	if (t<0.0 || t>capsuleLength) return t_max; // intersection beyond capsule ends \n"\
+"	if (t<-v1.w || t>capsuleLength+v2.w) return t_max; // intersection beyond capsule ends \n"\
 "	 \n"\
 "	float3 c1 = p1 + s*d1; \n"\
 "	float3 c2 = p2 + t*d2; \n"\
@@ -3725,7 +3731,8 @@ static const char g_intersect_bvh2_skiplinks_opencl[]= \
 "    int2 padding; \n"\
 "} ray; \n"\
 " \n"\
-"// Intersection definition \n"\
+"// Intersection definition  \n"\
+"// (must match exactly the corresponding definition in RadeonRays) \n"\
 "typedef struct \n"\
 "{ \n"\
 "    int shape_id; \n"\
@@ -3866,8 +3873,8 @@ static const char g_intersect_bvh2_skiplinks_opencl[]= \
 "float intersect_capsule(ray R, float4 v1, float4 v2, float t_max, float* u) \n"\
 "{ \n"\
 "	// A rather crude test where we find the closest approach of the ray and capsule axis. \n"\
-"	// If this is a) less than the min radius, and b) projects onto the axis between the endpoints,  \n"\
-"	// then we record a hit at the closest approach. \n"\
+"	// If this a) projects onto the axis between the endpoints, and b) is less distance than the interpolated radius at this point  \n"\
+"	// then we record a hit at the closest approach (i.e. the corresponding U value on the axis). \n"\
 " \n"\
 "	float3 p1 = R.o.xyz; // line 1 = ray \n"\
 "	float3 d1 = R.d.xyz; \n"\
@@ -3889,7 +3896,7 @@ static const char g_intersect_bvh2_skiplinks_opencl[]= \
 " \n"\
 "	float t = (a*f - b*c)/d; \n"\
 "	float capsuleLength = length(v2.xyz - v1.xyz); \n"\
-"	if (t<0.0 || t>capsuleLength) return t_max; // intersection beyond capsule ends \n"\
+"	if (t<-v1.w || t>capsuleLength+v2.w) return t_max; // intersection beyond capsule ends \n"\
 "	 \n"\
 "	float3 c1 = p1 + s*d1; \n"\
 "	float3 c2 = p2 + t*d2; \n"\
@@ -3951,6 +3958,7 @@ static const char g_intersect_bvh2_skiplinks_opencl[]= \
 "    float const b2 = (d00 * d21 - d01 * d20) * invdenom; \n"\
 "    return make_float2(b1, b2); \n"\
 "} \n"\
+" \n"\
 "/************************************************************************* \n"\
 "EXTENSIONS \n"\
 "**************************************************************************/ \n"\
@@ -3964,7 +3972,8 @@ static const char g_intersect_bvh2_skiplinks_opencl[]= \
 "#define LEAFNODE(x)     (((x).pmin.w) != -1.f) \n"\
 "#define NEXT(x)     ((int)((x).pmax.w)) \n"\
 " \n"\
-" \n"\
+"#define SHAPETYPE_TRI 0 \n"\
+"#define SHAPETYPE_SEG 1 \n"\
 " \n"\
 "/************************************************************************* \n"\
 " TYPE DEFINITIONS \n"\
@@ -3973,79 +3982,95 @@ static const char g_intersect_bvh2_skiplinks_opencl[]= \
 " \n"\
 "typedef struct \n"\
 "{ \n"\
-"    // Vertex indices \n"\
-"    int idx[3]; \n"\
-"    // Shape maks \n"\
-"    int shape_mask; \n"\
-"    // Shape ID \n"\
-"    int shape_id; \n"\
-"    // Primitive ID \n"\
-"    int prim_id; \n"\
-"} Face; \n"\
+"	int idx[3]; // vertex indices \n"\
+"	int shape_mask; \n"\
+"	int shape_id; \n"\
+"	int prim_id; \n"\
+"	int type_id; // Type ID (SHAPETYPE_TRI or SHAPETYPE_SEG) \n"\
+"} Primitive; \n"\
 " \n"\
 "__attribute__((reqd_work_group_size(64, 1, 1))) \n"\
 "KERNEL  \n"\
 "void intersect_main( \n"\
-"    // BVH nodes \n"\
-"    GLOBAL bvh_node const* restrict nodes, \n"\
-"    // Triangle vertices \n"\
-"    GLOBAL float3 const* restrict vertices, \n"\
-"    // Triangle indices \n"\
-"    GLOBAL Face const* restrict faces, \n"\
-"    // Rays  \n"\
-"    GLOBAL ray const* restrict rays, \n"\
-"    // Number of rays \n"\
-"    GLOBAL int const* restrict num_rays, \n"\
-"    // Hit data \n"\
-"    GLOBAL Intersection* hits \n"\
+"	GLOBAL bvh_node const* restrict nodes,        // BVH nodes \n"\
+"	GLOBAL float3 const* restrict mesh_vertices,  // Mesh vertices \n"\
+"	GLOBAL float4 const* restrict curve_vertices, // Curve vertices \n"\
+"	GLOBAL Primitive const* restrict primitives,  // Primitive indices \n"\
+"	GLOBAL ray const* restrict rays,              // Rays \n"\
+"	GLOBAL int const* restrict num_rays,          // Number of rays \n"\
+"	GLOBAL Intersection* hits                     // Hit data \n"\
 ") \n"\
 "{ \n"\
 "    int global_id = get_global_id(0); \n"\
-" \n"\
 "    if (global_id < *num_rays) \n"\
 "    { \n"\
 "        // Fetch ray \n"\
 "        ray const r = rays[global_id]; \n"\
-" \n"\
 "        if (ray_is_active(&r)) \n"\
 "        { \n"\
 "            // Precompute inverse direction and origin / dir for bbox testing \n"\
 "            float3 const invdir = safe_invdir(r); \n"\
 "            float3 const oxinvdir = -r.o.xyz * invdir; \n"\
+" \n"\
 "            // Intersection parametric distance \n"\
 "            float t_max = r.o.w; \n"\
 " \n"\
 "            // Current node address \n"\
 "            int addr = 0; \n"\
-"            // Current closest face index \n"\
+" \n"\
+"            // Current closest primitive index \n"\
 "            int isect_idx = INVALID_IDX; \n"\
+"			int isect_type = -1; \n"\
+"			float U_COORD = 0.f; \n"\
 " \n"\
 "            while (addr != INVALID_IDX) \n"\
 "            { \n"\
 "                // Fetch next node \n"\
 "                bvh_node node = nodes[addr]; \n"\
+" \n"\
 "                // Intersect against bbox \n"\
 "                float2 s = fast_intersect_bbox1(node, invdir, oxinvdir, t_max); \n"\
-" \n"\
 "                if (s.x <= s.y) \n"\
 "                { \n"\
 "                    // Check if the node is a leaf \n"\
 "                    if (LEAFNODE(node)) \n"\
 "                    { \n"\
-"                        int const face_idx = STARTIDX(node); \n"\
-"                        Face const face = faces[face_idx]; \n"\
-"                        float3 const v1 = vertices[face.idx[0]]; \n"\
-"                        float3 const v2 = vertices[face.idx[1]]; \n"\
-"                        float3 const v3 = vertices[face.idx[2]]; \n"\
+"                        int const primitive_idx = STARTIDX(node); \n"\
+"						Primitive const prim = primitives[primitive_idx]; \n"\
+"                         \n"\
+"						if (prim.type_id == SHAPETYPE_TRI) \n"\
+"						{ \n"\
+"							float3 const v1 = mesh_vertices[prim.idx[0]]; \n"\
+"							float3 const v2 = mesh_vertices[prim.idx[1]]; \n"\
+"							float3 const v3 = mesh_vertices[prim.idx[2]]; \n"\
 " \n"\
-"                        // Intersect triangle \n"\
-"                        float const f = fast_intersect_triangle(r, v1, v2, v3, t_max); \n"\
-"                        // If hit update closest hit distance and index \n"\
-"                        if (f < t_max) \n"\
-"                        { \n"\
-"                            t_max = f; \n"\
-"                            isect_idx = face_idx; \n"\
-"                        } \n"\
+"							// Intersect triangle \n"\
+"							float const f = fast_intersect_triangle(r, v1, v2, v3, t_max); \n"\
+" \n"\
+"							// If hit update closest hit distance and index \n"\
+"							if (f < t_max) \n"\
+"							{ \n"\
+"								t_max = f; \n"\
+"								isect_idx = face_idx; \n"\
+"								isect_type = SHAPETYPE_TRI; \n"\
+"							} \n"\
+"						} \n"\
+"						else \n"\
+"						{ \n"\
+"							float4 const v1 = curve_vertices[prim.idx[0]]; \n"\
+"							float4 const v2 = curve_vertices[prim.idx[1]]; \n"\
+" \n"\
+"							// Intersect capsule \n"\
+"							float const f = intersect_capsule(r, v1, v2, t_max, &U_COORD); \n"\
+" \n"\
+"							// If hit update closest hit distance and index \n"\
+"							if (f < t_max) \n"\
+"							{ \n"\
+"								t_max = f; \n"\
+"								isect_idx = segment_idx; \n"\
+"								isect_type = SHAPETYPE_SEG; \n"\
+"							} \n"\
+"						} \n"\
 "                    } \n"\
 "                    else \n"\
 "                    { \n"\
@@ -4062,19 +4087,24 @@ static const char g_intersect_bvh2_skiplinks_opencl[]= \
 "            // Check if we have found an intersection \n"\
 "            if (isect_idx != INVALID_IDX) \n"\
 "            { \n"\
-"                // Fetch the node & vertices \n"\
-"                Face const face = faces[isect_idx]; \n"\
-"                float3 const v1 = vertices[face.idx[0]]; \n"\
-"                float3 const v2 = vertices[face.idx[1]]; \n"\
-"                float3 const v3 = vertices[face.idx[2]]; \n"\
-"                // Calculate hit position \n"\
-"                float3 const p = r.o.xyz + r.d.xyz * t_max; \n"\
-"                // Calculte barycentric coordinates \n"\
-"                float2 const uv = triangle_calculate_barycentrics(p, v1, v2, v3); \n"\
-"                // Update hit information \n"\
-"                hits[global_id].shape_id = face.shape_id; \n"\
-"                hits[global_id].prim_id = face.prim_id; \n"\
-"                hits[global_id].uvwt = make_float4(uv.x, uv.y, 0.f, t_max); \n"\
+"				Primitive const prim = primitives[isect_idx]; \n"\
+"				if (isect_type == SHAPETYPE_TRI) \n"\
+"				{ \n"\
+"					float3 const v1 = mesh_vertices[prim.idx[0]]; \n"\
+"					float3 const v2 = mesh_vertices[prim.idx[1]]; \n"\
+"					float3 const v3 = mesh_vertices[prim.idx[2]]; \n"\
+"					float3 const p = r.o.xyz + r.d.xyz * t_max; \n"\
+"					float2 const uv = triangle_calculate_barycentrics(p, v1, v2, v3); \n"\
+"					hits[global_id].shape_id = prim.shape_id; \n"\
+"					hits[global_id].prim_id = prim.prim_id; \n"\
+"					hits[global_id].uvwt = make_float4(uv.x, uv.y, 0.f, t_max); \n"\
+"				} \n"\
+"				else \n"\
+"				{ \n"\
+"					hits[global_id].shape_id = segment.shape_id; \n"\
+"					hits[global_id].prim_id = segment.prim_id; \n"\
+"					hits[global_id].uvwt = make_float4(U_COORD, 0.f, 0.f, t_max) \n"\
+"				} \n"\
 "            } \n"\
 "            else \n"\
 "            { \n"\
@@ -4089,18 +4119,13 @@ static const char g_intersect_bvh2_skiplinks_opencl[]= \
 "__attribute__((reqd_work_group_size(64, 1, 1))) \n"\
 "KERNEL  \n"\
 "void occluded_main( \n"\
-"    // BVH nodes \n"\
-"    GLOBAL bvh_node const* restrict nodes, \n"\
-"    // Triangle vertices \n"\
-"    GLOBAL float3 const* restrict vertices, \n"\
-"    // Triangle indices \n"\
-"    GLOBAL Face const* restrict faces, \n"\
-"    // Rays  \n"\
-"    GLOBAL ray const* restrict rays, \n"\
-"    // Number of rays \n"\
-"    GLOBAL int const* restrict num_rays, \n"\
-"    // Hit data \n"\
-"    GLOBAL int* hits \n"\
+"	GLOBAL bvh_node const* restrict nodes,        // BVH nodes \n"\
+"	GLOBAL float3 const* restrict mesh_vertices,  // Mesh vertices \n"\
+"	GLOBAL float4 const* restrict curve_vertices, // Curve vertices \n"\
+"	GLOBAL Primitive const* restrict primitives,  // Primitive indices \n"\
+"	GLOBAL ray const* restrict rays,              // Rays \n"\
+"	GLOBAL int const* restrict num_rays,          // Number of rays \n"\
+"	GLOBAL Intersection* hits                     // Hit data \n"\
 ") \n"\
 "{ \n"\
 "    int global_id = get_global_id(0); \n"\
@@ -4110,44 +4135,64 @@ static const char g_intersect_bvh2_skiplinks_opencl[]= \
 "    { \n"\
 "        // Fetch ray \n"\
 "        ray const r = rays[global_id]; \n"\
-" \n"\
 "        if (ray_is_active(&r)) \n"\
 "        { \n"\
 "            // Precompute inverse direction and origin / dir for bbox testing \n"\
 "            float3 const invdir = safe_invdir(r); \n"\
 "            float3 const oxinvdir = -r.o.xyz * invdir; \n"\
+" \n"\
 "            // Intersection parametric distance \n"\
 "            float t_max = r.o.w; \n"\
 " \n"\
 "            // Current node address \n"\
 "            int addr = 0; \n"\
-" \n"\
 "            while (addr != INVALID_IDX) \n"\
 "            { \n"\
 "                // Fetch next node \n"\
 "                bvh_node node = nodes[addr]; \n"\
+" \n"\
 "                // Intersect against bbox \n"\
 "                float2 s = fast_intersect_bbox1(node, invdir, oxinvdir, t_max); \n"\
-" \n"\
 "                if (s.x <= s.y) \n"\
 "                { \n"\
 "                    // Check if the node is a leaf \n"\
 "                    if (LEAFNODE(node)) \n"\
 "                    { \n"\
-"                        int const face_idx = STARTIDX(node); \n"\
-"                        Face const face = faces[face_idx]; \n"\
-"                        float3 const v1 = vertices[face.idx[0]]; \n"\
-"                        float3 const v2 = vertices[face.idx[1]]; \n"\
-"                        float3 const v3 = vertices[face.idx[2]]; \n"\
+"						int const primitive_idx = STARTIDX(node); \n"\
+"						Primitive const prim = primitives[primitive_idx]; \n"\
 " \n"\
-"                        // Intersect triangle \n"\
-"                        float const f = fast_intersect_triangle(r, v1, v2, v3, t_max); \n"\
-"                        // If hit store the result and bail out \n"\
-"                        if (f < t_max) \n"\
-"                        { \n"\
-"                            hits[global_id] = HIT_MARKER; \n"\
-"                            return; \n"\
-"                        } \n"\
+"						if (prim.type_id == SHAPETYPE_TRI) \n"\
+"						{ \n"\
+"							float3 const v1 = mesh_vertices[prim.idx[0]]; \n"\
+"							float3 const v2 = mesh_vertices[prim.idx[1]]; \n"\
+"							float3 const v3 = mesh_vertices[prim.idx[2]]; \n"\
+" \n"\
+"							// Intersect triangle \n"\
+"							float const f = fast_intersect_triangle(r, v1, v2, v3, t_max); \n"\
+" \n"\
+"							// If hit store the result and bail out \n"\
+"							if (f < t_max) \n"\
+"							{ \n"\
+"								hits[global_id] = HIT_MARKER; \n"\
+"								return; \n"\
+"							} \n"\
+"						} \n"\
+"						else \n"\
+"						{ \n"\
+"							float4 const v1 = curve_vertices[prim.idx[0]]; \n"\
+"							float4 const v2 = curve_vertices[prim.idx[1]]; \n"\
+" \n"\
+"							// Intersect capsule \n"\
+"							float u; \n"\
+"							float const f = intersect_capsule(r, v1, v2, t_max, &u); \n"\
+" \n"\
+"							// If hit store the result and bail out \n"\
+"							if (f < t_max) \n"\
+"							{ \n"\
+"								hits[global_id] = HIT_MARKER; \n"\
+"								return; \n"\
+"							} \n"\
+"						} \n"\
 "                    } \n"\
 "                    else \n"\
 "                    { \n"\
@@ -4269,7 +4314,8 @@ static const char g_intersect_hlbvh_stack_opencl[]= \
 "    int2 padding; \n"\
 "} ray; \n"\
 " \n"\
-"// Intersection definition \n"\
+"// Intersection definition  \n"\
+"// (must match exactly the corresponding definition in RadeonRays) \n"\
 "typedef struct \n"\
 "{ \n"\
 "    int shape_id; \n"\
@@ -4410,8 +4456,8 @@ static const char g_intersect_hlbvh_stack_opencl[]= \
 "float intersect_capsule(ray R, float4 v1, float4 v2, float t_max, float* u) \n"\
 "{ \n"\
 "	// A rather crude test where we find the closest approach of the ray and capsule axis. \n"\
-"	// If this is a) less than the min radius, and b) projects onto the axis between the endpoints,  \n"\
-"	// then we record a hit at the closest approach. \n"\
+"	// If this a) projects onto the axis between the endpoints, and b) is less distance than the interpolated radius at this point  \n"\
+"	// then we record a hit at the closest approach (i.e. the corresponding U value on the axis). \n"\
 " \n"\
 "	float3 p1 = R.o.xyz; // line 1 = ray \n"\
 "	float3 d1 = R.d.xyz; \n"\
@@ -4433,7 +4479,7 @@ static const char g_intersect_hlbvh_stack_opencl[]= \
 " \n"\
 "	float t = (a*f - b*c)/d; \n"\
 "	float capsuleLength = length(v2.xyz - v1.xyz); \n"\
-"	if (t<0.0 || t>capsuleLength) return t_max; // intersection beyond capsule ends \n"\
+"	if (t<-v1.w || t>capsuleLength+v2.w) return t_max; // intersection beyond capsule ends \n"\
 "	 \n"\
 "	float3 c1 = p1 + s*d1; \n"\
 "	float3 c2 = p2 + t*d2; \n"\

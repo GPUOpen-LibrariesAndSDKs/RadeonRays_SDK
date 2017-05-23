@@ -200,8 +200,8 @@ INLINE
 float intersect_capsule(ray R, float4 v1, float4 v2, float t_max, float* u)
 {
 	// A rather crude test where we find the closest approach of the ray and capsule axis.
-	// If this is a) less than the min radius, and b) projects onto the axis between the endpoints, 
-	// then we record a hit at the closest approach.
+	// If this a) projects onto the axis between the endpoints, and b) is less distance than the interpolated radius at this point 
+	// then we record a hit at the closest approach (i.e. the corresponding U value on the axis).
 
 	float3 p1 = R.o.xyz; // line 1 = ray
 	float3 d1 = R.d.xyz;
@@ -223,7 +223,7 @@ float intersect_capsule(ray R, float4 v1, float4 v2, float t_max, float* u)
 
 	float t = (a*f - b*c)/d;
 	float capsuleLength = length(v2.xyz - v1.xyz);
-	if (t<0.0 || t>capsuleLength) return t_max; // intersection beyond capsule ends
+	if (t<-v1.w || t>capsuleLength+v2.w) return t_max; // intersection beyond capsule ends
 	
 	float3 c1 = p1 + s*d1;
 	float3 c2 = p2 + t*d2;

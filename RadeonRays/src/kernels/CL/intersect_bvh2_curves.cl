@@ -38,6 +38,8 @@ DEFINES
 #define LEAFNODE(x)     (((x).pmin.w) != -1.f)
 #define NEXT(x)     ((int)((x).pmax.w))
 
+///////// DEBUGGING!
+#pragma OPENCL EXTENSION cl_amd_printf : enable
 
 /*************************************************************************
  TYPE DEFINITIONS
@@ -64,7 +66,7 @@ void intersect_main(
 )
 {
     int global_id = get_global_id(0);
-    if (global_id < *num_rays)
+	if (global_id < *num_rays)
     {
         // Fetch ray
         ray const r = rays[global_id];
@@ -158,7 +160,7 @@ void occluded_main(
 	GLOBAL int* hits                         // Hit data
 )
 {
-    int global_id = get_global_id(0);
+	int global_id = get_global_id(0);
 
     // Handle only working subset
     if (global_id < *num_rays)
@@ -177,7 +179,6 @@ void occluded_main(
 
             // Current node address
             int addr = 0;
-			/*
 			while (addr != INVALID_IDX)
             {
                 // Fetch next node
@@ -217,7 +218,6 @@ void occluded_main(
 
                 addr = NEXT(node);
             }
-			*/
 
             // Finished traversal, but no intersection found
             hits[global_id] = MISS_MARKER;

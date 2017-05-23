@@ -189,19 +189,19 @@ namespace RadeonRays
 			}
 			int numcurves = curveShapes.size();
 
-            // This buffer tracks curve start index for next stage as curve segment indices are relative to 0
-            std::vector<int> curve_vertices_start_idx(numcurves);
-            std::vector<int> curve_segments_start_idx(numcurves);
+			// This buffer tracks curve start index for next stage as curve segment indices are relative to 0
+			std::vector<int> curve_vertices_start_idx(numcurves);
+			std::vector<int> curve_segments_start_idx(numcurves);
 			int vertexIndex = 0;
 			int segmentIndex = 0;
-            for (int i=0; i<numcurves; ++i)
-            {
+			for (int i=0; i<numcurves; ++i)
+			{
 				const Curves* curves = static_cast<const Curves*>(curveShapes[i]);
 				curve_vertices_start_idx[i] = vertexIndex;
 				curve_segments_start_idx[i] = segmentIndex;
 				vertexIndex  += curves->num_vertices();
 				segmentIndex += curves->num_segments();
-            }
+			}
 
 			// total number of vertices and segments (summed over all curves in scene)
 			int numsegments = segmentIndex;
@@ -314,7 +314,7 @@ namespace RadeonRays
                 e->Wait();
                 m_device->DeleteEvent(e);
 
-                // Here the point is to add curves starting index to actual index contained within the curves,
+                // Here the point is to add curves starting index to actual indices contained within the segments,
                 // getting absolute index in the buffer.
                 // Besides that we need to permute the segments according to BVH reordering, which
                 // is contained within bvh.primids_
@@ -335,11 +335,11 @@ namespace RadeonRays
                     int segmentidx = indextolook4 - curve_segments_start_idx[shapeidx];
 
                     // Find segment start index for this curves shape
-                    int segment_start_index = curve_segments_start_idx[shapeidx];
+                    int vertex_start_index = curve_vertices_start_idx[shapeidx];
 
                     // Copy segment data to GPU buffer
-					segmentdata[i].idx[0] = segmentIndices[2*segmentidx+0] + segment_start_index;
-					segmentdata[i].idx[1] = segmentIndices[2*segmentidx+1] + segment_start_index;
+					segmentdata[i].idx[0] = segmentIndices[2*segmentidx+0] + vertex_start_index;
+					segmentdata[i].idx[1] = segmentIndices[2*segmentidx+1] + vertex_start_index;
 					segmentdata[i].shape_id   = curves->GetId();
 					segmentdata[i].shape_mask = curves->GetMask();
 					segmentdata[i].prim_id = segmentidx;
