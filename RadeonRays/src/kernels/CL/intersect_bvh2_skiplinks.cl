@@ -155,7 +155,7 @@ void intersect_main(
 							if (f < t_max)
 							{
 								t_max = f;
-								isect_idx = face_idx;
+								isect_idx = primitive_idx;
 								isect_type = SHAPETYPE_TRI;
 							}
 						}
@@ -171,7 +171,7 @@ void intersect_main(
 							if (f < t_max)
 							{
 								t_max = f;
-								isect_idx = segment_idx;
+								isect_idx = primitive_idx;
 								isect_type = SHAPETYPE_SEG;
 							}
 						}
@@ -192,6 +192,8 @@ void intersect_main(
             if (isect_idx != INVALID_IDX)
             {
 				Primitive const prim = primitives[isect_idx];
+				hits[global_id].shape_id = prim.shape_id;
+				hits[global_id].prim_id = prim.prim_id;
 				if (isect_type == SHAPETYPE_TRI)
 				{
 					float3 const v1 = mesh_vertices[prim.idx[0]];
@@ -199,15 +201,11 @@ void intersect_main(
 					float3 const v3 = mesh_vertices[prim.idx[2]];
 					float3 const p = r.o.xyz + r.d.xyz * t_max;
 					float2 const uv = triangle_calculate_barycentrics(p, v1, v2, v3);
-					hits[global_id].shape_id = prim.shape_id;
-					hits[global_id].prim_id = prim.prim_id;
 					hits[global_id].uvwt = make_float4(uv.x, uv.y, 0.f, t_max);
 				}
 				else
 				{
-					hits[global_id].shape_id = segment.shape_id;
-					hits[global_id].prim_id = segment.prim_id;
-					hits[global_id].uvwt = make_float4(U_COORD, 0.f, 0.f, t_max)
+					hits[global_id].uvwt = make_float4(U_COORD, 0.f, 0.f, t_max);
 				}
             }
             else
@@ -229,7 +227,7 @@ void occluded_main(
 	GLOBAL Primitive const* restrict primitives,  // Primitive indices
 	GLOBAL ray const* restrict rays,              // Rays
 	GLOBAL int const* restrict num_rays,          // Number of rays
-	GLOBAL Intersection* hits                     // Hit data
+	GLOBAL int* hits                              // Hit data
 )
 {
     int global_id = get_global_id(0);

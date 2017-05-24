@@ -4051,7 +4051,7 @@ static const char g_intersect_bvh2_skiplinks_opencl[]= \
 "							if (f < t_max) \n"\
 "							{ \n"\
 "								t_max = f; \n"\
-"								isect_idx = face_idx; \n"\
+"								isect_idx = primitive_idx; \n"\
 "								isect_type = SHAPETYPE_TRI; \n"\
 "							} \n"\
 "						} \n"\
@@ -4067,7 +4067,7 @@ static const char g_intersect_bvh2_skiplinks_opencl[]= \
 "							if (f < t_max) \n"\
 "							{ \n"\
 "								t_max = f; \n"\
-"								isect_idx = segment_idx; \n"\
+"								isect_idx = primitive_idx; \n"\
 "								isect_type = SHAPETYPE_SEG; \n"\
 "							} \n"\
 "						} \n"\
@@ -4088,6 +4088,8 @@ static const char g_intersect_bvh2_skiplinks_opencl[]= \
 "            if (isect_idx != INVALID_IDX) \n"\
 "            { \n"\
 "				Primitive const prim = primitives[isect_idx]; \n"\
+"				hits[global_id].shape_id = prim.shape_id; \n"\
+"				hits[global_id].prim_id = prim.prim_id; \n"\
 "				if (isect_type == SHAPETYPE_TRI) \n"\
 "				{ \n"\
 "					float3 const v1 = mesh_vertices[prim.idx[0]]; \n"\
@@ -4095,15 +4097,11 @@ static const char g_intersect_bvh2_skiplinks_opencl[]= \
 "					float3 const v3 = mesh_vertices[prim.idx[2]]; \n"\
 "					float3 const p = r.o.xyz + r.d.xyz * t_max; \n"\
 "					float2 const uv = triangle_calculate_barycentrics(p, v1, v2, v3); \n"\
-"					hits[global_id].shape_id = prim.shape_id; \n"\
-"					hits[global_id].prim_id = prim.prim_id; \n"\
 "					hits[global_id].uvwt = make_float4(uv.x, uv.y, 0.f, t_max); \n"\
 "				} \n"\
 "				else \n"\
 "				{ \n"\
-"					hits[global_id].shape_id = segment.shape_id; \n"\
-"					hits[global_id].prim_id = segment.prim_id; \n"\
-"					hits[global_id].uvwt = make_float4(U_COORD, 0.f, 0.f, t_max) \n"\
+"					hits[global_id].uvwt = make_float4(U_COORD, 0.f, 0.f, t_max); \n"\
 "				} \n"\
 "            } \n"\
 "            else \n"\
@@ -4125,7 +4123,7 @@ static const char g_intersect_bvh2_skiplinks_opencl[]= \
 "	GLOBAL Primitive const* restrict primitives,  // Primitive indices \n"\
 "	GLOBAL ray const* restrict rays,              // Rays \n"\
 "	GLOBAL int const* restrict num_rays,          // Number of rays \n"\
-"	GLOBAL Intersection* hits                     // Hit data \n"\
+"	GLOBAL int* hits                              // Hit data \n"\
 ") \n"\
 "{ \n"\
 "    int global_id = get_global_id(0); \n"\

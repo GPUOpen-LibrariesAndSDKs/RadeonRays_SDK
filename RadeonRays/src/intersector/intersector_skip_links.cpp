@@ -214,68 +214,46 @@ namespace RadeonRays
 			int mesh_faces_idx = 0;
 			int curve_vertices_idx = 0;
 			int curve_segments_idx = 0;
-			std::unordered_map<int, int> shapeToMesh;
-			std::unordered_map<int, int> shapeToCurves;
+			std::unordered_map<int, int> shapeToMesh;   // shapeIdx -> meshIdx
+			std::unordered_map<int, int> shapeToCurves; // shapeIdx -> curvesIdx
 			{
 				int meshIdx = 0;
 				int curvesIdx = 0;
-				for (size_t n=0; n<shapes.size(); ++n)
+				for (size_t shapeIdx=0; shapeIdx<shapes.size(); ++shapeIdx)
 				{
-					const Shape* shape = shapes[n];
+					const Shape* shape = shapes[shapeIdx];
 					switch (shape->getType())
 					{	
 						case Shape::SHAPE_MESH:
-						{
-							Mesh const* mesh = static_cast<Mesh const*>(shape);
-							const int num_faces = mesh->num_faces();
-							shape_bounds_start_idx.push_back(bounds_start_idx);
-							bounds_start_idx += num_faces;
-							mesh_vertices_start_idx.push_back(mesh_vertices_idx);
-							mesh_faces_start_idx.push_back(mesh_faces_idx);
-							mesh_vertices_idx += mesh->num_vertices();
-							mesh_faces_idx += num_faces;
-							shapeToMesh[n] = meshIdx;
-							meshIdx++;
-							break;
-						}
-
 						case Shape::SHAPE_INSTANCED_MESH:
-						{
-							Instance const* instance = static_cast<Instance const*>(shape);
-							Mesh const* mesh = static_cast<Mesh const*>(instance->GetBaseShape());
-							matrix m, minv;
-							instance->GetTransform(m, minv);
+						{							
+							const Shape* baseShape = (shape->getType()==Shape::SHAPE_MESH) ? shape : static_cast<Instance const*>(shape)->GetBaseShape();
+							Mesh const* mesh = static_cast<Mesh const*>(baseShape);
 							const int num_faces = mesh->num_faces();
-							shape_bounds_start_idx.push_back(bounds_start_idx);
+							shape_bounds_start_idx[shapeIdx] = bounds_start_idx;
 							bounds_start_idx += num_faces;
-							mesh_vertices_start_idx.push_back(mesh_vertices_idx);
-							mesh_faces_start_idx.push_back(mesh_faces_idx);
+							mesh_vertices_start_idx[meshIdx] = mesh_vertices_idx;
+							mesh_faces_start_idx[meshIdx]    = mesh_faces_idx;
 							mesh_vertices_idx += mesh->num_vertices();
 							mesh_faces_idx += num_faces;
-							shapeToMesh[n] = meshIdx;
+							shapeToMesh[shapeIdx] = meshIdx;
 							meshIdx++;
 							break;
 						}
 
 						case Shape::SHAPE_CURVES:
+						case Shape::SHAPE_INSTANCED_CURVES: // Not supported yet..
 						{
 							const Curves* curves = static_cast<const Curves*>(shape);
 							const int num_segments = curves->num_segments();
-							shape_bounds_start_idx.push_back(bounds_start_idx);
+							shape_bounds_start_idx[shapeIdx] = bounds_start_idx;
 							bounds_start_idx += num_segments;
-							curve_vertices_start_idx.push_back(curve_vertices_idx);
-							curve_segments_start_idx.push_back(curve_segments_idx);
+							curve_vertices_start_idx[curvesIdx] = curve_vertices_idx;
+							curve_segments_start_idx[curvesIdx] = curve_segments_idx;
 							curve_vertices_idx += curves->num_vertices();
 							curve_segments_idx += num_segments;
-							shapeToCurves[n] = curvesIdx;
+							shapeToCurves[shapeIdx] = curvesIdx;
 							curvesIdx++;
-							break;
-						}
-
-						case Shape::SHAPE_INSTANCED_CURVES:
-						{
-							// Not supported yet..
-							assert(0);
 							break;
 						}
 					}
@@ -291,12 +269,11 @@ namespace RadeonRays
 			int num_primitives = num_mesh_faces + num_curve_segments;
 			std::vector<bbox> bounds(num_primitives);
 
-			int mesh_faces_idx = 0;
-			int curve_vertices_idx = 0;
-			int curve_segments_idx = 0;
-			for (size_t n=0; n<shapes.size(); ++n)
+			for (size_t shapeIdx=0; shapeIdx<shapes.size(); ++shapeIdx)
 			{
-				const Shape* shape = shapes[n];
+				const Shape* shape = shapes[shapeIdx];
+				bounds_start_idx = shape_bounds_start_idx[shapeIdx];
+
 				switch (shape->getType())
 				{	
 					case Shape::SHAPE_MESH:
@@ -383,9 +360,9 @@ namespace RadeonRays
 
 				int meshIdx = 0;
 				int curvesIdx = 0;
-				for (size_t n=0; n<shapes.size(); ++n)
+				for (size_t shapeIdx=0; shapeIdx<shapes.size(); ++shapeIdx)
 				{
-					const Shape* shape = shapes[n];
+					const Shape* shape = shapes[shapeIdx];
 					switch (shape->getType())
 					{	
 						case Shape::SHAPE_MESH:
@@ -489,9 +466,11 @@ namespace RadeonRays
 					// Find the shape corresponding to the reordered BVH index
                     int indextolook4 = reordering[i];
                     auto iter = std::upper_bound(shape_bounds_start_idx.cbegin(), shape_bounds_start_idx.cend(), indextolook4);
-                    int shapeidx = static_cast<int>(std::distance(shape_bounds_start_idx.cbegin(), iter) - 1);
-					assert(shapeidx>=0 && shapeidx<shapes.size());
-					const Shape* shape = shapes[shapeidx];
+                    int shapeIdx = static_cast<int>(std::distance(shape_bounds_start_idx.cbegin(), iter) - 1);
+					assert(shapeIdx>=0 && shapeIdx<shapes.size());
+					const Shape* shape = shapes[shapeIdx];
+
+					int bounds_start_idx = shape_bounds_start_idx[shapeIdx];
 
 					switch (shape->getType() )
 					{	
@@ -500,9 +479,9 @@ namespace RadeonRays
 						{							
 							const Shape* baseShape = (shape->getType()==Shape::SHAPE_MESH) ? shape : static_cast<Instance const*>(shape)->GetBaseShape();
 							Mesh const* mesh = static_cast<Mesh const*>(baseShape);
-							int meshIdx = shapeToMesh[shapeidx];
+							int meshIdx = shapeToMesh[shapeIdx];
 							Mesh::Face const* faceData = mesh->GetFaceData();
-							int faceidx = indextolook4 - mesh_faces_start_idx[meshIdx];
+							int faceidx = indextolook4 - bounds_start_idx;
 							int vertex_start_index = mesh_vertices_start_idx[meshIdx];
 
 							// Copy face data to GPU buffer
@@ -519,15 +498,15 @@ namespace RadeonRays
 						case Shape::SHAPE_CURVES:
 						{
 							const Curves* curves = static_cast<const Curves*>(shape);
-							int curvesIdx = shapeToCurves[shapeidx];
+							int curvesIdx = shapeToCurves[shapeIdx];
 							const int* segmentIndices = curves->GetSegmentData();
-							int segmentidx = indextolook4 - curve_segments_start_idx[curvesIdx];
+							int segmentidx = indextolook4 - bounds_start_idx;
 							int vertex_start_index = curve_vertices_start_idx[curvesIdx];
 
 							// Copy segment data to GPU buffer
 							primitivedata[i].idx[0] = segmentIndices[2*segmentidx+0] + vertex_start_index;
 							primitivedata[i].idx[1] = segmentIndices[2*segmentidx+1] + vertex_start_index;
-							primitivedata[i].shape_id   = curves->GetId();
+							primitivedata[i].shape_id = curves->GetId();
 							primitivedata[i].shape_mask = curves->GetMask();
 							primitivedata[i].prim_id = segmentidx;
 							primitivedata[i].type_id = 1;
