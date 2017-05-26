@@ -327,7 +327,9 @@ namespace RadeonRays
 			}
 
 			// Build the BVH from the supplied primitive bounds
+			std::cout << "building BVH ..." << std::endl;
             m_bvh->Build(&bounds[0], num_primitives);
+			std::cout << "BVH built." << std::endl;
 
 #ifdef RR_PROFILE
             m_bvh->PrintStatistics(std::cout);
