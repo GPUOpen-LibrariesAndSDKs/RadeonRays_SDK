@@ -52,10 +52,12 @@ typedef struct
 // Ray definition
 typedef struct
 {
-    float4 o;
-    float4 d;
-    int2 extra;
-    int2 padding;
+    float4 o;        // xyz - origin, w - max range
+    float4 d;        // xyz - direction, w - time
+    int2 extra;      // x = ray mask, y = activity flag
+    int2 padding;    // @todo: not just padding since actually used for logic, right?
+	int2 surface0;   // x = shape index, y = prim index
+	int2 surface1;   // (currently just padding)
 } ray;
 
 // Intersection definition 

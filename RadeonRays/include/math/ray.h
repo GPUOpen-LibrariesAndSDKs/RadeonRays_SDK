@@ -42,6 +42,8 @@ namespace RadeonRays
             SetTime(time);
             SetMask(0xFFFFFFFF);
             SetActive(true);
+			surface0.x = -1; // last shape id (-1 for primary ray)
+			surface0.y = -1; // last prim index (-1 for primary ray)
         }
 
         float3 operator ()(float t) const
@@ -93,5 +95,7 @@ namespace RadeonRays
         float4 d;
         int2 extra;
         int2 padding;
+		int2 surface0;
+		int2 surface1;
     };
 }

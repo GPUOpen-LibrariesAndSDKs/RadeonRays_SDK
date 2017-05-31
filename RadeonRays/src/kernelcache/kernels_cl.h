@@ -95,10 +95,12 @@ static const char g_build_hlbvh_opencl[]= \
 "// Ray definition \n"\
 "typedef struct \n"\
 "{ \n"\
-"    float4 o; \n"\
-"    float4 d; \n"\
-"    int2 extra; \n"\
-"    int2 padding; \n"\
+"    float4 o;        // xyz - origin, w - max range \n"\
+"    float4 d;        // xyz - direction, w - time \n"\
+"    int2 extra;      // x = ray mask, y = activity flag \n"\
+"    int2 padding;    // @todo: not just padding since actually used for logic, right? \n"\
+"	int2 surface0;   // x = shape index, y = prim index \n"\
+"	int2 surface1;   // (currently just padding) \n"\
 "} ray; \n"\
 " \n"\
 "// Intersection definition  \n"\
@@ -657,10 +659,12 @@ static const char g_common_opencl[]= \
 "// Ray definition \n"\
 "typedef struct \n"\
 "{ \n"\
-"    float4 o; \n"\
-"    float4 d; \n"\
-"    int2 extra; \n"\
-"    int2 padding; \n"\
+"    float4 o;        // xyz - origin, w - max range \n"\
+"    float4 d;        // xyz - direction, w - time \n"\
+"    int2 extra;      // x = ray mask, y = activity flag \n"\
+"    int2 padding;    // @todo: not just padding since actually used for logic, right? \n"\
+"	int2 surface0;   // x = shape index, y = prim index \n"\
+"	int2 surface1;   // (currently just padding) \n"\
 "} ray; \n"\
 " \n"\
 "// Intersection definition  \n"\
@@ -998,10 +1002,12 @@ static const char g_intersect_bvh2level_skiplinks_opencl[]= \
 "// Ray definition \n"\
 "typedef struct \n"\
 "{ \n"\
-"    float4 o; \n"\
-"    float4 d; \n"\
-"    int2 extra; \n"\
-"    int2 padding; \n"\
+"    float4 o;        // xyz - origin, w - max range \n"\
+"    float4 d;        // xyz - direction, w - time \n"\
+"    int2 extra;      // x = ray mask, y = activity flag \n"\
+"    int2 padding;    // @todo: not just padding since actually used for logic, right? \n"\
+"	int2 surface0;   // x = shape index, y = prim index \n"\
+"	int2 surface1;   // (currently just padding) \n"\
 "} ray; \n"\
 " \n"\
 "// Intersection definition  \n"\
@@ -1774,10 +1780,12 @@ static const char g_intersect_bvh2_bittrail_opencl[]= \
 "// Ray definition \n"\
 "typedef struct \n"\
 "{ \n"\
-"    float4 o; \n"\
-"    float4 d; \n"\
-"    int2 extra; \n"\
-"    int2 padding; \n"\
+"    float4 o;        // xyz - origin, w - max range \n"\
+"    float4 d;        // xyz - direction, w - time \n"\
+"    int2 extra;      // x = ray mask, y = activity flag \n"\
+"    int2 padding;    // @todo: not just padding since actually used for logic, right? \n"\
+"	int2 surface0;   // x = shape index, y = prim index \n"\
+"	int2 surface1;   // (currently just padding) \n"\
 "} ray; \n"\
 " \n"\
 "// Intersection definition  \n"\
@@ -2434,10 +2442,12 @@ static const char g_intersect_bvh2_curves_opencl[]= \
 "// Ray definition \n"\
 "typedef struct \n"\
 "{ \n"\
-"    float4 o; \n"\
-"    float4 d; \n"\
-"    int2 extra; \n"\
-"    int2 padding; \n"\
+"    float4 o;        // xyz - origin, w - max range \n"\
+"    float4 d;        // xyz - direction, w - time \n"\
+"    int2 extra;      // x = ray mask, y = activity flag \n"\
+"    int2 padding;    // @todo: not just padding since actually used for logic, right? \n"\
+"	int2 surface0;   // x = shape index, y = prim index \n"\
+"	int2 surface1;   // (currently just padding) \n"\
 "} ray; \n"\
 " \n"\
 "// Intersection definition  \n"\
@@ -3007,10 +3017,12 @@ static const char g_intersect_bvh2_short_stack_opencl[]= \
 "// Ray definition \n"\
 "typedef struct \n"\
 "{ \n"\
-"    float4 o; \n"\
-"    float4 d; \n"\
-"    int2 extra; \n"\
-"    int2 padding; \n"\
+"    float4 o;        // xyz - origin, w - max range \n"\
+"    float4 d;        // xyz - direction, w - time \n"\
+"    int2 extra;      // x = ray mask, y = activity flag \n"\
+"    int2 padding;    // @todo: not just padding since actually used for logic, right? \n"\
+"	int2 surface0;   // x = shape index, y = prim index \n"\
+"	int2 surface1;   // (currently just padding) \n"\
 "} ray; \n"\
 " \n"\
 "// Intersection definition  \n"\
@@ -3725,10 +3737,12 @@ static const char g_intersect_bvh2_skiplinks_opencl[]= \
 "// Ray definition \n"\
 "typedef struct \n"\
 "{ \n"\
-"    float4 o; \n"\
-"    float4 d; \n"\
-"    int2 extra; \n"\
-"    int2 padding; \n"\
+"    float4 o;        // xyz - origin, w - max range \n"\
+"    float4 d;        // xyz - direction, w - time \n"\
+"    int2 extra;      // x = ray mask, y = activity flag \n"\
+"    int2 padding;    // @todo: not just padding since actually used for logic, right? \n"\
+"	int2 surface0;   // x = shape index, y = prim index \n"\
+"	int2 surface1;   // (currently just padding) \n"\
 "} ray; \n"\
 " \n"\
 "// Intersection definition  \n"\
@@ -4057,18 +4071,22 @@ static const char g_intersect_bvh2_skiplinks_opencl[]= \
 "						} \n"\
 "						else \n"\
 "						{ \n"\
-"							float4 const v1 = curve_vertices[prim.idx[0]]; \n"\
-"							float4 const v2 = curve_vertices[prim.idx[1]]; \n"\
-" \n"\
-"							// Intersect capsule \n"\
-"							float const f = intersect_capsule(r, v1, v2, t_max, &U_COORD); \n"\
-" \n"\
-"							// If hit update closest hit distance and index \n"\
-"							if (f < t_max) \n"\
+"							// reject possibility of hit if this primitive matches the primitive where the ray originated \n"\
+"							if ((r.surface0.y != prim.prim_id) || (r.surface0.x != prim.shape_id)) \n"\
 "							{ \n"\
-"								t_max = f; \n"\
-"								isect_idx = primitive_idx; \n"\
-"								isect_type = SHAPETYPE_SEG; \n"\
+"								float4 const v1 = curve_vertices[prim.idx[0]]; \n"\
+"								float4 const v2 = curve_vertices[prim.idx[1]]; \n"\
+" \n"\
+"								// Intersect capsule \n"\
+"								float const f = intersect_capsule(r, v1, v2, t_max, &U_COORD); \n"\
+" \n"\
+"								// If hit update closest hit distance and index \n"\
+"								if (f < t_max) \n"\
+"								{ \n"\
+"									t_max = f; \n"\
+"									isect_idx = primitive_idx; \n"\
+"									isect_type = SHAPETYPE_SEG; \n"\
+"								} \n"\
 "							} \n"\
 "						} \n"\
 "                    } \n"\
@@ -4177,18 +4195,22 @@ static const char g_intersect_bvh2_skiplinks_opencl[]= \
 "						} \n"\
 "						else \n"\
 "						{ \n"\
-"							float4 const v1 = curve_vertices[prim.idx[0]]; \n"\
-"							float4 const v2 = curve_vertices[prim.idx[1]]; \n"\
-" \n"\
-"							// Intersect capsule \n"\
-"							float u; \n"\
-"							float const f = intersect_capsule(r, v1, v2, t_max, &u); \n"\
-" \n"\
-"							// If hit store the result and bail out \n"\
-"							if (f < t_max) \n"\
+"							// reject possibility of hit if this primitive matches the primitive where the ray originated \n"\
+"							if ((r.surface0.y != prim.prim_id) || (r.surface0.x != prim.shape_id)) \n"\
 "							{ \n"\
-"								hits[global_id] = HIT_MARKER; \n"\
-"								return; \n"\
+"								float4 const v1 = curve_vertices[prim.idx[0]]; \n"\
+"								float4 const v2 = curve_vertices[prim.idx[1]]; \n"\
+" \n"\
+"								// Intersect capsule \n"\
+"								float u; \n"\
+"								float const f = intersect_capsule(r, v1, v2, t_max, &u); \n"\
+" \n"\
+"								// If hit store the result and bail out \n"\
+"								if (f < t_max) \n"\
+"								{ \n"\
+"									hits[global_id] = HIT_MARKER; \n"\
+"									return; \n"\
+"								} \n"\
 "							} \n"\
 "						} \n"\
 "                    } \n"\
@@ -4306,10 +4328,12 @@ static const char g_intersect_hlbvh_stack_opencl[]= \
 "// Ray definition \n"\
 "typedef struct \n"\
 "{ \n"\
-"    float4 o; \n"\
-"    float4 d; \n"\
-"    int2 extra; \n"\
-"    int2 padding; \n"\
+"    float4 o;        // xyz - origin, w - max range \n"\
+"    float4 d;        // xyz - direction, w - time \n"\
+"    int2 extra;      // x = ray mask, y = activity flag \n"\
+"    int2 padding;    // @todo: not just padding since actually used for logic, right? \n"\
+"	int2 surface0;   // x = shape index, y = prim index \n"\
+"	int2 surface1;   // (currently just padding) \n"\
 "} ray; \n"\
 " \n"\
 "// Intersection definition  \n"\

@@ -161,18 +161,22 @@ void intersect_main(
 						}
 						else
 						{
-							float4 const v1 = curve_vertices[prim.idx[0]];
-							float4 const v2 = curve_vertices[prim.idx[1]];
-
-							// Intersect capsule
-							float const f = intersect_capsule(r, v1, v2, t_max, &U_COORD);
-
-							// If hit update closest hit distance and index
-							if (f < t_max)
+							// reject possibility of hit if this primitive matches the primitive where the ray originated
+							if ((r.surface0.y != prim.prim_id) || (r.surface0.x != prim.shape_id))
 							{
-								t_max = f;
-								isect_idx = primitive_idx;
-								isect_type = SHAPETYPE_SEG;
+								float4 const v1 = curve_vertices[prim.idx[0]];
+								float4 const v2 = curve_vertices[prim.idx[1]];
+
+								// Intersect capsule
+								float const f = intersect_capsule(r, v1, v2, t_max, &U_COORD);
+
+								// If hit update closest hit distance and index
+								if (f < t_max)
+								{
+									t_max = f;
+									isect_idx = primitive_idx;
+									isect_type = SHAPETYPE_SEG;
+								}
 							}
 						}
                     }
@@ -281,18 +285,22 @@ void occluded_main(
 						}
 						else
 						{
-							float4 const v1 = curve_vertices[prim.idx[0]];
-							float4 const v2 = curve_vertices[prim.idx[1]];
-
-							// Intersect capsule
-							float u;
-							float const f = intersect_capsule(r, v1, v2, t_max, &u);
-
-							// If hit store the result and bail out
-							if (f < t_max)
+							// reject possibility of hit if this primitive matches the primitive where the ray originated
+							if ((r.surface0.y != prim.prim_id) || (r.surface0.x != prim.shape_id))
 							{
-								hits[global_id] = HIT_MARKER;
-								return;
+								float4 const v1 = curve_vertices[prim.idx[0]];
+								float4 const v2 = curve_vertices[prim.idx[1]];
+
+								// Intersect capsule
+								float u;
+								float const f = intersect_capsule(r, v1, v2, t_max, &u);
+
+								// If hit store the result and bail out
+								if (f < t_max)
+								{
+									hits[global_id] = HIT_MARKER;
+									return;
+								}
 							}
 						}
                     }

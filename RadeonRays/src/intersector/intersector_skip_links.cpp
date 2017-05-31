@@ -327,7 +327,9 @@ namespace RadeonRays
 			}
 
 			// Build the BVH from the supplied primitive bounds
+			std::cout << "building BVH ..." << std::endl;
             m_bvh->Build(&bounds[0], num_primitives);
+			std::cout << "BVH built." << std::endl;
 
 #ifdef RR_PROFILE
             m_bvh->PrintStatistics(std::cout);
@@ -344,17 +346,17 @@ namespace RadeonRays
 				Calc::Event* e = nullptr;
 
 				// Create GPU vertex buffers
-				m_gpudata->mesh_vertices  = m_device->CreateBuffer(num_mesh_vertices * sizeof(float3), Calc::BufferType::kRead);
-				m_gpudata->curve_vertices = m_device->CreateBuffer(num_curve_vertices * sizeof(float4), Calc::BufferType::kRead);;
+				m_gpudata->mesh_vertices  = m_device->CreateBuffer(std::max(1, num_mesh_vertices) * sizeof(float3), Calc::BufferType::kRead);
+				m_gpudata->curve_vertices = m_device->CreateBuffer(std::max(1, num_curve_vertices) * sizeof(float4), Calc::BufferType::kRead);;
 
 				// Get the pointers to mapped data
 				float3* mesh_vertexdata = nullptr;
-				m_device->MapBuffer(m_gpudata->mesh_vertices, 0, 0, num_mesh_vertices*sizeof(float3), Calc::MapType::kMapWrite, (void**)&mesh_vertexdata, &e);
+				m_device->MapBuffer(m_gpudata->mesh_vertices, 0, 0, std::max(1, num_mesh_vertices)*sizeof(float3), Calc::MapType::kMapWrite, (void**)&mesh_vertexdata, &e);
 				e->Wait();
 				m_device->DeleteEvent(e);
 
 				float4* curve_vertexdata = nullptr;
-				m_device->MapBuffer(m_gpudata->curve_vertices, 0, 0, num_curve_vertices*sizeof(float4), Calc::MapType::kMapWrite, (void**)&curve_vertexdata, &e);
+				m_device->MapBuffer(m_gpudata->curve_vertices, 0, 0, std::max(1, num_curve_vertices)*sizeof(float4), Calc::MapType::kMapWrite, (void**)&curve_vertexdata, &e);
 				e->Wait();
 				m_device->DeleteEvent(e);
 
