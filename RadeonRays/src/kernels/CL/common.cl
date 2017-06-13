@@ -176,7 +176,13 @@ float fast_intersect_triangle(ray r, float3 v1, float3 v2, float3 v3, float t_ma
     float3 const e1 = v2 - v1;
     float3 const e2 = v3 - v1;
     float3 const s1 = cross(r.d.xyz, e2);
+
+	#ifdef USE_SAFE_MATH
+	float const invd = 1.0/(dot(s1, e1));
+	#else
     float const invd = native_recip(dot(s1, e1));
+	#endif
+
     float3 const d = r.o.xyz - v1;
     float const b1 = dot(d, s1) * invd;
     float3 const s2 = cross(d, e1);
@@ -282,7 +288,13 @@ float2 triangle_calculate_barycentrics(float3 p, float3 v1, float3 v2, float3 v3
     float const d11 = dot(e2, e2);
     float const d20 = dot(e, e1);
     float const d21 = dot(e, e2);
-    float const invdenom = native_recip(d00 * d11 - d01 * d01);
+
+	#ifdef USE_SAFE_MATH
+		float const invdenom = 1.0 / (d00 * d11 - d01 * d01);
+	#else
+		float const invdenom = native_recip(d00 * d11 - d01 * d01);
+	#endif
+
     float const b1 = (d11 * d20 - d01 * d21) * invdenom;
     float const b2 = (d00 * d21 - d01 * d20) * invdenom;
     return make_float2(b1, b2);
