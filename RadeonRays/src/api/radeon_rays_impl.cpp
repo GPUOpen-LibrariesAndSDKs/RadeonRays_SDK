@@ -80,10 +80,10 @@ namespace RadeonRays
         return mesh;
     }
 
-	Shape* IntersectionApiImpl::CreateCurves(float const * vertices, int vnum, int vstride,
-		                                     int const * segmentIndices, int  numSegments) const
+	Shape* IntersectionApiImpl::CreateCurves(float const * vertices, int numverts, int vstride,
+		                                     int const * segmentIndices, int  numsegments) const
 	{
-		Curves *curves = new Curves(vertices, vnum, vstride, segmentIndices, numSegments);
+		Curves *curves = new Curves(vertices, numverts, vstride, segmentIndices, numsegments);
 		curves->SetId(nextid_++);
 		return curves;
 	}
