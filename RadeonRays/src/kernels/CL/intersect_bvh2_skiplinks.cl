@@ -86,23 +86,23 @@ typedef bbox bvh_node;
 
 typedef struct
 {
-	int idx[3]; // vertex indices
-	int shape_mask;
-	int shape_id;
-	int prim_id;
-	int type_id; // Type ID (SHAPETYPE_TRI or SHAPETYPE_SEG)
+    int idx[3]; // vertex indices
+    int shape_mask;
+    int shape_id;
+    int prim_id;
+    int type_id; // Type ID (SHAPETYPE_TRI or SHAPETYPE_SEG)
 } Primitive;
 
 __attribute__((reqd_work_group_size(64, 1, 1)))
 KERNEL 
 void intersect_main(
-	GLOBAL bvh_node const* restrict nodes,        // BVH nodes
-	GLOBAL float3 const* restrict mesh_vertices,  // Mesh vertices
-	GLOBAL float4 const* restrict curve_vertices, // Curve vertices
-	GLOBAL Primitive const* restrict primitives,  // Primitive indices
-	GLOBAL ray const* restrict rays,              // Rays
-	GLOBAL int const* restrict num_rays,          // Number of rays
-	GLOBAL Intersection* hits                     // Hit data
+    GLOBAL bvh_node const* restrict nodes,        // BVH nodes
+    GLOBAL float3 const* restrict mesh_vertices,  // Mesh vertices
+    GLOBAL float4 const* restrict curve_vertices, // Curve vertices
+    GLOBAL Primitive const* restrict primitives,  // Primitive indices
+    GLOBAL ray const* restrict rays,              // Rays
+    GLOBAL int const* restrict num_rays,          // Number of rays
+    GLOBAL Intersection* hits                     // Hit data
 )
 {
     int global_id = get_global_id(0);
@@ -124,8 +124,8 @@ void intersect_main(
 
             // Current closest primitive index
             int isect_idx = INVALID_IDX;
-			int isect_type = -1;
-			float U_COORD = 0.f;
+            int isect_type = -1;
+            float U_COORD = 0.f;
 
             while (addr != INVALID_IDX)
             {
@@ -140,45 +140,45 @@ void intersect_main(
                     if (LEAFNODE(node))
                     {
                         int const primitive_idx = STARTIDX(node);
-						Primitive const prim = primitives[primitive_idx];
+                        Primitive const prim = primitives[primitive_idx];
                         
-						if (prim.type_id == SHAPETYPE_TRI)
-						{
-							float3 const v1 = mesh_vertices[prim.idx[0]];
-							float3 const v2 = mesh_vertices[prim.idx[1]];
-							float3 const v3 = mesh_vertices[prim.idx[2]];
+                        if (prim.type_id == SHAPETYPE_TRI)
+                        {
+                            float3 const v1 = mesh_vertices[prim.idx[0]];
+                            float3 const v2 = mesh_vertices[prim.idx[1]];
+                            float3 const v3 = mesh_vertices[prim.idx[2]];
 
-							// Intersect triangle
-							float const f = fast_intersect_triangle(r, v1, v2, v3, t_max);
+                            // Intersect triangle
+                            float const f = fast_intersect_triangle(r, v1, v2, v3, t_max);
 
-							// If hit update closest hit distance and index
-							if (f < t_max)
-							{
-								t_max = f;
-								isect_idx = primitive_idx;
-								isect_type = SHAPETYPE_TRI;
-							}
-						}
-						else
-						{
-							// reject possibility of hit if this primitive matches the primitive where the ray originated
-							if ((r.surface0.y != prim.prim_id) || (r.surface0.x != prim.shape_id))
-							{
-								float4 const v1 = curve_vertices[prim.idx[0]];
-								float4 const v2 = curve_vertices[prim.idx[1]];
+                            // If hit update closest hit distance and index
+                            if (f < t_max)
+                            {
+                                t_max = f;
+                                isect_idx = primitive_idx;
+                                isect_type = SHAPETYPE_TRI;
+                            }
+                        }
+                        else
+                        {
+                            // reject possibility of hit if this primitive matches the primitive where the ray originated
+                            if ((r.surface0.y != prim.prim_id) || (r.surface0.x != prim.shape_id))
+                            {
+                                float4 const v1 = curve_vertices[prim.idx[0]];
+                                float4 const v2 = curve_vertices[prim.idx[1]];
 
-								// Intersect capsule
-								float const f = intersect_capsule(r, v1, v2, t_max, &U_COORD);
+                                // Intersect capsule
+                                float const f = intersect_capsule(r, v1, v2, t_max, &U_COORD);
 
-								// If hit update closest hit distance and index
-								if (f < t_max)
-								{
-									t_max = f;
-									isect_idx = primitive_idx;
-									isect_type = SHAPETYPE_SEG;
-								}
-							}
-						}
+                                // If hit update closest hit distance and index
+                                if (f < t_max)
+                                {
+                                    t_max = f;
+                                    isect_idx = primitive_idx;
+                                    isect_type = SHAPETYPE_SEG;
+                                }
+                            }
+                        }
                     }
                     else
                     {
@@ -195,22 +195,22 @@ void intersect_main(
             // Check if we have found an intersection
             if (isect_idx != INVALID_IDX)
             {
-				Primitive const prim = primitives[isect_idx];
-				hits[global_id].shape_id = prim.shape_id;
-				hits[global_id].prim_id = prim.prim_id;
-				if (isect_type == SHAPETYPE_TRI)
-				{
-					float3 const v1 = mesh_vertices[prim.idx[0]];
-					float3 const v2 = mesh_vertices[prim.idx[1]];
-					float3 const v3 = mesh_vertices[prim.idx[2]];
-					float3 const p = r.o.xyz + r.d.xyz * t_max;
-					float2 const uv = triangle_calculate_barycentrics(p, v1, v2, v3);
-					hits[global_id].uvwt = make_float4(uv.x, uv.y, 0.f, t_max);
-				}
-				else
-				{
-					hits[global_id].uvwt = make_float4(U_COORD, 0.f, 0.f, t_max);
-				}
+                Primitive const prim = primitives[isect_idx];
+                hits[global_id].shape_id = prim.shape_id;
+                hits[global_id].prim_id = prim.prim_id;
+                if (isect_type == SHAPETYPE_TRI)
+                {
+                    float3 const v1 = mesh_vertices[prim.idx[0]];
+                    float3 const v2 = mesh_vertices[prim.idx[1]];
+                    float3 const v3 = mesh_vertices[prim.idx[2]];
+                    float3 const p = r.o.xyz + r.d.xyz * t_max;
+                    float2 const uv = triangle_calculate_barycentrics(p, v1, v2, v3);
+                    hits[global_id].uvwt = make_float4(uv.x, uv.y, 0.f, t_max);
+                }
+                else
+                {
+                    hits[global_id].uvwt = make_float4(U_COORD, 0.f, 0.f, t_max);
+                }
             }
             else
             {
@@ -225,13 +225,13 @@ void intersect_main(
 __attribute__((reqd_work_group_size(64, 1, 1)))
 KERNEL 
 void occluded_main(
-	GLOBAL bvh_node const* restrict nodes,        // BVH nodes
-	GLOBAL float3 const* restrict mesh_vertices,  // Mesh vertices
-	GLOBAL float4 const* restrict curve_vertices, // Curve vertices
-	GLOBAL Primitive const* restrict primitives,  // Primitive indices
-	GLOBAL ray const* restrict rays,              // Rays
-	GLOBAL int const* restrict num_rays,          // Number of rays
-	GLOBAL int* hits                              // Hit data
+    GLOBAL bvh_node const* restrict nodes,        // BVH nodes
+    GLOBAL float3 const* restrict mesh_vertices,  // Mesh vertices
+    GLOBAL float4 const* restrict curve_vertices, // Curve vertices
+    GLOBAL Primitive const* restrict primitives,  // Primitive indices
+    GLOBAL ray const* restrict rays,              // Rays
+    GLOBAL int const* restrict num_rays,          // Number of rays
+    GLOBAL int* hits                              // Hit data
 )
 {
     int global_id = get_global_id(0);
@@ -264,45 +264,45 @@ void occluded_main(
                     // Check if the node is a leaf
                     if (LEAFNODE(node))
                     {
-						int const primitive_idx = STARTIDX(node);
-						Primitive const prim = primitives[primitive_idx];
+                        int const primitive_idx = STARTIDX(node);
+                        Primitive const prim = primitives[primitive_idx];
 
-						if (prim.type_id == SHAPETYPE_TRI)
-						{
-							float3 const v1 = mesh_vertices[prim.idx[0]];
-							float3 const v2 = mesh_vertices[prim.idx[1]];
-							float3 const v3 = mesh_vertices[prim.idx[2]];
+                        if (prim.type_id == SHAPETYPE_TRI)
+                        {
+                            float3 const v1 = mesh_vertices[prim.idx[0]];
+                            float3 const v2 = mesh_vertices[prim.idx[1]];
+                            float3 const v3 = mesh_vertices[prim.idx[2]];
 
-							// Intersect triangle
-							float const f = fast_intersect_triangle(r, v1, v2, v3, t_max);
+                            // Intersect triangle
+                            float const f = fast_intersect_triangle(r, v1, v2, v3, t_max);
 
-							// If hit store the result and bail out
-							if (f < t_max)
-							{
-								hits[global_id] = HIT_MARKER;
-								return;
-							}
-						}
-						else
-						{
-							// reject possibility of hit if this primitive matches the primitive where the ray originated
-							if ((r.surface0.y != prim.prim_id) || (r.surface0.x != prim.shape_id))
-							{
-								float4 const v1 = curve_vertices[prim.idx[0]];
-								float4 const v2 = curve_vertices[prim.idx[1]];
+                            // If hit store the result and bail out
+                            if (f < t_max)
+                            {
+                                hits[global_id] = HIT_MARKER;
+                                return;
+                            }
+                        }
+                        else
+                        {
+                            // reject possibility of hit if this primitive matches the primitive where the ray originated
+                            if ((r.surface0.y != prim.prim_id) || (r.surface0.x != prim.shape_id))
+                            {
+                                float4 const v1 = curve_vertices[prim.idx[0]];
+                                float4 const v2 = curve_vertices[prim.idx[1]];
 
-								// Intersect capsule
-								float u;
-								float const f = intersect_capsule(r, v1, v2, t_max, &u);
+                                // Intersect capsule
+                                float u;
+                                float const f = intersect_capsule(r, v1, v2, t_max, &u);
 
-								// If hit store the result and bail out
-								if (f < t_max)
-								{
-									hits[global_id] = HIT_MARKER;
-									return;
-								}
-							}
-						}
+                                // If hit store the result and bail out
+                                if (f < t_max)
+                                {
+                                    hits[global_id] = HIT_MARKER;
+                                    return;
+                                }
+                            }
+                        }
                     }
                     else
                     {

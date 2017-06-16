@@ -64,11 +64,11 @@ namespace RadeonRays
             ) const override;
 
 		// Curves creation:
-		// vertices is an array of numVerts vertices, with byte stride vstride between 4-float vertices,
+		// vertices is an array of numverts vertices, with byte stride vstride between 4-float vertices,
 		// where each 4-float vertex contains the vertex position as the .xyz components, and the curve width at that vertex as the .w component.
-		// segmentIndices is an int array of length 2*numSegments, with the start and end vertex index of each segment.
-		Shape* CreateCurves(float const * vertices, int vnum, int vstride,
-			                int const * segmentIndices, int  numSegments) const override;
+		// segmentIndices is an int array of length 2*numsegments, with the start and end vertex index of each segment.
+		Shape* CreateCurves(float const * vertices, int numverts, int vstride,
+			                int const * segmentIndices, int  numsegments) const override;
 
         // Create an instance of a shape with its own transform (set via Shape interface).
         // The call is blocking, so the returned value is ready upon return.
