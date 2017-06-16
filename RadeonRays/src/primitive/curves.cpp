@@ -30,15 +30,15 @@ THE SOFTWARE.
 namespace RadeonRays
 {
 
-	Curves::Curves(float const* vertices, int numVerts, int vstride,
-		           int const* segmentIndices, int numSegments) : ShapeImpl(SHAPE_CURVES)
+	Curves::Curves(float const* vertices, int numverts, int vstride,
+		           int const* segmentindices, int numsegments) : ShapeImpl(SHAPE_CURVES)
 	{
-		vertices_.resize(numVerts);
-		segmentIndices_.resize(2*numSegments);
+		vertices_.resize(numverts);
+		segmentindices_.resize(2*numsegments);
 
 		// Load vertices
 #pragma omp parallel for
-		for (int vi=0; vi<numVerts; ++vi)
+		for (int vi=0; vi<numverts; ++vi)
 		{
 			float const* v = (float const*)((char*)vertices + vi*vstride);
 			float4 temp;
@@ -50,22 +50,22 @@ namespace RadeonRays
 		}
 
 #pragma omp parallel for
-		for (int i=0; i<2*numSegments; ++i)
+		for (int i=0; i<2*numsegments; ++i)
 		{
-			segmentIndices_[i] = *((int const*)((char const*)segmentIndices +i*sizeof(int)));
+			segmentindices_[i] = *((int const*)((char const*)segmentindices +i*sizeof(int)));
 		}
 	}
 
 	void Curves::GetSegmentData(int segmentidx, int& vStart, int& vEnd) const
 	{
-		vStart = segmentIndices_[2*segmentidx];
-		vEnd   = segmentIndices_[2*segmentidx+1];
+		vStart = segmentindices_[2*segmentidx];
+		vEnd   = segmentindices_[2*segmentidx+1];
 	}
 
 	void Curves::GetSegmentBounds(int segmentidx, bool objectspace, bbox& bounds) const
 	{
-		int viStart = segmentIndices_[2 * segmentidx];
-		int viEnd   = segmentIndices_[2 * segmentidx + 1];
+		int viStart = segmentindices_[2 * segmentidx];
+		int viEnd   = segmentindices_[2 * segmentidx + 1];
 		float4 vStaL = vertices_[viStart];
 		float4 vEndL = vertices_[viEnd];
 
@@ -78,23 +78,23 @@ namespace RadeonRays
 
 		// We cannot non-uniformly scale the capsule primitive of each segment, so we must
 		// approximate by taking the maximum axis scale.
-		float worldScale = std::max(std::max(worldmat_.m00, worldmat_.m11), worldmat_.m22);
-		float rStaW = rStaL * worldScale;
-		float rEndW = rEndL * worldScale;
+		float worldscale = std::max(std::max(worldmat_.m00, worldmat_.m11), worldmat_.m22);
+		float rStaW = rStaL * worldscale;
+		float rEndW = rEndL * worldscale;
 
-		float3 segmentDir = (vEndW - vStaW);
-		segmentDir.normalize();
+		float3 segmentdir = (vEndW - vStaW);
+		segmentdir.normalize();
 
-		bbox segmentBounds(vStaW, vEndW);
+		bbox segmentbounds(vStaW, vEndW);
 		{
 			float3 sta_disp = float3(rStaW, rStaW, rStaW);
 			float3 end_disp = float3(rEndW, rEndW, rEndW);
 			bbox sta_box(vStaW-sta_disp, vStaW+sta_disp);
 			bbox end_box(vEndW-end_disp, vEndW+end_disp);
-			segmentBounds.grow(sta_box);
-			segmentBounds.grow(end_box);
+			segmentbounds.grow(sta_box);
+			segmentbounds.grow(end_box);
 		}
-		bounds = segmentBounds;
+		bounds = segmentbounds;
 	}
 
 	Curves::~Curves()

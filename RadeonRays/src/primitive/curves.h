@@ -43,21 +43,21 @@ namespace RadeonRays
 	{
 	public:
 
-		// vertices is an array of numVerts vertices, with byte stride vstride between 4-float vertices,
+		// vertices is an array of numverts vertices, with byte stride vstride between 4-float vertices,
 		// where each 4-float vertex contains the vertex position as the .xyz components, and the curve width at that vertex as the .w component.
-		// segmentIndices is an int array of length 2*numSegments, with the start and end vertex index of each segment.
-		Curves(float const* vertices, int numVerts, int vstride, int const* segmentIndices, int numSegments);
+		// segmentIndices is an int array of length 2*numsegments, with the start and end vertex index of each segment.
+		Curves(float const* vertices, int numverts, int vstride, int const* segmentindices, int numsegments);
 
 		~Curves();
 
-		int num_segments() const { return (int)segmentIndices_.size()/2; }
+		int num_segments() const { return (int)segmentindices_.size()/2; }
 		int num_vertices() const { return (int)vertices_.size(); }
 
 		// Returns an array of num_vertices float4
 		const float4* GetVertexData() const { return &vertices_[0]; }
 
 		// Return an array of 2*num_segments ints
-		const int* GetSegmentData() const { return &segmentIndices_[0];  }
+		const int* GetSegmentData() const { return &segmentindices_[0];  }
 
 		// Returns the indices of an individual segment
 		void GetSegmentData(int segmentidx, int& vStart, int& vEnd) const;
@@ -72,7 +72,7 @@ namespace RadeonRays
 
 		/// Data
 		std::vector<float4> vertices_;
-		std::vector<int> segmentIndices_;
+		std::vector<int> segmentindices_;
 
 	};
 
