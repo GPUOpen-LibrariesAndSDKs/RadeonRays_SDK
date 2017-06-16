@@ -35,7 +35,6 @@ THE SOFTWARE.
 #include "../intersector/intersector_short_stack.h"
 #include "../intersector/intersector_hlbvh.h"
 #include "../intersector/intersector_bittrail.h"
-#include "../intersector/intersector_curves.h" // TESTING!
 #include "../world/world.h"
 #include <iostream>
 
@@ -141,14 +140,6 @@ namespace RadeonRays
                         m_intersector_string = "hashbvh";
                     }
                 }*/
-				else if (acctype == "curves")
-				{
-					if (m_intersector_string != "curves")
-					{
-						m_intersector.reset(new IntersectorCurves(m_device.get()));
-						m_intersector_string = "curves";
-					}
-				}
             }
         }
 

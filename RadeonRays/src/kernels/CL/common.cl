@@ -61,13 +61,11 @@ typedef struct
 } ray;
 
 // Intersection definition 
-// (must match exactly the corresponding definition in RadeonRays)
 typedef struct
 {
     int shape_id;
     int prim_id;
     int2 padding;
-
     float4 uvwt;
 } Intersection;
 
