@@ -397,6 +397,11 @@ namespace RadeonRays
             m_gpudata->bvh = m_device->CreateBuffer(translator.nodes_.size() * sizeof(FatNodeBvhTranslator::Node), Calc::BufferType::kRead, &translator.nodes_[0]);
 
             // Stack
+            if (m_gpudata->stack)
+            {
+                m_device->DeleteBuffer(m_gpudata->stack);
+                m_gpudata->stack = nullptr;
+            }
             m_gpudata->stack = m_device->CreateBuffer(kMaxBatchSize*kMaxStackSize, Calc::BufferType::kWrite);
 
             // Make sure everything is commited
