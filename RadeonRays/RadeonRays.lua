@@ -11,13 +11,17 @@ project "RadeonRays"
 
     if _OPTIONS["shared_calc"] then
         defines {"CALC_IMPORT_API"};
-	links {"dl"}
+        if os.is("windows") then
+            characterset ("MBCS")
+        else
+            links {"dl"}
+        end
     else
-	defines {"CALC_STATIC_LIBRARY"}
+    defines {"CALC_STATIC_LIBRARY"}
         links {"Calc"}
-	if _OPTIONS["use_opencl"] then
+    if _OPTIONS["use_opencl"] then
            links {"CLW"}
-	end
+    end
     end
 
     if _OPTIONS["enable_raymask"] then
