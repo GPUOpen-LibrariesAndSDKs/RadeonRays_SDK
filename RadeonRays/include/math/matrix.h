@@ -181,7 +181,7 @@ namespace RadeonRays
 
     inline float4 operator * (matrix const& m, float4 const& v)
     {
-        float4 res {0, 0, 0, 0};
+        float4 res(0, 0, 0, 0);
 
         for (int i = 0; i < 4; ++i) {
             //res[i] = 0.f;

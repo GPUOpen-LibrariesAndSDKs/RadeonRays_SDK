@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include "math/matrix.h"
 #include "math/ray.h"
 #include "math/mathutils.h"
+#include <cstdint>
         
 #define RADEONRAYS_API_VERSION 2.0
 
