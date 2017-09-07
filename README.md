@@ -144,6 +144,9 @@ The app only supports loading of pure triangle .obj meshes. The list of supporte
 - dds (limited support)
 - tga
 
+## Run unit tests
+They need to be run from the <Radeon Rays_SDK path>/UnitTest path.
+Premake should be runned with the `--safe_math` option.
 
 # Hardware  support
 
