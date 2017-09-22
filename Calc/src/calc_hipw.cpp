@@ -19,48 +19,56 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
-#include "calc.h"
-#if USE_OPENCL
-#include "calc_clw.h"
-#endif
-#if USE_VULKAN
-#include "calc_vk.h"
-#include "calc_vkw.h"
-#endif
-#if USE_HIP
 #include "calc_hipw.h"
-#endif
+#include "device_hip.h"
+#include "except_clw.h"
+#include "device.h"
+#include "hip/hip_runtime.h"
 
-// Create corresponding calc
-Calc::Calc* CreateCalc(Calc::Platform inPlatform, int reserved)
+#define CHECK_HIP_CMD(err) if (err != hipSuccess) {throw ExceptionClw("Hip failed");}
+
+namespace Calc
 {
-#if USE_OPENCL
-    if (inPlatform & Calc::Platform::kOpenCL)
+
+    CalcHipw::CalcHipw()
     {
-        return new Calc::CalcClw();
-    }
-    else
-#endif
-#if USE_VULKAN
-        if (inPlatform & Calc::Platform::kVulkan)
-        {
-            return new Calc::CalcVulkanw();
-        }
-        else
-#endif // USE_VULKAN
-#if USE_HIP
-        if (inPlatform & Calc::Platform::kHip)
-        {
-            return new Calc::CalcHipw();
-        }
-        else
-#endif // USE_VULKAN
-        {
-            return nullptr;
-        }
-}
 
-void DeleteCalc(Calc::Calc* calc)
-{
-    delete calc;
-}
+    }
+
+    CalcHipw::~CalcHipw()
+    {
+
+    }
+
+    std::uint32_t CalcHipw::GetDeviceCount() const
+    {
+        int res = 0;
+        hipError_t err = hipGetDeviceCount(&res);
+        CHECK_HIP_CMD(err);
+        return res;
+    }
+
+    void CalcHipw::GetDeviceSpec(std::uint32_t idx, DeviceSpec& spec) const
+    {
+        //get hip devbice properties and copy to device spec
+        hipDeviceProp_t props;
+        hipError_t err = hipGetDeviceProperties(&props, idx);
+        CHECK_HIP_CMD(err);
+
+        // TODO: fill spec by valid values
+        spec.name = "hip device";
+        spec.type = DeviceType::kGpu;
+        spec.vendor = "";
+    }
+
+    Device* CalcHipw::CreateDevice(std::uint32_t idx) const
+    {
+        return new DeviceHip();
+    }
+
+    void CalcHipw::DeleteDevice(Device* device)
+    {
+        delete device;
+    }
+} //Calc
+

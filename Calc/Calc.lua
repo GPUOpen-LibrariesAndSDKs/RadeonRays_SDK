@@ -28,10 +28,21 @@ project "Calc"
 
     location "../Calc"
     includedirs { ".", "./inc", "../CLW" }
-    files { "../Calc/**.h", "../Calc/**.cpp"}
+    files { "../Calc/**.h", "../Calc/**.cpp",  "../Calc/**.cu"}
     
     if _OPTIONS["use_opencl"] then
 	links {"CLW"}
+    end
+
+    if _OPTIONS["use_hip"] then
+        -- filter 'files:**hip.cpp'
+        -- buildmessage 'Compiling %{file.relpath}'
+        -- buildcommands {
+        --   '/opt/rocm/hip/bin/hipcc -o "%{cfg.objdir}/%{file.basename}.o" "%{file.relpath}" -I . -I ./inc -I ../CLW -I /opt/rocm/hip/include'
+        -- }
+
+        -- -- One or more outputs resulting from the build (required)
+        -- buildoutputs { '%{cfg.objdir}/%{file.basename}.c' }
     end
 
     configuration {"x32", "Debug"}

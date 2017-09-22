@@ -33,6 +33,7 @@ project "RadeonRays"
     files { "../RadeonRays/**.h", "../RadeonRays/**.cpp","../RadeonRays/src/kernels/CL/**.cl", "../RadeonRays/src/kernels/GLSL/**.comp"}
 
     excludes {"../RadeonRays/src/device/embree*"}
+    excludes {"../RadeonRays/src/device/hip*"}
     if os.is("macosx") then
         buildoptions "-std=c++11 -stdlib=libc++"
         filter { "kind:SharedLib", "system:macosx" }
@@ -109,6 +110,11 @@ project "RadeonRays"
         elseif os.is("windows") then
             links {"embree"}
         end
+    end
+
+    if _OPTIONS["use_hip"] then
+        files {"../RadeonRays/src/device/hip*"}
+        defines {"USE_HIP"}
     end
 
     if _OPTIONS["enable_raymask"] then

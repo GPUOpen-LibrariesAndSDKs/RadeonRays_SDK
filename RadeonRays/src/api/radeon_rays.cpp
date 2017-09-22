@@ -38,8 +38,14 @@ THE SOFTWARE.
 #endif
 
 #ifdef USE_EMBREE
-    #include "../device/embree_intersection_device.h"
+#include "../device/embree_intersection_device.h"
 #endif //USE_EMBREE
+
+#ifdef USE_HIP
+#include "../device/hip_intersection_device.h"
+#include "calc_hipw.h"
+#endif //USE_EMBREE
+
 
 #ifndef CALC_STATIC_LIBRARY
 
@@ -166,6 +172,14 @@ namespace RadeonRays
         if ( s_calc_platform & DeviceInfo::Platform::kVulkan )
         {
             auto* calc = GetCalcVulkan();
+            if (calc != nullptr) { return calc; }
+        }
+#endif
+
+#if USE_HIP
+        if ( s_calc_platform & DeviceInfo::Platform::kHip )
+        {
+            auto* calc = CreateCalc(Calc::Platform::kHip, 0);
             if (calc != nullptr) { return calc; }
         }
 #endif

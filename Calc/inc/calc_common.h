@@ -69,6 +69,7 @@ namespace Calc
     {
         kOpenCL            = (1 << 0),
         kVulkan            = (1 << 1),
+        kHip               = (1 << 2),
 
         kAny            = 0xFF
     };

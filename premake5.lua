@@ -30,6 +30,11 @@ newoption {
 }
 
 newoption {
+    trigger = "use_hip",
+    description = "Use HIP for GPU hit testing"
+}
+
+newoption {
     trigger = "no_tests",
     description = "Don't add any unit tests and remove any test functionality from the library"
 }
@@ -59,7 +64,7 @@ newoption {
     description = "use safe math"
 }
 
-if not _OPTIONS["use_opencl"] and not _OPTIONS["use_vulkan"] and not _OPTIONS["use_embree"] then
+if not _OPTIONS["use_opencl"] and not _OPTIONS["use_vulkan"] and not _OPTIONS["use_embree"] and not _OPTIONS["use_hip"] then
     _OPTIONS["use_opencl"] = 1
 end
 
@@ -98,116 +103,123 @@ language "C++"
 flags { "NoMinimalRebuild", "EnableSSE", "EnableSSE2" }
 
 if( _OPTIONS["static_library"]) then
-	defines{ "RR_STATIC_LIBRARY=1" }
+    defines{ "RR_STATIC_LIBRARY=1" }
 print ">> Building Radeon Rays as a static library";
 end
 
 if _OPTIONS["use_opencl"] then
-	print ">> OpenCL backend enabled"
-	-- find and add path to Opencl headers
-	dofile ("./OpenCLSearch.lua" )
+    print ">> OpenCL backend enabled"
+    -- find and add path to Opencl headers
+    dofile ("./OpenCLSearch.lua" )
 end
 -- define common includes
 includedirs { ".","./3rdParty/include" }
 
 if not _OPTIONS["no_tests"]  then
-	defines{"PRORAY_UNITTEST=1"}
+    defines{"PRORAY_UNITTEST=1"}
 end
 
 -- perform OS specific initializations
 local targetName;
 if os.is("macosx") then
-	targetName = "osx"
+    targetName = "osx"
 end
 
 if os.is("windows") then
-	targetName = "win"
-	defines{ "WIN32" }
-	buildoptions { "/MP"  } --multiprocessor build
-	defines {"_CRT_SECURE_NO_WARNINGS"}
+    targetName = "win"
+    defines{ "WIN32" }
+    buildoptions { "/MP"  } --multiprocessor build
+    defines {"_CRT_SECURE_NO_WARNINGS"}
 elseif os.is("linux") then
-	buildoptions {"-fvisibility=hidden"}
+    buildoptions {"-fvisibility=hidden"}
 end
 
 if _OPTIONS["use_opencl"] then
-	defines{"USE_OPENCL=1"}
+    defines{"USE_OPENCL=1"}
 end
 if _OPTIONS["use_vulkan"] then
 print ">> Vulkan backend enabled"
-	defines{"USE_VULKAN=1"}
-	vulkanPath = ""
-	vulkanSDKPath = os.getenv( "VK_SDK_PATH" );
-	if vulkanSDKPath == nil then
-		vulkanSDKPath = os.getenv( "VULKAN_SDK" );
-	end
+    defines{"USE_VULKAN=1"}
+    vulkanPath = ""
+    vulkanSDKPath = os.getenv( "VK_SDK_PATH" );
+    if vulkanSDKPath == nil then
+        vulkanSDKPath = os.getenv( "VULKAN_SDK" );
+    end
 
-	if vulkanSDKPath ~= nil then
-		if os.is("linux") then
-			vulkanPath = vulkanSDKPath .. "/include"
-		else
-			vulkanPath = vulkanSDKPath .. "/Include"
-		end
-	end
+    if vulkanSDKPath ~= nil then
+        if os.is("linux") then
+            vulkanPath = vulkanSDKPath .. "/include"
+        else
+            vulkanPath = vulkanSDKPath .. "/Include"
+        end
+    end
 
-	includedirs {   "./Anvil",
-		"./Anvil/deps",
-		"./Anvil/include",
-		"./Anvil_premake",
-		vulkanPath }
+    includedirs {   "./Anvil",
+        "./Anvil/deps",
+        "./Anvil/include",
+        "./Anvil_premake",
+        vulkanPath }
 end
-
+if _OPTIONS["use_hip"] then
+    defines{"USE_HIP", }
+    -- buildoptions{" -D__HIP_PLATFORM_HCC__=   -I/opt/rocm/hip/include -I/opt/rocm/hcc/include "}
+    -- links{"hip_hcc",
+          -- "hc_am"}
+    -- libdirs{"/opt/rocm/hip/lib/",
+            -- "/opt/rocm/hcc/lib/"}
+end
 --make configuration specific definitions
 configuration "Debug"
-	defines { "_DEBUG" }
-	flags { "Symbols" }
+    defines { "_DEBUG" }
+    flags { "Symbols" }
 configuration "Release"
-	defines { "NDEBUG" }
-	flags { "Optimize" }
+    defines { "NDEBUG" }
+    flags { "Optimize" }
 
 configuration {"x64", "Debug"}
-	targetsuffix "64D"
+    targetsuffix "64D"
 configuration {"x32", "Debug"}
-	targetsuffix "D"
+    targetsuffix "D"
 configuration {"x64", "Release"}
-	targetsuffix "64"
+    targetsuffix "64"
 
 configuration {} -- back to all configurations
 
 if  _OPTIONS["use_vulkan"] then
-	if fileExists("./Anvil_premake/anvil.lua") then
-		dofile("./Anvil_premake/anvil.lua")
-	end
+    if fileExists("./Anvil_premake/anvil.lua") then
+        dofile("./Anvil_premake/anvil.lua")
+    end
 end
 
 if _OPTIONS["safe_math"] then
-	defines { "USE_SAFE_MATH" }
+    defines { "USE_SAFE_MATH" }
 end
 
 if fileExists("./RadeonRays/RadeonRays.lua") then
-	dofile("./RadeonRays/RadeonRays.lua")
+    dofile("./RadeonRays/RadeonRays.lua")
 end
 
 if fileExists("./Calc/Calc.lua") then
-	dofile("./Calc/Calc.lua")
+    dofile("./Calc/Calc.lua")
 end
 
 if _OPTIONS["use_opencl"] then
-	if fileExists("./CLW/CLW.lua") then
-		dofile("./CLW/CLW.lua")
-	end
+    if fileExists("./CLW/CLW.lua") then
+        dofile("./CLW/CLW.lua")
+    end
 end
 
 if not _OPTIONS["no_tests"] then
-	if fileExists("./Gtest/gtest.lua") then
-		dofile("./Gtest/gtest.lua")
-	end
-	if fileExists("./UnitTest/UnitTest.lua") then
-		dofile("./UnitTest/UnitTest.lua")
-	end
+    if fileExists("./Gtest/gtest.lua") then
+        dofile("./Gtest/gtest.lua")
+    end
+    if fileExists("./UnitTest/UnitTest.lua") then
+        dofile("./UnitTest/UnitTest.lua")
+    end
 end
 
 if _OPTIONS["tutorials"] then
-	if fileExists("./Tutorials/Tutorials.lua") then
-		dofile("./Tutorials/Tutorials.lua")
-	end
+    if fileExists("./Tutorials/Tutorials.lua") then
+        dofile("./Tutorials/Tutorials.lua")
+    end
 end

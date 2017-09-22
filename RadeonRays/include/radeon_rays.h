@@ -72,6 +72,7 @@ namespace RadeonRays
             kOpenCL = 0x1,
             kVulkan = 0x2,
             kEmbree = 0x4,
+            kHip = 0x8,
 
             kAny = 0xFF
         };

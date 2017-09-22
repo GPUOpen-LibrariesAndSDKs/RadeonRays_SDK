@@ -29,7 +29,6 @@ project "UnitTest"
     end
 
     if _OPTIONS["use_embree"] then
---        files {"../RadeonRays/src/device/embree*"}
         defines {"USE_EMBREE=1"}
         includedirs {"../3rdParty/embree/include"}
 
@@ -47,6 +46,11 @@ project "UnitTest"
             links {"embree"}
         end
     end
+
+    if _OPTIONS["use_hip"] then
+        defines {"USE_HIP"}
+    end
+
 
     if _OPTIONS["use_vulkan"] then
         local vulkanSDKPath = os.getenv( "VK_SDK_PATH" );

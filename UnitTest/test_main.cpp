@@ -42,6 +42,11 @@ THE SOFTWARE.
 
 #endif
 
+#if USE_HIP
+#include "radeon_rays_apitest_hip.h"
+#endif
+
+
 #include "gtest/gtest.h"
 
 

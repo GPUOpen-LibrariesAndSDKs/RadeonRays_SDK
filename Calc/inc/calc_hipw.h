@@ -19,48 +19,39 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
+#pragma once
+
 #include "calc.h"
-#if USE_OPENCL
-#include "calc_clw.h"
-#endif
-#if USE_VULKAN
-#include "calc_vk.h"
-#include "calc_vkw.h"
-#endif
-#if USE_HIP
-#include "calc_hipw.h"
-#endif
+#include <vector>
 
-// Create corresponding calc
-Calc::Calc* CreateCalc(Calc::Platform inPlatform, int reserved)
+#if defined(USE_HIP)
+
+
+namespace Calc
 {
-#if USE_OPENCL
-    if (inPlatform & Calc::Platform::kOpenCL)
+    // Implementation of Calc interface using Vulkan library
+    class CalcHipw : public Calc
     {
-        return new Calc::CalcClw();
-    }
-    else
-#endif
-#if USE_VULKAN
-        if (inPlatform & Calc::Platform::kVulkan)
-        {
-            return new Calc::CalcVulkanw();
-        }
-        else
-#endif // USE_VULKAN
-#if USE_HIP
-        if (inPlatform & Calc::Platform::kHip)
-        {
-            return new Calc::CalcHipw();
-        }
-        else
-#endif // USE_VULKAN
-        {
-            return nullptr;
-        }
+    public:
+        CalcHipw();
+        ~CalcHipw();
+
+        // Enumerate devices 
+        std::uint32_t GetDeviceCount() const override;
+
+        // Get i-th device spec
+        void GetDeviceSpec( std::uint32_t idx, DeviceSpec& spec ) const override;
+
+        // Create the device with specified index
+        Device* CreateDevice( std::uint32_t idx ) const override;
+
+        // Delete the device
+        void DeleteDevice( Device* device ) override;
+
+        Platform GetPlatform() final override { return Platform::kHip; };
+
+    private:
+    };
 }
 
-void DeleteCalc(Calc::Calc* calc)
-{
-    delete calc;
-}
+#endif // USE_HIP

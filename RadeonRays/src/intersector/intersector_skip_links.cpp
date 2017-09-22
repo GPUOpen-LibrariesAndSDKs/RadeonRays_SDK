@@ -93,18 +93,25 @@ namespace RadeonRays
 #endif
         
 #ifndef RR_EMBED_KERNELS
-        if ( device->GetPlatform() == Calc::Platform::kOpenCL )
+        switch ( device->GetPlatform())
         {
-            char const* headers[] = { "../RadeonRays/src/kernels/CL/common.cl" };
-
+        case Calc::Platform::kOpenCL:
+        {
+        	char const* headers[] = { "../RadeonRays/src/kernels/CL/common.cl" };
             int numheaders = sizeof( headers ) / sizeof( char const* );
-
             m_gpudata->executable = m_device->CompileExecutable( "../RadeonRays/src/kernels/CL/intersect_bvh2_skiplinks.cl", headers, numheaders, buildopts.c_str());
+            break;
         }
-        else
-        {
-            assert( device->GetPlatform() == Calc::Platform::kVulkan );
+        case Calc::Platform::kVulkan:
             m_gpudata->executable = m_device->CompileExecutable( "../RadeonRays/src/kernels/GLSL/bvh.comp", nullptr, 0, buildopts.c_str());
+            break;
+        case Calc::Platform::kHip:
+        	// TODO
+        	m_gpudata->executable = m_device->CompileExecutable( "bvh2_skiplinks", nullptr, 0, buildopts.c_str());
+        	break;
+        default:
+            assert(false);
+
         }
 #else
 #if USE_OPENCL
