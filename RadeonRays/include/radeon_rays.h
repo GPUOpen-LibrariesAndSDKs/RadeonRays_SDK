@@ -97,6 +97,15 @@ namespace RadeonRays
     public:
         virtual ~Shape() = 0;
 
+		enum ShapeType
+		{
+			SHAPE_MESH,
+			SHAPE_INSTANCED_MESH,
+			SHAPE_CURVES,
+			SHAPE_INSTANCED_CURVES
+		};
+		virtual ShapeType getType() const = 0;
+
         // World space transform
         virtual void SetTransform(matrix const& m, matrix const& minv) = 0;
         virtual void GetTransform(matrix& m, matrix& minv) const = 0;
@@ -149,7 +158,8 @@ namespace RadeonRays
     {
         // Shape ID
         Id shapeid;
-        // Primitve ID
+
+        // Primitive ID
         Id primid;
 
         int padding0;
@@ -229,6 +239,13 @@ namespace RadeonRays
             // Number of faces
             int  numfaces
             ) const = 0;
+
+		// Curves creation:
+		// vertices is an array of numVerts vertices, with byte stride vstride between 4-float vertices,
+		// where each 4-float vertex contains the vertex position as the .xyz components, and the curve width at that vertex as the .w component.
+		// segmentIndices is an int array of length 2*numSegments, with the start and end vertex index of each segment.
+		virtual Shape* CreateCurves(float const * vertices, int vnum, int vstride,
+			int const * segmentIndices, int numSegments) const = 0;
 
         // Create an instance of a shape with its own transform (set via Shape interface).
         // The call is blocking, so the returned value is ready upon return.

@@ -52,19 +52,20 @@ typedef struct
 // Ray definition
 typedef struct
 {
-    float4 o;
-    float4 d;
-    int2 extra;
-    int2 padding;
+    float4 o;        // xyz - origin, w - max range
+    float4 d;        // xyz - direction, w - time
+    int2 extra;      // x = ray mask, y = activity flag
+    int2 padding;    // @todo: not just padding since actually used for logic, right?
+    int2 surface0;   // x = shape index, y = prim index
+    int2 surface1;   // (currently just padding)
 } ray;
 
-// Intersection definition
+// Intersection definition 
 typedef struct
 {
     int shape_id;
     int prim_id;
     int2 padding;
-
     float4 uvwt;
 } Intersection;
 
@@ -174,11 +175,11 @@ float fast_intersect_triangle(ray r, float3 v1, float3 v2, float3 v3, float t_ma
     float3 const e2 = v3 - v1;
     float3 const s1 = cross(r.d.xyz, e2);
 
-	#ifdef USE_SAFE_MATH
-	float const invd = 1.0/(dot(s1, e1));
-	#else
+    #ifdef USE_SAFE_MATH
+    float const invd = 1.0/(dot(s1, e1));
+    #else
     float const invd = native_recip(dot(s1, e1));
-	#endif
+    #endif
 
     float3 const d = r.o.xyz - v1;
     float const b1 = dot(d, s1) * invd;
@@ -195,6 +196,51 @@ float fast_intersect_triangle(ray r, float3 v1, float3 v2, float3 v3, float t_ma
         return temp;
     }
 }
+
+
+// Intersect ray against a 'capsule', defined as the convex hull of two spheres 
+// at position v1.xyz, v2.xyz, with radii v1.w, v2.w
+// Return intersection interval value if it is in (0, t_max], return t_max otherwise.
+// On intersection, also returns u=[0,1] giving the location of the hit along the axis as (1-u)*v1 + u*v2
+INLINE
+float intersect_capsule(ray R, float4 v1, float4 v2, float t_max, float* u)
+{
+    // A rather crude test where we find the closest approach of the ray and capsule axis.
+    // If this a) projects onto the axis between the endpoints, and b) is less distance than the interpolated radius at this point 
+    // then we record a hit at the closest approach (i.e. the corresponding U value on the axis).
+
+    float3 p1 = R.o.xyz; // line 1 = ray
+    float3 d1 = R.d.xyz;
+    float3 p2 = v1.xyz; // line 2 = cylinder axis
+    float3 d2 = normalize(v2.xyz - v1.xyz);
+
+    float3 r = p1 - p2;
+    float a = dot(d1, d1);
+    float b = dot(d1, d2);
+    float c = dot(d1, r);
+    float e = dot(d2, d2);
+    float f = dot(d2, r);
+    float d = a*e - b*b;
+    const float epsilon = 1.0e-6;
+    if (d<=epsilon) return t_max; // ray and capsule almost parallel
+        
+    float s = (b*f - c*e)/d;
+    if (s<0.0) return t_max; // intersection behind ray
+
+    float t = (a*f - b*c)/d;
+    float capsuleLength = length(v2.xyz - v1.xyz);
+    if (t<-v1.w || t>capsuleLength+v2.w) return t_max; // intersection beyond capsule ends
+    
+    float3 c1 = p1 + s*d1;
+    float3 c2 = p2 + t*d2;
+    float U = t/capsuleLength;
+    float radius = (1.0-U)*v1.w + U*v2.w;
+    if ( length(c2-c1) > radius ) return t_max; // intersection too far from axis
+
+    *u = U;
+    return s;
+}
+
 
 INLINE
 float3 safe_invdir(ray r)
@@ -241,11 +287,11 @@ float2 triangle_calculate_barycentrics(float3 p, float3 v1, float3 v2, float3 v3
     float const d20 = dot(e, e1);
     float const d21 = dot(e, e2);
 
-	#ifdef USE_SAFE_MATH
-		float const invdenom = 1.0 / (d00 * d11 - d01 * d01);
-	#else
-		float const invdenom = native_recip(d00 * d11 - d01 * d01);
-	#endif
+    #ifdef USE_SAFE_MATH
+        float const invdenom = 1.0 / (d00 * d11 - d01 * d01);
+    #else
+        float const invdenom = native_recip(d00 * d11 - d01 * d01);
+    #endif
 
     float const b1 = (d11 * d20 - d01 * d21) * invdenom;
     float const b2 = (d00 * d21 - d01 * d20) * invdenom;

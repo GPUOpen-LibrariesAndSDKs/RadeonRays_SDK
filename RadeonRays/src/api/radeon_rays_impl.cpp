@@ -23,6 +23,7 @@ THE SOFTWARE.
 #include "radeon_rays_impl.h"
 #include "../primitive/mesh.h"
 #include "../primitive/instance.h"
+#include "../primitive/curves.h"
 #include "../except/except.h"
 #include "../device/intersection_device.h"
 
@@ -78,6 +79,14 @@ namespace RadeonRays
 
         return mesh;
     }
+
+	Shape* IntersectionApiImpl::CreateCurves(float const * vertices, int numverts, int vstride,
+		                                     int const * segmentIndices, int  numsegments) const
+	{
+		Curves *curves = new Curves(vertices, numverts, vstride, segmentIndices, numsegments);
+		curves->SetId(nextid_++);
+		return curves;
+	}
 
 
     Shape* IntersectionApiImpl::CreateInstance(Shape const* shape) const

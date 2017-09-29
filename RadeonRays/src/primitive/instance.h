@@ -57,7 +57,7 @@ namespace RadeonRays
     };
 
     inline Instance::Instance(Shape const* baseshape)
-        : shape_(baseshape)
+        : ShapeImpl(SHAPE_INSTANCED_MESH), shape_(baseshape)
     {
     }
 

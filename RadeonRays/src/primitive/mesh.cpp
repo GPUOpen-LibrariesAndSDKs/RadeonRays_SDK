@@ -32,7 +32,7 @@ namespace RadeonRays
         int const* vidx, int vistride,
         int const* nfaceverts,
         int nfaces)
-        : puretriangle_(true)
+        : ShapeImpl(SHAPE_MESH), puretriangle_(true)
     {
         // Handle vertices
         // Allocate space in advance
