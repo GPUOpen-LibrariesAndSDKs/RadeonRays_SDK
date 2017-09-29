@@ -11,13 +11,17 @@ project "RadeonRays"
 
     if _OPTIONS["shared_calc"] then
         defines {"CALC_IMPORT_API"};
-	links {"dl"}
+        if os.is("windows") then
+            characterset ("MBCS")
+        else
+            links {"dl"}
+        end
     else
-	defines {"CALC_STATIC_LIBRARY"}
+    defines {"CALC_STATIC_LIBRARY"}
         links {"Calc"}
-	if _OPTIONS["use_opencl"] then
+    if _OPTIONS["use_opencl"] then
            links {"CLW"}
-	end
+    end
     end
 
     if _OPTIONS["enable_raymask"] then
@@ -108,8 +112,13 @@ project "RadeonRays"
     end
 
     if _OPTIONS["enable_raymask"] then
-       	configuration {}
-	defines {"RR_RAY_MASK"}
+        configuration {}
+        defines {"RR_RAY_MASK"}
+    end
+
+    if _OPTIONS["safe_math"] then
+        configuration {}
+        defines { "USE_SAFE_MATH" }
     end
 
     if _OPTIONS["use_vulkan"] then

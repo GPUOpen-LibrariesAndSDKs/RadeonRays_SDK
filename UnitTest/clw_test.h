@@ -233,7 +233,7 @@ TEST_F(CLW, ExclusiveScanSmallSizeDifference)
     context_.WriteBuffer(0, devinput, &hostarray[0], arraysize).Wait();
 
     // Create parallel prims object
-    CLWParallelPrimitives prims(context_);
+    CLWParallelPrimitives prims(context_, buildopts_.c_str());
 
     // Perform scan
     prims.ScanExclusiveAdd(0, devinput, devoutput, arraysize).Wait();

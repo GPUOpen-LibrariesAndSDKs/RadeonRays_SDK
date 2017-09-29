@@ -48,7 +48,12 @@ void CLWPlatform::CreateAllPlatforms(std::vector<CLWPlatform>& platforms)
     status = clGetPlatformIDs(numPlatforms, &platformIds[0], nullptr);
     ThrowIf(status != CL_SUCCESS, status, "clGetPlatformIDs failed");
 
-    cl_device_type type = CL_DEVICE_TYPE_ALL;
+
+#ifdef RR_ALLOW_CPU_DEVICES
+	cl_device_type type = CL_DEVICE_TYPE_ALL;
+#else
+	cl_device_type type = CL_DEVICE_TYPE_GPU;
+#endif
 
     // TODO: this is a workaround for nasty Apple's OpenCL runtime
     // which doesn't allow to have work group sizes > 1 on CPU devices
@@ -70,8 +75,8 @@ void CLWPlatform::CreateAllPlatforms(std::vector<CLWPlatform>& platforms)
 
         std::string versionstr(version.begin(), version.end());
 
-        if (versionstr.find("1.0") != std::string::npos ||
-            versionstr.find("1.1") != std::string::npos)
+        if (versionstr.find("OpenCL 1.0 ") != std::string::npos ||
+            versionstr.find("OpenCL 1.1") != std::string::npos)
         {
             continue;
         }

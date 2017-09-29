@@ -14,6 +14,10 @@ project "CLW"
 
     configuration {}
 
+	if _OPTIONS["allow_cpu_devices"] then
+        defines {"RR_ALLOW_CPU_DEVICES=1"}
+	end
+	
     -- we rely on RadeonRays to do the actual embedding for us
     if _OPTIONS["embed_kernels"] then
         defines {"RR_EMBED_KERNELS=1"}

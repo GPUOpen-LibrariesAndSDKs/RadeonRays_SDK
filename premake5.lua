@@ -9,6 +9,11 @@ newoption {
 }
 
 newoption {
+    trigger     = "allow_cpu_devices",
+    description = "Allows CPU Devices"
+}
+
+newoption {
     trigger = "use_opencl",
     description = "Use OpenCL for GPU hit testing"
 }

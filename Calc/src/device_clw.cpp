@@ -459,9 +459,6 @@ namespace Calc
                 ""
 #endif
                 );
-#ifdef USE_SAFE_MATH
-            buildopts.append("-D USE_SAFE_MATH");
-#endif
 
             return new ExecutableClw(
                                      CLWProgram::CreateFromFile(filename, headernames, numheaders, buildopts.c_str(), m_context)
