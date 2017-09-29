@@ -1,3 +1,5 @@
 [submodule "Anvil"]
 	path = Anvil
 	url = https://github.com/GPUOpen-LibrariesAndSDKs/Anvil.git
+[submodule "RadeonRays"]
+	branch = master
