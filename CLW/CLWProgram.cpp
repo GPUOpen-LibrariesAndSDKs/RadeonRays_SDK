@@ -107,7 +107,7 @@ CLWProgram CLWProgram::CreateFromSource(char const* sourcecode,
                                         CLWContext context)
 {
     cl_int status = CL_SUCCESS;
-    
+
     std::vector<cl_device_id> deviceIds(context.GetDeviceCount());
     for(unsigned int i = 0; i < context.GetDeviceCount(); ++i)
     {
@@ -170,6 +170,61 @@ CLWProgram CLWProgram::CreateFromSource(char const* sourcecode,
     return prg;
 }
 
+CLWProgram CLWProgram::CreateFromBinary(std::uint8_t** binaries, std::size_t* binary_sizes, CLWContext context)
+{
+    cl_int status = CL_SUCCESS;
+
+    std::vector<cl_device_id> deviceIds(context.GetDeviceCount());
+    for (unsigned int i = 0; i < context.GetDeviceCount(); ++i)
+    {
+        deviceIds[i] = context.GetDevice(i);
+    }
+
+    cl_int binary_status = 0;
+    cl_program program = clCreateProgramWithBinary(context, context.GetDeviceCount(), &deviceIds[0], binary_sizes, (const unsigned char**)binaries, &binary_status, &status);
+
+    if (status != CL_SUCCESS)
+    {
+        std::vector<char> buildLog;
+        size_t logSize;
+        clGetProgramBuildInfo(program, deviceIds[0], CL_PROGRAM_BUILD_LOG, 0, nullptr, &logSize);
+
+        buildLog.resize(logSize);
+        clGetProgramBuildInfo(program, deviceIds[0], CL_PROGRAM_BUILD_LOG, logSize, &buildLog[0], nullptr);
+
+#ifdef _DEBUG
+        std::cout << &buildLog[0] << "\n";
+#endif
+
+        throw CLWException(status, std::string(&buildLog[0]));
+    }
+
+    status = clBuildProgram(program, context.GetDeviceCount(), &deviceIds[0], nullptr, nullptr, nullptr);
+
+    if (status != CL_SUCCESS)
+    {
+        std::vector<char> buildLog;
+        size_t logSize;
+        clGetProgramBuildInfo(program, deviceIds[0], CL_PROGRAM_BUILD_LOG, 0, nullptr, &logSize);
+
+        buildLog.resize(logSize);
+        clGetProgramBuildInfo(program, deviceIds[0], CL_PROGRAM_BUILD_LOG, logSize, &buildLog[0], nullptr);
+
+#ifdef _DEBUG
+        std::cout << &buildLog[0] << "\n";
+#endif
+
+        throw CLWException(status, std::string(&buildLog[0]));
+    }
+
+    CLWProgram prg(program);
+
+    clReleaseProgram(program);
+
+    return prg;
+
+}
+
 CLWProgram CLWProgram::CreateFromFile(char const* filename, char const* buildopts, CLWContext context)
 {
     std::vector<char> sourcecode;
@@ -218,24 +273,24 @@ CLWProgram::CLWProgram(cl_program program)
     ThrowIf(numKernels == 0, CL_BUILD_ERROR, "clCreateKernelsInProgram return 0 kernels");
 
     ThrowIf(status != CL_SUCCESS, status, "clCreateKernelsInProgram failed");
-    
+
     std::vector<cl_kernel> kernels(numKernels);
     status = clCreateKernelsInProgram(*this, numKernels, &kernels[0], nullptr);
-    
+
     ThrowIf(status != CL_SUCCESS, status, "clCreateKernelsInProgram failed");
-    
+
     std::for_each(kernels.begin(), kernels.end(), [this](cl_kernel k)
                   {
                       size_t size = 0;
                       cl_int res;
-                      
+
                       res = clGetKernelInfo(k, CL_KERNEL_FUNCTION_NAME, 0, nullptr, &size);
                       ThrowIf(res != CL_SUCCESS, res, "clGetKernelInfo failed");
-                      
+
                       std::vector<char> temp(size);
                       res = clGetKernelInfo(k, CL_KERNEL_FUNCTION_NAME, size, &temp[0], nullptr);
                       ThrowIf(res != CL_SUCCESS, res, "clGetKernelInfo failed");
-                      
+
                       std::string funcName(temp.begin(), temp.end()-1);
                       kernels_[funcName] = CLWKernel::Create(k);
                   });
@@ -257,4 +312,56 @@ CLWKernel CLWProgram::GetKernel(std::string const& funcName) const
     ThrowIf(iter == kernels_.end(), CL_INVALID_KERNEL_NAME, "No such kernel in program");
     
     return iter->second;
+}
+
+void CLWProgram::GetBinaries(int device, std::vector<std::uint8_t>& data) const
+{
+    std::uint32_t num_devices;
+    auto status = clGetProgramInfo(*this, CL_PROGRAM_NUM_DEVICES,
+        sizeof(uint32_t),
+        &num_devices,
+        nullptr);
+
+
+    std::vector<std::size_t> binary_sizes(num_devices);
+    status = clGetProgramInfo(*this, CL_PROGRAM_BINARY_SIZES,
+        sizeof(size_t) * num_devices,
+        &binary_sizes[0],
+        nullptr);
+
+    ThrowIf(status != CL_SUCCESS, status, "clGetProgramInfo failed");
+
+    data.resize(binary_sizes[device]);
+
+    char** temp = new char*[num_devices];
+
+    for (auto i = 0u; i < num_devices; ++i)
+    {
+        if (i == device)
+        {
+            temp[i] = (char*)&data[0];
+        }
+        else
+        {
+            temp[i] = new char[binary_sizes[i]];
+        }
+    }
+
+    status = clGetProgramInfo(*this, CL_PROGRAM_BINARIES,
+        binary_sizes[0],
+        temp,
+        nullptr);
+
+    // TODO: fix potential leak here
+    ThrowIf(status != CL_SUCCESS, status, "clGetProgramInfo failed");
+
+    for (auto i = 0u; i < num_devices; ++i)
+    {
+        if (i != device)
+        {
+            delete temp[i];
+        }
+    }
+
+    delete temp;
 }

@@ -32,7 +32,7 @@ CLWDevice::CLWDevice(cl_device_id id) : ReferenceCounter<cl_device_id, clRetainD
     GetDeviceInfoParameter(*this, CL_DEVICE_NAME, name_);
     GetDeviceInfoParameter(*this, CL_DEVICE_EXTENSIONS, extensions_);
     GetDeviceInfoParameter(*this, CL_DEVICE_VENDOR, vendor_);
-    GetDeviceInfoParameter(*this, CL_DEVICE_VERSION, version_);
+    GetDeviceInfoParameter(*this, CL_DRIVER_VERSION, version_);
     GetDeviceInfoParameter(*this, CL_DEVICE_PROFILE, profile_);
     GetDeviceInfoParameter(*this, CL_DEVICE_TYPE, type_);
     
