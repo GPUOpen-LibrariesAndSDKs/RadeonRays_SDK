@@ -168,6 +168,12 @@ void CLWPlatform::InitDeviceList(cl_device_type type) const
 {
     cl_uint numDevices = 0;
     cl_int status = clGetDeviceIDs(*this, type, 0, nullptr, &numDevices);
+
+    if (status == CL_DEVICE_NOT_FOUND)
+    {
+        return;
+    }
+
     ThrowIf(status != CL_SUCCESS, status, "clGetDeviceIDs failed");
 
     std::vector<cl_device_id> deviceIds(numDevices);
