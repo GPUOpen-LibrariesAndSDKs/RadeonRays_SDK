@@ -363,5 +363,5 @@ void CLWProgram::GetBinaries(int device, std::vector<std::uint8_t>& data) const
         }
     }
 
-    delete temp;
+    delete [] temp;
 }
