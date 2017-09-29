@@ -27,6 +27,7 @@ THE SOFTWARE.
 #include <vector>
 #include <map>
 #include <string>
+#include <cstdint>
 
 #ifdef __APPLE__
 #include <OpenCL/OpenCL.h>
@@ -62,12 +63,16 @@ public:
                                      char const* buildopts,
                                      CLWContext context);
 
+    static CLWProgram CreateFromBinary(std::uint8_t** binaries, std::size_t* binary_sizes, CLWContext context);
+
     CLWProgram() {}
     virtual      ~CLWProgram();
 
     unsigned int GetKernelCount() const;
     CLWKernel    GetKernel(std::string const& funcName) const;
-    
+
+    void GetBinaries(int device, std::vector<std::uint8_t>& data) const;
+
 private:
     CLWProgram(cl_program program);
     std::map<std::string, CLWKernel> kernels_;

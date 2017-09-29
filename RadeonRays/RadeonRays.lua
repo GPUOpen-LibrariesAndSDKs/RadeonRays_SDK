@@ -7,17 +7,21 @@ project "RadeonRays"
     end
 
     location "../RadeonRays"
-    includedirs { "./include", "../Calc/inc", ".." }
+    includedirs { "./include", "../Calc/inc" }
 
     if _OPTIONS["shared_calc"] then
         defines {"CALC_IMPORT_API"};
-	links {"dl"}
+        if os.is("windows") then
+            characterset ("MBCS")
+        else
+            links {"dl"}
+        end
     else
-	defines {"CALC_STATIC_LIBRARY"}
+    defines {"CALC_STATIC_LIBRARY"}
         links {"Calc"}
-	if _OPTIONS["use_opencl"] then
+    if _OPTIONS["use_opencl"] then
            links {"CLW"}
-	end
+    end
     end
 
     if _OPTIONS["enable_raymask"] then
@@ -62,15 +66,29 @@ project "RadeonRays"
 
     configuration {}
 
-    defines {"RR_EMBED_KERNELS=1"}
+    if _OPTIONS["embed_kernels"] then
+        defines {"RR_EMBED_KERNELS=1"}
 
-    os.execute( "python ../Tools/scripts/stringify.py " ..
+        if _OPTIONS["use_vulkan"] then
+            os.execute( "python ../Tools/scripts/stringify.py " ..
+                                os.getcwd() .. "../RadeonRays/src/kernels/GLSL/ "  ..
+                                ".comp " ..
+                                "vulkan " ..
+                                 "> ./src/kernelcache/kernels_vk.h"
+                                )
+            print ">> RadeonRays: VK kernels embedded"
+        end
+
+        if _OPTIONS["use_opencl"] then
+            os.execute( "python ../Tools/scripts/stringify.py " ..
                                 os.getcwd() .. "/../RadeonRays/src/kernels/CL/ "  ..
                                 ".cl " ..
                                 "opencl " ..
                                  "> ./src/kernelcache/kernels_cl.h"
                                 )
-    print ">> RadeonRays: CL kernels embedded"
+            print ">> RadeonRays: CL kernels embedded"
+        end
+    end
 
     if _OPTIONS["use_embree"] then
         files {"../RadeonRays/src/device/embree*"}
@@ -94,16 +112,46 @@ project "RadeonRays"
     end
 
     if _OPTIONS["enable_raymask"] then
-       	configuration {}
-		defines {"RR_RAY_MASK"}
+        configuration {}
+        defines {"RR_RAY_MASK"}
+    end
+
+    if _OPTIONS["safe_math"] then
+        configuration {}
+        defines { "USE_SAFE_MATH" }
+    end
+
+    if _OPTIONS["use_vulkan"] then
+        local vulkanSDKPath = os.getenv( "VK_SDK_PATH" );
+        if vulkanSDKPath == nil then
+            vulkanSDKPath = os.getenv( "VULKAN_SDK" );
+        end
+        if vulkanSDKPath ~= nil then
+            configuration {"x32"}
+            libdirs { vulkanSDKPath .. "/Bin32" }
+            configuration {"x64"}
+            libdirs { vulkanSDKPath .. "/Bin" }
+            configuration {}
+        end
+        if os.is("macosx") then
+            --no Vulkan on macOs need to error out TODO
+        elseif os.is("linux") then
+            libdirs { vulkanSDKPath .. "/lib" }
+            links { "Anvil",
+                    "vulkan",
+                    "pthread"}
+        elseif os.is("windows") then
+            links {"Anvil"}
+            links {"vulkan-1"}
+        end
     end
 
     configuration {"x32", "Debug"}
-        targetdir "../../Bin/Debug/x86"
+        targetdir "../Bin/Debug/x86"
     configuration {"x64", "Debug"}
-        targetdir "../../Bin/Debug/x64"
+        targetdir "../Bin/Debug/x64"
     configuration {"x32", "Release"}
-        targetdir "../../Bin/Release/x86"
+        targetdir "../Bin/Release/x86"
     configuration {"x64", "Release"}
-        targetdir "../../Bin/Release/x64"
+        targetdir "../Bin/Release/x64"
     configuration {}

@@ -14,6 +14,10 @@ project "CLW"
 
     configuration {}
 
+	if _OPTIONS["allow_cpu_devices"] then
+        defines {"RR_ALLOW_CPU_DEVICES=1"}
+	end
+	
     -- we rely on RadeonRays to do the actual embedding for us
     defines {"RR_EMBED_KERNELS=1"}
     os.execute( "python ../Tools/scripts/stringify.py " ..

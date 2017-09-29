@@ -116,7 +116,7 @@ namespace RadeonRays
         if (result != RTC_NO_ERROR)
             std::cout << "Failed to create embree rtcDevice: " << result << std::endl;
 
-        m_scene = rtcDeviceNewScene(m_device, RTC_SCENE_STATIC, RTC_INTERSECT1 | RTC_INTERSECT4 | RTC_INTERSECT8 | RTC_INTERSECT16 | RTC_INTERSECTN);
+        m_scene = rtcDeviceNewScene(m_device, RTC_SCENE_STATIC, RTC_INTERSECT1 | RTC_INTERSECT4 | RTC_INTERSECT8 | RTC_INTERSECT16 );
         result = rtcDeviceGetError(m_device);
         if (result != RTC_NO_ERROR)
             std::cout << "Failed to create embree scene: " << result << std::endl;
@@ -171,7 +171,7 @@ namespace RadeonRays
         }
         m_instances.clear();
         rtcDeleteScene(m_scene); CheckEmbreeError();
-        m_scene = rtcDeviceNewScene(m_device, RTC_SCENE_STATIC, RTC_INTERSECT1 | RTC_INTERSECT4 | RTC_INTERSECT8 | RTC_INTERSECT16 | RTC_INTERSECTN); CheckEmbreeError();
+        m_scene = rtcDeviceNewScene(m_device, RTC_SCENE_STATIC, RTC_INTERSECT1 | RTC_INTERSECT4 | RTC_INTERSECT8 | RTC_INTERSECT16 ); CheckEmbreeError();
 
         for (auto i : world.shapes_)
         {
@@ -500,7 +500,7 @@ namespace RadeonRays
     {
         if (m_meshes.count(mesh))
             return m_meshes[mesh].scene;
-        RTCScene result = rtcDeviceNewScene(m_device, RTC_SCENE_STATIC, RTC_INTERSECT1 | RTC_INTERSECT4 | RTC_INTERSECT8 | RTC_INTERSECT16 | RTC_INTERSECTN);
+        RTCScene result = rtcDeviceNewScene(m_device, RTC_SCENE_STATIC, RTC_INTERSECT1 | RTC_INTERSECT4 | RTC_INTERSECT8 | RTC_INTERSECT16 );
         CheckEmbreeError();
         ThrowIf(!mesh->puretriangle(), "Only triangle meshes supported by now.");
 

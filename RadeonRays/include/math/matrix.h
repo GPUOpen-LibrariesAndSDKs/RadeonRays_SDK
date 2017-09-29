@@ -179,14 +179,13 @@ namespace RadeonRays
         return res*=c;
     }
 
-    inline float3 operator * (matrix const& m, float3 const& v)
+    inline float4 operator * (matrix const& m, float4 const& v)
     {
-        float3 res;
+        float4 res(0, 0, 0, 0);
 
-        for (int i=0;i<3;++i)
-        {
-            res[i] = 0.f;
-            for (int j=0;j<3;++j)
+        for (int i = 0; i < 4; ++i) {
+            //res[i] = 0.f;
+            for (int j = 0; j < 4; ++j)
                 res[i] += m.m[i][j] * v[j];
         }
 
