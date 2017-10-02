@@ -348,7 +348,7 @@ void CLWProgram::GetBinaries(int device, std::vector<std::uint8_t>& data) const
     }
 
     status = clGetProgramInfo(*this, CL_PROGRAM_BINARIES,
-        binary_sizes[0],
+        sizeof(char*),
         temp,
         nullptr);
 
