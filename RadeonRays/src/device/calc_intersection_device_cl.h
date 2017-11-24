@@ -43,6 +43,10 @@ namespace RadeonRays
         CalcIntersectionDeviceCl(Calc::Calc* calc, Calc::DeviceCl* device);
         
         virtual Buffer* CreateBuffer(cl_mem mem) const;
+
+        Event* CreateEvent(cl_event event) const;
+
+        cl_event GetOpenCLEvent(Event const* event) const;
     };
 }
 

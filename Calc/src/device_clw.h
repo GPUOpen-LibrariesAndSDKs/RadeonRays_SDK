@@ -89,7 +89,6 @@ namespace Calc
 
         Platform GetPlatform() const override { return Platform::kOpenCL; }
 
-    protected:
         EventClw* CreateEventClw() const;
         void      ReleaseEventClw(EventClw* e) const;
 

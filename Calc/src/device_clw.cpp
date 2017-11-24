@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include "executable.h"
 #include "except_clw.h"
 #include "calc_clw_common.h"
+#include "event_clw.h"
 
 namespace Calc
 {    
@@ -45,62 +46,6 @@ namespace Calc
     private:
         CLWBuffer<char> m_buffer;
     };
-
-
-    // Event implementation with CLW
-    class EventClw : public Event
-    {
-    public:
-        EventClw() {}
-        EventClw(CLWEvent event);
-        ~EventClw();
-
-        void Wait() override;
-        bool IsComplete() const override;
-
-        void SetEvent(CLWEvent event);
-
-    private:
-        CLWEvent m_event;
-    };
-
-    EventClw::EventClw(CLWEvent event)
-        : m_event(event)
-    {
-    }
-
-    EventClw::~EventClw()
-    {
-    }
-
-    void EventClw::Wait()
-    {
-        try
-        {
-            m_event.Wait();
-        }
-        catch (CLWException& e)
-        {
-            throw ExceptionClw(e.what());
-        }
-    }
-
-    bool EventClw::IsComplete() const
-    {
-        try
-        {
-            return m_event.GetCommandExecutionStatus() == CL_COMPLETE;
-        }
-        catch (CLWException& e)
-        {
-            throw ExceptionClw(e.what());
-        }
-    }
-
-    void EventClw::SetEvent(CLWEvent event)
-    {
-        m_event = event;
-    }
 
     class FunctionClw : public Function
     {

@@ -21,31 +21,65 @@ THE SOFTWARE.
 ********************************************************************/
 #pragma once
 
-#include "calc_common.h"
+#include "device_clw.h"
+#include "event.h"
+#include "CLW.h"
 
-#include <string>
-#include <cstdint>
-
-#ifdef __APPLE__
-#include <OpenCL/OpenCL.h>
-#else
-#include <CL/cl.h>
-#endif
 
 namespace Calc
 {
-    class DeviceCl;
-    class Buffer;
-    class Event;
-}
+    // Event implementation with CLW
+    class EventClw : public Event
+    {
+    public:
+        EventClw() {}
+        EventClw(CLWEvent event);
+        ~EventClw();
 
-#ifdef __cplusplus
-extern "C"
-{
-#endif
-CALC_API Calc::DeviceCl* CreateDeviceFromOpenCL(cl_context context, cl_device_id device, cl_command_queue queue);
-CALC_API Calc::Event* CreateEventFromOpenCL(Calc::DeviceCl* device, cl_event event);
-CALC_API cl_event GetOpenClEventFromCalc(Calc::DeviceCl* device, Calc::Event* event);
-#ifdef __cplusplus
+        void Wait() override;
+        bool IsComplete() const override;
+
+        void SetEvent(CLWEvent event);
+        CLWEvent GetEvent() const { return m_event; }
+    private:
+        CLWEvent m_event;
+    };
+
+    inline EventClw::EventClw(CLWEvent event)
+        : m_event(event)
+    {
+    }
+
+    inline EventClw::~EventClw()
+    {
+    }
+
+    inline void EventClw::Wait()
+    {
+        try
+        {
+            m_event.Wait();
+        }
+        catch (CLWException& e)
+        {
+            throw ExceptionClw(e.what());
+        }
+    }
+
+    inline bool EventClw::IsComplete() const
+    {
+        try
+        {
+            return m_event.GetCommandExecutionStatus() == CL_COMPLETE;
+        }
+        catch (CLWException& e)
+        {
+            throw ExceptionClw(e.what());
+        }
+    }
+
+    inline void EventClw::SetEvent(CLWEvent event)
+    {
+        m_event = event;
+    }
 }
-#endif

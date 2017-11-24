@@ -24,6 +24,7 @@ THE SOFTWARE.
 #include "calc_clw.h"
 #include "device_clw.h"
 #include "except_clw.h"
+#include "event_clw.h"
 
 #include "calc_clw_common.h"
 
@@ -129,6 +130,24 @@ Calc::DeviceCl* CreateDeviceFromOpenCL(cl_context context, cl_device_id device, 
     CLWContext clwContext = CLWContext::Create(context, &device, &queue, 1);
     auto clwDevice = clwContext.GetDevice(0);
     return new Calc::DeviceClw(clwDevice, clwContext);
+}
+
+Calc::Event* CreateEventFromOpenCL(Calc::DeviceCl* device, cl_event e)
+{
+    auto device_clw = dynamic_cast<Calc::DeviceClw*>(device);
+
+    auto event = device_clw->CreateEventClw();
+
+    event->SetEvent(CLWEvent::Create(e));
+
+    return event;
+}
+
+cl_event GetOpenClEventFromCalc(Calc::DeviceCl* device, Calc::Event* event)
+{
+    auto e = dynamic_cast<Calc::EventClw*>(event);
+
+    return e->GetEvent();
 }
 
 #endif //use_opencl

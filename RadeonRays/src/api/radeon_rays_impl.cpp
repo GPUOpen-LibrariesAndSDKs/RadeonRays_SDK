@@ -193,6 +193,44 @@ namespace RadeonRays
 
         return nullptr;
     }
+
+    RRAPI Event* CreateFromOpenClEvent(IntersectionApi* api, cl_event event)
+    {
+        auto apii = static_cast<IntersectionApiImpl*>(api);
+        // we use dynamic cast (internal only) because otherwise have to
+        // expose platform to intersection api which feel wrong esp. in future
+        // if we support multi backend unified intersection api
+        auto cldev = dynamic_cast<CalcIntersectionDeviceCl*>(apii->GetDevice());
+
+        if (cldev)
+        {
+            return cldev->CreateEvent(event);
+        }
+
+        Throw("CL interop not supported");
+
+        return nullptr;
+    }
+
+    RRAPI cl_event GetOpenClEvent(IntersectionApi* api, Event const* event)
+    {
+        auto apii = static_cast<IntersectionApiImpl*>(api);
+        // we use dynamic cast (internal only) because otherwise have to
+        // expose platform to intersection api which feel wrong esp. in future
+        // if we support multi backend unified intersection api
+        auto cldev = dynamic_cast<CalcIntersectionDeviceCl*>(apii->GetDevice());
+
+        if (cldev)
+        {
+            return cldev->GetOpenCLEvent(event);
+        }
+
+        Throw("CL interop not supported");
+
+        return nullptr;
+    }
+
+
 #endif
 
 #ifdef USE_VULKAN

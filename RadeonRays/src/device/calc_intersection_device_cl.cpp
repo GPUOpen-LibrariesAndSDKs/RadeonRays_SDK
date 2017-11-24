@@ -21,7 +21,7 @@ THE SOFTWARE.
 ********************************************************************/
 
 #if USE_OPENCL
-
+#include "calc_cl.h"
 #include "calc_intersection_device_cl.h"
 #include "device_cl.h"
 #include "calc_holder.h"
@@ -38,6 +38,23 @@ namespace RadeonRays
     Buffer* CalcIntersectionDeviceCl::CreateBuffer(cl_mem mem) const
     {
         return new CalcBufferHolder(m_device.get(), static_cast<Calc::DeviceCl*>(m_device.get())->CreateBuffer(mem));
+    }
+
+    Event* CalcIntersectionDeviceCl::CreateEvent(cl_event event) const
+    {
+        auto event_holder = CreateEventHolder();
+        auto calc_event = CreateEventFromOpenCL(static_cast<Calc::DeviceCl*>(m_device.get()), event);
+        event_holder->Set(m_device.get(), calc_event);
+        return event_holder;
+    }
+
+    cl_event CalcIntersectionDeviceCl::GetOpenCLEvent(Event const* event) const
+    {
+        auto event_holder = dynamic_cast<CalcEventHolder const*>(event);
+
+        auto calc_event = event_holder->m_event.get();
+
+        return GetOpenClEventFromCalc(static_cast<Calc::DeviceCl*>(m_device.get()), calc_event);
     }
 }
 

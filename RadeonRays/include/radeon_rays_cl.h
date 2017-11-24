@@ -39,6 +39,9 @@ namespace RadeonRays {
 
     RRAPI IntersectionApi* CreateFromOpenClContext(cl_context context, cl_device_id device, cl_command_queue queue);
     RRAPI Buffer* CreateFromOpenClBuffer(IntersectionApi* api, cl_mem buffer);
+
+    RRAPI Event* CreateFromOpenClEvent(IntersectionApi* api, cl_event event);
+    RRAPI cl_event GetOpenClEvent(IntersectionApi* api, Event const* event);
 }
 
 
