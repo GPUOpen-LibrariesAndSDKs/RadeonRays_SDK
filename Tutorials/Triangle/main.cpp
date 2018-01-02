@@ -25,7 +25,7 @@ THE SOFTWARE.
 #include <cassert>
 #include <iostream>
 #include <memory>
-#include "../tools/shader_manager.h"
+#include "../Tools/shader_manager.h"
 
 using namespace RadeonRays;
 
