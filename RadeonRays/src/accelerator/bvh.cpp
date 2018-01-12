@@ -470,7 +470,7 @@ namespace RadeonRays
                 inline SplitRequest2() {}
 
                 // TODO: why do I need this?!? (gboisse)
-                inline SplitRequest2(__m128 aabb_min, __m128 aabb_max, __m128 centroid_aabb_min, __m128 centroid_aabb_max, std::size_t start_index, std::size_t num_refs, std::uint32_t level, std::uint32_t index)
+                inline SplitRequest2(__m128 aabb_min, __m128 aabb_max, __m128 centroid_aabb_min, __m128 centroid_aabb_max, std::size_t start_index, std::size_t num_refs, std::uint32_t level, std::uint32_t index, Node **ptr)
                     : aabb_min(aabb_min)
                     , aabb_max(aabb_max)
                     , centroid_aabb_min(centroid_aabb_min)
@@ -479,7 +479,14 @@ namespace RadeonRays
                     , num_refs(num_refs)
                     , level(level)
                     , index(index)
+                    , ptr(ptr)
                 {
+#if 1
+                    _MM_ALIGN16 float3 pmin, pmax;
+                    _mm_store_ps(&pmin.x, aabb_min);
+                    _mm_store_ps(&pmax.x, aabb_max);
+                    const bool res = true;
+#endif
                 }
 
                 __m128 aabb_min;
@@ -490,6 +497,7 @@ namespace RadeonRays
                 std::size_t num_refs;
                 std::uint32_t level;
                 std::uint32_t index;
+                Node **ptr;
             };
 
             auto constexpr inf = std::numeric_limits<float>::infinity();
@@ -504,14 +512,15 @@ namespace RadeonRays
             std::atomic_uint32_t num_refs_processed = 0;
 
             requests.push(SplitRequest2(
-                _mm_set_ps(m_bounds.pmin.x, m_bounds.pmin.y, m_bounds.pmin.z, m_bounds.pmin.w),
-                _mm_set_ps(m_bounds.pmax.x, m_bounds.pmax.y, m_bounds.pmax.z, m_bounds.pmax.w),
-                _mm_set_ps(centroid_bounds.pmin.x, centroid_bounds.pmin.y, centroid_bounds.pmin.z, centroid_bounds.pmin.w),
-                _mm_set_ps(centroid_bounds.pmax.x, centroid_bounds.pmax.y, centroid_bounds.pmax.z, centroid_bounds.pmax.w),
+                _mm_set_ps(m_bounds.pmin.w, m_bounds.pmin.z, m_bounds.pmin.y, m_bounds.pmin.x),
+                _mm_set_ps(m_bounds.pmax.w, m_bounds.pmax.z, m_bounds.pmax.y, m_bounds.pmax.x),
+                _mm_set_ps(centroid_bounds.pmin.w, centroid_bounds.pmin.z, centroid_bounds.pmin.y, centroid_bounds.pmin.x),
+                _mm_set_ps(centroid_bounds.pmax.w, centroid_bounds.pmax.z, centroid_bounds.pmax.y, centroid_bounds.pmax.x),
                 0,
                 numbounds,
                 0u,
-                0u
+                1u,
+                nullptr
             ));
 
             auto HandleRequest = [&](
@@ -526,23 +535,38 @@ namespace RadeonRays
                 SplitRequest2 &request_right
                 ) -> NodeType
             {
-                // TODO: encode node (gboisse)
+                // TODO: create node (gboisse)
+                Node *node;
                 static std::mutex removeMe; // TODO: remove me (gboisse)
                 {
                     const std::unique_lock<std::mutex> lock(mutex);
-                    Node *node = AllocateNode();
-                    node->type = kInternal;
-                    node->startidx = request.index; // TODO: there is a story of packed primitives in here... (gboisse)
-                    node->numprims = request.num_refs;
+                    node = AllocateNode();
                 }
+                node->index = request.index;
+                _MM_ALIGN16 float3 pmin, pmax; // TODO: node buffer should be aligned (gboisse)
+                _mm_store_ps(&pmin.x, request.aabb_min);
+                _mm_store_ps(&pmax.x, request.aabb_max);
+                node->bounds.pmin = pmin;
+                node->bounds.pmax = pmax;
+                if (request.ptr) *request.ptr = node;
 
-                // TODO: ... (gboisse)
+                // Create leaf node if we have enough prims
                 if (request.num_refs <= kMaxPrimitivesPerLeaf)
                 {
                     // TODO: create leaf node (gboisse)
-                    assert(0);
+                    const std::unique_lock<std::mutex> lock(mutex);
+                    node->type = kLeaf;
+                    node->startidx = static_cast<int>(m_packed_indices.size());
+                    node->numprims = request.num_refs;
+                    for (auto i = 0; i < request.num_refs; ++i)
+                    {
+                        m_packed_indices.push_back(refs[request.start_index + i]);
+                    }
                     return kLeaf;
                 }
+
+                //
+                node->type = kInternal;
 
                 auto split_axis = aabb_max_extent_axis(
                     request.centroid_aabb_min,
@@ -686,7 +710,9 @@ namespace RadeonRays
                 request_left.start_index = request.start_index;
                 request_left.num_refs = split_idx - request.start_index;
                 request_left.level = request.level + 1;
-                request_left.index = request.index + 1;
+                //request_left.index = request.index + 1;
+                request_left.index = request.index << 1;
+                request_left.ptr = &node->lc;
 
                 // Create right request
                 request_right.aabb_min = rmin;
@@ -696,7 +722,9 @@ namespace RadeonRays
                 request_right.start_index = split_idx;
                 request_right.num_refs = request.num_refs - request_left.num_refs;
                 request_right.level = request.level + 1;
-                request_right.index = static_cast<std::uint32_t>(request.index + request_left.num_refs * 2);
+                //request_right.index = static_cast<std::uint32_t>(request.index + request_left.num_refs * 2);
+                request_right.index = (request.index << 1) + 1;
+                request_right.ptr = &node->rc;
 
                 return kInternal;
             };
