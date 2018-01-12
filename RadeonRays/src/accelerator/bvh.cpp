@@ -454,7 +454,7 @@ namespace RadeonRays
         {
             // TODO: move this out of here somehow (gboisse)
             auto deleter = [](void *ptr) { _aligned_free(ptr); };
-            using aligned_float3_ptr = std::unique_ptr<float3[], decltype(deleter)>;
+            using aligned_float3_ptr = std::unique_ptr<float3 [], decltype(deleter)>;
             auto aabb_min = aligned_float3_ptr(reinterpret_cast<float3 *>(_aligned_malloc(sizeof(float3) * numbounds, 16)), deleter);
             auto aabb_max = aligned_float3_ptr(reinterpret_cast<float3 *>(_aligned_malloc(sizeof(float3) * numbounds, 16)), deleter);
             auto aabb_centroid = aligned_float3_ptr(reinterpret_cast<float3 *>(_aligned_malloc(sizeof(float3) * numbounds, 16)), deleter);
@@ -462,7 +462,7 @@ namespace RadeonRays
             for (std::int32_t i = 0; i < numbounds; ++i) {
                 aabb_min[i] = bounds[i].pmin;
                 aabb_max[i] = bounds[i].pmax;
-                aabb_centroid[i] = centroid_bounds[i];
+                aabb_centroid[i] = centroids[i];
             }
 
             struct SplitRequest2
