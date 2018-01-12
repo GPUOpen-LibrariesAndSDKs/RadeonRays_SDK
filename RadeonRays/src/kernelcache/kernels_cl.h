@@ -216,7 +216,13 @@ static const char g_build_hlbvh_opencl[]= \
 "    float3 const e1 = v2 - v1; \n"\
 "    float3 const e2 = v3 - v1; \n"\
 "    float3 const s1 = cross(r.d.xyz, e2); \n"\
+" \n"\
+"#ifdef USE_SAFE_MATH \n"\
+"    float const invd = 1.f / dot(s1, e1); \n"\
+"#else \n"\
 "    float const invd = native_recip(dot(s1, e1)); \n"\
+"#endif \n"\
+" \n"\
 "    float3 const d = r.o.xyz - v1; \n"\
 "    float const b1 = dot(d, s1) * invd; \n"\
 "    float3 const s2 = cross(d, e1); \n"\
@@ -236,19 +242,15 @@ static const char g_build_hlbvh_opencl[]= \
 "INLINE \n"\
 "float3 safe_invdir(ray r) \n"\
 "{ \n"\
-"#ifdef USE_SAFE_MATH \n"\
 "    float const dirx = r.d.x; \n"\
 "    float const diry = r.d.y; \n"\
 "    float const dirz = r.d.z; \n"\
-"    float const ooeps = exp2(-80.0f); // Avoid div by zero. \n"\
+"    float const ooeps = 1e-8; \n"\
 "    float3 invdir; \n"\
 "    invdir.x = 1.0f / (fabs(dirx) > ooeps ? dirx : copysign(ooeps, dirx)); \n"\
 "    invdir.y = 1.0f / (fabs(diry) > ooeps ? diry : copysign(ooeps, diry)); \n"\
 "    invdir.z = 1.0f / (fabs(dirz) > ooeps ? dirz : copysign(ooeps, dirz)); \n"\
 "    return invdir; \n"\
-"#else \n"\
-"    return native_recip(r.d.xyz); \n"\
-"#endif \n"\
 "} \n"\
 " \n"\
 "// Intersect rays vs bbox and return intersection span.  \n"\
@@ -277,7 +279,13 @@ static const char g_build_hlbvh_opencl[]= \
 "    float const d11 = dot(e2, e2); \n"\
 "    float const d20 = dot(e, e1); \n"\
 "    float const d21 = dot(e, e2); \n"\
+" \n"\
+"#ifdef USE_SAFE_MATH \n"\
+"    float const invdenom = 1.f / (d00 * d11 - d01 * d01); \n"\
+"#else \n"\
 "    float const invdenom = native_recip(d00 * d11 - d01 * d01); \n"\
+"#endif \n"\
+" \n"\
 "    float const b1 = (d11 * d20 - d01 * d21) * invdenom; \n"\
 "    float const b2 = (d00 * d21 - d01 * d20) * invdenom; \n"\
 "    return make_float2(b1, b2); \n"\
@@ -732,7 +740,13 @@ static const char g_common_opencl[]= \
 "    float3 const e1 = v2 - v1; \n"\
 "    float3 const e2 = v3 - v1; \n"\
 "    float3 const s1 = cross(r.d.xyz, e2); \n"\
+" \n"\
+"#ifdef USE_SAFE_MATH \n"\
+"    float const invd = 1.f / dot(s1, e1); \n"\
+"#else \n"\
 "    float const invd = native_recip(dot(s1, e1)); \n"\
+"#endif \n"\
+" \n"\
 "    float3 const d = r.o.xyz - v1; \n"\
 "    float const b1 = dot(d, s1) * invd; \n"\
 "    float3 const s2 = cross(d, e1); \n"\
@@ -752,19 +766,15 @@ static const char g_common_opencl[]= \
 "INLINE \n"\
 "float3 safe_invdir(ray r) \n"\
 "{ \n"\
-"#ifdef USE_SAFE_MATH \n"\
 "    float const dirx = r.d.x; \n"\
 "    float const diry = r.d.y; \n"\
 "    float const dirz = r.d.z; \n"\
-"    float const ooeps = exp2(-80.0f); // Avoid div by zero. \n"\
+"    float const ooeps = 1e-8; \n"\
 "    float3 invdir; \n"\
 "    invdir.x = 1.0f / (fabs(dirx) > ooeps ? dirx : copysign(ooeps, dirx)); \n"\
 "    invdir.y = 1.0f / (fabs(diry) > ooeps ? diry : copysign(ooeps, diry)); \n"\
 "    invdir.z = 1.0f / (fabs(dirz) > ooeps ? dirz : copysign(ooeps, dirz)); \n"\
 "    return invdir; \n"\
-"#else \n"\
-"    return native_recip(r.d.xyz); \n"\
-"#endif \n"\
 "} \n"\
 " \n"\
 "// Intersect rays vs bbox and return intersection span.  \n"\
@@ -793,7 +803,13 @@ static const char g_common_opencl[]= \
 "    float const d11 = dot(e2, e2); \n"\
 "    float const d20 = dot(e, e1); \n"\
 "    float const d21 = dot(e, e2); \n"\
+" \n"\
+"#ifdef USE_SAFE_MATH \n"\
+"    float const invdenom = 1.f / (d00 * d11 - d01 * d01); \n"\
+"#else \n"\
 "    float const invdenom = native_recip(d00 * d11 - d01 * d01); \n"\
+"#endif \n"\
+" \n"\
 "    float const b1 = (d11 * d20 - d01 * d21) * invdenom; \n"\
 "    float const b2 = (d00 * d21 - d01 * d20) * invdenom; \n"\
 "    return make_float2(b1, b2); \n"\
@@ -1027,7 +1043,13 @@ static const char g_intersect_bvh2level_skiplinks_opencl[]= \
 "    float3 const e1 = v2 - v1; \n"\
 "    float3 const e2 = v3 - v1; \n"\
 "    float3 const s1 = cross(r.d.xyz, e2); \n"\
+" \n"\
+"#ifdef USE_SAFE_MATH \n"\
+"    float const invd = 1.f / dot(s1, e1); \n"\
+"#else \n"\
 "    float const invd = native_recip(dot(s1, e1)); \n"\
+"#endif \n"\
+" \n"\
 "    float3 const d = r.o.xyz - v1; \n"\
 "    float const b1 = dot(d, s1) * invd; \n"\
 "    float3 const s2 = cross(d, e1); \n"\
@@ -1047,19 +1069,15 @@ static const char g_intersect_bvh2level_skiplinks_opencl[]= \
 "INLINE \n"\
 "float3 safe_invdir(ray r) \n"\
 "{ \n"\
-"#ifdef USE_SAFE_MATH \n"\
 "    float const dirx = r.d.x; \n"\
 "    float const diry = r.d.y; \n"\
 "    float const dirz = r.d.z; \n"\
-"    float const ooeps = exp2(-80.0f); // Avoid div by zero. \n"\
+"    float const ooeps = 1e-8; \n"\
 "    float3 invdir; \n"\
 "    invdir.x = 1.0f / (fabs(dirx) > ooeps ? dirx : copysign(ooeps, dirx)); \n"\
 "    invdir.y = 1.0f / (fabs(diry) > ooeps ? diry : copysign(ooeps, diry)); \n"\
 "    invdir.z = 1.0f / (fabs(dirz) > ooeps ? dirz : copysign(ooeps, dirz)); \n"\
 "    return invdir; \n"\
-"#else \n"\
-"    return native_recip(r.d.xyz); \n"\
-"#endif \n"\
 "} \n"\
 " \n"\
 "// Intersect rays vs bbox and return intersection span.  \n"\
@@ -1088,7 +1106,13 @@ static const char g_intersect_bvh2level_skiplinks_opencl[]= \
 "    float const d11 = dot(e2, e2); \n"\
 "    float const d20 = dot(e, e1); \n"\
 "    float const d21 = dot(e, e2); \n"\
+" \n"\
+"#ifdef USE_SAFE_MATH \n"\
+"    float const invdenom = 1.f / (d00 * d11 - d01 * d01); \n"\
+"#else \n"\
 "    float const invdenom = native_recip(d00 * d11 - d01 * d01); \n"\
+"#endif \n"\
+" \n"\
 "    float const b1 = (d11 * d20 - d01 * d21) * invdenom; \n"\
 "    float const b2 = (d00 * d21 - d01 * d20) * invdenom; \n"\
 "    return make_float2(b1, b2); \n"\
@@ -1757,7 +1781,13 @@ static const char g_intersect_bvh2_bittrail_opencl[]= \
 "    float3 const e1 = v2 - v1; \n"\
 "    float3 const e2 = v3 - v1; \n"\
 "    float3 const s1 = cross(r.d.xyz, e2); \n"\
+" \n"\
+"#ifdef USE_SAFE_MATH \n"\
+"    float const invd = 1.f / dot(s1, e1); \n"\
+"#else \n"\
 "    float const invd = native_recip(dot(s1, e1)); \n"\
+"#endif \n"\
+" \n"\
 "    float3 const d = r.o.xyz - v1; \n"\
 "    float const b1 = dot(d, s1) * invd; \n"\
 "    float3 const s2 = cross(d, e1); \n"\
@@ -1777,19 +1807,15 @@ static const char g_intersect_bvh2_bittrail_opencl[]= \
 "INLINE \n"\
 "float3 safe_invdir(ray r) \n"\
 "{ \n"\
-"#ifdef USE_SAFE_MATH \n"\
 "    float const dirx = r.d.x; \n"\
 "    float const diry = r.d.y; \n"\
 "    float const dirz = r.d.z; \n"\
-"    float const ooeps = exp2(-80.0f); // Avoid div by zero. \n"\
+"    float const ooeps = 1e-8; \n"\
 "    float3 invdir; \n"\
 "    invdir.x = 1.0f / (fabs(dirx) > ooeps ? dirx : copysign(ooeps, dirx)); \n"\
 "    invdir.y = 1.0f / (fabs(diry) > ooeps ? diry : copysign(ooeps, diry)); \n"\
 "    invdir.z = 1.0f / (fabs(dirz) > ooeps ? dirz : copysign(ooeps, dirz)); \n"\
 "    return invdir; \n"\
-"#else \n"\
-"    return native_recip(r.d.xyz); \n"\
-"#endif \n"\
 "} \n"\
 " \n"\
 "// Intersect rays vs bbox and return intersection span.  \n"\
@@ -1818,7 +1844,13 @@ static const char g_intersect_bvh2_bittrail_opencl[]= \
 "    float const d11 = dot(e2, e2); \n"\
 "    float const d20 = dot(e, e1); \n"\
 "    float const d21 = dot(e, e2); \n"\
+" \n"\
+"#ifdef USE_SAFE_MATH \n"\
+"    float const invdenom = 1.f / (d00 * d11 - d01 * d01); \n"\
+"#else \n"\
 "    float const invdenom = native_recip(d00 * d11 - d01 * d01); \n"\
+"#endif \n"\
+" \n"\
 "    float const b1 = (d11 * d20 - d01 * d21) * invdenom; \n"\
 "    float const b2 = (d00 * d21 - d01 * d20) * invdenom; \n"\
 "    return make_float2(b1, b2); \n"\
@@ -2430,7 +2462,13 @@ static const char g_intersect_bvh2_short_stack_opencl[]= \
 "    float3 const e1 = v2 - v1; \n"\
 "    float3 const e2 = v3 - v1; \n"\
 "    float3 const s1 = cross(r.d.xyz, e2); \n"\
+" \n"\
+"#ifdef USE_SAFE_MATH \n"\
+"    float const invd = 1.f / dot(s1, e1); \n"\
+"#else \n"\
 "    float const invd = native_recip(dot(s1, e1)); \n"\
+"#endif \n"\
+" \n"\
 "    float3 const d = r.o.xyz - v1; \n"\
 "    float const b1 = dot(d, s1) * invd; \n"\
 "    float3 const s2 = cross(d, e1); \n"\
@@ -2450,19 +2488,15 @@ static const char g_intersect_bvh2_short_stack_opencl[]= \
 "INLINE \n"\
 "float3 safe_invdir(ray r) \n"\
 "{ \n"\
-"#ifdef USE_SAFE_MATH \n"\
 "    float const dirx = r.d.x; \n"\
 "    float const diry = r.d.y; \n"\
 "    float const dirz = r.d.z; \n"\
-"    float const ooeps = exp2(-80.0f); // Avoid div by zero. \n"\
+"    float const ooeps = 1e-8; \n"\
 "    float3 invdir; \n"\
 "    invdir.x = 1.0f / (fabs(dirx) > ooeps ? dirx : copysign(ooeps, dirx)); \n"\
 "    invdir.y = 1.0f / (fabs(diry) > ooeps ? diry : copysign(ooeps, diry)); \n"\
 "    invdir.z = 1.0f / (fabs(dirz) > ooeps ? dirz : copysign(ooeps, dirz)); \n"\
 "    return invdir; \n"\
-"#else \n"\
-"    return native_recip(r.d.xyz); \n"\
-"#endif \n"\
 "} \n"\
 " \n"\
 "// Intersect rays vs bbox and return intersection span.  \n"\
@@ -2491,7 +2525,13 @@ static const char g_intersect_bvh2_short_stack_opencl[]= \
 "    float const d11 = dot(e2, e2); \n"\
 "    float const d20 = dot(e, e1); \n"\
 "    float const d21 = dot(e, e2); \n"\
+" \n"\
+"#ifdef USE_SAFE_MATH \n"\
+"    float const invdenom = 1.f / (d00 * d11 - d01 * d01); \n"\
+"#else \n"\
 "    float const invdenom = native_recip(d00 * d11 - d01 * d01); \n"\
+"#endif \n"\
+" \n"\
 "    float const b1 = (d11 * d20 - d01 * d21) * invdenom; \n"\
 "    float const b2 = (d00 * d21 - d01 * d20) * invdenom; \n"\
 "    return make_float2(b1, b2); \n"\
@@ -3102,7 +3142,13 @@ static const char g_intersect_bvh2_skiplinks_opencl[]= \
 "    float3 const e1 = v2 - v1; \n"\
 "    float3 const e2 = v3 - v1; \n"\
 "    float3 const s1 = cross(r.d.xyz, e2); \n"\
+" \n"\
+"#ifdef USE_SAFE_MATH \n"\
+"    float const invd = 1.f / dot(s1, e1); \n"\
+"#else \n"\
 "    float const invd = native_recip(dot(s1, e1)); \n"\
+"#endif \n"\
+" \n"\
 "    float3 const d = r.o.xyz - v1; \n"\
 "    float const b1 = dot(d, s1) * invd; \n"\
 "    float3 const s2 = cross(d, e1); \n"\
@@ -3122,19 +3168,15 @@ static const char g_intersect_bvh2_skiplinks_opencl[]= \
 "INLINE \n"\
 "float3 safe_invdir(ray r) \n"\
 "{ \n"\
-"#ifdef USE_SAFE_MATH \n"\
 "    float const dirx = r.d.x; \n"\
 "    float const diry = r.d.y; \n"\
 "    float const dirz = r.d.z; \n"\
-"    float const ooeps = exp2(-80.0f); // Avoid div by zero. \n"\
+"    float const ooeps = 1e-8; \n"\
 "    float3 invdir; \n"\
 "    invdir.x = 1.0f / (fabs(dirx) > ooeps ? dirx : copysign(ooeps, dirx)); \n"\
 "    invdir.y = 1.0f / (fabs(diry) > ooeps ? diry : copysign(ooeps, diry)); \n"\
 "    invdir.z = 1.0f / (fabs(dirz) > ooeps ? dirz : copysign(ooeps, dirz)); \n"\
 "    return invdir; \n"\
-"#else \n"\
-"    return native_recip(r.d.xyz); \n"\
-"#endif \n"\
 "} \n"\
 " \n"\
 "// Intersect rays vs bbox and return intersection span.  \n"\
@@ -3163,7 +3205,13 @@ static const char g_intersect_bvh2_skiplinks_opencl[]= \
 "    float const d11 = dot(e2, e2); \n"\
 "    float const d20 = dot(e, e1); \n"\
 "    float const d21 = dot(e, e2); \n"\
+" \n"\
+"#ifdef USE_SAFE_MATH \n"\
+"    float const invdenom = 1.f / (d00 * d11 - d01 * d01); \n"\
+"#else \n"\
 "    float const invdenom = native_recip(d00 * d11 - d01 * d01); \n"\
+"#endif \n"\
+" \n"\
 "    float const b1 = (d11 * d20 - d01 * d21) * invdenom; \n"\
 "    float const b2 = (d00 * d21 - d01 * d20) * invdenom; \n"\
 "    return make_float2(b1, b2); \n"\
@@ -3601,7 +3649,13 @@ static const char g_intersect_hlbvh_stack_opencl[]= \
 "    float3 const e1 = v2 - v1; \n"\
 "    float3 const e2 = v3 - v1; \n"\
 "    float3 const s1 = cross(r.d.xyz, e2); \n"\
+" \n"\
+"#ifdef USE_SAFE_MATH \n"\
+"    float const invd = 1.f / dot(s1, e1); \n"\
+"#else \n"\
 "    float const invd = native_recip(dot(s1, e1)); \n"\
+"#endif \n"\
+" \n"\
 "    float3 const d = r.o.xyz - v1; \n"\
 "    float const b1 = dot(d, s1) * invd; \n"\
 "    float3 const s2 = cross(d, e1); \n"\
@@ -3621,19 +3675,15 @@ static const char g_intersect_hlbvh_stack_opencl[]= \
 "INLINE \n"\
 "float3 safe_invdir(ray r) \n"\
 "{ \n"\
-"#ifdef USE_SAFE_MATH \n"\
 "    float const dirx = r.d.x; \n"\
 "    float const diry = r.d.y; \n"\
 "    float const dirz = r.d.z; \n"\
-"    float const ooeps = exp2(-80.0f); // Avoid div by zero. \n"\
+"    float const ooeps = 1e-8; \n"\
 "    float3 invdir; \n"\
 "    invdir.x = 1.0f / (fabs(dirx) > ooeps ? dirx : copysign(ooeps, dirx)); \n"\
 "    invdir.y = 1.0f / (fabs(diry) > ooeps ? diry : copysign(ooeps, diry)); \n"\
 "    invdir.z = 1.0f / (fabs(dirz) > ooeps ? dirz : copysign(ooeps, dirz)); \n"\
 "    return invdir; \n"\
-"#else \n"\
-"    return native_recip(r.d.xyz); \n"\
-"#endif \n"\
 "} \n"\
 " \n"\
 "// Intersect rays vs bbox and return intersection span.  \n"\
@@ -3662,7 +3712,13 @@ static const char g_intersect_hlbvh_stack_opencl[]= \
 "    float const d11 = dot(e2, e2); \n"\
 "    float const d20 = dot(e, e1); \n"\
 "    float const d21 = dot(e, e2); \n"\
+" \n"\
+"#ifdef USE_SAFE_MATH \n"\
+"    float const invdenom = 1.f / (d00 * d11 - d01 * d01); \n"\
+"#else \n"\
 "    float const invdenom = native_recip(d00 * d11 - d01 * d01); \n"\
+"#endif \n"\
+" \n"\
 "    float const b1 = (d11 * d20 - d01 * d21) * invdenom; \n"\
 "    float const b2 = (d00 * d21 - d01 * d20) * invdenom; \n"\
 "    return make_float2(b1, b2); \n"\

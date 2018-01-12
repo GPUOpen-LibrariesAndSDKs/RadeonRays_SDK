@@ -481,12 +481,6 @@ namespace RadeonRays
                     , index(index)
                     , ptr(ptr)
                 {
-#if 1
-                    _MM_ALIGN16 float3 pmin, pmax;
-                    _mm_store_ps(&pmin.x, aabb_min);
-                    _mm_store_ps(&pmax.x, aabb_max);
-                    const bool res = true;
-#endif
                 }
 
                 __m128 aabb_min;
