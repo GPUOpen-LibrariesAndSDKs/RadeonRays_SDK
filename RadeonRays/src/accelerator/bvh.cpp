@@ -540,6 +540,7 @@ namespace RadeonRays
                 static std::mutex removeMe; // TODO: remove me (gboisse)
                 {
                     const std::unique_lock<std::mutex> lock(mutex);
+                    m_height = std::max(m_height, static_cast<int>(request.level));
                     node = AllocateNode();
                 }
                 node->index = request.index;
