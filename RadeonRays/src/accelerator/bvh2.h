@@ -22,6 +22,7 @@ THE SOFTWARE.
 #pragma once
 
 #include <cassert>
+#include <stack>
 #include <utility>
 #include <vector>
 
@@ -32,6 +33,9 @@ namespace RadeonRays
 
     class Bvh2
     {
+        struct Node;
+        struct SplitRequest;
+
     public:
         // Constructor
         Bvh2(float traversal_cost, int num_bins = 64, bool usesah = false)
@@ -54,10 +58,11 @@ namespace RadeonRays
             m_nodecount = 0;
         }
 
-    protected:
-        struct Node;
-        struct SplitRequest;
+        inline Node *GetNode(std::size_t idx) const;
+        inline std::size_t nodecount() const;
+        inline Node &root() const;
 
+    protected:
         using RefArray = std::vector<std::uint32_t>;
         using MetaDataArray = std::vector<std::pair<const Mesh *, std::size_t> >;
 
@@ -140,6 +145,10 @@ namespace RadeonRays
             Node &node,
             std::uint32_t index,
             std::pair<const Mesh *, std::size_t> ref);
+
+        static inline bool IsInternal(const Node &node);
+        static inline std::uint32_t GetChildIndex(const Node &node, std::uint8_t idx);
+        static inline void Finalize(Bvh2 &bvh);
 
     private:
         Bvh2(const Bvh2 &);
@@ -266,7 +275,23 @@ namespace RadeonRays
             metadata,
             num_items);
 
-        // TODO: finalize/translate?!? (gboisse)
+        // TODO: this setup doesn't make much sense now...? (gboisse)
+        Finalize(*this);
+    }
+
+    Bvh2::Node *Bvh2::GetNode(std::size_t idx) const
+    {
+        return m_nodes + idx;
+    }
+
+    std::size_t Bvh2::nodecount() const
+    {
+        return m_nodecount;
+    }
+
+    Bvh2::Node &Bvh2::root() const
+    {
+        return m_nodes[0];
     }
 
     void Bvh2::EncodeLeaf(
@@ -313,5 +338,149 @@ namespace RadeonRays
         node.aabb_right_min_or_v2[2] = v2.z;
         node.shape_id = mesh->GetId();
         node.prim_id = static_cast<std::uint32_t>(ref.second);
+    }
+
+    bool Bvh2::IsInternal(const Node &node)
+    {
+        return node.addr_left != kInvalidId;
+    }
+
+    std::uint32_t Bvh2::GetChildIndex(const Node &node, std::uint8_t idx)
+    {
+        return (IsInternal(node)
+            ? (idx == 0 ?
+                node.addr_left
+                : node.addr_right)
+            : kInvalidId);
+    }
+
+    // We set 1 AABB for each node during BVH build process,
+    // however our resulting structure keeps two AABBs for 
+    // left and right child nodes in the parent node. To 
+    // convert 1 AABB per node -> 2 AABBs for child nodes 
+    // we need to traverse the tree pulling child node AABBs 
+    // into their parent node. That's exactly what PropagateBounds 
+    // is doing.
+    void Bvh2::Finalize(
+        Bvh2 &bvh)
+    {
+        // Traversal stack
+        std::stack<std::uint32_t> s;
+        s.push(0);
+
+        while (!s.empty())
+        {
+            auto idx = s.top();
+            s.pop();
+
+            // Fetch the node
+            auto node = bvh.GetNode(idx);
+
+            if (IsInternal(*node))
+            {
+                // If the node is internal we fetch child nodes
+                auto idx0 = GetChildIndex(*node, 0);
+                auto idx1 = GetChildIndex(*node, 1);
+
+                auto child0 = bvh.GetNode(idx0);
+                auto child1 = bvh.GetNode(idx1);
+
+                // If the child is internal node itself we pull it
+                // up the tree into its parent. If the child node is
+                // a leaf, then we do not have AABB for it (we store 
+                // vertices directly in the leaf), so we calculate 
+                // AABB on the fly.
+                if (IsInternal(*child0))
+                {
+                    node->aabb_left_min_or_v0[0] = child0->aabb_left_min_or_v0[0];
+                    node->aabb_left_min_or_v0[1] = child0->aabb_left_min_or_v0[1];
+                    node->aabb_left_min_or_v0[2] = child0->aabb_left_min_or_v0[2];
+                    node->aabb_left_max_or_v1[0] = child0->aabb_left_max_or_v1[0];
+                    node->aabb_left_max_or_v1[1] = child0->aabb_left_max_or_v1[1];
+                    node->aabb_left_max_or_v1[2] = child0->aabb_left_max_or_v1[2];
+                    s.push(idx0);
+                }
+                else
+                {
+                    node->aabb_left_min_or_v0[0] = std::min(
+                        child0->aabb_left_min_or_v0[0],
+                        std::min(child0->aabb_left_max_or_v1[0],
+                            child0->aabb_right_min_or_v2[0]));
+
+                    node->aabb_left_min_or_v0[1] = std::min(
+                        child0->aabb_left_min_or_v0[1],
+                        std::min(child0->aabb_left_max_or_v1[1],
+                            child0->aabb_right_min_or_v2[1]));
+
+                    node->aabb_left_min_or_v0[2] = std::min(
+                        child0->aabb_left_min_or_v0[2],
+                        std::min(child0->aabb_left_max_or_v1[2],
+                            child0->aabb_right_min_or_v2[2]));
+
+                    node->aabb_left_max_or_v1[0] = std::max(
+                        child0->aabb_left_min_or_v0[0],
+                        std::max(child0->aabb_left_max_or_v1[0],
+                            child0->aabb_right_min_or_v2[0]));
+
+                    node->aabb_left_max_or_v1[1] = std::max(
+                        child0->aabb_left_min_or_v0[1],
+                        std::max(child0->aabb_left_max_or_v1[1],
+                            child0->aabb_right_min_or_v2[1]));
+
+                    node->aabb_left_max_or_v1[2] = std::max(
+                        child0->aabb_left_min_or_v0[2],
+                        std::max(child0->aabb_left_max_or_v1[2],
+                            child0->aabb_right_min_or_v2[2]));
+                }
+
+                // If the child is internal node itself we pull it
+                // up the tree into its parent. If the child node is
+                // a leaf, then we do not have AABB for it (we store 
+                // vertices directly in the leaf), so we calculate 
+                // AABB on the fly.
+                if (IsInternal(*child1))
+                {
+                    node->aabb_right_min_or_v2[0] = child1->aabb_left_min_or_v0[0];
+                    node->aabb_right_min_or_v2[1] = child1->aabb_left_min_or_v0[1];
+                    node->aabb_right_min_or_v2[2] = child1->aabb_left_min_or_v0[2];
+                    node->aabb_right_max[0] = child1->aabb_left_max_or_v1[0];
+                    node->aabb_right_max[1] = child1->aabb_left_max_or_v1[1];
+                    node->aabb_right_max[2] = child1->aabb_left_max_or_v1[2];
+                    s.push(idx1);
+                }
+                else
+                {
+                    node->aabb_right_min_or_v2[0] = std::min(
+                        child1->aabb_left_min_or_v0[0],
+                        std::min(child1->aabb_left_max_or_v1[0],
+                            child1->aabb_right_min_or_v2[0]));
+
+                    node->aabb_right_min_or_v2[1] = std::min(
+                        child1->aabb_left_min_or_v0[1],
+                        std::min(child1->aabb_left_max_or_v1[1],
+                            child1->aabb_right_min_or_v2[1]));
+
+                    node->aabb_right_min_or_v2[2] = std::min(
+                        child1->aabb_left_min_or_v0[2],
+                        std::min(child1->aabb_left_max_or_v1[2],
+                            child1->aabb_right_min_or_v2[2]));
+
+                    node->aabb_right_max[0] = std::max(
+                        child1->aabb_left_min_or_v0[0],
+                        std::max(child1->aabb_left_max_or_v1[0],
+                            child1->aabb_right_min_or_v2[0]));
+
+                    node->aabb_right_max[1] = std::max(
+                        child1->aabb_left_min_or_v0[1],
+                        std::max(child1->aabb_left_max_or_v1[1],
+                            child1->aabb_right_min_or_v2[1]));
+
+                    node->aabb_right_max[2] = std::max(
+                        child1->aabb_left_min_or_v0[2],
+                        std::max(child1->aabb_left_max_or_v1[2],
+                            child1->aabb_right_min_or_v2[2]));
+                }
+            }
+        }
     }
 }

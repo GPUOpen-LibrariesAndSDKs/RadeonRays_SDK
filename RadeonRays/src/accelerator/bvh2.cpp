@@ -24,7 +24,6 @@ THE SOFTWARE.
 #include <atomic>
 #include <mutex>
 #include <numeric>
-#include <stack>
 
 #define PARALLEL_BUILD
 
