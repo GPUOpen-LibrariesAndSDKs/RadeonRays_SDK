@@ -99,11 +99,41 @@ namespace RadeonRays
         // If something has been changed we need to rebuild BVH
         if (!m_bvh || world.has_changed() || world.GetStateChange() != ShapeImpl::kStateChangeNone)
         {
+            // Free previous data
             if (m_bvh)
             {
                 m_device->DeleteBuffer(m_gpuData->bvh);
                 //m_device->DeleteBuffer(m_gpuData->vertices);
             }
+
+            // Look up build options for world
+            auto builder = world.options_.GetOption("bvh.builder");
+            auto nbins = world.options_.GetOption("bvh.sah.num_bins");
+            auto tcost = world.options_.GetOption("bvh.sah.traversal_cost");
+
+            bool use_sah = false;
+            int num_bins = (nbins ? static_cast<int>(nbins->AsFloat()) : 64);
+            float traversal_cost = (tcost ? tcost->AsFloat() : 10.0f);
+
+            if (builder && builder->AsString() == "sah")
+            {
+                use_sah = true;
+            }
+
+            // Create the bvh
+            m_bvh.reset(new Bvh2(traversal_cost, num_bins, use_sah));
+
+            // Partition the array into meshes and instances
+            std::vector<const Shape *> shapes(world.shapes_);
+
+            auto firstinst = std::partition(shapes.begin(), shapes.end(),
+                [&](Shape const* shape)
+                {
+                    return !static_cast<ShapeImpl const*>(shape)->is_instance();
+                });
+
+            // TODO: deal with the instance stuff (gboisse)
+            m_bvh->Build(shapes.begin(), firstinst);
         }
     }
 
