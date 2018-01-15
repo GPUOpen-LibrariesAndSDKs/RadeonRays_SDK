@@ -15,6 +15,6 @@ CpuTimer::~CpuTimer()
     char result[1024];
     using namespace std::chrono;
     const auto elapsed = high_resolution_clock::now() - m_start;
-    snprintf(result, sizeof(result), "%s: %.3f\n", m_name, static_cast<double>(duration_cast<microseconds>(elapsed).count()) / 1000.0);
+    snprintf(result, sizeof(result), "%s: %.3fms\n", m_name, static_cast<double>(duration_cast<microseconds>(elapsed).count()) / 1000.0);
     OutputDebugStringA(result);
 }
