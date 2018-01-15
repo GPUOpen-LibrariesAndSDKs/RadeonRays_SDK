@@ -22,6 +22,10 @@ THE SOFTWARE.
 #pragma once
 
 #include <cassert>
+#include <utility>
+#include <vector>
+
+#include "../primitive/mesh.h"
 
 namespace RadeonRays
 {
@@ -52,6 +56,9 @@ namespace RadeonRays
 
     protected:
         struct Node;
+
+        using RefArray = std::vector<std::uint32_t>;
+        using MetaDataArray = std::vector<std::pair<const Mesh *, std::size_t> >;
 
         // Constant values
         enum Constants
@@ -97,6 +104,17 @@ namespace RadeonRays
 #endif // WIN32
         }
 
+        void BuildImpl(
+            __m128 scene_min,
+            __m128 scene_max,
+            __m128 centroid_scene_min,
+            __m128 centroid_scene_max,
+            const float3 *aabb_min,
+            const float3 *aabb_max,
+            const float3 *aabb_centroid,
+            const MetaDataArray &metadata,
+            std::size_t num_aabbs);
+
     private:
         Bvh2(const Bvh2 &);
         Bvh2 &operator = (const Bvh2 &);
@@ -140,6 +158,8 @@ namespace RadeonRays
         std::size_t num_items = 0;
         for (auto iter = begin; iter != end; ++iter)
         {
+            // TODO: how to deal with quads? create 2 trianles?? (gboisse)
+            assert(static_cast<const Mesh *>(*iter)->puretriangle());
             num_items += static_cast<const Mesh *>(*iter)->num_faces();
         }
 
@@ -161,6 +181,8 @@ namespace RadeonRays
                 Allocate(sizeof(float3) * num_items, 16u)),
             deleter);
 
+        MetaDataArray metadata(num_items);
+
         auto constexpr inf = std::numeric_limits<float>::infinity();
 
         auto scene_min = _mm_set_ps(inf, inf, inf, inf);
@@ -176,7 +198,48 @@ namespace RadeonRays
             for (std::size_t face_index = 0; face_index < mesh->num_faces(); ++face_index, ++current_face)
             {
                 auto face = mesh->GetFaceData()[face_index];
+
+                auto load_vertex = [&](int idx)
+                {
+                    const float3 vertex = mesh->GetVertexData()[idx];
+                    return _mm_set_ps(vertex.x, vertex.y, vertex.z, vertex.w);
+                };
+
+                auto v0 = load_vertex(face.idx[0]);
+                auto v1 = load_vertex(face.idx[1]);
+                auto v2 = load_vertex(face.idx[2]);
+
+                auto pmin = _mm_min_ps(_mm_min_ps(v0, v1), v2);
+                auto pmax = _mm_max_ps(_mm_max_ps(v0, v1), v2);
+                auto centroid = _mm_mul_ps(
+                    _mm_add_ps(pmin, pmax),
+                    _mm_set_ps(0.5f, 0.5f, 0.5f, 0.5f));
+
+                scene_min = _mm_min_ps(scene_min, pmin);
+                scene_max = _mm_max_ps(scene_max, pmax);
+
+                centroid_scene_min = _mm_min_ps(centroid_scene_min, centroid);
+                centroid_scene_max = _mm_max_ps(centroid_scene_max, centroid);
+
+                _mm_store_ps(&aabb_min[current_face].x, pmin);
+                _mm_store_ps(&aabb_max[current_face].x, pmax);
+                _mm_store_ps(&aabb_centroid[current_face].x, centroid);
+
+                metadata[current_face] = std::make_pair(mesh, face_index);
             }
         }
+
+        BuildImpl(
+            scene_min,
+            scene_max,
+            centroid_scene_min,
+            centroid_scene_max,
+            aabb_min.get(),
+            aabb_max.get(),
+            aabb_centroid.get(),
+            metadata,
+            num_items);
+
+        // TODO: finalize/translate?!? (gboisse)
     }
 }
