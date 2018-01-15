@@ -19,42 +19,26 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
-#pragma once
 
-#include "calc.h"
-#include "device.h"
-#include "event.h"
-#include "intersector.h"
-#include "world/world.h"
+/*************************************************************************
+INCLUDES
+**************************************************************************/
+#include <../RadeonRays/src/kernels/CL/common.cl>
 
-namespace RadeonRays
+/*************************************************************************
+TYPE DEFINITIONS
+**************************************************************************/
+
+//
+
+__attribute__((reqd_work_group_size(64, 1, 1)))
+KERNEL void intersect_main()
 {
-    class Bvh2;
+    //
+}
 
-    class IntersectorLDS : public Intersector
-    {
-    public:
-        // Constructor
-        IntersectorLDS(Calc::Device *device);
-
-    private:
-        // World preprocessing implementation
-        void Process(const World &world) override;
-        // Intersection implementation
-        void Intersect(std::uint32_t queue_idx, const Calc::Buffer *rays, const Calc::Buffer *num_rays,
-            std::uint32_t max_rays, Calc::Buffer *hits,
-            const Calc::Event *wait_event, Calc::Event **event) const override;
-        // Occlusion implementation
-        void Occluded(std::uint32_t queue_idx, const Calc::Buffer *rays, const Calc::Buffer *num_rays,
-            std::uint32_t max_rays, Calc::Buffer *hits,
-            const Calc::Event *wait_event, Calc::Event **event) const override;
-
-    private:
-        struct GpuData;
-
-        // Implementation data
-        std::unique_ptr<GpuData> m_gpuData;
-        // Bvh data structure
-        std::unique_ptr<Bvh2> m_bvh;
-    };
+__attribute__((reqd_work_group_size(64, 1, 1)))
+KERNEL void occluded_main()
+{
+    //
 }
