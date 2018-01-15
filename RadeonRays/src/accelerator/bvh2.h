@@ -74,7 +74,9 @@ namespace RadeonRays
             // Max triangles per leaf
             kMaxLeafPrimitives = 1u,
             // Threshold number of primitives to disable SAH split
-            kMinSAHPrimitives = 32u
+            kMinSAHPrimitives = 32u,
+            // Traversal vs intersection cost ratio
+            kTraversalCost = 10u
         };
 
         // Enum for node type
@@ -120,6 +122,14 @@ namespace RadeonRays
             const float3 *aabb_centroid,
             const MetaDataArray &metadata,
             std::size_t num_aabbs);
+
+        template <std::uint32_t axis>
+        float FindSahSplit(
+            const SplitRequest &request,
+            const float3 *aabb_min,
+            const float3 *aabb_max,
+            const float3 *aabb_centroid,
+            const std::uint32_t *refs);
 
         NodeType HandleRequest(
             const SplitRequest &request,

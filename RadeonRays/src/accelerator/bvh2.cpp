@@ -244,6 +244,170 @@ namespace RadeonRays
 #endif
     }
 
+    template <std::uint32_t axis>
+    float Bvh2::FindSahSplit(
+        const SplitRequest &request,
+        const float3 *aabb_min,
+        const float3 *aabb_max,
+        const float3 *aabb_centroid,
+        const std::uint32_t *refs)
+    {
+        auto sah = std::numeric_limits<float>::max();
+
+        // TODO: should use the args passed at construction time (gboisse)
+        auto constexpr kNumBins = 64u;
+        std::uint32_t bin_count[kNumBins];
+        _MM_ALIGN16 __m128 bin_min[kNumBins];
+        _MM_ALIGN16 __m128 bin_max[kNumBins];
+
+        auto constexpr inf = std::numeric_limits<float>::infinity();
+        for (auto i = 0u; i < kNumBins; ++i)
+        {
+            bin_count[i] = 0;
+            bin_min[i] = _mm_set_ps(inf, inf, inf, inf);
+            bin_max[i] = _mm_set_ps(-inf, -inf, -inf, -inf);
+        }
+
+        auto centroid_extent = aabb_extents(request.centroid_aabb_min,
+            request.centroid_aabb_max);
+        auto centroid_min = _mm_shuffle_ps(request.centroid_aabb_min,
+            request.centroid_aabb_min,
+            _MM_SHUFFLE(axis, axis, axis, axis));
+        centroid_extent = _mm_shuffle_ps(centroid_extent,
+            centroid_extent,
+            _MM_SHUFFLE(axis, axis, axis, axis));
+        auto centroid_extent_inv = _mm_rcp_ps(centroid_extent);
+        auto area_inv = mm_select(
+            _mm_rcp_ps(
+                aabb_surface_area(
+                    request.aabb_min,
+                    request.aabb_max)
+            ), 0);
+
+        auto full4 = request.num_refs & ~0x3;
+        auto num_bins = _mm_set_ps(
+            static_cast<float>(kNumBins), static_cast<float>(kNumBins),
+            static_cast<float>(kNumBins), static_cast<float>(kNumBins));
+
+        for (auto i = request.start_index;
+            i < request.start_index + full4;
+            i += 4u)
+        {
+            auto idx0 = refs[i];
+            auto idx1 = refs[i + 1];
+            auto idx2 = refs[i + 2];
+            auto idx3 = refs[i + 3];
+
+            auto c = _mm_set_ps(
+                aabb_centroid[idx3][axis],
+                aabb_centroid[idx2][axis],
+                aabb_centroid[idx1][axis],
+                aabb_centroid[idx0][axis]);
+
+            auto bin_idx = _mm_mul_ps(
+                _mm_mul_ps(
+                    _mm_sub_ps(c, centroid_min),
+                    centroid_extent_inv), num_bins);
+
+            auto bin_idx0 = std::min(static_cast<uint32_t>(mm_select(bin_idx, 0u)), kNumBins - 1);
+            auto bin_idx1 = std::min(static_cast<uint32_t>(mm_select(bin_idx, 1u)), kNumBins - 1);
+            auto bin_idx2 = std::min(static_cast<uint32_t>(mm_select(bin_idx, 2u)), kNumBins - 1);
+            auto bin_idx3 = std::min(static_cast<uint32_t>(mm_select(bin_idx, 3u)), kNumBins - 1);
+
+            ++bin_count[bin_idx0];
+            ++bin_count[bin_idx1];
+            ++bin_count[bin_idx2];
+            ++bin_count[bin_idx3];
+
+            bin_min[bin_idx0] = _mm_min_ps(
+                bin_min[bin_idx0],
+                _mm_load_ps(&aabb_min[idx0].x));
+            bin_max[bin_idx0] = _mm_max_ps(
+                bin_max[bin_idx0],
+                _mm_load_ps(&aabb_max[idx0].x));
+            bin_min[bin_idx1] = _mm_min_ps(
+                bin_min[bin_idx1],
+                _mm_load_ps(&aabb_min[idx1].x));
+            bin_max[bin_idx1] = _mm_max_ps(
+                bin_max[bin_idx1],
+                _mm_load_ps(&aabb_max[idx1].x));
+            bin_min[bin_idx2] = _mm_min_ps(
+                bin_min[bin_idx2],
+                _mm_load_ps(&aabb_min[idx2].x));
+            bin_max[bin_idx2] = _mm_max_ps(
+                bin_max[bin_idx2],
+                _mm_load_ps(&aabb_max[idx2].x));
+            bin_min[bin_idx3] = _mm_min_ps(
+                bin_min[bin_idx3],
+                _mm_load_ps(&aabb_min[idx3].x));
+            bin_max[bin_idx3] = _mm_max_ps(
+                bin_max[bin_idx3],
+                _mm_load_ps(&aabb_max[idx3].x));
+        }
+
+        auto cm = mm_select(centroid_min, 0u);
+        auto cei = mm_select(centroid_extent_inv, 0u);
+        for (auto i = request.start_index + full4; i < request.start_index + request.num_refs; ++i)
+        {
+            auto idx = refs[i];
+            auto bin_idx = std::min(static_cast<uint32_t>(
+                kNumBins *
+                (aabb_centroid[idx][axis] - cm) *
+                cei), kNumBins - 1);
+            ++bin_count[bin_idx];
+
+            bin_min[bin_idx] = _mm_min_ps(
+                bin_min[bin_idx],
+                _mm_load_ps(&aabb_min[idx].x));
+            bin_max[bin_idx] = _mm_max_ps(
+                bin_max[bin_idx],
+                _mm_load_ps(&aabb_max[idx].x));
+        }
+
+        _MM_ALIGN16 __m128 right_min[kNumBins - 1];
+        _MM_ALIGN16 __m128 right_max[kNumBins - 1];
+        auto tmp_min = _mm_set_ps(inf, inf, inf, inf);
+        auto tmp_max = _mm_set_ps(-inf, -inf, -inf, -inf);
+
+        for (auto i = kNumBins - 1; i > 0; --i)
+        {
+            tmp_min = _mm_min_ps(tmp_min, bin_min[i]);
+            tmp_max = _mm_max_ps(tmp_max, bin_max[i]);
+
+            right_min[i - 1] = tmp_min;
+            right_max[i - 1] = tmp_max;
+        }
+
+        tmp_min = _mm_set_ps(inf, inf, inf, inf);
+        tmp_max = _mm_set_ps(-inf, -inf, -inf, -inf);
+        auto  lc = 0u;
+        auto  rc = request.num_refs;
+
+        auto split_idx = -1;
+        for (auto i = 0u; i < kNumBins - 1; ++i)
+        {
+            tmp_min = _mm_min_ps(tmp_min, bin_min[i]);
+            tmp_max = _mm_max_ps(tmp_max, bin_max[i]);
+            lc += bin_count[i];
+            rc -= bin_count[i];
+
+            auto lsa = mm_select(
+                aabb_surface_area(tmp_min, tmp_max), 0);
+            auto rsa = mm_select(
+                aabb_surface_area(right_min[i], right_max[i]), 0);
+
+            auto s = static_cast<float>(kTraversalCost) + (lc * lsa + rc * rsa) * area_inv;
+
+            if (s < sah)
+            {
+                split_idx = i;
+                sah = s;
+            }
+        }
+
+        return mm_select(centroid_min, 0u) + (split_idx + 1) * (mm_select(centroid_extent, 0u) / kNumBins);
+    }
+
     Bvh2::NodeType Bvh2::HandleRequest(
         const SplitRequest &request,
         const float3 *aabb_min,
@@ -308,7 +472,33 @@ namespace RadeonRays
         {
             if (m_usesah && request.num_refs > kMinSAHPrimitives)
             {
-                // TODO: implement SAH (gboisse)
+                switch (split_axis)
+                {
+                case 0:
+                    split_value = FindSahSplit<0>(
+                        request,
+                        aabb_min,
+                        aabb_max,
+                        aabb_centroid,
+                        &refs[0]);
+                    break;
+                case 1:
+                    split_value = FindSahSplit<1>(
+                        request,
+                        aabb_min,
+                        aabb_max,
+                        aabb_centroid,
+                        &refs[0]);
+                    break;
+                case 2:
+                    split_value = FindSahSplit<2>(
+                        request,
+                        aabb_min,
+                        aabb_max,
+                        aabb_centroid,
+                        &refs[0]);
+                    break;
+                }
             }
 
             auto first = request.start_index;
