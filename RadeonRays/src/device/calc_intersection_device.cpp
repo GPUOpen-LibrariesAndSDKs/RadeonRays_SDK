@@ -33,6 +33,7 @@ THE SOFTWARE.
 #include "../intersector/intersector_2level.h"
 #include "../intersector/intersector_skip_links.h"
 #include "../intersector/intersector_short_stack.h"
+#include "../intersector/intersector_lds.h"
 #include "../intersector/intersector_hlbvh.h"
 #include "../intersector/intersector_bittrail.h"
 #include "../world/world.h"
@@ -120,8 +121,13 @@ namespace RadeonRays
                 {
                     if (m_intersector_string != "fatbvh")
                     {
+#if 1                   // TODO: my hack (gboisse)
                         m_intersector.reset(new IntersectorShortStack(m_device.get()));
                         m_intersector_string = "fatbvh";
+#else
+                        m_intersector.reset(new IntersectorLDS(m_device.get()));
+                        m_intersector_string = "bvh2";
+#endif
                     }
                 }
                 else if (acctype == "hlbvh")
