@@ -127,6 +127,20 @@ namespace RadeonRays
             SplitRequest &request_left,
             SplitRequest &request_right);
 
+        static inline void EncodeLeaf(
+            Node &node,
+            std::uint32_t num_refs);
+        static inline void EncodeInternal(
+            Node &node,
+            __m128 aabb_min,
+            __m128 aabb_max,
+            std::uint32_t child0,
+            std::uint32_t child1);
+        static inline void SetPrimitive(
+            Node &node,
+            std::uint32_t index,
+            std::pair<const Mesh *, std::size_t> ref);
+
     private:
         Bvh2(const Bvh2 &);
         Bvh2 &operator = (const Bvh2 &);
@@ -214,7 +228,7 @@ namespace RadeonRays
                 auto load_vertex = [&](int idx)
                 {
                     const float3 vertex = mesh->GetVertexData()[idx];
-                    return _mm_set_ps(vertex.x, vertex.y, vertex.z, vertex.w);
+                    return _mm_set_ps(vertex.w, vertex.z, vertex.y, vertex.x);
                 };
 
                 auto v0 = load_vertex(face.idx[0]);
@@ -253,5 +267,51 @@ namespace RadeonRays
             num_items);
 
         // TODO: finalize/translate?!? (gboisse)
+    }
+
+    void Bvh2::EncodeLeaf(
+        Node &node,
+        std::uint32_t num_refs)
+    {
+        // This node only supports 1 triangle
+        assert(num_refs == 1);
+        node.addr_left = kInvalidId;
+        node.addr_right = kInvalidId;
+    }
+
+    void Bvh2::EncodeInternal(
+        Node &node,
+        __m128 aabb_min,
+        __m128 aabb_max,
+        std::uint32_t child0,
+        std::uint32_t child1)
+    {
+        _mm_store_ps(node.aabb_left_min_or_v0, aabb_min);
+        _mm_store_ps(node.aabb_left_max_or_v1, aabb_max);
+        node.addr_left = child0;
+        node.addr_right = child1;
+    }
+
+    void Bvh2::SetPrimitive(
+        Node &node,
+        std::uint32_t index,
+        std::pair<const Mesh *, std::size_t> ref)
+    {
+        auto mesh = ref.first;
+        auto face = mesh->GetFaceData()[ref.second];
+        auto v0 = mesh->GetVertexData()[face.idx[0]];
+        auto v1 = mesh->GetVertexData()[face.idx[1]];
+        auto v2 = mesh->GetVertexData()[face.idx[2]];
+        node.aabb_left_min_or_v0[0] = v0.x;
+        node.aabb_left_min_or_v0[1] = v0.y;
+        node.aabb_left_min_or_v0[2] = v0.z;
+        node.aabb_left_max_or_v1[0] = v1.x;
+        node.aabb_left_max_or_v1[1] = v1.y;
+        node.aabb_left_max_or_v1[2] = v1.z;
+        node.aabb_right_min_or_v2[0] = v2.x;
+        node.aabb_right_min_or_v2[1] = v2.y;
+        node.aabb_right_min_or_v2[2] = v2.z;
+        node.shape_id = mesh->GetId();
+        node.prim_id = static_cast<std::uint32_t>(ref.second);
     }
 }
