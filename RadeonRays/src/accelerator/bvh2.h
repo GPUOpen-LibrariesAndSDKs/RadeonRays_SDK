@@ -56,6 +56,7 @@ namespace RadeonRays
 
     protected:
         struct Node;
+        struct SplitRequest;
 
         using RefArray = std::vector<std::uint32_t>;
         using MetaDataArray = std::vector<std::pair<const Mesh *, std::size_t> >;
@@ -114,6 +115,17 @@ namespace RadeonRays
             const float3 *aabb_centroid,
             const MetaDataArray &metadata,
             std::size_t num_aabbs);
+
+        NodeType HandleRequest(
+            const SplitRequest &request,
+            const float3 *aabb_min,
+            const float3 *aabb_max,
+            const float3 *aabb_centroid,
+            const MetaDataArray &metadata,
+            RefArray &refs,
+            std::size_t num_aabbs,
+            SplitRequest &request_left,
+            SplitRequest &request_right);
 
     private:
         Bvh2(const Bvh2 &);
