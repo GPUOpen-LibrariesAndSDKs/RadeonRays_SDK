@@ -153,7 +153,16 @@ namespace RadeonRays
             e->Wait();
             m_device->DeleteEvent(e);
 
-            //
+            // Copy BVH data
+            std::size_t i = 0;
+            for (auto it = translator.nodes_.begin(); it != translator.nodes_.end(); ++it)
+                bvhdata[i++] = *it;
+
+            // Unmap gpu data
+            m_device->UnmapBuffer(m_gpuData->bvh, 0, bvhdata, &e);
+
+            e->Wait();
+            m_device->DeleteEvent(e);
         }
     }
 
