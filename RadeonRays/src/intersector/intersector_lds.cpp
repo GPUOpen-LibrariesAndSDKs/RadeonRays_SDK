@@ -37,6 +37,8 @@ namespace RadeonRays
         Calc::Device *device;
         // BVH nodes
         Calc::Buffer *bvh;
+        // Traversal stack
+        Calc::Buffer *stack;
 
         Calc::Executable *executable;
         Calc::Function *isect_func;
@@ -45,6 +47,7 @@ namespace RadeonRays
         GpuData(Calc::Device *device)
             : device(device)
             , bvh(nullptr)
+            , stack(nullptr)
             , executable(nullptr)
             , isect_func(nullptr)
             , occlude_func(nullptr)
@@ -54,6 +57,7 @@ namespace RadeonRays
         ~GpuData()
         {
             device->DeleteBuffer(bvh);
+            device->DeleteBuffer(stack);
             executable->DeleteFunction(isect_func);
             executable->DeleteFunction(occlude_func);
             device->DeleteExecutable(executable);
@@ -104,7 +108,7 @@ namespace RadeonRays
             if (m_bvh)
             {
                 m_device->DeleteBuffer(m_gpuData->bvh);
-                //m_device->DeleteBuffer(m_gpuData->vertices);
+                m_device->DeleteBuffer(m_gpuData->stack);
             }
 
             // Look up build options for world
@@ -163,6 +167,13 @@ namespace RadeonRays
 
             e->Wait();
             m_device->DeleteEvent(e);
+
+            // Stack
+            // TODO: this should be calculated differenly? (gboisse)
+            m_gpuData->stack = m_device->CreateBuffer(123456, Calc::BufferType::kWrite);
+
+            // Make sure everything is committed
+            m_device->Finish(0);
         }
     }
 
