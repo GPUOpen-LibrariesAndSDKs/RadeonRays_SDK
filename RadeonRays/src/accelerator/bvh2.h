@@ -158,7 +158,7 @@ namespace RadeonRays
 
         static inline bool IsInternal(const Node &node);
         static inline std::uint32_t GetChildIndex(const Node &node, std::uint8_t idx);
-        static inline void Finalize(Bvh2 &bvh);
+        static inline void PropagateBounds(Bvh2 &bvh);
 
     private:
         Bvh2(const Bvh2 &);
@@ -285,8 +285,14 @@ namespace RadeonRays
             metadata,
             num_items);
 
-        // TODO: this setup doesn't make much sense now...? (gboisse)
-        Finalize(*this);
+        // We set 1 AABB for each node during BVH build process,
+        // however our resulting structure keeps two AABBs for 
+        // left and right child nodes in the parent node. To 
+        // convert 1 AABB per node -> 2 AABBs for child nodes 
+        // we need to traverse the tree pulling child node AABBs 
+        // into their parent node. That's exactly what PropagateBounds 
+        // is doing.
+        PropagateBounds(*this);
     }
 
     Bvh2::Node *Bvh2::GetNode(std::size_t idx) const
@@ -364,15 +370,7 @@ namespace RadeonRays
             : kInvalidId);
     }
 
-    // We set 1 AABB for each node during BVH build process,
-    // however our resulting structure keeps two AABBs for 
-    // left and right child nodes in the parent node. To 
-    // convert 1 AABB per node -> 2 AABBs for child nodes 
-    // we need to traverse the tree pulling child node AABBs 
-    // into their parent node. That's exactly what PropagateBounds 
-    // is doing.
-    void Bvh2::Finalize(
-        Bvh2 &bvh)
+    void Bvh2::PropagateBounds(Bvh2 &bvh)
     {
         // Traversal stack
         std::stack<std::uint32_t> s;
