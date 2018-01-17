@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include "../accelerator/bvh2.h"
 #include "../primitive/mesh.h"
 #include "../primitive/instance.h"
+#include "../translator/q_bvh_translator.h"
 #include "../world/world.h"
 
 namespace RadeonRays
@@ -134,6 +135,12 @@ namespace RadeonRays
 
             // TODO: deal with the instance stuff (gboisse)
             m_bvh->Build(shapes.begin(), firstinst);
+
+            QBvhTranslator translator;
+            translator.Process(*m_bvh);
+
+            // Update GPU data
+            // TODO: ... (gboisse)
         }
     }
 

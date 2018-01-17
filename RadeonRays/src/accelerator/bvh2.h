@@ -59,6 +59,7 @@ namespace RadeonRays
         }
 
         inline Node *GetNode(std::size_t idx) const;
+        inline std::size_t GetSizeInBytes() const;
         inline std::size_t nodecount() const;
         inline Node &root() const;
 
@@ -163,6 +164,8 @@ namespace RadeonRays
     private:
         Bvh2(const Bvh2 &);
         Bvh2 &operator = (const Bvh2 &);
+
+        friend class QBvhTranslator;
 
         // Buffer of encoded nodes
         Node *m_nodes;
@@ -298,6 +301,11 @@ namespace RadeonRays
     Bvh2::Node *Bvh2::GetNode(std::size_t idx) const
     {
         return m_nodes + idx;
+    }
+
+    std::size_t Bvh2::GetSizeInBytes() const
+    {
+        return m_nodecount * sizeof(Node);
     }
 
     std::size_t Bvh2::nodecount() const
