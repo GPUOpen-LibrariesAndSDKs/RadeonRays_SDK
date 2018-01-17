@@ -136,6 +136,7 @@ namespace RadeonRays
             // TODO: deal with the instance stuff (gboisse)
             m_bvh->Build(shapes.begin(), firstinst);
 
+            // TODO: what if we don't want to use fp16? (gboisse)
             QBvhTranslator translator;
             translator.Process(*m_bvh);
 
