@@ -141,7 +141,19 @@ namespace RadeonRays
             translator.Process(*m_bvh);
 
             // Update GPU data
-            // TODO: ... (gboisse)
+            auto bvh_size_in_bytes = translator.GetSizeInBytes();
+            m_gpuData->bvh = m_device->CreateBuffer(bvh_size_in_bytes, Calc::BufferType::kRead);
+
+            // Get the pointer to mapped data
+            Calc::Event *e = nullptr;
+            QBvhTranslator::Node *bvhdata = nullptr;
+
+            m_device->MapBuffer(m_gpuData->bvh, 0, 0, bvh_size_in_bytes, Calc::MapType::kMapWrite, (void **)&bvhdata, &e);
+
+            e->Wait();
+            m_device->DeleteEvent(e);
+
+            //
         }
     }
 

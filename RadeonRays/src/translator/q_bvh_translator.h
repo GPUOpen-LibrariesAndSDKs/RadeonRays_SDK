@@ -71,6 +71,11 @@ namespace RadeonRays
 
         void Process(const Bvh2 &bvh);
 
+        inline std::size_t GetSizeInBytes() const
+        {
+            return nodes_.size() * sizeof(Node);
+        }
+
         std::vector<Node> nodes_;
     };
 
