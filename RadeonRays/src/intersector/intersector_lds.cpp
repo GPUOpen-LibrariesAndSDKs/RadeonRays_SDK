@@ -31,6 +31,10 @@ THE SOFTWARE.
 
 namespace RadeonRays
 {
+    // Preferred work group size for Radeon devices
+    static int const kMaxStackSize  = 48;
+    static int const kWorkGroupSize = 64;
+
     struct IntersectorLDS::GpuData
     {
         // Device
@@ -108,7 +112,6 @@ namespace RadeonRays
             if (m_bvh)
             {
                 m_device->DeleteBuffer(m_gpuData->bvh);
-                m_device->DeleteBuffer(m_gpuData->stack);
             }
 
             // Look up build options for world
@@ -168,10 +171,6 @@ namespace RadeonRays
             e->Wait();
             m_device->DeleteEvent(e);
 
-            // Stack
-            // TODO: this should be calculated differenly? (gboisse)
-            m_gpuData->stack = m_device->CreateBuffer(123456, Calc::BufferType::kWrite);
-
             // Make sure everything is committed
             m_device->Finish(0);
         }
@@ -181,13 +180,36 @@ namespace RadeonRays
         std::uint32_t max_rays, Calc::Buffer *hits,
         const Calc::Event *wait_event, Calc::Event **event) const
     {
-        //
+        std::size_t stack_size = 4 * max_rays * kMaxStackSize;
+
+        // Check if we need to reallocate memory
+        if (!m_gpuData->stack || stack_size > m_gpuData->stack->GetSize())
+        {
+            m_device->DeleteBuffer(m_gpuData->stack);
+            m_gpuData->stack = m_device->CreateBuffer(stack_size, Calc::BufferType::kWrite);
+        }
+
+        auto &func = m_gpuData->isect_func;
+
+        // Set args
+        int arg = 0;
+
+        func->SetArg(arg++, m_gpuData->bvh);
+        func->SetArg(arg++, rays);
+        func->SetArg(arg++, num_rays);
+        func->SetArg(arg++, m_gpuData->stack);
+        func->SetArg(arg++, hits);
+
+        size_t localsize = kWorkGroupSize;
+        size_t globalsize = ((max_rays + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
+
+        m_device->Execute(func, queue_idx, globalsize, localsize, event);
     }
 
     void IntersectorLDS::Occluded(std::uint32_t queue_idx, const Calc::Buffer *rays, const Calc::Buffer *num_rays,
         std::uint32_t max_rays, Calc::Buffer *hits,
         const Calc::Event *wait_event, Calc::Event **event) const
     {
-        //
+        // TODO: implement (gboisse)
     }
 }
