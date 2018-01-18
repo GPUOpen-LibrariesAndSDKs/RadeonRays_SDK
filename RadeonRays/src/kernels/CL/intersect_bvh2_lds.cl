@@ -292,8 +292,8 @@ KERNEL void intersect_main(
             else
             {
                 // Miss here
-                hits[index].prim_id = INVALID_ADDR;
-                hits[index].shape_id = INVALID_ADDR;
+                hits[index].prim_id = MISS_MARKER;
+                hits[index].shape_id = MISS_MARKER;
             }
         }
     }
@@ -308,9 +308,150 @@ KERNEL void occluded_main(
     // Number of rays in rays buffer
     GLOBAL const int *restrict num_rays,
     // Stack memory
-    GLOBAL int *stack,
+    GLOBAL uint *stack,
     // Hit results: 1 for hit and -1 for miss
     GLOBAL int *hits)
 {
-    // TODO: ... (gboisse)
+    // TODO: this is a copy/paste of the intersect function - implement properly (gboisse)
+
+    uint index = get_global_id(0);
+    uint local_index = get_local_id(0);
+
+    // Handle only working subset
+    if (index < *num_rays)
+    {
+        const ray myRay = rays[index];
+
+        if (ray_is_active(&myRay))
+        {
+            __local uint lds_stack[GROUP_SIZE * LDS_STACK_SIZE];
+
+            // Precompute inverse direction and origin / dir for bbox testing
+            const float3 invDir32 = safe_invdir(myRay);
+            const half3 invDir = convert_half3(invDir32);
+            const half3 oxInvDir = convert_half3(-myRay.o.xyz * invDir32);
+
+            // Intersection parametric distance
+            float closest_t = myRay.o.w;
+
+            // Current node address
+            uint addr = 0;
+            // Current closest address
+            uint closest_addr = INVALID_ADDR;
+
+            uint stack_bottom = STACK_SIZE * index;
+            uint sptr = stack_bottom;
+            uint lds_stack_bottom = local_index * LDS_STACK_SIZE;
+            uint lds_sptr = lds_stack_bottom;
+
+            lds_stack[lds_sptr++] = INVALID_ADDR;
+
+            while (addr != INVALID_ADDR)
+            {
+                const bvh_node node = nodes[addr];
+
+                if (INTERNAL_NODE(node))
+                {
+                    half4 s01 = fast_intersect_bbox2(
+                        node.aabb01_min_or_v0,
+                        node.aabb01_max_or_v1,
+                        invDir, oxInvDir, closest_t);
+                    half4 s23 = fast_intersect_bbox2(
+                        node.aabb23_min_or_v2,
+                        node.aabb23_max,
+                        invDir, oxInvDir, closest_t);
+
+                    bool traverse_c0 = (s01.x <= s01.z);
+                    bool traverse_c1 = (node.addr1_or_mesh_id != INVALID_ADDR) && (s01.y <= s01.w);
+                    bool traverse_c2 = (s23.x <= s23.z);
+                    bool traverse_c3 = (node.addr3 != INVALID_ADDR) && (s23.y <= s23.w);
+
+                    if (traverse_c0 || traverse_c1 || traverse_c2 || traverse_c3)
+                    {
+                        uint a = INVALID_ADDR;
+                        half d = 100000000.0f;
+
+                        if (traverse_c0)
+                        {
+                            a = node.addr0;
+                            d = s01.x;
+                        }
+
+                        if (traverse_c1)
+                        {
+                            if (a == INVALID_ADDR)
+                                a = node.addr1_or_mesh_id;
+                            else
+                            {
+                                uint topush = s01.y < d ? a : node.addr1_or_mesh_id;
+                                d = min(s01.y, d);
+                                a = topush == a ? node.addr1_or_mesh_id : a;
+                                stack_push(lds_stack, &lds_sptr, lds_stack_bottom, stack, &sptr, topush);
+                            }
+                        }
+
+                        if (traverse_c2)
+                        {
+                            if (a == INVALID_ADDR)
+                                a = node.addr2_or_prim_id;
+                            else
+                            {
+                                uint topush = s23.x < d ? a : node.addr2_or_prim_id;
+                                d = min(s23.x, d);
+                                a = topush == a ? node.addr2_or_prim_id : a;
+                                stack_push(lds_stack, &lds_sptr, lds_stack_bottom, stack, &sptr, topush);
+                            }
+                        }
+
+                        if (traverse_c3)
+                        {
+                            if (a == INVALID_ADDR)
+                                a = node.addr3;
+                            else
+                            {
+                                uint topush = s23.y < d ? a : node.addr3;
+                                d = min(s23.y, d);
+                                a = topush == a ? node.addr3 : a;
+                                stack_push(lds_stack, &lds_sptr, lds_stack_bottom, stack, &sptr, topush);
+                            }
+                        }
+
+                        addr = a;
+                        continue;
+                    }
+                }
+                else
+                {
+                    float t = fast_intersect_triangle(
+                        myRay,
+                        as_float3(node.aabb01_min_or_v0),
+                        as_float3(node.aabb01_max_or_v1),
+                        as_float3(node.aabb23_min_or_v2),
+                        closest_t);
+
+                    if (t < closest_t)
+                    {
+                        closest_t = t;
+                        closest_addr = addr;
+                    }
+                }
+
+                addr = lds_stack[--lds_sptr];
+
+                if (addr == INVALID_ADDR && sptr > stack_bottom)
+                {
+                    sptr -= LDS_STACK_SIZE;
+                    for (int i = 1; i < LDS_STACK_SIZE; ++i)
+                    {
+                        lds_stack[lds_stack_bottom + i] = stack[sptr + i];
+                    }
+
+                    lds_sptr = lds_stack_bottom + LDS_STACK_SIZE - 1;
+                    addr = lds_stack[lds_sptr];
+                }
+            }
+
+            hits[index] = (closest_addr != INVALID_ADDR ? HIT_MARKER : MISS_MARKER);
+        }
+    }
 }
