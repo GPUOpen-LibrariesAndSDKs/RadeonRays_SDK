@@ -120,8 +120,6 @@ void stack_push(
     *lds_sptr = *lds_sptr + 1;
 }
 
-// TODO: use GLOBAL, etc. macros (gboisse)
-
 __attribute__((reqd_work_group_size(64, 1, 1)))
 KERNEL void intersect_main(
     // Bvh nodes
