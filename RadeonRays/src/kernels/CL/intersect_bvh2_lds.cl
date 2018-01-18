@@ -38,6 +38,8 @@ TYPE DEFINITIONS
 #define STACK_SIZE 32
 #define LDS_STACK_SIZE 16
 
+//#define TEST
+
 // BVH node
 typedef struct
 {
@@ -135,6 +137,13 @@ KERNEL void intersect_main(
 {
     uint index = get_global_id(0);
     uint local_index = get_local_id(0);
+
+#ifdef TEST
+    hits[index].shape_id = 0;
+    hits[index].prim_id = 0;
+    hits[index].uvwt = make_float4(0.5f, 0.5f, 0.0f, 1.0f);
+    return;
+#endif // TEST
 
     // Handle only working subset
     if (index < *num_rays)
@@ -287,7 +296,7 @@ KERNEL void intersect_main(
                 // Update hit information
                 hits[index].prim_id = node.addr2_or_prim_id;
                 hits[index].shape_id = node.addr1_or_mesh_id;
-                hits[index].uvwt = make_float4(uv.x, uv.y, 0.f, closest_t);
+                hits[index].uvwt = make_float4(uv.x, uv.y, 0.0f, closest_t);
             }
             else
             {
@@ -316,6 +325,11 @@ KERNEL void occluded_main(
 
     uint index = get_global_id(0);
     uint local_index = get_local_id(0);
+
+#ifdef TEST
+    hits[index] = MISS_MARKER;
+    return;
+#endif // TEST
 
     // Handle only working subset
     if (index < *num_rays)
