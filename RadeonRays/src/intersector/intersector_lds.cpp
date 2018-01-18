@@ -200,8 +200,8 @@ namespace RadeonRays
         func->SetArg(arg++, m_gpuData->stack);
         func->SetArg(arg++, hits);
 
-        size_t localsize = kWorkGroupSize;
-        size_t globalsize = ((max_rays + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
+        std::size_t localsize = kWorkGroupSize;
+        std::size_t globalsize = ((max_rays + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
 
         m_device->Execute(func, queue_idx, globalsize, localsize, event);
     }
@@ -210,6 +210,29 @@ namespace RadeonRays
         std::uint32_t max_rays, Calc::Buffer *hits,
         const Calc::Event *wait_event, Calc::Event **event) const
     {
-        // TODO: implement (gboisse)
+        std::size_t stack_size = 4 * max_rays * kMaxStackSize;
+
+        // Check if we need to reallocate memory
+        if (!m_gpuData->stack || stack_size > m_gpuData->stack->GetSize())
+        {
+            m_device->DeleteBuffer(m_gpuData->stack);
+            m_gpuData->stack = m_device->CreateBuffer(stack_size, Calc::BufferType::kWrite);
+        }
+
+        auto &func = m_gpuData->occlude_func;
+
+        // Set args
+        int arg = 0;
+
+        func->SetArg(arg++, m_gpuData->bvh);
+        func->SetArg(arg++, rays);
+        func->SetArg(arg++, num_rays);
+        func->SetArg(arg++, m_gpuData->stack);
+        func->SetArg(arg++, hits);
+
+        std::size_t localsize = kWorkGroupSize;
+        std::size_t globalsize = ((max_rays + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
+
+        m_device->Execute(func, queue_idx, globalsize, localsize, event);
     }
 }

@@ -302,7 +302,17 @@ KERNEL void intersect_main(
 }
 
 __attribute__((reqd_work_group_size(64, 1, 1)))
-KERNEL void occluded_main()
+KERNEL void occluded_main(
+    // Bvh nodes
+    GLOBAL const bvh_node *restrict nodes,
+    // Rays
+    GLOBAL const ray *restrict rays,
+    // Number of rays in rays buffer
+    GLOBAL const int *restrict num_rays,
+    // Stack memory
+    GLOBAL int *stack,
+    // Hit results: 1 for hit and -1 for miss
+    GLOBAL int *hits)
 {
-    //
+    // TODO: ... (gboisse)
 }
