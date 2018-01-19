@@ -70,6 +70,8 @@ namespace RadeonRays
             kMaxLeafPrimitives = 1u,
             // Threshold number of primitives to disable SAH split
             kMinSAHPrimitives = 32u,
+            // Maximum stack size for non-parallel builds
+            kStackSize = 1024u,
             // Traversal vs intersection cost ratio
             kTraversalCost = 10u
         };

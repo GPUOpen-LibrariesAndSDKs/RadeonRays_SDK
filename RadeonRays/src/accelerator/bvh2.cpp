@@ -158,7 +158,55 @@ namespace RadeonRays
         auto m128_minus_inf = _mm_set_ps(-inf, -inf, -inf, -inf);
 
 #ifndef PARALLEL_BUILD
-        #error TODO: implement (gboisse)
+        _MM_ALIGN16 SplitRequest requests[kStackSize];
+
+        auto sptr = 0u;
+
+        requests[sptr++] = SplitRequest{
+            scene_min,
+            scene_max,
+            centroid_scene_min,
+            centroid_scene_max,
+            0,
+            num_aabbs,
+            0u,
+            0u
+        };
+
+        while (sptr > 0u)
+        {
+            auto request = requests[--sptr];
+
+            auto &request_left{ requests[sptr++] };
+
+            if (sptr == kStackSize)
+            {
+                throw std::runtime_error("Build stack overflow");
+            }
+
+            auto &request_right{ requests[sptr++] };
+
+            if (sptr == kStackSize)
+            {
+                throw std::runtime_error("Build stack overflow");
+            }
+
+            if (HandleRequest(
+                request,
+                aabb_min,
+                aabb_max,
+                aabb_centroid,
+                metadata,
+                refs,
+                num_aabbs,
+                request_left,
+                request_right) ==
+                NodeType::kLeaf)
+            {
+                --sptr;
+                --sptr;
+            }
+        }
 #else
         std::mutex mutex;
         std::condition_variable cv;
