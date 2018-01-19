@@ -93,6 +93,19 @@ INLINE half4 fast_intersect_bbox2(uint3 pmin, uint3 pmax, half3 invdir, half3 ox
     return (half4)(t0, t1);
 }
 
+INLINE float3 safe_invdir2(ray r)
+{
+    float const dirx = r.d.x;
+    float const diry = r.d.y;
+    float const dirz = r.d.z;
+    float const ooeps = 1e-5;
+    float3 invdir;
+    invdir.x = 1.0f / (fabs(dirx) > ooeps ? dirx : copysign(ooeps, dirx));
+    invdir.y = 1.0f / (fabs(diry) > ooeps ? diry : copysign(ooeps, diry));
+    invdir.z = 1.0f / (fabs(dirz) > ooeps ? dirz : copysign(ooeps, dirz));
+    return invdir;
+}
+
 INLINE void stack_push(
     __local uint *lds_stack,
     __private uint *lds_sptr,
@@ -142,7 +155,7 @@ KERNEL void intersect_main(
             __local uint lds_stack[GROUP_SIZE * LDS_STACK_SIZE];
 
             // Precompute inverse direction and origin / dir for bbox testing
-            const float3 invDir32 = safe_invdir(myRay);
+            const float3 invDir32 = safe_invdir2(myRay);
             const half3 invDir = convert_half3(invDir32);
             const half3 oxInvDir = convert_half3(-myRay.o.xyz * invDir32);
 
@@ -321,7 +334,7 @@ KERNEL void occluded_main(
             __local uint lds_stack[GROUP_SIZE * LDS_STACK_SIZE];
 
             // Precompute inverse direction and origin / dir for bbox testing
-            const float3 invDir32 = safe_invdir(myRay);
+            const float3 invDir32 = safe_invdir2(myRay);
             const half3 invDir = convert_half3(invDir32);
             const half3 oxInvDir = convert_half3(-myRay.o.xyz * invDir32);
 
