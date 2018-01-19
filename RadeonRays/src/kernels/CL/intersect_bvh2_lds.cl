@@ -22,6 +22,9 @@ THE SOFTWARE.
 
 #pragma OPENCL EXTENSION cl_khr_fp16 : enable
 
+// TODO: remove me (gboisse)
+#define BLA hits[index].prim_id = 1; hits[index].shape_id = 1; hits[index].uvwt = (float4)(0.5f, 0.5f, 0.0f, 1.0f); return;
+
 /*************************************************************************
 INCLUDES
 **************************************************************************/
@@ -32,28 +35,22 @@ TYPE DEFINITIONS
 **************************************************************************/
 
 #define INVALID_ADDR 0xffffffffu
-#define INTERNAL_NODE(node) ((node).addr0 != INVALID_ADDR)
+#define INTERNAL_NODE(node) ((node).aabb01_min_or_v0_and_addr0.w != INVALID_ADDR)
 
 #define GROUP_SIZE 64
 #define STACK_SIZE 32
 #define LDS_STACK_SIZE 16
 
-//#define TEST
-
 // BVH node
 typedef struct
 {
-    uint3 aabb01_min_or_v0;
-    uint  addr0;
+    // TODO: add explanatory comment (gboisse)
 
-    uint3 aabb01_max_or_v1;
-    uint  addr1_or_mesh_id;
+    uint4 aabb01_min_or_v0_and_addr0;
+    uint4 aabb01_max_or_v1_and_addr1_or_mesh_id;
+    uint4 aabb23_min_or_v2_and_addr2_or_prim_id;
+    uint4 aabb23_max_and_addr3;
 
-    uint3 aabb23_min_or_v2;
-    uint  addr2_or_prim_id;
-
-    uint3 aabb23_max;
-    uint  addr3;
 } bvh_node;
 
 #define mymin3(a, b, c) min(min((a), (b)), (c))
@@ -138,13 +135,6 @@ KERNEL void intersect_main(
     uint index = get_global_id(0);
     uint local_index = get_local_id(0);
 
-#ifdef TEST
-    hits[index].shape_id = 0;
-    hits[index].prim_id = 0;
-    hits[index].uvwt = make_float4(0.5f, 0.5f, 0.0f, 1.0f);
-    return;
-#endif // TEST
-
     // Handle only working subset
     if (index < *num_rays)
     {
@@ -181,18 +171,18 @@ KERNEL void intersect_main(
                 if (INTERNAL_NODE(node))
                 {
                     half4 s01 = fast_intersect_bbox2(
-                        node.aabb01_min_or_v0,
-                        node.aabb01_max_or_v1,
+                        node.aabb01_min_or_v0_and_addr0.xyz,
+                        node.aabb01_max_or_v1_and_addr1_or_mesh_id.xyz,
                         invDir, oxInvDir, closest_t);
                     half4 s23 = fast_intersect_bbox2(
-                        node.aabb23_min_or_v2,
-                        node.aabb23_max,
+                        node.aabb23_min_or_v2_and_addr2_or_prim_id.xyz,
+                        node.aabb23_max_and_addr3.xyz,
                         invDir, oxInvDir, closest_t);
 
                     bool traverse_c0 = (s01.x <= s01.z);
-                    bool traverse_c1 = (node.addr1_or_mesh_id != INVALID_ADDR) && (s01.y <= s01.w);
+                    bool traverse_c1 = (s01.y <= s01.w) && (node.aabb01_max_or_v1_and_addr1_or_mesh_id.w != INVALID_ADDR);
                     bool traverse_c2 = (s23.x <= s23.z);
-                    bool traverse_c3 = (node.addr3 != INVALID_ADDR) && (s23.y <= s23.w);
+                    bool traverse_c3 = (s23.y <= s23.w) && (node.aabb23_max_and_addr3.w != INVALID_ADDR);
 
                     if (traverse_c0 || traverse_c1 || traverse_c2 || traverse_c3)
                     {
@@ -201,19 +191,19 @@ KERNEL void intersect_main(
 
                         if (traverse_c0)
                         {
-                            a = node.addr0;
+                            a = node.aabb01_min_or_v0_and_addr0.w;
                             d = s01.x;
                         }
 
                         if (traverse_c1)
                         {
                             if (a == INVALID_ADDR)
-                                a = node.addr1_or_mesh_id;
+                                a = node.aabb01_max_or_v1_and_addr1_or_mesh_id.w;
                             else
                             {
-                                uint topush = s01.y < d ? a : node.addr1_or_mesh_id;
+                                uint topush = s01.y < d ? a : node.aabb01_max_or_v1_and_addr1_or_mesh_id.w;
                                 d = min(s01.y, d);
-                                a = topush == a ? node.addr1_or_mesh_id : a;
+                                a = topush == a ? node.aabb01_max_or_v1_and_addr1_or_mesh_id.w : a;
                                 stack_push(lds_stack, &lds_sptr, lds_stack_bottom, stack, &sptr, topush);
                             }
                         }
@@ -221,12 +211,12 @@ KERNEL void intersect_main(
                         if (traverse_c2)
                         {
                             if (a == INVALID_ADDR)
-                                a = node.addr2_or_prim_id;
+                                a = node.aabb23_min_or_v2_and_addr2_or_prim_id.w;
                             else
                             {
-                                uint topush = s23.x < d ? a : node.addr2_or_prim_id;
+                                uint topush = s23.x < d ? a : node.aabb23_min_or_v2_and_addr2_or_prim_id.w;
                                 d = min(s23.x, d);
-                                a = topush == a ? node.addr2_or_prim_id : a;
+                                a = topush == a ? node.aabb23_min_or_v2_and_addr2_or_prim_id.w : a;
                                 stack_push(lds_stack, &lds_sptr, lds_stack_bottom, stack, &sptr, topush);
                             }
                         }
@@ -234,12 +224,12 @@ KERNEL void intersect_main(
                         if (traverse_c3)
                         {
                             if (a == INVALID_ADDR)
-                                a = node.addr3;
+                                a = node.aabb23_max_and_addr3.w;
                             else
                             {
-                                uint topush = s23.y < d ? a : node.addr3;
+                                uint topush = s23.y < d ? a : node.aabb23_max_and_addr3.w;
                                 d = min(s23.y, d);
-                                a = topush == a ? node.addr3 : a;
+                                a = topush == a ? node.aabb23_max_and_addr3.w : a;
                                 stack_push(lds_stack, &lds_sptr, lds_stack_bottom, stack, &sptr, topush);
                             }
                         }
@@ -252,9 +242,9 @@ KERNEL void intersect_main(
                 {
                     float t = fast_intersect_triangle(
                         myRay,
-                        as_float3(node.aabb01_min_or_v0),
-                        as_float3(node.aabb01_max_or_v1),
-                        as_float3(node.aabb23_min_or_v2),
+                        as_float3(node.aabb01_min_or_v0_and_addr0.xyz),
+                        as_float3(node.aabb01_max_or_v1_and_addr1_or_mesh_id.xyz),
+                        as_float3(node.aabb23_min_or_v2_and_addr2_or_prim_id.xyz),
                         closest_t);
 
                     if (t < closest_t)
@@ -289,14 +279,14 @@ KERNEL void intersect_main(
                 // Calculte barycentric coordinates
                 const float2 uv = triangle_calculate_barycentrics(
                     p,
-                    as_float3(node.aabb01_min_or_v0),
-                    as_float3(node.aabb01_max_or_v1),
-                    as_float3(node.aabb23_min_or_v2));
+                    as_float3(node.aabb01_min_or_v0_and_addr0.xyz),
+                    as_float3(node.aabb01_max_or_v1_and_addr1_or_mesh_id.xyz),
+                    as_float3(node.aabb23_min_or_v2_and_addr2_or_prim_id.xyz));
 
                 // Update hit information
-                hits[index].prim_id = node.addr2_or_prim_id;
-                hits[index].shape_id = node.addr1_or_mesh_id;
-                hits[index].uvwt = make_float4(uv.x, uv.y, 0.0f, closest_t);
+                hits[index].prim_id = node.aabb23_min_or_v2_and_addr2_or_prim_id.w;
+                hits[index].shape_id = node.aabb01_max_or_v1_and_addr1_or_mesh_id.w;
+                hits[index].uvwt = (float4)(uv.x, uv.y, 0.0f, closest_t);
             }
             else
             {
@@ -321,15 +311,10 @@ KERNEL void occluded_main(
     // Hit results: 1 for hit and -1 for miss
     GLOBAL int *hits)
 {
-    // TODO: this is a copy/paste of the intersect function - implement properly (gboisse)
+    // TODO: this is a copy/paste of the intersect function; implement properly (gboisse)
 
     uint index = get_global_id(0);
     uint local_index = get_local_id(0);
-
-#ifdef TEST
-    hits[index] = MISS_MARKER;
-    return;
-#endif // TEST
 
     // Handle only working subset
     if (index < *num_rays)
@@ -367,18 +352,18 @@ KERNEL void occluded_main(
                 if (INTERNAL_NODE(node))
                 {
                     half4 s01 = fast_intersect_bbox2(
-                        node.aabb01_min_or_v0,
-                        node.aabb01_max_or_v1,
+                        node.aabb01_min_or_v0_and_addr0.xyz,
+                        node.aabb01_max_or_v1_and_addr1_or_mesh_id.xyz,
                         invDir, oxInvDir, closest_t);
                     half4 s23 = fast_intersect_bbox2(
-                        node.aabb23_min_or_v2,
-                        node.aabb23_max,
+                        node.aabb23_min_or_v2_and_addr2_or_prim_id.xyz,
+                        node.aabb23_max_and_addr3.xyz,
                         invDir, oxInvDir, closest_t);
 
                     bool traverse_c0 = (s01.x <= s01.z);
-                    bool traverse_c1 = (node.addr1_or_mesh_id != INVALID_ADDR) && (s01.y <= s01.w);
+                    bool traverse_c1 = (s01.y <= s01.w) && (node.aabb01_max_or_v1_and_addr1_or_mesh_id.w != INVALID_ADDR);
                     bool traverse_c2 = (s23.x <= s23.z);
-                    bool traverse_c3 = (node.addr3 != INVALID_ADDR) && (s23.y <= s23.w);
+                    bool traverse_c3 = (s23.y <= s23.w) && (node.aabb23_max_and_addr3.w != INVALID_ADDR);
 
                     if (traverse_c0 || traverse_c1 || traverse_c2 || traverse_c3)
                     {
@@ -387,19 +372,19 @@ KERNEL void occluded_main(
 
                         if (traverse_c0)
                         {
-                            a = node.addr0;
+                            a = node.aabb01_min_or_v0_and_addr0.w;
                             d = s01.x;
                         }
 
                         if (traverse_c1)
                         {
                             if (a == INVALID_ADDR)
-                                a = node.addr1_or_mesh_id;
+                                a = node.aabb01_max_or_v1_and_addr1_or_mesh_id.w;
                             else
                             {
-                                uint topush = s01.y < d ? a : node.addr1_or_mesh_id;
+                                uint topush = s01.y < d ? a : node.aabb01_max_or_v1_and_addr1_or_mesh_id.w;
                                 d = min(s01.y, d);
-                                a = topush == a ? node.addr1_or_mesh_id : a;
+                                a = topush == a ? node.aabb01_max_or_v1_and_addr1_or_mesh_id.w : a;
                                 stack_push(lds_stack, &lds_sptr, lds_stack_bottom, stack, &sptr, topush);
                             }
                         }
@@ -407,12 +392,12 @@ KERNEL void occluded_main(
                         if (traverse_c2)
                         {
                             if (a == INVALID_ADDR)
-                                a = node.addr2_or_prim_id;
+                                a = node.aabb23_min_or_v2_and_addr2_or_prim_id.w;
                             else
                             {
-                                uint topush = s23.x < d ? a : node.addr2_or_prim_id;
+                                uint topush = s23.x < d ? a : node.aabb23_min_or_v2_and_addr2_or_prim_id.w;
                                 d = min(s23.x, d);
-                                a = topush == a ? node.addr2_or_prim_id : a;
+                                a = topush == a ? node.aabb23_min_or_v2_and_addr2_or_prim_id.w : a;
                                 stack_push(lds_stack, &lds_sptr, lds_stack_bottom, stack, &sptr, topush);
                             }
                         }
@@ -420,12 +405,12 @@ KERNEL void occluded_main(
                         if (traverse_c3)
                         {
                             if (a == INVALID_ADDR)
-                                a = node.addr3;
+                                a = node.aabb23_max_and_addr3.w;
                             else
                             {
-                                uint topush = s23.y < d ? a : node.addr3;
+                                uint topush = s23.y < d ? a : node.aabb23_max_and_addr3.w;
                                 d = min(s23.y, d);
-                                a = topush == a ? node.addr3 : a;
+                                a = topush == a ? node.aabb23_max_and_addr3.w : a;
                                 stack_push(lds_stack, &lds_sptr, lds_stack_bottom, stack, &sptr, topush);
                             }
                         }
@@ -438,9 +423,9 @@ KERNEL void occluded_main(
                 {
                     float t = fast_intersect_triangle(
                         myRay,
-                        as_float3(node.aabb01_min_or_v0),
-                        as_float3(node.aabb01_max_or_v1),
-                        as_float3(node.aabb23_min_or_v2),
+                        as_float3(node.aabb01_min_or_v0_and_addr0.xyz),
+                        as_float3(node.aabb01_max_or_v1_and_addr1_or_mesh_id.xyz),
+                        as_float3(node.aabb23_min_or_v2_and_addr2_or_prim_id.xyz),
                         closest_t);
 
                     if (t < closest_t)
@@ -465,6 +450,7 @@ KERNEL void occluded_main(
                 }
             }
 
+            // Check if we have found an intersection
             hits[index] = (closest_addr != INVALID_ADDR ? HIT_MARKER : MISS_MARKER);
         }
     }
