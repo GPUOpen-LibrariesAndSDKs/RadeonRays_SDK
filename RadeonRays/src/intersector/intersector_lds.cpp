@@ -92,6 +92,7 @@ namespace RadeonRays
         }
         else
         {
+            // TODO: implement (gboisse)
             assert(device->GetPlatform() == Calc::Platform::kVulkan);
             m_gpuData->executable = m_device->CompileExecutable("../RadeonRays/src/kernels/GLSL/bvh2.comp", nullptr, 0, buildopts.c_str());
         }
@@ -155,7 +156,6 @@ namespace RadeonRays
             // TODO: deal with the instance stuff (gboisse)
             m_bvh->Build(shapes.begin(), firstinst);
 
-            // TODO: what if we don't want to use fp16? (gboisse)
             QBvhTranslator translator;
             translator.Process(*m_bvh);
 
