@@ -23,9 +23,7 @@ THE SOFTWARE.
 
 #include "calc.h"
 #include "device.h"
-#include "event.h"
 #include "intersector.h"
-#include "world/world.h"
 
 namespace RadeonRays
 {
