@@ -33,8 +33,6 @@
 #include "../except/except.h"
 
 #include <algorithm>
-#include <chrono>
-#include <Windows.h>
 
 // Preferred work group size for Radeon devices
 static int const kWorkGroupSize = 64;
@@ -263,20 +261,7 @@ namespace RadeonRays
                 }
             }
 
-            // TODO: remove me (gboisse)
-#if 1
-            auto start = std::chrono::high_resolution_clock::now();
-#endif
-
             m_bvh->Build(&bounds[0], numfaces);
-
-            // TODO: remove me (gboisse)
-#if 1
-            char buf[1024];
-            auto delta = std::chrono::high_resolution_clock::now() - start;
-            snprintf(buf, sizeof(buf), "Pure build time %.3f ms\n", static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(delta).count()) / 1000.0);
-            OutputDebugStringA(buf);
-#endif
 
 #ifdef RR_PROFILE
             m_bvh->PrintStatistics(std::cout);
