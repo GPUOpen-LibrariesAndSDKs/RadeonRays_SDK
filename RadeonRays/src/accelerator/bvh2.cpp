@@ -456,7 +456,7 @@ namespace RadeonRays
             auto rsa = mm_select(
                 aabb_surface_area(right_min[i], right_max[i]), 0);
 
-            auto s = static_cast<float>(kTraversalCost) + (lc * lsa + rc * rsa) * area_inv;
+            auto s = m_traversal_cost + (lc * lsa + rc * rsa) * area_inv;
 
             if (s < sah)
             {
