@@ -93,7 +93,7 @@ INLINE half4 fast_intersect_bbox2(uint3 pmin, uint3 pmax, half3 invdir, half3 ox
     return (half4)(t0, t1);
 }
 
-void stack_push(
+INLINE void stack_push(
     __local uint *lds_stack,
     __private uint *lds_sptr,
     uint lds_stack_bottom,
