@@ -50,13 +50,7 @@ namespace RadeonRays
         // Build function
         template <typename Iter>
         void Build(Iter begin, Iter end);
-
-        void Clear()
-        {
-            Deallocate(m_nodes);
-            m_nodes = nullptr;
-            m_nodecount = 0;
-        }
+        void Clear();
 
         inline Node *GetNode(std::size_t idx) const;
         inline std::size_t GetSizeInBytes() const;
@@ -245,20 +239,11 @@ namespace RadeonRays
 
             for (std::size_t face_index = 0; face_index < mesh->num_faces(); ++face_index, ++current_face)
             {
-                auto face = mesh->GetFaceData()[face_index];
+                bbox bounds;
+                mesh->GetFaceBounds(face_index, false, bounds);
 
-                auto load_vertex = [&](int idx)
-                {
-                    const float3 vertex = mesh->GetVertexData()[idx];
-                    return _mm_set_ps(vertex.w, vertex.z, vertex.y, vertex.x);
-                };
-
-                auto v0 = load_vertex(face.idx[0]);
-                auto v1 = load_vertex(face.idx[1]);
-                auto v2 = load_vertex(face.idx[2]);
-
-                auto pmin = _mm_min_ps(_mm_min_ps(v0, v1), v2);
-                auto pmax = _mm_max_ps(_mm_max_ps(v0, v1), v2);
+                auto pmin = _mm_set_ps(bounds.pmin.w, bounds.pmin.z, bounds.pmin.y, bounds.pmin.x);
+                auto pmax = _mm_set_ps(bounds.pmax.w, bounds.pmax.z, bounds.pmax.y, bounds.pmax.x);
                 auto centroid = _mm_mul_ps(
                     _mm_add_ps(pmin, pmax),
                     _mm_set_ps(0.5f, 0.5f, 0.5f, 0.5f));

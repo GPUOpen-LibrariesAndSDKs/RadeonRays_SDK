@@ -123,6 +123,15 @@ namespace RadeonRays
         std::uint32_t index;
     };
 
+    void Bvh2::Clear()
+    {
+        for (auto i = 0u; i < m_nodecount; ++i)
+            m_nodes[i].~Node();
+        Deallocate(m_nodes);
+        m_nodes = nullptr;
+        m_nodecount = 0;
+    }
+
     void Bvh2::BuildImpl(
         __m128 scene_min,
         __m128 scene_max,
@@ -140,6 +149,9 @@ namespace RadeonRays
         m_nodecount = 2 * num_aabbs - 1;
         m_nodes = reinterpret_cast<Node*>(
             Allocate(sizeof(Node) * m_nodecount, 16u));
+
+        for (auto i = 0u; i < m_nodecount; ++i)
+            new (&m_nodes[i]) Node;
 
         auto constexpr inf = std::numeric_limits<float>::infinity();
         auto m128_plus_inf = _mm_set_ps(inf, inf, inf, inf);
