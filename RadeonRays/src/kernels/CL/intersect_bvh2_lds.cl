@@ -22,9 +22,6 @@ THE SOFTWARE.
 
 #pragma OPENCL EXTENSION cl_khr_fp16 : enable
 
-// TODO: remove me (gboisse)
-#define BLA hits[index].prim_id = 1; hits[index].shape_id = 1; hits[index].uvwt = (float4)(0.5f, 0.5f, 0.0f, 1.0f); return;
-
 /*************************************************************************
 INCLUDES
 **************************************************************************/
@@ -59,8 +56,8 @@ typedef struct
 INLINE half2 unpackFloat2x16(uint v)
 {
     return (half2)
-        (as_half(convert_ushort(v >> 16)),
-         as_half(convert_ushort(v & 0xFFFF)));
+        (as_half(convert_ushort(v & 0xffffu)),
+         as_half(convert_ushort(v >> 16)));
 }
 
 INLINE half4 fast_intersect_bbox2(uint3 pmin, uint3 pmax, half3 invdir, half3 oxinvdir, float t_max)
