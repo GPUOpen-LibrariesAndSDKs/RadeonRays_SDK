@@ -82,7 +82,19 @@ namespace RadeonRays
 #endif
 
 #ifndef RR_EMBED_KERNELS
-        // TODO: add implementation (gboisse)
+        if (device->GetPlatform() == Calc::Platform::kOpenCL)
+        {
+            const char *headers[] = { "../RadeonRays/src/kernels/CL/common.cl" };
+
+            int numheaders = sizeof(headers) / sizeof(const char *);
+
+            m_gpuData->executable = m_device->CompileExecutable("../RadeonRays/src/kernels/CL/intersect_bvh2_lds.cl", headers, numheaders, buildopts.c_str());
+        }
+        else
+        {
+            assert(device->GetPlatform() == Calc::Platform::kVulkan);
+            m_gpuData->executable = m_device->CompileExecutable("../RadeonRays/src/kernels/GLSL/bvh2.comp", nullptr, 0, buildopts.c_str());
+        }
 #else
 #if USE_OPENCL
         if (device->GetPlatform() == Calc::Platform::kOpenCL)
