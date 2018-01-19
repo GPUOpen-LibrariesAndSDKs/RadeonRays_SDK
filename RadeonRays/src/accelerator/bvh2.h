@@ -332,10 +332,12 @@ namespace RadeonRays
         std::pair<const Mesh *, std::size_t> ref)
     {
         auto mesh = ref.first;
+        matrix worldmat, worldmatinv;
+        mesh->GetTransform(worldmat, worldmatinv);
         auto face = mesh->GetFaceData()[ref.second];
-        auto v0 = mesh->GetVertexData()[face.idx[0]];
-        auto v1 = mesh->GetVertexData()[face.idx[1]];
-        auto v2 = mesh->GetVertexData()[face.idx[2]];
+        auto v0 = transform_point(mesh->GetVertexData()[face.idx[0]], worldmat);
+        auto v1 = transform_point(mesh->GetVertexData()[face.idx[1]], worldmat);
+        auto v2 = transform_point(mesh->GetVertexData()[face.idx[2]], worldmat);
         node.aabb_left_min_or_v0[0] = v0.x;
         node.aabb_left_min_or_v0[1] = v0.y;
         node.aabb_left_min_or_v0[2] = v0.z;
