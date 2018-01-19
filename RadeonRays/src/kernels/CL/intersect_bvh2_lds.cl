@@ -308,8 +308,6 @@ KERNEL void occluded_main(
     // Hit results: 1 for hit and -1 for miss
     GLOBAL int *hits)
 {
-    // TODO: this is a copy/paste of the intersect function; implement properly (gboisse)
-
     uint index = get_global_id(0);
     uint local_index = get_local_id(0);
 
@@ -427,8 +425,8 @@ KERNEL void occluded_main(
 
                     if (t < closest_t)
                     {
-                        closest_t = t;
-                        closest_addr = addr;
+                        hits[index] = HIT_MARKER;
+                        return;
                     }
                 }
 
@@ -447,8 +445,8 @@ KERNEL void occluded_main(
                 }
             }
 
-            // Check if we have found an intersection
-            hits[index] = (closest_addr != INVALID_ADDR ? HIT_MARKER : MISS_MARKER);
+            // Finished traversal, but no intersection found
+            hits[index] = MISS_MARKER;
         }
     }
 }
