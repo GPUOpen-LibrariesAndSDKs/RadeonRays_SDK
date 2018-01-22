@@ -130,10 +130,10 @@ namespace RadeonRays
         if (device->GetPlatform() == Calc::Platform::kVulkan)
         {
             // TODO: implement vulkan kernels (gboisse)
-            if (m_gpudata->bvh_prog.executable == nullptr)
-                m_gpuData->executable = m_device->CompileExecutable(g_bvh2_vulkan, std::strlen(g_bvh2_vulkan), buildopts.c_str());
+            if (m_gpuData->bvh_prog.executable == nullptr)
+                m_gpuData->bvh_prog.executable = m_device->CompileExecutable(g_bvh2_vulkan, std::strlen(g_bvh2_vulkan), buildopts.c_str());
             if (m_gpuData->qbvh_prog.executable == nullptr)
-                m_gpuData->executable = m_device->CompileExecutable(g_bvh2_fp16_vulkan, std::strlen(g_bvh2_fp16_vulkan), buildopts.c_str());
+                m_gpuData->qbvh_prog.executable = m_device->CompileExecutable(g_bvh2_fp16_vulkan, std::strlen(g_bvh2_fp16_vulkan), buildopts.c_str());
         }
 #endif
 #endif
