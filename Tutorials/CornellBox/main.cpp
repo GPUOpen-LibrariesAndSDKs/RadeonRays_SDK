@@ -25,8 +25,8 @@ THE SOFTWARE.
 #include <cassert>
 #include <iostream>
 #include <memory>
-#include "../tools/shader_manager.h"
-#include "../tools/tiny_obj_loader.h"
+#include "../Tools/shader_manager.h"
+#include "../Tools/tiny_obj_loader.h"
 
 using namespace RadeonRays;
 using namespace tinyobj;
@@ -208,7 +208,7 @@ int main(int argc, char* argv[])
         api->AttachShape(shape);
         shape->SetId(id);
     }
-    // Ñommit scene changes
+    // Commit scene changes
     api->Commit();
 
     const int k_raypack_size = g_window_height * g_window_width;
