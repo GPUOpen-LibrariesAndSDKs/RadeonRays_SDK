@@ -84,7 +84,7 @@ namespace RadeonRays
         // Node traversal cost
         float m_traversal_cost;
         // Number of spatial bins to use for SAH
-        int m_num_bins;
+        uint32_t m_num_bins;
 
         static void *Allocate(std::size_t size, std::size_t alignment)
         {

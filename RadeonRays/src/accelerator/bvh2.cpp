@@ -27,8 +27,25 @@ THE SOFTWARE.
 
 #define PARALLEL_BUILD
 
+// Macro for allocating 16-byte aligned stack memory
+#define STACK_ALLOC(COUNT, TYPE) static_cast<TYPE *>(Align(16, (COUNT) * sizeof(TYPE), alloca(RoundUp(16, (COUNT) * sizeof(TYPE)))))
+
 namespace RadeonRays
 {
+    inline
+    std::size_t RoundUp(std::size_t alignment, std::size_t size)
+    {
+        return (size + alignment - 1) & ~(alignment - 1);
+    }
+
+    inline
+    void *Align(std::size_t alignment, std::size_t size, void *ptr)
+    {
+        std::size_t space;
+        void *aligned_ptr = std::align(alignment, RoundUp(alignment, size), ptr, space);
+        return aligned_ptr;
+    }
+
 #ifdef __GNUC__
     #define clz(x) __builtin_clz(x)
     #define ctz(x) __builtin_ctz(x)
@@ -314,14 +331,13 @@ namespace RadeonRays
     {
         auto sah = std::numeric_limits<float>::max();
 
-        // TODO: should use the args passed at construction time (gboisse)
-        auto constexpr kNumBins = 64u;
-        std::uint32_t bin_count[kNumBins];
-        _MM_ALIGN16 __m128 bin_min[kNumBins];
-        _MM_ALIGN16 __m128 bin_max[kNumBins];
+        // Allocate stack memory
+        auto bin_count = STACK_ALLOC(m_num_bins, std::uint32_t);
+        auto bin_min = STACK_ALLOC(m_num_bins, __m128);
+        auto bin_max = STACK_ALLOC(m_num_bins, __m128);
 
         auto constexpr inf = std::numeric_limits<float>::infinity();
-        for (auto i = 0u; i < kNumBins; ++i)
+        for (auto i = 0u; i < m_num_bins; ++i)
         {
             bin_count[i] = 0;
             bin_min[i] = _mm_set_ps(inf, inf, inf, inf);
@@ -346,8 +362,8 @@ namespace RadeonRays
 
         auto full4 = request.num_refs & ~0x3;
         auto num_bins = _mm_set_ps(
-            static_cast<float>(kNumBins), static_cast<float>(kNumBins),
-            static_cast<float>(kNumBins), static_cast<float>(kNumBins));
+            static_cast<float>(m_num_bins), static_cast<float>(m_num_bins),
+            static_cast<float>(m_num_bins), static_cast<float>(m_num_bins));
 
         for (auto i = request.start_index;
             i < request.start_index + full4;
@@ -369,10 +385,10 @@ namespace RadeonRays
                     _mm_sub_ps(c, centroid_min),
                     centroid_extent_inv), num_bins);
 
-            auto bin_idx0 = std::min(static_cast<uint32_t>(mm_select(bin_idx, 0u)), kNumBins - 1);
-            auto bin_idx1 = std::min(static_cast<uint32_t>(mm_select(bin_idx, 1u)), kNumBins - 1);
-            auto bin_idx2 = std::min(static_cast<uint32_t>(mm_select(bin_idx, 2u)), kNumBins - 1);
-            auto bin_idx3 = std::min(static_cast<uint32_t>(mm_select(bin_idx, 3u)), kNumBins - 1);
+            auto bin_idx0 = std::min(static_cast<uint32_t>(mm_select(bin_idx, 0u)), m_num_bins - 1);
+            auto bin_idx1 = std::min(static_cast<uint32_t>(mm_select(bin_idx, 1u)), m_num_bins - 1);
+            auto bin_idx2 = std::min(static_cast<uint32_t>(mm_select(bin_idx, 2u)), m_num_bins - 1);
+            auto bin_idx3 = std::min(static_cast<uint32_t>(mm_select(bin_idx, 3u)), m_num_bins - 1);
 
             ++bin_count[bin_idx0];
             ++bin_count[bin_idx1];
@@ -411,9 +427,9 @@ namespace RadeonRays
         {
             auto idx = refs[i];
             auto bin_idx = std::min(static_cast<uint32_t>(
-                kNumBins *
+                m_num_bins *
                 (aabb_centroid[idx][axis] - cm) *
-                cei), kNumBins - 1);
+                cei), m_num_bins - 1);
             ++bin_count[bin_idx];
 
             bin_min[bin_idx] = _mm_min_ps(
@@ -424,12 +440,12 @@ namespace RadeonRays
                 _mm_load_ps(&aabb_max[idx].x));
         }
 
-        _MM_ALIGN16 __m128 right_min[kNumBins - 1];
-        _MM_ALIGN16 __m128 right_max[kNumBins - 1];
+        auto right_min = STACK_ALLOC(m_num_bins - 1, __m128);
+        auto right_max = STACK_ALLOC(m_num_bins - 1, __m128);
         auto tmp_min = _mm_set_ps(inf, inf, inf, inf);
         auto tmp_max = _mm_set_ps(-inf, -inf, -inf, -inf);
 
-        for (auto i = kNumBins - 1; i > 0; --i)
+        for (auto i = m_num_bins - 1; i > 0; --i)
         {
             tmp_min = _mm_min_ps(tmp_min, bin_min[i]);
             tmp_max = _mm_max_ps(tmp_max, bin_max[i]);
@@ -444,7 +460,7 @@ namespace RadeonRays
         auto  rc = request.num_refs;
 
         auto split_idx = -1;
-        for (auto i = 0u; i < kNumBins - 1; ++i)
+        for (auto i = 0u; i < m_num_bins - 1; ++i)
         {
             tmp_min = _mm_min_ps(tmp_min, bin_min[i]);
             tmp_max = _mm_max_ps(tmp_max, bin_max[i]);
@@ -465,7 +481,7 @@ namespace RadeonRays
             }
         }
 
-        return mm_select(centroid_min, 0u) + (split_idx + 1) * (mm_select(centroid_extent, 0u) / kNumBins);
+        return mm_select(centroid_min, 0u) + (split_idx + 1) * (mm_select(centroid_extent, 0u) / m_num_bins);
     }
 
     Bvh2::NodeType Bvh2::HandleRequest(
