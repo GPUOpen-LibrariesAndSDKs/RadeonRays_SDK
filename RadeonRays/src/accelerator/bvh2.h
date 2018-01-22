@@ -289,11 +289,11 @@ namespace RadeonRays
             num_items);
 
         // We set 1 AABB for each node during BVH build process,
-        // however our resulting structure keeps two AABBs for 
-        // left and right child nodes in the parent node. To 
-        // convert 1 AABB per node -> 2 AABBs for child nodes 
-        // we need to traverse the tree pulling child node AABBs 
-        // into their parent node. That's exactly what PropagateBounds 
+        // however our resulting structure keeps two AABBs for
+        // left and right child nodes in the parent node. To
+        // convert 1 AABB per node -> 2 AABBs for child nodes
+        // we need to traverse the tree pulling child node AABBs
+        // into their parent node. That's exactly what PropagateBounds
         // is doing.
         PropagateBounds(*this);
     }
