@@ -123,7 +123,7 @@ namespace RadeonRays
         if (device->GetPlatform() == Calc::Platform::kOpenCL)
         {
             m_gpuData->bvh_prog.executable = m_device->CompileExecutable(g_intersect_bvh2_lds_opencl, std::strlen(g_intersect_bvh2_lds_opencl), buildopts.c_str());
-            m_gpuData->qbvh_prog.executable = m_device->CompileExecutable(g_intersect_bvh2_lds_fp16_opencl, std::strlen(g_intersect_bvh2_lds_opencl), buildopts.c_str());
+            m_gpuData->qbvh_prog.executable = m_device->CompileExecutable(g_intersect_bvh2_lds_fp16_opencl, std::strlen(g_intersect_bvh2_lds_fp16_opencl), buildopts.c_str());
         }
 #endif
 #if USE_VULKAN
@@ -161,7 +161,7 @@ namespace RadeonRays
             auto nbins = world.options_.GetOption("bvh.sah.num_bins");
             auto tcost = world.options_.GetOption("bvh.sah.traversal_cost");
 
-            bool use_qbvh = true, use_sah = false;
+            bool use_qbvh = false, use_sah = false;
             int num_bins = (nbins ? static_cast<int>(nbins->AsFloat()) : 64);
             float traversal_cost = (tcost ? tcost->AsFloat() : 10.0f);
 
@@ -207,7 +207,7 @@ namespace RadeonRays
 
                 // Copy BVH data
                 for (std::size_t i = 0; i < bvh.m_nodecount; ++i)
-                    bvhdata[i++] = bvh.m_nodes[i];
+                    bvhdata[i] = bvh.m_nodes[i];
 
                 // Unmap gpu data
                 m_device->UnmapBuffer(m_gpuData->bvh, 0, bvhdata, &e);
