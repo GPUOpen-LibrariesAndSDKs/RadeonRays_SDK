@@ -39,8 +39,6 @@ TYPE DEFINITIONS
 // BVH node
 typedef struct
 {
-    // TODO: add explanatory comment (gboisse)
-
     float4 aabb_left_min_or_v0_and_addr_left;
     float4 aabb_left_max_or_v1_and_mesh_id;
     float4 aabb_right_min_or_v2_and_addr_right;

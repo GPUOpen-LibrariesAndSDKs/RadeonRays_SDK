@@ -199,7 +199,7 @@ namespace RadeonRays
         std::size_t num_items = 0;
         for (auto iter = begin; iter != end; ++iter)
         {
-            // TODO: how to deal with quads? create 2 trianles?? (gboisse)
+            // Quads are deprecated and no longer supported
             assert(static_cast<const Mesh *>(*iter)->puretriangle());
             num_items += static_cast<const Mesh *>(*iter)->num_faces();
         }

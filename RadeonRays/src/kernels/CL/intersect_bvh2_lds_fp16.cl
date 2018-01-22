@@ -41,8 +41,6 @@ TYPE DEFINITIONS
 // BVH node
 typedef struct
 {
-    // TODO: add explanatory comment (gboisse)
-
     uint4 aabb01_min_or_v0_and_addr0;
     uint4 aabb01_max_or_v1_and_addr1_or_mesh_id;
     uint4 aabb23_min_or_v2_and_addr2_or_prim_id;

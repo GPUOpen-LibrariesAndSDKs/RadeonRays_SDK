@@ -113,7 +113,7 @@ namespace RadeonRays
         }
         else
         {
-            // TODO: implement (gboisse)
+            // TODO: implement vulkan kernels (gboisse)
             assert(device->GetPlatform() == Calc::Platform::kVulkan);
             m_gpuData->bvh_prog.executable = m_device->CompileExecutable("../RadeonRays/src/kernels/GLSL/bvh2.comp", nullptr, 0, buildopts.c_str());
             m_gpuData->qbvh_prog.executable = m_device->CompileExecutable("../RadeonRays/src/kernels/GLSL/bvh2_fp16.comp", nullptr, 0, buildopts.c_str());
@@ -129,7 +129,7 @@ namespace RadeonRays
 #if USE_VULKAN
         if (device->GetPlatform() == Calc::Platform::kVulkan)
         {
-            // TODO: implement (gboisse)
+            // TODO: implement vulkan kernels (gboisse)
             if (m_gpudata->bvh_prog.executable == nullptr)
                 m_gpuData->executable = m_device->CompileExecutable(g_bvh2_vulkan, std::strlen(g_bvh2_vulkan), buildopts.c_str());
             if (m_gpuData->qbvh_prog.executable == nullptr)
