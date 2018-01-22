@@ -177,18 +177,7 @@ namespace RadeonRays
 
             // Create the bvh
             Bvh2 bvh(traversal_cost, num_bins, use_sah);
-
-            // Partition the array into meshes and instances
-            std::vector<const Shape *> shapes(world.shapes_);
-
-            auto firstinst = std::partition(shapes.begin(), shapes.end(),
-                [&](Shape const* shape)
-                {
-                    return !static_cast<ShapeImpl const*>(shape)->is_instance();
-                });
-
-            // TODO: deal with the instance stuff (gboisse)
-            bvh.Build(shapes.begin(), firstinst);
+            bvh.Build(world.shapes_.begin(), world.shapes_.end());
 
             // Upload BVH data to GPU memory
             if (!use_qbvh)

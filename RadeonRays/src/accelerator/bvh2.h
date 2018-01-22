@@ -199,9 +199,13 @@ namespace RadeonRays
         std::size_t num_items = 0;
         for (auto iter = begin; iter != end; ++iter)
         {
+            auto shape = static_cast<const ShapeImpl *>(*iter);
+            auto mesh = static_cast<const Mesh *>(shape->is_instance() ? static_cast<const Instance *>(shape)->GetBaseShape() : shape);
+
             // Quads are deprecated and no longer supported
-            assert(static_cast<const Mesh *>(*iter)->puretriangle());
-            num_items += static_cast<const Mesh *>(*iter)->num_faces();
+            assert(mesh->puretriangle());
+
+            num_items += mesh->num_faces();
         }
 
         auto deleter = [](void *ptr) { Deallocate(ptr); };
@@ -234,12 +238,24 @@ namespace RadeonRays
         std::size_t current_face = 0;
         for (auto iter = begin; iter != end; ++iter)
         {
-            auto mesh = static_cast<const Mesh *>(*iter);
+            auto shape = static_cast<const ShapeImpl *>(*iter);
+            auto isinstance = shape->is_instance();
+            auto mesh = static_cast<const Mesh *>(isinstance ? static_cast<const Instance *>(shape)->GetBaseShape() : shape);
+
+            matrix m, minv;
+            shape->GetTransform(m, minv);
 
             for (std::size_t face_index = 0; face_index < mesh->num_faces(); ++face_index, ++current_face)
             {
                 bbox bounds;
-                mesh->GetFaceBounds(face_index, false, bounds);
+                mesh->GetFaceBounds(face_index, isinstance, bounds);
+
+                // Instance is using its own transform for base shape geometry
+                // so we need to get object space bounds and transform them manually
+                if(isinstance)
+                {
+                    bounds = transform_bbox(bounds, m);
+                }
 
                 auto pmin = _mm_set_ps(bounds.pmin.w, bounds.pmin.z, bounds.pmin.y, bounds.pmin.x);
                 auto pmax = _mm_set_ps(bounds.pmax.w, bounds.pmax.z, bounds.pmax.y, bounds.pmax.x);
