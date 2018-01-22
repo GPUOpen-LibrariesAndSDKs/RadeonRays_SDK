@@ -71,7 +71,6 @@ namespace RadeonRays
     IntersectorLDS::IntersectorLDS(Calc::Device *device)
         : Intersector(device)
         , m_gpuData(new GpuData(device))
-        , m_bvh(nullptr)
     {
         std::string buildopts;
 #ifdef RR_RAY_MASK
@@ -119,22 +118,28 @@ namespace RadeonRays
     void IntersectorLDS::Process(const World &world)
     {
         // If something has been changed we need to rebuild BVH
-        if (!m_bvh || world.has_changed() || world.GetStateChange() != ShapeImpl::kStateChangeNone)
+        if (!m_gpuData->bvh || world.has_changed() || world.GetStateChange() != ShapeImpl::kStateChangeNone)
         {
             // Free previous data
-            if (m_bvh)
+            if (m_gpuData->bvh)
             {
                 m_device->DeleteBuffer(m_gpuData->bvh);
             }
 
             // Look up build options for world
+            auto type = world.options_.GetOption("bvh.type");
             auto builder = world.options_.GetOption("bvh.builder");
             auto nbins = world.options_.GetOption("bvh.sah.num_bins");
             auto tcost = world.options_.GetOption("bvh.sah.traversal_cost");
 
-            bool use_sah = false;
+            bool use_qbvh = true, use_sah = false;
             int num_bins = (nbins ? static_cast<int>(nbins->AsFloat()) : 64);
             float traversal_cost = (tcost ? tcost->AsFloat() : 10.0f);
+
+            if (type && type->AsString() == "qbvh")
+            {
+                use_qbvh = true;
+            }
 
             if (builder && builder->AsString() == "sah")
             {
@@ -142,7 +147,7 @@ namespace RadeonRays
             }
 
             // Create the bvh
-            m_bvh.reset(new Bvh2(traversal_cost, num_bins, use_sah));
+            Bvh2 bvh(traversal_cost, num_bins, use_sah);
 
             // Partition the array into meshes and instances
             std::vector<const Shape *> shapes(world.shapes_);
@@ -154,34 +159,62 @@ namespace RadeonRays
                 });
 
             // TODO: deal with the instance stuff (gboisse)
-            m_bvh->Build(shapes.begin(), firstinst);
+            bvh.Build(shapes.begin(), firstinst);
 
-            QBvhTranslator translator;
-            translator.Process(*m_bvh);
+            // Upload BVH data to GPU memory
+            if (!use_qbvh)
+            {
+                auto bvh_size_in_bytes = bvh.GetSizeInBytes();
+                m_gpuData->bvh = m_device->CreateBuffer(bvh_size_in_bytes, Calc::BufferType::kRead);
 
-            // Update GPU data
-            auto bvh_size_in_bytes = translator.GetSizeInBytes();
-            m_gpuData->bvh = m_device->CreateBuffer(bvh_size_in_bytes, Calc::BufferType::kRead);
+                // Get the pointer to mapped data
+                Calc::Event *e = nullptr;
+                Bvh2::Node *bvhdata = nullptr;
 
-            // Get the pointer to mapped data
-            Calc::Event *e = nullptr;
-            QBvhTranslator::Node *bvhdata = nullptr;
+                m_device->MapBuffer(m_gpuData->bvh, 0, 0, bvh_size_in_bytes, Calc::MapType::kMapWrite, (void **)&bvhdata, &e);
 
-            m_device->MapBuffer(m_gpuData->bvh, 0, 0, bvh_size_in_bytes, Calc::MapType::kMapWrite, (void **)&bvhdata, &e);
+                e->Wait();
+                m_device->DeleteEvent(e);
 
-            e->Wait();
-            m_device->DeleteEvent(e);
+                // Copy BVH data
+                for (std::size_t i = 0; i < bvh.m_nodecount; ++i)
+                    bvhdata[i++] = bvh.m_nodes[i];
 
-            // Copy BVH data
-            std::size_t i = 0;
-            for (auto it = translator.nodes_.begin(); it != translator.nodes_.end(); ++it)
-                bvhdata[i++] = *it;
+                // Unmap gpu data
+                m_device->UnmapBuffer(m_gpuData->bvh, 0, bvhdata, &e);
 
-            // Unmap gpu data
-            m_device->UnmapBuffer(m_gpuData->bvh, 0, bvhdata, &e);
+                e->Wait();
+                m_device->DeleteEvent(e);
+            }
+            else
+            {
+                QBvhTranslator translator;
+                translator.Process(bvh);
 
-            e->Wait();
-            m_device->DeleteEvent(e);
+                // Update GPU data
+                auto bvh_size_in_bytes = translator.GetSizeInBytes();
+                m_gpuData->bvh = m_device->CreateBuffer(bvh_size_in_bytes, Calc::BufferType::kRead);
+
+                // Get the pointer to mapped data
+                Calc::Event *e = nullptr;
+                QBvhTranslator::Node *bvhdata = nullptr;
+
+                m_device->MapBuffer(m_gpuData->bvh, 0, 0, bvh_size_in_bytes, Calc::MapType::kMapWrite, (void **)&bvhdata, &e);
+
+                e->Wait();
+                m_device->DeleteEvent(e);
+
+                // Copy BVH data
+                std::size_t i = 0;
+                for (auto it = translator.nodes_.begin(); it != translator.nodes_.end(); ++it)
+                    bvhdata[i++] = *it;
+
+                // Unmap gpu data
+                m_device->UnmapBuffer(m_gpuData->bvh, 0, bvhdata, &e);
+
+                e->Wait();
+                m_device->DeleteEvent(e);
+            }
 
             // Make sure everything is committed
             m_device->Finish(0);

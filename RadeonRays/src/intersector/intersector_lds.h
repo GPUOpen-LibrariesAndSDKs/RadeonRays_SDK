@@ -52,7 +52,5 @@ namespace RadeonRays
 
         // Implementation data
         std::unique_ptr<GpuData> m_gpuData;
-        // Bvh data structure
-        std::unique_ptr<Bvh2> m_bvh;
     };
 }
