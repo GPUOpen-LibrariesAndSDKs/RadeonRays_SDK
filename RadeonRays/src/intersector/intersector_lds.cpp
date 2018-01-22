@@ -75,7 +75,7 @@ namespace RadeonRays
     {
         std::string buildopts;
 #ifdef RR_RAY_MASK
-        buildopts.append("-D RR_RAY_MASK ");    // TODO: what is this for?!? (gboisse)
+        buildopts.append("-D RR_RAY_MASK ");
 #endif
 #ifdef USE_SAFE_MATH
         buildopts.append("-D USE_SAFE_MATH ");
