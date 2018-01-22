@@ -71,7 +71,7 @@ project "RadeonRays"
 
         if _OPTIONS["use_vulkan"] then
             os.execute( "python ../Tools/scripts/stringify.py " ..
-                                os.getcwd() .. "../RadeonRays/src/kernels/GLSL/ "  ..
+                                os.getcwd() .. "./../RadeonRays/src/kernels/GLSL/ "  ..
                                 ".comp " ..
                                 "vulkan " ..
                                  "> ./src/kernelcache/kernels_vk.h"
