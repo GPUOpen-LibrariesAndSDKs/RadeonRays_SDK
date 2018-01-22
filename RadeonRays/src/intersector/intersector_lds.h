@@ -27,8 +27,6 @@ THE SOFTWARE.
 
 namespace RadeonRays
 {
-    class Bvh2;
-
     class IntersectorLDS : public Intersector
     {
     public:
