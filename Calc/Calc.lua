@@ -30,7 +30,9 @@ project "Calc"
     includedirs { ".", "./inc", "../CLW" }
     files { "../Calc/**.h", "../Calc/**.cpp"}
     
-	links {"CLW"}
+	if _OPTIONS["use_opencl"] then
+		links {"CLW"}
+	end
 
     configuration {"x32", "Debug"}
         targetdir "../../Bin/Debug/x86"
