@@ -433,7 +433,7 @@ KERNEL void intersect_main(
                 float3 const v3 = vertices[node.i2];
                 // Calculate hit position
                 float3 const p = r.o.xyz + r.d.xyz * t_max;
-                // Calculte barycentric coordinates
+                // Calculate barycentric coordinates
                 float2 const uv = triangle_calculate_barycentrics(p, v1, v2, v3);
                 // Update hit information
                 hits[global_id].shape_id = node.shape_id;

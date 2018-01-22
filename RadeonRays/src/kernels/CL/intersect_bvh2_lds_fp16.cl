@@ -284,7 +284,7 @@ KERNEL void intersect_main(
                 const bvh_node node = nodes[closest_addr];
                 const float3 p = myRay.o.xyz + closest_t * myRay.d.xyz;
 
-                // Calculte barycentric coordinates
+                // Calculate barycentric coordinates
                 const float2 uv = triangle_calculate_barycentrics(
                     p,
                     as_float3(node.aabb01_min_or_v0_and_addr0.xyz),
