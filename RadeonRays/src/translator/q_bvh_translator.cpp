@@ -202,7 +202,7 @@ namespace RadeonRays
 
         while (!stack.empty())
         {
-            auto node = bvh.GetNode(stack.top().bvh_node_index);
+            auto node = &bvh.m_nodes[stack.top().bvh_node_index];
             auto qbvh_node_index = stack.top().qbvh_node_index;
             stack.pop();
 
@@ -223,8 +223,8 @@ namespace RadeonRays
             auto c0idx = Bvh2::GetChildIndex(*node, 0);
             auto c1idx = Bvh2::GetChildIndex(*node, 1);
 
-            auto c0 = bvh.GetNode(c0idx);
-            auto c1 = bvh.GetNode(c1idx);
+            auto c0 = &bvh.m_nodes[c0idx];
+            auto c1 = &bvh.m_nodes[c1idx];
 
             if (Bvh2::IsInternal(*c0))
             {

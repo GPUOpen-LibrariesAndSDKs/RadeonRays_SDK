@@ -50,12 +50,10 @@ namespace RadeonRays
         // Build function
         template <typename Iter>
         void Build(Iter begin, Iter end);
+
         void Clear();
 
-        inline Node *GetNode(std::size_t idx) const;
         inline std::size_t GetSizeInBytes() const;
-        inline std::size_t nodecount() const;
-        inline Node &root() const;
 
     protected:
         using RefArray = std::vector<std::uint32_t>;
@@ -160,6 +158,7 @@ namespace RadeonRays
         Bvh2 &operator = (const Bvh2 &);
 
         friend class QBvhTranslator;
+        friend class IntersectorLDS;
 
         // Buffer of encoded nodes
         Node *m_nodes;
@@ -283,24 +282,9 @@ namespace RadeonRays
         PropagateBounds(*this);
     }
 
-    Bvh2::Node *Bvh2::GetNode(std::size_t idx) const
-    {
-        return m_nodes + idx;
-    }
-
     std::size_t Bvh2::GetSizeInBytes() const
     {
         return m_nodecount * sizeof(Node);
-    }
-
-    std::size_t Bvh2::nodecount() const
-    {
-        return m_nodecount;
-    }
-
-    Bvh2::Node &Bvh2::root() const
-    {
-        return m_nodes[0];
     }
 
     void Bvh2::EncodeLeaf(
@@ -377,7 +361,7 @@ namespace RadeonRays
             s.pop();
 
             // Fetch the node
-            auto node = bvh.GetNode(idx);
+            auto node = &bvh.m_nodes[idx];
 
             if (IsInternal(*node))
             {
@@ -385,8 +369,8 @@ namespace RadeonRays
                 auto idx0 = GetChildIndex(*node, 0);
                 auto idx1 = GetChildIndex(*node, 1);
 
-                auto child0 = bvh.GetNode(idx0);
-                auto child1 = bvh.GetNode(idx1);
+                auto child0 = &bvh.m_nodes[idx0];
+                auto child1 = &bvh.m_nodes[idx1];
 
                 // If the child is internal node itself we pull it
                 // up the tree into its parent. If the child node is
