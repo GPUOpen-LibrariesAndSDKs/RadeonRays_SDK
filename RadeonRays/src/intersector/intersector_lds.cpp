@@ -37,6 +37,30 @@ namespace RadeonRays
 
     struct IntersectorLDS::GpuData
     {
+        struct Program
+        {
+            Program(Calc::Device *device)
+                : device(device)
+                , executable(nullptr)
+                , isect_func(nullptr)
+                , occlude_func(nullptr)
+            {
+            }
+
+            ~Program()
+            {
+                executable->DeleteFunction(isect_func);
+                executable->DeleteFunction(occlude_func);
+                device->DeleteExecutable(executable);
+            }
+
+            Calc::Device *device;
+
+            Calc::Executable *executable;
+            Calc::Function *isect_func;
+            Calc::Function *occlude_func;
+        };
+
         // Device
         Calc::Device *device;
         // BVH nodes
@@ -44,17 +68,17 @@ namespace RadeonRays
         // Traversal stack
         Calc::Buffer *stack;
 
-        Calc::Executable *executable;
-        Calc::Function *isect_func;
-        Calc::Function *occlude_func;
+        Program *prog;
+        Program bvh_prog;
+        Program qbvh_prog;
 
         GpuData(Calc::Device *device)
             : device(device)
             , bvh(nullptr)
             , stack(nullptr)
-            , executable(nullptr)
-            , isect_func(nullptr)
-            , occlude_func(nullptr)
+            , prog(nullptr)
+            , bvh_prog(device)
+            , qbvh_prog(device)
         {
         }
 
@@ -62,9 +86,6 @@ namespace RadeonRays
         {
             device->DeleteBuffer(bvh);
             device->DeleteBuffer(stack);
-            executable->DeleteFunction(isect_func);
-            executable->DeleteFunction(occlude_func);
-            device->DeleteExecutable(executable);
         }
     };
 
@@ -87,32 +108,40 @@ namespace RadeonRays
 
             int numheaders = sizeof(headers) / sizeof(const char *);
 
-            m_gpuData->executable = m_device->CompileExecutable("../RadeonRays/src/kernels/CL/intersect_bvh2_lds.cl", headers, numheaders, buildopts.c_str());
+            m_gpuData->bvh_prog.executable = m_device->CompileExecutable("../RadeonRays/src/kernels/CL/intersect_bvh2_lds.cl", headers, numheaders, buildopts.c_str());
+            m_gpuData->qbvh_prog.executable = m_device->CompileExecutable("../RadeonRays/src/kernels/CL/intersect_bvh2_lds_fp16.cl", headers, numheaders, buildopts.c_str());
         }
         else
         {
             // TODO: implement (gboisse)
             assert(device->GetPlatform() == Calc::Platform::kVulkan);
-            m_gpuData->executable = m_device->CompileExecutable("../RadeonRays/src/kernels/GLSL/bvh2.comp", nullptr, 0, buildopts.c_str());
+            m_gpuData->bvh_prog.executable = m_device->CompileExecutable("../RadeonRays/src/kernels/GLSL/bvh2.comp", nullptr, 0, buildopts.c_str());
+            m_gpuData->qbvh_prog.executable = m_device->CompileExecutable("../RadeonRays/src/kernels/GLSL/bvh2_fp16.comp", nullptr, 0, buildopts.c_str());
         }
 #else
 #if USE_OPENCL
         if (device->GetPlatform() == Calc::Platform::kOpenCL)
         {
-            m_gpuData->executable = m_device->CompileExecutable(g_intersect_bvh2_lds_opencl, std::strlen(g_intersect_bvh2_lds_opencl), buildopts.c_str());
+            m_gpuData->bvh_prog.executable = m_device->CompileExecutable(g_intersect_bvh2_lds_opencl, std::strlen(g_intersect_bvh2_lds_opencl), buildopts.c_str());
+            m_gpuData->qbvh_prog.executable = m_device->CompileExecutable(g_intersect_bvh2_lds_fp16_opencl, std::strlen(g_intersect_bvh2_lds_opencl), buildopts.c_str());
         }
 #endif
 #if USE_VULKAN
-        if (m_gpudata->executable == nullptr && device->GetPlatform() == Calc::Platform::kVulkan)
+        if (device->GetPlatform() == Calc::Platform::kVulkan)
         {
             // TODO: implement (gboisse)
-            m_gpuData->executable = m_device->CompileExecutable(g_bvh2_vulkan, std::strlen(g_bvh2_vulkan), buildopts.c_str());
+            if (m_gpudata->bvh_prog.executable == nullptr)
+                m_gpuData->executable = m_device->CompileExecutable(g_bvh2_vulkan, std::strlen(g_bvh2_vulkan), buildopts.c_str());
+            if (m_gpuData->qbvh_prog.executable == nullptr)
+                m_gpuData->executable = m_device->CompileExecutable(g_bvh2_fp16_vulkan, std::strlen(g_bvh2_fp16_vulkan), buildopts.c_str());
         }
 #endif
 #endif
 
-        m_gpuData->isect_func = m_gpuData->executable->CreateFunction("intersect_main");
-        m_gpuData->occlude_func = m_gpuData->executable->CreateFunction("occluded_main");
+        m_gpuData->bvh_prog.isect_func = m_gpuData->bvh_prog.executable->CreateFunction("intersect_main");
+        m_gpuData->qbvh_prog.isect_func = m_gpuData->qbvh_prog.executable->CreateFunction("intersect_main");
+        m_gpuData->bvh_prog.occlude_func = m_gpuData->bvh_prog.executable->CreateFunction("occluded_main");
+        m_gpuData->qbvh_prog.occlude_func = m_gpuData->qbvh_prog.executable->CreateFunction("occluded_main");
     }
 
     void IntersectorLDS::Process(const World &world)
@@ -185,6 +214,9 @@ namespace RadeonRays
 
                 e->Wait();
                 m_device->DeleteEvent(e);
+
+                // Select intersection program
+                m_gpuData->prog = &m_gpuData->bvh_prog;
             }
             else
             {
@@ -214,6 +246,9 @@ namespace RadeonRays
 
                 e->Wait();
                 m_device->DeleteEvent(e);
+
+                // Select intersection program
+                m_gpuData->prog = &m_gpuData->qbvh_prog;
             }
 
             // Make sure everything is committed
@@ -234,7 +269,8 @@ namespace RadeonRays
             m_gpuData->stack = m_device->CreateBuffer(stack_size, Calc::BufferType::kWrite);
         }
 
-        auto &func = m_gpuData->isect_func;
+        assert(m_gpuData->prog);
+        auto &func = m_gpuData->prog->isect_func;
 
         // Set args
         int arg = 0;
@@ -264,7 +300,8 @@ namespace RadeonRays
             m_gpuData->stack = m_device->CreateBuffer(stack_size, Calc::BufferType::kWrite);
         }
 
-        auto &func = m_gpuData->occlude_func;
+        assert(m_gpuData->prog);
+        auto &func = m_gpuData->prog->occlude_func;
 
         // Set args
         int arg = 0;
