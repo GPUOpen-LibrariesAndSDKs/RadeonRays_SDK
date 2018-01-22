@@ -1,4 +1,5 @@
 #version 430
+#extension GL_AMD_gpu_shader_half_float : require
 
 // Note Anvil define system assumes first line is alway a #version so don't rearrange
 
@@ -24,4 +25,73 @@
 // THE SOFTWARE.
 //
 
-layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+#define INVALID_ADDR 0xffffffffu
+#define INTERNAL_NODE(node) ((node).addr0 != INVALID_ADDR)
+
+#define GROUP_SIZE 64
+#define STACK_SIZE 32
+#define LDS_STACK_SIZE 16
+
+struct BvhNode
+{
+    uvec3 aabb01_min_or_v0;
+    uint addr0;
+    uvec3 aabb01_max_or_v1;
+    uint addr1_or_mesh_id;
+    uvec3 aabb23_min_or_v2;
+    uint addr2_or_prim_id;
+    uvec3 aabb23_max;
+    uint addr3;
+};
+
+struct Intersection
+{
+    int shape_id;
+    int prim_id;
+    ivec2 padding;
+    vec4 uvwt;
+};
+
+struct ray
+{
+    vec4 o;
+    vec4 d;
+    ivec2 extra;
+    ivec2 padding;
+};
+
+layout(std140, binding = 0) buffer restrict readonly NodesBlock
+{
+    BvhNode Nodes[];
+};
+
+layout(std140, binding = 1) buffer restrict readonly RaysBlock
+{
+    ray Rays[];
+};
+
+layout(std140, binding = 2) buffer restrict readonly NumraysBlock
+{
+    int Numrays;
+};
+
+layout(std430, binding = 3) buffer StackBlock
+{
+    int Stack[];
+};
+
+layout(std430, binding = 4) buffer restrict writeonly HitsBlock
+{
+    Intersection Hits[];
+};
+
+layout(std430, binding = 4) buffer restrict writeonly HitsResults
+{
+    int Hitresults[];
+};
+
+layout(local_size_x = GROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
+
+shared uint lds_stack[GROUP_SIZE * LDS_STACK_SIZE];
+
+// TODO: implement traversal kernels (gboisse)
