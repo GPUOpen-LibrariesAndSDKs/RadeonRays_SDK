@@ -51,9 +51,9 @@ struct BvhNode
 
 struct Intersection
 {
-    int shape_id;
-    int prim_id;
-    ivec2 padding;
+    uint shape_id;
+    uint prim_id;
+    uvec2 padding;
     vec4 uvwt;
 };
 
