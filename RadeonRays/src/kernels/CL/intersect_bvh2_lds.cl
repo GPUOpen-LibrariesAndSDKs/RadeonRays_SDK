@@ -81,17 +81,17 @@ KERNEL void intersect_main(
     // Handle only working subset
     if (index < *num_rays)
     {
-        const ray myRay = rays[index];
+        const ray my_ray = rays[index];
 
-        if (ray_is_active(&myRay))
+        if (ray_is_active(&my_ray))
         {
             __local uint lds_stack[GROUP_SIZE * LDS_STACK_SIZE];
 
-            const float3 invDir = safe_invdir(myRay);
-            const float3 oxInvDir = -myRay.o.xyz * invDir;
+            const float3 invDir = safe_invdir(my_ray);
+            const float3 oxInvDir = -my_ray.o.xyz * invDir;
 
             // Intersection parametric distance
-            float closest_t = myRay.o.w;
+            float closest_t = my_ray.o.w;
 
             // Current node address
             uint addr = 0;
@@ -161,7 +161,7 @@ KERNEL void intersect_main(
                 else
                 {
                     float t = fast_intersect_triangle(
-                        myRay,
+                        my_ray,
                         node.aabb_left_min_or_v0_and_addr_left.xyz,
                         node.aabb_left_max_or_v1_and_mesh_id.xyz,
                         node.aabb_right_min_or_v2_and_addr_right.xyz,
@@ -194,7 +194,7 @@ KERNEL void intersect_main(
             {
                 // Calculate hit position
                 const bvh_node node = nodes[closest_addr];
-                const float3 p = myRay.o.xyz + closest_t * myRay.d.xyz;
+                const float3 p = my_ray.o.xyz + closest_t * my_ray.d.xyz;
 
                 // Calculate barycentric coordinates
                 const float2 uv = triangle_calculate_barycentrics(
@@ -237,17 +237,17 @@ KERNEL void occluded_main(
     // Handle only working subset
     if (index < *num_rays)
     {
-        const ray myRay = rays[index];
+        const ray my_ray = rays[index];
 
-        if (ray_is_active(&myRay))
+        if (ray_is_active(&my_ray))
         {
             __local uint lds_stack[GROUP_SIZE * LDS_STACK_SIZE];
 
-            const float3 invDir = safe_invdir(myRay);
-            const float3 oxInvDir = -myRay.o.xyz * invDir;
+            const float3 invDir = safe_invdir(my_ray);
+            const float3 oxInvDir = -my_ray.o.xyz * invDir;
 
             // Intersection parametric distance
-            float closest_t = myRay.o.w;
+            float closest_t = my_ray.o.w;
 
             // Current node address
             uint addr = 0;
@@ -317,7 +317,7 @@ KERNEL void occluded_main(
                 else
                 {
                     float t = fast_intersect_triangle(
-                        myRay,
+                        my_ray,
                         node.aabb_left_min_or_v0_and_addr_left.xyz,
                         node.aabb_left_max_or_v1_and_mesh_id.xyz,
                         node.aabb_right_min_or_v2_and_addr_right.xyz,

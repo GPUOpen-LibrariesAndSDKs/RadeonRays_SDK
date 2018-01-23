@@ -146,19 +146,19 @@ KERNEL void intersect_main(
     // Handle only working subset
     if (index < *num_rays)
     {
-        const ray myRay = rays[index];
+        const ray my_ray = rays[index];
 
-        if (ray_is_active(&myRay))
+        if (ray_is_active(&my_ray))
         {
             __local uint lds_stack[GROUP_SIZE * LDS_STACK_SIZE];
 
             // Precompute inverse direction and origin / dir for bbox testing
-            const float3 invDir32 = safe_invdir2(myRay);
+            const float3 invDir32 = safe_invdir2(my_ray);
             const half3 invDir = convert_half3(invDir32);
-            const half3 oxInvDir = convert_half3(-myRay.o.xyz * invDir32);
+            const half3 oxInvDir = convert_half3(-my_ray.o.xyz * invDir32);
 
             // Intersection parametric distance
-            float closest_t = myRay.o.w;
+            float closest_t = my_ray.o.w;
 
             // Current node address
             uint addr = 0;
@@ -249,7 +249,7 @@ KERNEL void intersect_main(
                 else
                 {
                     float t = fast_intersect_triangle(
-                        myRay,
+                        my_ray,
                         as_float3(node.aabb01_min_or_v0_and_addr0.xyz),
                         as_float3(node.aabb01_max_or_v1_and_addr1_or_mesh_id.xyz),
                         as_float3(node.aabb23_min_or_v2_and_addr2_or_prim_id.xyz),
@@ -282,7 +282,7 @@ KERNEL void intersect_main(
             {
                 // Calculate hit position
                 const bvh_node node = nodes[closest_addr];
-                const float3 p = myRay.o.xyz + closest_t * myRay.d.xyz;
+                const float3 p = my_ray.o.xyz + closest_t * my_ray.d.xyz;
 
                 // Calculate barycentric coordinates
                 const float2 uv = triangle_calculate_barycentrics(
@@ -325,19 +325,19 @@ KERNEL void occluded_main(
     // Handle only working subset
     if (index < *num_rays)
     {
-        const ray myRay = rays[index];
+        const ray my_ray = rays[index];
 
-        if (ray_is_active(&myRay))
+        if (ray_is_active(&my_ray))
         {
             __local uint lds_stack[GROUP_SIZE * LDS_STACK_SIZE];
 
             // Precompute inverse direction and origin / dir for bbox testing
-            const float3 invDir32 = safe_invdir2(myRay);
+            const float3 invDir32 = safe_invdir2(my_ray);
             const half3 invDir = convert_half3(invDir32);
-            const half3 oxInvDir = convert_half3(-myRay.o.xyz * invDir32);
+            const half3 oxInvDir = convert_half3(-my_ray.o.xyz * invDir32);
 
             // Intersection parametric distance
-            float closest_t = myRay.o.w;
+            float closest_t = my_ray.o.w;
 
             // Current node address
             uint addr = 0;
@@ -428,7 +428,7 @@ KERNEL void occluded_main(
                 else
                 {
                     float t = fast_intersect_triangle(
-                        myRay,
+                        my_ray,
                         as_float3(node.aabb01_min_or_v0_and_addr0.xyz),
                         as_float3(node.aabb01_max_or_v1_and_addr1_or_mesh_id.xyz),
                         as_float3(node.aabb23_min_or_v2_and_addr2_or_prim_id.xyz),

@@ -91,7 +91,7 @@ namespace RadeonRays
 
     IntersectorLDS::IntersectorLDS(Calc::Device *device)
         : Intersector(device)
-        , m_gpuData(new GpuData(device))
+        , m_gpudata(new GpuData(device))
     {
         std::string buildopts;
 #ifdef RR_RAY_MASK
@@ -108,49 +108,49 @@ namespace RadeonRays
 
             int numheaders = sizeof(headers) / sizeof(const char *);
 
-            m_gpuData->bvh_prog.executable = m_device->CompileExecutable("../RadeonRays/src/kernels/CL/intersect_bvh2_lds.cl", headers, numheaders, buildopts.c_str());
-            m_gpuData->qbvh_prog.executable = m_device->CompileExecutable("../RadeonRays/src/kernels/CL/intersect_bvh2_lds_fp16.cl", headers, numheaders, buildopts.c_str());
+            m_gpudata->bvh_prog.executable = m_device->CompileExecutable("../RadeonRays/src/kernels/CL/intersect_bvh2_lds.cl", headers, numheaders, buildopts.c_str());
+            m_gpudata->qbvh_prog.executable = m_device->CompileExecutable("../RadeonRays/src/kernels/CL/intersect_bvh2_lds_fp16.cl", headers, numheaders, buildopts.c_str());
         }
         else
         {
             assert(device->GetPlatform() == Calc::Platform::kVulkan);
-            m_gpuData->bvh_prog.executable = m_device->CompileExecutable("../RadeonRays/src/kernels/GLSL/bvh2.comp", nullptr, 0, buildopts.c_str());
-            m_gpuData->qbvh_prog.executable = m_device->CompileExecutable("../RadeonRays/src/kernels/GLSL/bvh2_fp16.comp", nullptr, 0, buildopts.c_str());
+            m_gpudata->bvh_prog.executable = m_device->CompileExecutable("../RadeonRays/src/kernels/GLSL/bvh2.comp", nullptr, 0, buildopts.c_str());
+            m_gpudata->qbvh_prog.executable = m_device->CompileExecutable("../RadeonRays/src/kernels/GLSL/bvh2_fp16.comp", nullptr, 0, buildopts.c_str());
         }
 #else
 #if USE_OPENCL
         if (device->GetPlatform() == Calc::Platform::kOpenCL)
         {
-            m_gpuData->bvh_prog.executable = m_device->CompileExecutable(g_intersect_bvh2_lds_opencl, std::strlen(g_intersect_bvh2_lds_opencl), buildopts.c_str());
-            m_gpuData->qbvh_prog.executable = m_device->CompileExecutable(g_intersect_bvh2_lds_fp16_opencl, std::strlen(g_intersect_bvh2_lds_fp16_opencl), buildopts.c_str());
+            m_gpudata->bvh_prog.executable = m_device->CompileExecutable(g_intersect_bvh2_lds_opencl, std::strlen(g_intersect_bvh2_lds_opencl), buildopts.c_str());
+            m_gpudata->qbvh_prog.executable = m_device->CompileExecutable(g_intersect_bvh2_lds_fp16_opencl, std::strlen(g_intersect_bvh2_lds_fp16_opencl), buildopts.c_str());
         }
 #endif
 #if USE_VULKAN
         if (device->GetPlatform() == Calc::Platform::kVulkan)
         {
-            if (m_gpuData->bvh_prog.executable == nullptr)
-                m_gpuData->bvh_prog.executable = m_device->CompileExecutable(g_bvh2_vulkan, std::strlen(g_bvh2_vulkan), buildopts.c_str());
-            if (m_gpuData->qbvh_prog.executable == nullptr)
-                m_gpuData->qbvh_prog.executable = m_device->CompileExecutable(g_bvh2_fp16_vulkan, std::strlen(g_bvh2_fp16_vulkan), buildopts.c_str());
+            if (m_gpudata->bvh_prog.executable == nullptr)
+                m_gpudata->bvh_prog.executable = m_device->CompileExecutable(g_bvh2_vulkan, std::strlen(g_bvh2_vulkan), buildopts.c_str());
+            if (m_gpudata->qbvh_prog.executable == nullptr)
+                m_gpudata->qbvh_prog.executable = m_device->CompileExecutable(g_bvh2_fp16_vulkan, std::strlen(g_bvh2_fp16_vulkan), buildopts.c_str());
         }
 #endif
 #endif
 
-        m_gpuData->bvh_prog.isect_func = m_gpuData->bvh_prog.executable->CreateFunction("intersect_main");
-        m_gpuData->qbvh_prog.isect_func = m_gpuData->qbvh_prog.executable->CreateFunction("intersect_main");
-        m_gpuData->bvh_prog.occlude_func = m_gpuData->bvh_prog.executable->CreateFunction("occluded_main");
-        m_gpuData->qbvh_prog.occlude_func = m_gpuData->qbvh_prog.executable->CreateFunction("occluded_main");
+        m_gpudata->bvh_prog.isect_func = m_gpudata->bvh_prog.executable->CreateFunction("intersect_main");
+        m_gpudata->qbvh_prog.isect_func = m_gpudata->qbvh_prog.executable->CreateFunction("intersect_main");
+        m_gpudata->bvh_prog.occlude_func = m_gpudata->bvh_prog.executable->CreateFunction("occluded_main");
+        m_gpudata->qbvh_prog.occlude_func = m_gpudata->qbvh_prog.executable->CreateFunction("occluded_main");
     }
 
     void IntersectorLDS::Process(const World &world)
     {
         // If something has been changed we need to rebuild BVH
-        if (!m_gpuData->bvh || world.has_changed() || world.GetStateChange() != ShapeImpl::kStateChangeNone)
+        if (!m_gpudata->bvh || world.has_changed() || world.GetStateChange() != ShapeImpl::kStateChangeNone)
         {
             // Free previous data
-            if (m_gpuData->bvh)
+            if (m_gpudata->bvh)
             {
-                m_device->DeleteBuffer(m_gpuData->bvh);
+                m_device->DeleteBuffer(m_gpudata->bvh);
             }
 
             // Look up build options for world
@@ -183,13 +183,13 @@ namespace RadeonRays
             if (!use_qbvh)
             {
                 auto bvh_size_in_bytes = bvh.GetSizeInBytes();
-                m_gpuData->bvh = m_device->CreateBuffer(bvh_size_in_bytes, Calc::BufferType::kRead);
+                m_gpudata->bvh = m_device->CreateBuffer(bvh_size_in_bytes, Calc::BufferType::kRead);
 
                 // Get the pointer to mapped data
                 Calc::Event *e = nullptr;
                 Bvh2::Node *bvhdata = nullptr;
 
-                m_device->MapBuffer(m_gpuData->bvh, 0, 0, bvh_size_in_bytes, Calc::MapType::kMapWrite, (void **)&bvhdata, &e);
+                m_device->MapBuffer(m_gpudata->bvh, 0, 0, bvh_size_in_bytes, Calc::MapType::kMapWrite, (void **)&bvhdata, &e);
 
                 e->Wait();
                 m_device->DeleteEvent(e);
@@ -199,13 +199,13 @@ namespace RadeonRays
                     bvhdata[i] = bvh.m_nodes[i];
 
                 // Unmap gpu data
-                m_device->UnmapBuffer(m_gpuData->bvh, 0, bvhdata, &e);
+                m_device->UnmapBuffer(m_gpudata->bvh, 0, bvhdata, &e);
 
                 e->Wait();
                 m_device->DeleteEvent(e);
 
                 // Select intersection program
-                m_gpuData->prog = &m_gpuData->bvh_prog;
+                m_gpudata->prog = &m_gpudata->bvh_prog;
             }
             else
             {
@@ -214,13 +214,13 @@ namespace RadeonRays
 
                 // Update GPU data
                 auto bvh_size_in_bytes = translator.GetSizeInBytes();
-                m_gpuData->bvh = m_device->CreateBuffer(bvh_size_in_bytes, Calc::BufferType::kRead);
+                m_gpudata->bvh = m_device->CreateBuffer(bvh_size_in_bytes, Calc::BufferType::kRead);
 
                 // Get the pointer to mapped data
                 Calc::Event *e = nullptr;
                 QBvhTranslator::Node *bvhdata = nullptr;
 
-                m_device->MapBuffer(m_gpuData->bvh, 0, 0, bvh_size_in_bytes, Calc::MapType::kMapWrite, (void **)&bvhdata, &e);
+                m_device->MapBuffer(m_gpudata->bvh, 0, 0, bvh_size_in_bytes, Calc::MapType::kMapWrite, (void **)&bvhdata, &e);
 
                 e->Wait();
                 m_device->DeleteEvent(e);
@@ -231,13 +231,13 @@ namespace RadeonRays
                     bvhdata[i++] = *it;
 
                 // Unmap gpu data
-                m_device->UnmapBuffer(m_gpuData->bvh, 0, bvhdata, &e);
+                m_device->UnmapBuffer(m_gpudata->bvh, 0, bvhdata, &e);
 
                 e->Wait();
                 m_device->DeleteEvent(e);
 
                 // Select intersection program
-                m_gpuData->prog = &m_gpuData->qbvh_prog;
+                m_gpudata->prog = &m_gpudata->qbvh_prog;
             }
 
             // Make sure everything is committed
@@ -252,22 +252,22 @@ namespace RadeonRays
         std::size_t stack_size = 4 * max_rays * kMaxStackSize;
 
         // Check if we need to reallocate memory
-        if (!m_gpuData->stack || stack_size > m_gpuData->stack->GetSize())
+        if (!m_gpudata->stack || stack_size > m_gpudata->stack->GetSize())
         {
-            m_device->DeleteBuffer(m_gpuData->stack);
-            m_gpuData->stack = m_device->CreateBuffer(stack_size, Calc::BufferType::kWrite);
+            m_device->DeleteBuffer(m_gpudata->stack);
+            m_gpudata->stack = m_device->CreateBuffer(stack_size, Calc::BufferType::kWrite);
         }
 
-        assert(m_gpuData->prog);
-        auto &func = m_gpuData->prog->isect_func;
+        assert(m_gpudata->prog);
+        auto &func = m_gpudata->prog->isect_func;
 
         // Set args
         int arg = 0;
 
-        func->SetArg(arg++, m_gpuData->bvh);
+        func->SetArg(arg++, m_gpudata->bvh);
         func->SetArg(arg++, rays);
         func->SetArg(arg++, num_rays);
-        func->SetArg(arg++, m_gpuData->stack);
+        func->SetArg(arg++, m_gpudata->stack);
         func->SetArg(arg++, hits);
 
         std::size_t localsize = kWorkGroupSize;
@@ -283,22 +283,22 @@ namespace RadeonRays
         std::size_t stack_size = 4 * max_rays * kMaxStackSize;
 
         // Check if we need to reallocate memory
-        if (!m_gpuData->stack || stack_size > m_gpuData->stack->GetSize())
+        if (!m_gpudata->stack || stack_size > m_gpudata->stack->GetSize())
         {
-            m_device->DeleteBuffer(m_gpuData->stack);
-            m_gpuData->stack = m_device->CreateBuffer(stack_size, Calc::BufferType::kWrite);
+            m_device->DeleteBuffer(m_gpudata->stack);
+            m_gpudata->stack = m_device->CreateBuffer(stack_size, Calc::BufferType::kWrite);
         }
 
-        assert(m_gpuData->prog);
-        auto &func = m_gpuData->prog->occlude_func;
+        assert(m_gpudata->prog);
+        auto &func = m_gpudata->prog->occlude_func;
 
         // Set args
         int arg = 0;
 
-        func->SetArg(arg++, m_gpuData->bvh);
+        func->SetArg(arg++, m_gpudata->bvh);
         func->SetArg(arg++, rays);
         func->SetArg(arg++, num_rays);
-        func->SetArg(arg++, m_gpuData->stack);
+        func->SetArg(arg++, m_gpudata->stack);
         func->SetArg(arg++, hits);
 
         std::size_t localsize = kWorkGroupSize;

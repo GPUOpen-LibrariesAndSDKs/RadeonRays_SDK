@@ -186,12 +186,12 @@ void intersect_main()
     // Handle only working subset
     if (index >= Numrays) return;
 
-    ray myRay = Rays[index];
-    vec3 invDir = safe_invdir(myRay.d.xyz);
-    vec3 oxInvDir = -myRay.o.xyz * invDir;
+    ray my_ray = Rays[index];
+    vec3 invDir = safe_invdir(my_ray.d.xyz);
+    vec3 oxInvDir = -my_ray.o.xyz * invDir;
 
     // Intersection parametric distance
-    float closest_t = myRay.o.w;
+    float closest_t = my_ray.o.w;
 
     // Current node address
     uint addr = 0;
@@ -261,7 +261,7 @@ void intersect_main()
         else
         {
             float t = fast_intersect_triangle(
-                myRay,
+                my_ray,
                 node.aabb_left_min_or_v0,
                 node.aabb_left_max_or_v1,
                 node.aabb_right_min_or_v2,
@@ -299,7 +299,7 @@ void intersect_main()
     {
         // Calculate hit position
         BvhNode node = Nodes[closest_addr];
-        vec3 p = myRay.o.xyz + closest_t * myRay.d.xyz;
+        vec3 p = my_ray.o.xyz + closest_t * my_ray.d.xyz;
 
         // Calculate barycentric coordinates
         isect.uvwt.xy = calculate_barycentrics(
@@ -332,12 +332,12 @@ void occluded_main()
     // Handle only working subset
     if (index >= Numrays) return;
 
-    ray myRay = Rays[index];
-    vec3 invDir = safe_invdir(myRay.d.xyz);
-    vec3 oxInvDir = -myRay.o.xyz * invDir;
+    ray my_ray = Rays[index];
+    vec3 invDir = safe_invdir(my_ray.d.xyz);
+    vec3 oxInvDir = -my_ray.o.xyz * invDir;
 
     // Intersection parametric distance
-    float closest_t = myRay.o.w;
+    float closest_t = my_ray.o.w;
 
     // Current node address
     uint addr = 0;
@@ -407,7 +407,7 @@ void occluded_main()
         else
         {
             float t = fast_intersect_triangle(
-                myRay,
+                my_ray,
                 node.aabb_left_min_or_v0,
                 node.aabb_left_max_or_v1,
                 node.aabb_right_min_or_v2,

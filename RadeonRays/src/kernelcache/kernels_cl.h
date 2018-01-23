@@ -2534,17 +2534,17 @@ static const char g_intersect_bvh2_lds_opencl[]= \
 "    // Handle only working subset \n"\
 "    if (index < *num_rays) \n"\
 "    { \n"\
-"        const ray myRay = rays[index]; \n"\
+"        const ray my_ray = rays[index]; \n"\
 " \n"\
-"        if (ray_is_active(&myRay)) \n"\
+"        if (ray_is_active(&my_ray)) \n"\
 "        { \n"\
 "            __local uint lds_stack[GROUP_SIZE * LDS_STACK_SIZE]; \n"\
 " \n"\
-"            const float3 invDir = safe_invdir(myRay); \n"\
-"            const float3 oxInvDir = -myRay.o.xyz * invDir; \n"\
+"            const float3 invDir = safe_invdir(my_ray); \n"\
+"            const float3 oxInvDir = -my_ray.o.xyz * invDir; \n"\
 " \n"\
 "            // Intersection parametric distance \n"\
-"            float closest_t = myRay.o.w; \n"\
+"            float closest_t = my_ray.o.w; \n"\
 " \n"\
 "            // Current node address \n"\
 "            uint addr = 0; \n"\
@@ -2614,7 +2614,7 @@ static const char g_intersect_bvh2_lds_opencl[]= \
 "                else \n"\
 "                { \n"\
 "                    float t = fast_intersect_triangle( \n"\
-"                        myRay, \n"\
+"                        my_ray, \n"\
 "                        node.aabb_left_min_or_v0_and_addr_left.xyz, \n"\
 "                        node.aabb_left_max_or_v1_and_mesh_id.xyz, \n"\
 "                        node.aabb_right_min_or_v2_and_addr_right.xyz, \n"\
@@ -2647,7 +2647,7 @@ static const char g_intersect_bvh2_lds_opencl[]= \
 "            { \n"\
 "                // Calculate hit position \n"\
 "                const bvh_node node = nodes[closest_addr]; \n"\
-"                const float3 p = myRay.o.xyz + closest_t * myRay.d.xyz; \n"\
+"                const float3 p = my_ray.o.xyz + closest_t * my_ray.d.xyz; \n"\
 " \n"\
 "                // Calculate barycentric coordinates \n"\
 "                const float2 uv = triangle_calculate_barycentrics( \n"\
@@ -2690,17 +2690,17 @@ static const char g_intersect_bvh2_lds_opencl[]= \
 "    // Handle only working subset \n"\
 "    if (index < *num_rays) \n"\
 "    { \n"\
-"        const ray myRay = rays[index]; \n"\
+"        const ray my_ray = rays[index]; \n"\
 " \n"\
-"        if (ray_is_active(&myRay)) \n"\
+"        if (ray_is_active(&my_ray)) \n"\
 "        { \n"\
 "            __local uint lds_stack[GROUP_SIZE * LDS_STACK_SIZE]; \n"\
 " \n"\
-"            const float3 invDir = safe_invdir(myRay); \n"\
-"            const float3 oxInvDir = -myRay.o.xyz * invDir; \n"\
+"            const float3 invDir = safe_invdir(my_ray); \n"\
+"            const float3 oxInvDir = -my_ray.o.xyz * invDir; \n"\
 " \n"\
 "            // Intersection parametric distance \n"\
-"            float closest_t = myRay.o.w; \n"\
+"            float closest_t = my_ray.o.w; \n"\
 " \n"\
 "            // Current node address \n"\
 "            uint addr = 0; \n"\
@@ -2770,7 +2770,7 @@ static const char g_intersect_bvh2_lds_opencl[]= \
 "                else \n"\
 "                { \n"\
 "                    float t = fast_intersect_triangle( \n"\
-"                        myRay, \n"\
+"                        my_ray, \n"\
 "                        node.aabb_left_min_or_v0_and_addr_left.xyz, \n"\
 "                        node.aabb_left_max_or_v1_and_mesh_id.xyz, \n"\
 "                        node.aabb_right_min_or_v2_and_addr_right.xyz, \n"\
@@ -3201,19 +3201,19 @@ static const char g_intersect_bvh2_lds_fp16_opencl[]= \
 "    // Handle only working subset \n"\
 "    if (index < *num_rays) \n"\
 "    { \n"\
-"        const ray myRay = rays[index]; \n"\
+"        const ray my_ray = rays[index]; \n"\
 " \n"\
-"        if (ray_is_active(&myRay)) \n"\
+"        if (ray_is_active(&my_ray)) \n"\
 "        { \n"\
 "            __local uint lds_stack[GROUP_SIZE * LDS_STACK_SIZE]; \n"\
 " \n"\
 "            // Precompute inverse direction and origin / dir for bbox testing \n"\
-"            const float3 invDir32 = safe_invdir2(myRay); \n"\
+"            const float3 invDir32 = safe_invdir2(my_ray); \n"\
 "            const half3 invDir = convert_half3(invDir32); \n"\
-"            const half3 oxInvDir = convert_half3(-myRay.o.xyz * invDir32); \n"\
+"            const half3 oxInvDir = convert_half3(-my_ray.o.xyz * invDir32); \n"\
 " \n"\
 "            // Intersection parametric distance \n"\
-"            float closest_t = myRay.o.w; \n"\
+"            float closest_t = my_ray.o.w; \n"\
 " \n"\
 "            // Current node address \n"\
 "            uint addr = 0; \n"\
@@ -3304,7 +3304,7 @@ static const char g_intersect_bvh2_lds_fp16_opencl[]= \
 "                else \n"\
 "                { \n"\
 "                    float t = fast_intersect_triangle( \n"\
-"                        myRay, \n"\
+"                        my_ray, \n"\
 "                        as_float3(node.aabb01_min_or_v0_and_addr0.xyz), \n"\
 "                        as_float3(node.aabb01_max_or_v1_and_addr1_or_mesh_id.xyz), \n"\
 "                        as_float3(node.aabb23_min_or_v2_and_addr2_or_prim_id.xyz), \n"\
@@ -3337,7 +3337,7 @@ static const char g_intersect_bvh2_lds_fp16_opencl[]= \
 "            { \n"\
 "                // Calculate hit position \n"\
 "                const bvh_node node = nodes[closest_addr]; \n"\
-"                const float3 p = myRay.o.xyz + closest_t * myRay.d.xyz; \n"\
+"                const float3 p = my_ray.o.xyz + closest_t * my_ray.d.xyz; \n"\
 " \n"\
 "                // Calculate barycentric coordinates \n"\
 "                const float2 uv = triangle_calculate_barycentrics( \n"\
@@ -3380,19 +3380,19 @@ static const char g_intersect_bvh2_lds_fp16_opencl[]= \
 "    // Handle only working subset \n"\
 "    if (index < *num_rays) \n"\
 "    { \n"\
-"        const ray myRay = rays[index]; \n"\
+"        const ray my_ray = rays[index]; \n"\
 " \n"\
-"        if (ray_is_active(&myRay)) \n"\
+"        if (ray_is_active(&my_ray)) \n"\
 "        { \n"\
 "            __local uint lds_stack[GROUP_SIZE * LDS_STACK_SIZE]; \n"\
 " \n"\
 "            // Precompute inverse direction and origin / dir for bbox testing \n"\
-"            const float3 invDir32 = safe_invdir2(myRay); \n"\
+"            const float3 invDir32 = safe_invdir2(my_ray); \n"\
 "            const half3 invDir = convert_half3(invDir32); \n"\
-"            const half3 oxInvDir = convert_half3(-myRay.o.xyz * invDir32); \n"\
+"            const half3 oxInvDir = convert_half3(-my_ray.o.xyz * invDir32); \n"\
 " \n"\
 "            // Intersection parametric distance \n"\
-"            float closest_t = myRay.o.w; \n"\
+"            float closest_t = my_ray.o.w; \n"\
 " \n"\
 "            // Current node address \n"\
 "            uint addr = 0; \n"\
@@ -3483,7 +3483,7 @@ static const char g_intersect_bvh2_lds_fp16_opencl[]= \
 "                else \n"\
 "                { \n"\
 "                    float t = fast_intersect_triangle( \n"\
-"                        myRay, \n"\
+"                        my_ray, \n"\
 "                        as_float3(node.aabb01_min_or_v0_and_addr0.xyz), \n"\
 "                        as_float3(node.aabb01_max_or_v1_and_addr1_or_mesh_id.xyz), \n"\
 "                        as_float3(node.aabb23_min_or_v2_and_addr2_or_prim_id.xyz), \n"\

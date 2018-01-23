@@ -49,6 +49,6 @@ namespace RadeonRays
         struct GpuData;
 
         // Implementation data
-        std::unique_ptr<GpuData> m_gpuData;
+        std::unique_ptr<GpuData> m_gpudata;
     };
 }
