@@ -2185,7 +2185,7 @@ static const char g_intersect_bvh2_bittrail_opencl[]= \
 "                float3 const v3 = vertices[node.i2]; \n"\
 "                // Calculate hit position \n"\
 "                float3 const p = r.o.xyz + r.d.xyz * t_max; \n"\
-"                // Calculte barycentric coordinates \n"\
+"                // Calculate barycentric coordinates \n"\
 "                float2 const uv = triangle_calculate_barycentrics(p, v1, v2, v3); \n"\
 "                // Update hit information \n"\
 "                hits[global_id].shape_id = node.shape_id; \n"\
@@ -2649,7 +2649,7 @@ static const char g_intersect_bvh2_lds_opencl[]= \
 "                const bvh_node node = nodes[closest_addr]; \n"\
 "                const float3 p = myRay.o.xyz + closest_t * myRay.d.xyz; \n"\
 " \n"\
-"                // Calculte barycentric coordinates \n"\
+"                // Calculate barycentric coordinates \n"\
 "                const float2 uv = triangle_calculate_barycentrics( \n"\
 "                    p, \n"\
 "                    node.aabb_left_min_or_v0_and_addr_left.xyz, \n"\
@@ -3339,7 +3339,7 @@ static const char g_intersect_bvh2_lds_fp16_opencl[]= \
 "                const bvh_node node = nodes[closest_addr]; \n"\
 "                const float3 p = myRay.o.xyz + closest_t * myRay.d.xyz; \n"\
 " \n"\
-"                // Calculte barycentric coordinates \n"\
+"                // Calculate barycentric coordinates \n"\
 "                const float2 uv = triangle_calculate_barycentrics( \n"\
 "                    p, \n"\
 "                    as_float3(node.aabb01_min_or_v0_and_addr0.xyz), \n"\
@@ -4201,7 +4201,7 @@ static const char g_intersect_bvh2_short_stack_opencl[]= \
 "                float3 const v3 = vertices[node.i2]; \n"\
 "                // Calculate hit position \n"\
 "                float3 const p = r.o.xyz + r.d.xyz * t_max; \n"\
-"                // Calculte barycentric coordinates \n"\
+"                // Calculate barycentric coordinates \n"\
 "                float2 const uv = triangle_calculate_barycentrics(p, v1, v2, v3); \n"\
 "                // Update hit information \n"\
 "                hits[global_id].shape_id = node.shape_id; \n"\
