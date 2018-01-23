@@ -186,7 +186,7 @@ void intersect_main()
     // Handle only working subset
     if (index >= Numrays) return;
 
-    ray myRay = Rays[index];    // TODO: VK:- SC SPIR-V module not valid: OpStore Pointer <id> '136's type does not match Object <id> '137's type. (gboisse)
+    ray myRay = Rays[index];
     vec3 invDir = safe_invdir(myRay.d.xyz);
     vec3 oxInvDir = -myRay.o.xyz * invDir;
 
@@ -289,7 +289,6 @@ void intersect_main()
         }
     }
 
-    // TODO: what, why?!? (gboisse)
     Intersection isect;
     isect.padding.x = 667;
     isect.padding.y = isect.padding.x;

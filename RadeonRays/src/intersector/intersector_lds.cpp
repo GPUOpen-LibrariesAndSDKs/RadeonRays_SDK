@@ -163,10 +163,12 @@ namespace RadeonRays
             int num_bins = (nbins ? static_cast<int>(nbins->AsFloat()) : 64);
             float traversal_cost = (tcost ? tcost->AsFloat() : 10.0f);
 
+#if 0
             if (type && type->AsString() == "qbvh")
             {
                 use_qbvh = true;
             }
+#endif
 
             if (builder && builder->AsString() == "sah")
             {

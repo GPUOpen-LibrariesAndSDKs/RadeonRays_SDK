@@ -121,7 +121,7 @@ namespace RadeonRays
                 {
                     if (m_intersector_string != "fatbvh")
                     {
-#if 0                   // TODO: my hack (gboisse)
+#if 0
                         m_intersector.reset(new IntersectorShortStack(m_device.get()));
                         m_intersector_string = "fatbvh";
 #else
