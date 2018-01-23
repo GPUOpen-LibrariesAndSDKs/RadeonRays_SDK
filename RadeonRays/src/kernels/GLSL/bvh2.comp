@@ -205,11 +205,9 @@ void intersect_main()
 
     lds_stack[lds_sptr++] = INVALID_ADDR;
 
-#if 0
-
     while (addr != INVALID_ADDR)
     {
-        BvhNode node = bvh[addr];
+        BvhNode node = Nodes[addr];
 
         if (INTERNAL_NODE(node))
         {
@@ -226,22 +224,28 @@ void intersect_main()
             bool traverse_c1 = (s1.x <= s1.y);
             bool c1first = traverse_c1 && (s0.x > s1.x);
 
-            if (traverse_c0 || traverse_c1) {
+            if (traverse_c0 || traverse_c1)
+            {
                 uint deferred = INVALID_ADDR;
 
-                if (c1first || !traverse_c0) {
+                if (c1first || !traverse_c0)
+                {
                     addr = node.addr_right;
                     deferred = node.addr_left;
                 }
-                else {
+                else
+                {
                     addr = node.addr_left;
                     deferred = node.addr_right;
                 }
 
-                if (traverse_c0 && traverse_c1) {
-                    if (lds_sptr - lds_stack_bottom >= LDS_STACK_SIZE) {
-                        for (int i = 1; i < LDS_STACK_SIZE; ++i) {
-                            stack[sptr + i] = lds_stack[lds_stack_bottom + i];
+                if (traverse_c0 && traverse_c1)
+                {
+                    if (lds_sptr - lds_stack_bottom >= LDS_STACK_SIZE)
+                    {
+                        for (int i = 1; i < LDS_STACK_SIZE; ++i)
+                        {
+                            Stack[sptr + i] = lds_stack[lds_stack_bottom + i];
                         }
 
                         sptr += LDS_STACK_SIZE;
@@ -254,7 +258,8 @@ void intersect_main()
                 continue;
             }
         }
-        else {
+        else
+        {
             float t = fast_intersect_triangle(
                 myRay,
                 node.aabb_left_min_or_v0,
@@ -262,7 +267,8 @@ void intersect_main()
                 node.aabb_right_min_or_v2,
                 closest_t);
 
-            if (t < closest_t) {
+            if (t < closest_t)
+            {
                 closest_t = t;
                 closest_addr = addr;
             }
@@ -270,18 +276,18 @@ void intersect_main()
 
         addr = lds_stack[--lds_sptr];
 
-        if (addr == INVALID_ADDR && sptr > stack_bottom) {
+        if (addr == INVALID_ADDR && sptr > stack_bottom)
+        {
             sptr -= LDS_STACK_SIZE;
-            for (int i = 1; i < LDS_STACK_SIZE; ++i) {
-                lds_stack[lds_stack_bottom + i] = stack[sptr + i];
+            for (int i = 1; i < LDS_STACK_SIZE; ++i)
+            {
+                lds_stack[lds_stack_bottom + i] = Stack[sptr + i];
             }
 
             lds_sptr = lds_stack_bottom + LDS_STACK_SIZE - 1;
             addr = lds_stack[lds_sptr];
         }
     }
-
-#endif
 
     // TODO: what, why?!? (gboisse)
     Intersection isect;
