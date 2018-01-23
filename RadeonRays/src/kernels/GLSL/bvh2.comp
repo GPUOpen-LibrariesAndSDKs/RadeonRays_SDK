@@ -327,4 +327,115 @@ void intersect_main()
 
 void occluded_main()
 {
+    uint index = gl_GlobalInvocationID.x;
+    uint local_index = gl_LocalInvocationID.x;
+
+    // Handle only working subset
+    if (index >= Numrays) return;
+
+    ray myRay = Rays[index];
+    vec3 invDir = safe_invdir(myRay.d.xyz);
+    vec3 oxInvDir = -myRay.o.xyz * invDir;
+
+    // Intersection parametric distance
+    float closest_t = myRay.o.w;
+
+    // Current node address
+    uint addr = 0;
+    // Current closest address
+    uint closest_addr = INVALID_ADDR;
+
+    uint stack_bottom = STACK_SIZE * index;
+    uint sptr = stack_bottom;
+    uint lds_stack_bottom = local_index * LDS_STACK_SIZE;
+    uint lds_sptr = lds_stack_bottom;
+
+    lds_stack[lds_sptr++] = INVALID_ADDR;
+
+    while (addr != INVALID_ADDR)
+    {
+        BvhNode node = Nodes[addr];
+
+        if (INTERNAL_NODE(node))
+        {
+            vec2 s0 = fast_intersect_aabb(
+                node.aabb_left_min_or_v0,
+                node.aabb_left_max_or_v1,
+                invDir, oxInvDir, closest_t);
+            vec2 s1 = fast_intersect_aabb(
+                node.aabb_right_min_or_v2,
+                node.aabb_right_max,
+                invDir, oxInvDir, closest_t);
+
+            bool traverse_c0 = (s0.x <= s0.y);
+            bool traverse_c1 = (s1.x <= s1.y);
+            bool c1first = traverse_c1 && (s0.x > s1.x);
+
+            if (traverse_c0 || traverse_c1)
+            {
+                uint deferred = INVALID_ADDR;
+
+                if (c1first || !traverse_c0)
+                {
+                    addr = node.addr_right;
+                    deferred = node.addr_left;
+                }
+                else
+                {
+                    addr = node.addr_left;
+                    deferred = node.addr_right;
+                }
+
+                if (traverse_c0 && traverse_c1)
+                {
+                    if (lds_sptr - lds_stack_bottom >= LDS_STACK_SIZE)
+                    {
+                        for (int i = 1; i < LDS_STACK_SIZE; ++i)
+                        {
+                            Stack[sptr + i] = lds_stack[lds_stack_bottom + i];
+                        }
+
+                        sptr += LDS_STACK_SIZE;
+                        lds_sptr = lds_stack_bottom + 1;
+                    }
+
+                    lds_stack[lds_sptr++] = deferred;
+                }
+
+                continue;
+            }
+        }
+        else
+        {
+            float t = fast_intersect_triangle(
+                myRay,
+                node.aabb_left_min_or_v0,
+                node.aabb_left_max_or_v1,
+                node.aabb_right_min_or_v2,
+                closest_t);
+
+            if (t < closest_t)
+            {
+                Hitresults[index] = HIT_MARKER;
+                return;
+            }
+        }
+
+        addr = lds_stack[--lds_sptr];
+
+        if (addr == INVALID_ADDR && sptr > stack_bottom)
+        {
+            sptr -= LDS_STACK_SIZE;
+            for (int i = 1; i < LDS_STACK_SIZE; ++i)
+            {
+                lds_stack[lds_stack_bottom + i] = Stack[sptr + i];
+            }
+
+            lds_sptr = lds_stack_bottom + LDS_STACK_SIZE - 1;
+            addr = lds_stack[lds_sptr];
+        }
+    }
+
+    // Finished traversal, but no intersection found
+    Hitresults[index] = MISS_MARKER;
 }
