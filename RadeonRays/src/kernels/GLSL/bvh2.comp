@@ -27,6 +27,9 @@
 #define INVALID_ADDR 0xffffffffu
 #define INTERNAL_NODE(node) ((node).addr_left != INVALID_ADDR)
 
+#define HIT_MARKER  0x1u
+#define MISS_MARKER 0xffffffffu
+
 #define GROUP_SIZE 64
 #define STACK_SIZE 32
 #define LDS_STACK_SIZE 8
@@ -45,9 +48,9 @@ struct BvhNode
 
 struct Intersection
 {
-    int shape_id;
-    int prim_id;
-    ivec2 padding;
+    uint shape_id;
+    uint prim_id;
+    uvec2 padding;
     vec4 uvwt;
 };
 
@@ -280,14 +283,11 @@ void intersect_main()
 
 #endif
 
-#if 0
     // TODO: what, why?!? (gboisse)
     Intersection isect;
     isect.padding.x = 667;
-    isect.padding.y = r.padding.x;
+    isect.padding.y = isect.padding.x;
     isect.uvwt = vec4(0.0f, 0.0f, 0.0f, closest_t);
-
-#if 0
 
     // Check if we have found an intersection
     if (closest_addr != INVALID_ADDR)
@@ -305,20 +305,18 @@ void intersect_main()
         );
 
         // Update hit information
-        hit.prim_id = node.prim_id;
-        hit.shape_id = node.mesh_id;
+        isect.prim_id = node.prim_id;
+        isect.shape_id = node.mesh_id;
     }
     else
-#endif
     {
         // Miss here
-        isect.prim_id = -1;
-        isect.shape_id = -1;
+        isect.prim_id = MISS_MARKER;
+        isect.shape_id = MISS_MARKER;
     }
 
     // Write result to memory
     Hits[index] = isect;
-#endif
 }
 
 void occluded_main()
