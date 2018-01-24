@@ -25,11 +25,18 @@ THE SOFTWARE.
 #include <stack>
 #include <utility>
 #include <vector>
+#include <thread>
+#include <condition_variable>
 #include <mmintrin.h>
 #include <xmmintrin.h>
 #include <smmintrin.h>
 
 #include "../primitive/mesh.h"
+#include "../primitive/instance.h"
+
+#ifndef WIN32
+#define _MM_ALIGN16
+#endif
 
 namespace RadeonRays
 {

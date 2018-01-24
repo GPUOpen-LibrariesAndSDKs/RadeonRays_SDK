@@ -227,8 +227,11 @@ namespace RadeonRays
 #else
         std::mutex mutex;
         std::condition_variable cv;
-        std::atomic_bool shutdown = false;
-        std::atomic_uint32_t num_refs_processed = 0;
+        std::atomic_bool shutdown;
+        std::atomic<std::uint32_t> num_refs_processed;
+
+		num_refs_processed.store(0);
+		shutdown.store(false);
 
         std::stack<SplitRequest> requests;
 
