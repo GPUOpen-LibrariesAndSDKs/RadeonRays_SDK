@@ -41,7 +41,7 @@ project "RadeonRays"
     elseif os.is("linux") then
         buildoptions "-std=c++14 -msse4.2 -fPIC"
         linkoptions {"-Wl,--no-undefined"}
-	links {"pthread"}	
+		links {"pthread"}	
 
         --get API version from header.
         local handle = io.popen("grep -r RADEONRAYS_API_VERSION include/radeon_rays.h | cut -d \" \" -f 3")
