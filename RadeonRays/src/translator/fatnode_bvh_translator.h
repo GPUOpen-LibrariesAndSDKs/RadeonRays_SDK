@@ -37,7 +37,7 @@ namespace RadeonRays
 {
     /// Fatnode translator transforms regular binary BVH into the form where:
     /// * Each node contains bounding boxes of its children
-    /// * Both children follow parent node in the layuot (breadth first)
+    /// * Both children follow parent node in the layout (breadth first)
     /// * No parent informantion is stored for the node => stacked traversal only
     ///
     class FatNodeBvhTranslator
@@ -100,7 +100,7 @@ namespace RadeonRays
             }
         };
 
-        void Flush();
+        //void Flush();
         void Process(Bvh& bvh);
         void InjectIndices(Face const* faces);
         //void Process(Bvh const** bvhs, int const* offsets, int numbvhs);

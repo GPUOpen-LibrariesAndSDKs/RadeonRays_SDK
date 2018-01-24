@@ -216,7 +216,13 @@ static const char g_build_hlbvh_opencl[]= \
 "    float3 const e1 = v2 - v1; \n"\
 "    float3 const e2 = v3 - v1; \n"\
 "    float3 const s1 = cross(r.d.xyz, e2); \n"\
+" \n"\
+"#ifdef USE_SAFE_MATH \n"\
+"    float const invd = 1.f / dot(s1, e1); \n"\
+"#else \n"\
 "    float const invd = native_recip(dot(s1, e1)); \n"\
+"#endif \n"\
+" \n"\
 "    float3 const d = r.o.xyz - v1; \n"\
 "    float const b1 = dot(d, s1) * invd; \n"\
 "    float3 const s2 = cross(d, e1); \n"\
@@ -236,19 +242,15 @@ static const char g_build_hlbvh_opencl[]= \
 "INLINE \n"\
 "float3 safe_invdir(ray r) \n"\
 "{ \n"\
-"#ifdef USE_SAFE_MATH \n"\
 "    float const dirx = r.d.x; \n"\
 "    float const diry = r.d.y; \n"\
 "    float const dirz = r.d.z; \n"\
-"    float const ooeps = exp2(-80.0f); // Avoid div by zero. \n"\
+"    float const ooeps = 1e-8; \n"\
 "    float3 invdir; \n"\
 "    invdir.x = 1.0f / (fabs(dirx) > ooeps ? dirx : copysign(ooeps, dirx)); \n"\
 "    invdir.y = 1.0f / (fabs(diry) > ooeps ? diry : copysign(ooeps, diry)); \n"\
 "    invdir.z = 1.0f / (fabs(dirz) > ooeps ? dirz : copysign(ooeps, dirz)); \n"\
 "    return invdir; \n"\
-"#else \n"\
-"    return native_recip(r.d.xyz); \n"\
-"#endif \n"\
 "} \n"\
 " \n"\
 "// Intersect rays vs bbox and return intersection span.  \n"\
@@ -277,7 +279,13 @@ static const char g_build_hlbvh_opencl[]= \
 "    float const d11 = dot(e2, e2); \n"\
 "    float const d20 = dot(e, e1); \n"\
 "    float const d21 = dot(e, e2); \n"\
+" \n"\
+"#ifdef USE_SAFE_MATH \n"\
+"    float const invdenom = 1.f / (d00 * d11 - d01 * d01); \n"\
+"#else \n"\
 "    float const invdenom = native_recip(d00 * d11 - d01 * d01); \n"\
+"#endif \n"\
+" \n"\
 "    float const b1 = (d11 * d20 - d01 * d21) * invdenom; \n"\
 "    float const b2 = (d00 * d21 - d01 * d20) * invdenom; \n"\
 "    return make_float2(b1, b2); \n"\
@@ -732,7 +740,13 @@ static const char g_common_opencl[]= \
 "    float3 const e1 = v2 - v1; \n"\
 "    float3 const e2 = v3 - v1; \n"\
 "    float3 const s1 = cross(r.d.xyz, e2); \n"\
+" \n"\
+"#ifdef USE_SAFE_MATH \n"\
+"    float const invd = 1.f / dot(s1, e1); \n"\
+"#else \n"\
 "    float const invd = native_recip(dot(s1, e1)); \n"\
+"#endif \n"\
+" \n"\
 "    float3 const d = r.o.xyz - v1; \n"\
 "    float const b1 = dot(d, s1) * invd; \n"\
 "    float3 const s2 = cross(d, e1); \n"\
@@ -752,19 +766,15 @@ static const char g_common_opencl[]= \
 "INLINE \n"\
 "float3 safe_invdir(ray r) \n"\
 "{ \n"\
-"#ifdef USE_SAFE_MATH \n"\
 "    float const dirx = r.d.x; \n"\
 "    float const diry = r.d.y; \n"\
 "    float const dirz = r.d.z; \n"\
-"    float const ooeps = exp2(-80.0f); // Avoid div by zero. \n"\
+"    float const ooeps = 1e-8; \n"\
 "    float3 invdir; \n"\
 "    invdir.x = 1.0f / (fabs(dirx) > ooeps ? dirx : copysign(ooeps, dirx)); \n"\
 "    invdir.y = 1.0f / (fabs(diry) > ooeps ? diry : copysign(ooeps, diry)); \n"\
 "    invdir.z = 1.0f / (fabs(dirz) > ooeps ? dirz : copysign(ooeps, dirz)); \n"\
 "    return invdir; \n"\
-"#else \n"\
-"    return native_recip(r.d.xyz); \n"\
-"#endif \n"\
 "} \n"\
 " \n"\
 "// Intersect rays vs bbox and return intersection span.  \n"\
@@ -793,7 +803,13 @@ static const char g_common_opencl[]= \
 "    float const d11 = dot(e2, e2); \n"\
 "    float const d20 = dot(e, e1); \n"\
 "    float const d21 = dot(e, e2); \n"\
+" \n"\
+"#ifdef USE_SAFE_MATH \n"\
+"    float const invdenom = 1.f / (d00 * d11 - d01 * d01); \n"\
+"#else \n"\
 "    float const invdenom = native_recip(d00 * d11 - d01 * d01); \n"\
+"#endif \n"\
+" \n"\
 "    float const b1 = (d11 * d20 - d01 * d21) * invdenom; \n"\
 "    float const b2 = (d00 * d21 - d01 * d20) * invdenom; \n"\
 "    return make_float2(b1, b2); \n"\
@@ -1027,7 +1043,13 @@ static const char g_intersect_bvh2level_skiplinks_opencl[]= \
 "    float3 const e1 = v2 - v1; \n"\
 "    float3 const e2 = v3 - v1; \n"\
 "    float3 const s1 = cross(r.d.xyz, e2); \n"\
+" \n"\
+"#ifdef USE_SAFE_MATH \n"\
+"    float const invd = 1.f / dot(s1, e1); \n"\
+"#else \n"\
 "    float const invd = native_recip(dot(s1, e1)); \n"\
+"#endif \n"\
+" \n"\
 "    float3 const d = r.o.xyz - v1; \n"\
 "    float const b1 = dot(d, s1) * invd; \n"\
 "    float3 const s2 = cross(d, e1); \n"\
@@ -1047,19 +1069,15 @@ static const char g_intersect_bvh2level_skiplinks_opencl[]= \
 "INLINE \n"\
 "float3 safe_invdir(ray r) \n"\
 "{ \n"\
-"#ifdef USE_SAFE_MATH \n"\
 "    float const dirx = r.d.x; \n"\
 "    float const diry = r.d.y; \n"\
 "    float const dirz = r.d.z; \n"\
-"    float const ooeps = exp2(-80.0f); // Avoid div by zero. \n"\
+"    float const ooeps = 1e-8; \n"\
 "    float3 invdir; \n"\
 "    invdir.x = 1.0f / (fabs(dirx) > ooeps ? dirx : copysign(ooeps, dirx)); \n"\
 "    invdir.y = 1.0f / (fabs(diry) > ooeps ? diry : copysign(ooeps, diry)); \n"\
 "    invdir.z = 1.0f / (fabs(dirz) > ooeps ? dirz : copysign(ooeps, dirz)); \n"\
 "    return invdir; \n"\
-"#else \n"\
-"    return native_recip(r.d.xyz); \n"\
-"#endif \n"\
 "} \n"\
 " \n"\
 "// Intersect rays vs bbox and return intersection span.  \n"\
@@ -1088,7 +1106,13 @@ static const char g_intersect_bvh2level_skiplinks_opencl[]= \
 "    float const d11 = dot(e2, e2); \n"\
 "    float const d20 = dot(e, e1); \n"\
 "    float const d21 = dot(e, e2); \n"\
+" \n"\
+"#ifdef USE_SAFE_MATH \n"\
+"    float const invdenom = 1.f / (d00 * d11 - d01 * d01); \n"\
+"#else \n"\
 "    float const invdenom = native_recip(d00 * d11 - d01 * d01); \n"\
+"#endif \n"\
+" \n"\
 "    float const b1 = (d11 * d20 - d01 * d21) * invdenom; \n"\
 "    float const b2 = (d00 * d21 - d01 * d20) * invdenom; \n"\
 "    return make_float2(b1, b2); \n"\
@@ -1757,7 +1781,13 @@ static const char g_intersect_bvh2_bittrail_opencl[]= \
 "    float3 const e1 = v2 - v1; \n"\
 "    float3 const e2 = v3 - v1; \n"\
 "    float3 const s1 = cross(r.d.xyz, e2); \n"\
+" \n"\
+"#ifdef USE_SAFE_MATH \n"\
+"    float const invd = 1.f / dot(s1, e1); \n"\
+"#else \n"\
 "    float const invd = native_recip(dot(s1, e1)); \n"\
+"#endif \n"\
+" \n"\
 "    float3 const d = r.o.xyz - v1; \n"\
 "    float const b1 = dot(d, s1) * invd; \n"\
 "    float3 const s2 = cross(d, e1); \n"\
@@ -1777,19 +1807,15 @@ static const char g_intersect_bvh2_bittrail_opencl[]= \
 "INLINE \n"\
 "float3 safe_invdir(ray r) \n"\
 "{ \n"\
-"#ifdef USE_SAFE_MATH \n"\
 "    float const dirx = r.d.x; \n"\
 "    float const diry = r.d.y; \n"\
 "    float const dirz = r.d.z; \n"\
-"    float const ooeps = exp2(-80.0f); // Avoid div by zero. \n"\
+"    float const ooeps = 1e-8; \n"\
 "    float3 invdir; \n"\
 "    invdir.x = 1.0f / (fabs(dirx) > ooeps ? dirx : copysign(ooeps, dirx)); \n"\
 "    invdir.y = 1.0f / (fabs(diry) > ooeps ? diry : copysign(ooeps, diry)); \n"\
 "    invdir.z = 1.0f / (fabs(dirz) > ooeps ? dirz : copysign(ooeps, dirz)); \n"\
 "    return invdir; \n"\
-"#else \n"\
-"    return native_recip(r.d.xyz); \n"\
-"#endif \n"\
 "} \n"\
 " \n"\
 "// Intersect rays vs bbox and return intersection span.  \n"\
@@ -1818,7 +1844,13 @@ static const char g_intersect_bvh2_bittrail_opencl[]= \
 "    float const d11 = dot(e2, e2); \n"\
 "    float const d20 = dot(e, e1); \n"\
 "    float const d21 = dot(e, e2); \n"\
+" \n"\
+"#ifdef USE_SAFE_MATH \n"\
+"    float const invdenom = 1.f / (d00 * d11 - d01 * d01); \n"\
+"#else \n"\
 "    float const invdenom = native_recip(d00 * d11 - d01 * d01); \n"\
+"#endif \n"\
+" \n"\
 "    float const b1 = (d11 * d20 - d01 * d21) * invdenom; \n"\
 "    float const b2 = (d00 * d21 - d01 * d20) * invdenom; \n"\
 "    return make_float2(b1, b2); \n"\
@@ -2153,7 +2185,7 @@ static const char g_intersect_bvh2_bittrail_opencl[]= \
 "                float3 const v3 = vertices[node.i2]; \n"\
 "                // Calculate hit position \n"\
 "                float3 const p = r.o.xyz + r.d.xyz * t_max; \n"\
-"                // Calculte barycentric coordinates \n"\
+"                // Calculate barycentric coordinates \n"\
 "                float2 const uv = triangle_calculate_barycentrics(p, v1, v2, v3); \n"\
 "                // Update hit information \n"\
 "                hits[global_id].shape_id = node.shape_id; \n"\
@@ -2166,6 +2198,1321 @@ static const char g_intersect_bvh2_bittrail_opencl[]= \
 "                hits[global_id].shape_id = MISS_MARKER; \n"\
 "                hits[global_id].prim_id = MISS_MARKER; \n"\
 "            } \n"\
+"        } \n"\
+"    } \n"\
+"} \n"\
+;
+static const char g_intersect_bvh2_lds_opencl[]= \
+"/********************************************************************** \n"\
+"Copyright (c) 2016 Advanced Micro Devices, Inc. All rights reserved. \n"\
+" \n"\
+"Permission is hereby granted, free of charge, to any person obtaining a copy \n"\
+"of this software and associated documentation files (the \"Software\"), to deal \n"\
+"in the Software without restriction, including without limitation the rights \n"\
+"to use, copy, modify, merge, publish, distribute, sublicense, and/or sell \n"\
+"copies of the Software, and to permit persons to whom the Software is \n"\
+"furnished to do so, subject to the following conditions: \n"\
+" \n"\
+"The above copyright notice and this permission notice shall be included in \n"\
+"all copies or substantial portions of the Software. \n"\
+" \n"\
+"THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR \n"\
+"IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, \n"\
+"FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE \n"\
+"AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER \n"\
+"LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, \n"\
+"OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN \n"\
+"THE SOFTWARE. \n"\
+"********************************************************************/ \n"\
+" \n"\
+"/************************************************************************* \n"\
+"INCLUDES \n"\
+"**************************************************************************/ \n"\
+"/********************************************************************** \n"\
+"Copyright (c) 2016 Advanced Micro Devices, Inc. All rights reserved. \n"\
+" \n"\
+"Permission is hereby granted, free of charge, to any person obtaining a copy \n"\
+"of this software and associated documentation files (the \"Software\"), to deal \n"\
+"in the Software without restriction, including without limitation the rights \n"\
+"to use, copy, modify, merge, publish, distribute, sublicense, and/or sell \n"\
+"copies of the Software, and to permit persons to whom the Software is \n"\
+"furnished to do so, subject to the following conditions: \n"\
+" \n"\
+"The above copyright notice and this permission notice shall be included in \n"\
+"all copies or substantial portions of the Software. \n"\
+" \n"\
+"THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR \n"\
+"IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, \n"\
+"FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE \n"\
+"AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER \n"\
+"LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, \n"\
+"OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN \n"\
+"THE SOFTWARE. \n"\
+"********************************************************************/ \n"\
+" \n"\
+"/************************************************************************* \n"\
+"DEFINES \n"\
+"**************************************************************************/ \n"\
+"#define PI 3.14159265358979323846f \n"\
+"#define KERNEL __kernel \n"\
+"#define GLOBAL __global \n"\
+"#define INLINE __attribute__((always_inline)) \n"\
+"#define HIT_MARKER 1 \n"\
+"#define MISS_MARKER -1 \n"\
+"#define INVALID_IDX -1 \n"\
+" \n"\
+"/************************************************************************* \n"\
+"EXTENSIONS \n"\
+"**************************************************************************/ \n"\
+"#ifdef AMD_MEDIA_OPS \n"\
+"#pragma OPENCL EXTENSION cl_amd_media_ops2 : enable \n"\
+"#endif \n"\
+" \n"\
+"/************************************************************************* \n"\
+"TYPES \n"\
+"**************************************************************************/ \n"\
+" \n"\
+"// Axis aligned bounding box \n"\
+"typedef struct \n"\
+"{ \n"\
+"    float4 pmin; \n"\
+"    float4 pmax; \n"\
+"} bbox; \n"\
+" \n"\
+"// Ray definition \n"\
+"typedef struct \n"\
+"{ \n"\
+"    float4 o; \n"\
+"    float4 d; \n"\
+"    int2 extra; \n"\
+"    int2 padding; \n"\
+"} ray; \n"\
+" \n"\
+"// Intersection definition \n"\
+"typedef struct \n"\
+"{ \n"\
+"    int shape_id; \n"\
+"    int prim_id; \n"\
+"    int2 padding; \n"\
+" \n"\
+"    float4 uvwt; \n"\
+"} Intersection; \n"\
+" \n"\
+" \n"\
+"/************************************************************************* \n"\
+"HELPER FUNCTIONS \n"\
+"**************************************************************************/ \n"\
+"INLINE \n"\
+"int ray_get_mask(ray const* r) \n"\
+"{ \n"\
+"    return r->extra.x; \n"\
+"} \n"\
+" \n"\
+"INLINE \n"\
+"int ray_is_active(ray const* r) \n"\
+"{ \n"\
+"    return r->extra.y; \n"\
+"} \n"\
+" \n"\
+"INLINE \n"\
+"float ray_get_maxt(ray const* r) \n"\
+"{ \n"\
+"    return r->o.w; \n"\
+"} \n"\
+" \n"\
+"INLINE \n"\
+"float ray_get_time(ray const* r) \n"\
+"{ \n"\
+"    return r->d.w; \n"\
+"} \n"\
+" \n"\
+"/************************************************************************* \n"\
+"FUNCTIONS \n"\
+"**************************************************************************/ \n"\
+"#ifndef APPLE \n"\
+"INLINE \n"\
+"float4 make_float4(float x, float y, float z, float w) \n"\
+"{ \n"\
+"    float4 res; \n"\
+"    res.x = x; \n"\
+"    res.y = y; \n"\
+"    res.z = z; \n"\
+"    res.w = w; \n"\
+"    return res; \n"\
+"} \n"\
+"INLINE \n"\
+"float3 make_float3(float x, float y, float z) \n"\
+"{ \n"\
+"    float3 res; \n"\
+"    res.x = x; \n"\
+"    res.y = y; \n"\
+"    res.z = z; \n"\
+"    return res; \n"\
+"} \n"\
+"INLINE \n"\
+"float2 make_float2(float x, float y) \n"\
+"{ \n"\
+"    float2 res; \n"\
+"    res.x = x; \n"\
+"    res.y = y; \n"\
+"    return res; \n"\
+"} \n"\
+"INLINE \n"\
+"int2 make_int2(int x, int y) \n"\
+"{ \n"\
+"    int2 res; \n"\
+"    res.x = x; \n"\
+"    res.y = y; \n"\
+"    return res; \n"\
+"} \n"\
+"INLINE \n"\
+"int3 make_int3(int x, int y, int z) \n"\
+"{ \n"\
+"    int3 res; \n"\
+"    res.x = x; \n"\
+"    res.y = y; \n"\
+"    res.z = z; \n"\
+"    return res; \n"\
+"} \n"\
+"#endif \n"\
+" \n"\
+"INLINE float min3(float a, float b, float c) \n"\
+"{ \n"\
+"#ifdef AMD_MEDIA_OPS \n"\
+"    return amd_min3(a, b, c); \n"\
+"#else \n"\
+"    return min(min(a,b), c); \n"\
+"#endif \n"\
+"} \n"\
+" \n"\
+"INLINE float max3(float a, float b, float c) \n"\
+"{ \n"\
+"#ifdef AMD_MEDIA_OPS \n"\
+"    return amd_max3(a, b, c); \n"\
+"#else \n"\
+"    return max(max(a,b), c); \n"\
+"#endif \n"\
+"} \n"\
+" \n"\
+" \n"\
+"// Intersect ray against a triangle and return intersection interval value if it is in \n"\
+"// (0, t_max], return t_max otherwise. \n"\
+"INLINE \n"\
+"float fast_intersect_triangle(ray r, float3 v1, float3 v2, float3 v3, float t_max) \n"\
+"{ \n"\
+"    float3 const e1 = v2 - v1; \n"\
+"    float3 const e2 = v3 - v1; \n"\
+"    float3 const s1 = cross(r.d.xyz, e2); \n"\
+" \n"\
+"#ifdef USE_SAFE_MATH \n"\
+"    float const invd = 1.f / dot(s1, e1); \n"\
+"#else \n"\
+"    float const invd = native_recip(dot(s1, e1)); \n"\
+"#endif \n"\
+" \n"\
+"    float3 const d = r.o.xyz - v1; \n"\
+"    float const b1 = dot(d, s1) * invd; \n"\
+"    float3 const s2 = cross(d, e1); \n"\
+"    float const b2 = dot(r.d.xyz, s2) * invd; \n"\
+"    float const temp = dot(e2, s2) * invd; \n"\
+" \n"\
+"    if (b1 < 0.f || b1 > 1.f || b2 < 0.f || b1 + b2 > 1.f || temp < 0.f || temp > t_max) \n"\
+"    { \n"\
+"        return t_max; \n"\
+"    } \n"\
+"    else \n"\
+"    { \n"\
+"        return temp; \n"\
+"    } \n"\
+"} \n"\
+" \n"\
+"INLINE \n"\
+"float3 safe_invdir(ray r) \n"\
+"{ \n"\
+"    float const dirx = r.d.x; \n"\
+"    float const diry = r.d.y; \n"\
+"    float const dirz = r.d.z; \n"\
+"    float const ooeps = 1e-8; \n"\
+"    float3 invdir; \n"\
+"    invdir.x = 1.0f / (fabs(dirx) > ooeps ? dirx : copysign(ooeps, dirx)); \n"\
+"    invdir.y = 1.0f / (fabs(diry) > ooeps ? diry : copysign(ooeps, diry)); \n"\
+"    invdir.z = 1.0f / (fabs(dirz) > ooeps ? dirz : copysign(ooeps, dirz)); \n"\
+"    return invdir; \n"\
+"} \n"\
+" \n"\
+"// Intersect rays vs bbox and return intersection span.  \n"\
+"// Intersection criteria is ret.x <= ret.y \n"\
+"INLINE \n"\
+"float2 fast_intersect_bbox1(bbox box, float3 invdir, float3 oxinvdir, float t_max) \n"\
+"{ \n"\
+"    float3 const f = mad(box.pmax.xyz, invdir, oxinvdir); \n"\
+"    float3 const n = mad(box.pmin.xyz, invdir, oxinvdir); \n"\
+"    float3 const tmax = max(f, n); \n"\
+"    float3 const tmin = min(f, n); \n"\
+"    float const t1 = min(min3(tmax.x, tmax.y, tmax.z), t_max); \n"\
+"    float const t0 = max(max3(tmin.x, tmin.y, tmin.z), 0.f); \n"\
+"    return make_float2(t0, t1); \n"\
+"} \n"\
+" \n"\
+"// Given a point in triangle plane, calculate its barycentrics \n"\
+"INLINE \n"\
+"float2 triangle_calculate_barycentrics(float3 p, float3 v1, float3 v2, float3 v3) \n"\
+"{ \n"\
+"    float3 const e1 = v2 - v1; \n"\
+"    float3 const e2 = v3 - v1; \n"\
+"    float3 const e = p - v1; \n"\
+"    float const d00 = dot(e1, e1); \n"\
+"    float const d01 = dot(e1, e2); \n"\
+"    float const d11 = dot(e2, e2); \n"\
+"    float const d20 = dot(e, e1); \n"\
+"    float const d21 = dot(e, e2); \n"\
+" \n"\
+"#ifdef USE_SAFE_MATH \n"\
+"    float const invdenom = 1.f / (d00 * d11 - d01 * d01); \n"\
+"#else \n"\
+"    float const invdenom = native_recip(d00 * d11 - d01 * d01); \n"\
+"#endif \n"\
+" \n"\
+"    float const b1 = (d11 * d20 - d01 * d21) * invdenom; \n"\
+"    float const b2 = (d00 * d21 - d01 * d20) * invdenom; \n"\
+"    return make_float2(b1, b2); \n"\
+"} \n"\
+" \n"\
+"/************************************************************************* \n"\
+"TYPE DEFINITIONS \n"\
+"**************************************************************************/ \n"\
+" \n"\
+"#define INVALID_ADDR 0xffffffffu \n"\
+"#define INTERNAL_NODE(node) (GetAddrLeft(node) != INVALID_ADDR) \n"\
+" \n"\
+"#define GROUP_SIZE 64 \n"\
+"#define STACK_SIZE 32 \n"\
+"#define LDS_STACK_SIZE 8 \n"\
+" \n"\
+"// BVH node \n"\
+"typedef struct \n"\
+"{ \n"\
+"    float4 aabb_left_min_or_v0_and_addr_left; \n"\
+"    float4 aabb_left_max_or_v1_and_mesh_id; \n"\
+"    float4 aabb_right_min_or_v2_and_addr_right; \n"\
+"    float4 aabb_right_max_and_prim_id; \n"\
+" \n"\
+"} bvh_node; \n"\
+" \n"\
+"#define GetAddrLeft(node)   as_uint((node).aabb_left_min_or_v0_and_addr_left.w) \n"\
+"#define GetAddrRight(node)  as_uint((node).aabb_right_min_or_v2_and_addr_right.w) \n"\
+"#define GetMeshId(node)     as_uint((node).aabb_left_max_or_v1_and_mesh_id.w) \n"\
+"#define GetPrimId(node)     as_uint((node).aabb_right_max_and_prim_id.w) \n"\
+" \n"\
+"INLINE float2 fast_intersect_bbox2(float3 pmin, float3 pmax, float3 invdir, float3 oxinvdir, float t_max) \n"\
+"{ \n"\
+"    const float3 f = mad(pmax.xyz, invdir, oxinvdir); \n"\
+"    const float3 n = mad(pmin.xyz, invdir, oxinvdir); \n"\
+"    const float3 tmax = max(f, n); \n"\
+"    const float3 tmin = min(f, n); \n"\
+"    const float t1 = min(min3(tmax.x, tmax.y, tmax.z), t_max); \n"\
+"    const float t0 = max(max3(tmin.x, tmin.y, tmin.z), 0.f); \n"\
+"    return (float2)(t0, t1); \n"\
+"} \n"\
+" \n"\
+"__attribute__((reqd_work_group_size(64, 1, 1))) \n"\
+"KERNEL void intersect_main( \n"\
+"    // Bvh nodes \n"\
+"    GLOBAL const bvh_node *restrict nodes, \n"\
+"    // Rays \n"\
+"    GLOBAL const ray *restrict rays, \n"\
+"    // Number of rays in rays buffer \n"\
+"    GLOBAL const int *restrict num_rays, \n"\
+"    // Stack memory \n"\
+"    GLOBAL uint *stack, \n"\
+"    // Hit data \n"\
+"    GLOBAL Intersection *hits) \n"\
+"{ \n"\
+"    uint index = get_global_id(0); \n"\
+"    uint local_index = get_local_id(0); \n"\
+" \n"\
+"    // Handle only working subset \n"\
+"    if (index < *num_rays) \n"\
+"    { \n"\
+"        const ray my_ray = rays[index]; \n"\
+" \n"\
+"        if (ray_is_active(&my_ray)) \n"\
+"        { \n"\
+"            __local uint lds_stack[GROUP_SIZE * LDS_STACK_SIZE]; \n"\
+" \n"\
+"            const float3 invDir = safe_invdir(my_ray); \n"\
+"            const float3 oxInvDir = -my_ray.o.xyz * invDir; \n"\
+" \n"\
+"            // Intersection parametric distance \n"\
+"            float closest_t = my_ray.o.w; \n"\
+" \n"\
+"            // Current node address \n"\
+"            uint addr = 0; \n"\
+"            // Current closest address \n"\
+"            uint closest_addr = INVALID_ADDR; \n"\
+" \n"\
+"            uint stack_bottom = STACK_SIZE * index; \n"\
+"            uint sptr = stack_bottom; \n"\
+"            uint lds_stack_bottom = local_index * LDS_STACK_SIZE; \n"\
+"            uint lds_sptr = lds_stack_bottom; \n"\
+" \n"\
+"            lds_stack[lds_sptr++] = INVALID_ADDR; \n"\
+" \n"\
+"            while (addr != INVALID_ADDR) \n"\
+"            { \n"\
+"                const bvh_node node = nodes[addr]; \n"\
+" \n"\
+"                if (INTERNAL_NODE(node)) \n"\
+"                { \n"\
+"                    float2 s0 = fast_intersect_bbox2( \n"\
+"                        node.aabb_left_min_or_v0_and_addr_left.xyz, \n"\
+"                        node.aabb_left_max_or_v1_and_mesh_id.xyz, \n"\
+"                        invDir, oxInvDir, closest_t); \n"\
+"                    float2 s1 = fast_intersect_bbox2( \n"\
+"                        node.aabb_right_min_or_v2_and_addr_right.xyz, \n"\
+"                        node.aabb_right_max_and_prim_id.xyz, \n"\
+"                        invDir, oxInvDir, closest_t); \n"\
+" \n"\
+"                    bool traverse_c0 = (s0.x <= s0.y); \n"\
+"                    bool traverse_c1 = (s1.x <= s1.y); \n"\
+"                    bool c1first = traverse_c1 && (s0.x > s1.x); \n"\
+" \n"\
+"                    if (traverse_c0 || traverse_c1) \n"\
+"                    { \n"\
+"                        uint deferred = INVALID_ADDR; \n"\
+" \n"\
+"                        if (c1first || !traverse_c0)  \n"\
+"                        { \n"\
+"                            addr = GetAddrRight(node); \n"\
+"                            deferred = GetAddrLeft(node); \n"\
+"                        } \n"\
+"                        else \n"\
+"                        { \n"\
+"                            addr = GetAddrLeft(node); \n"\
+"                            deferred = GetAddrRight(node); \n"\
+"                        } \n"\
+" \n"\
+"                        if (traverse_c0 && traverse_c1) \n"\
+"                        { \n"\
+"                            if (lds_sptr - lds_stack_bottom >= LDS_STACK_SIZE) \n"\
+"                            { \n"\
+"                                for (int i = 1; i < LDS_STACK_SIZE; ++i) \n"\
+"                                { \n"\
+"                                    stack[sptr + i] = lds_stack[lds_stack_bottom + i]; \n"\
+"                                } \n"\
+" \n"\
+"                                sptr += LDS_STACK_SIZE; \n"\
+"                                lds_sptr = lds_stack_bottom + 1; \n"\
+"                            } \n"\
+" \n"\
+"                            lds_stack[lds_sptr++] = deferred; \n"\
+"                        } \n"\
+" \n"\
+"                        continue; \n"\
+"                    } \n"\
+"                } \n"\
+"                else \n"\
+"                { \n"\
+"                    float t = fast_intersect_triangle( \n"\
+"                        my_ray, \n"\
+"                        node.aabb_left_min_or_v0_and_addr_left.xyz, \n"\
+"                        node.aabb_left_max_or_v1_and_mesh_id.xyz, \n"\
+"                        node.aabb_right_min_or_v2_and_addr_right.xyz, \n"\
+"                        closest_t); \n"\
+" \n"\
+"                    if (t < closest_t) \n"\
+"                    { \n"\
+"                        closest_t = t; \n"\
+"                        closest_addr = addr; \n"\
+"                    } \n"\
+"                } \n"\
+" \n"\
+"                addr = lds_stack[--lds_sptr]; \n"\
+" \n"\
+"                if (addr == INVALID_ADDR && sptr > stack_bottom) \n"\
+"                { \n"\
+"                    sptr -= LDS_STACK_SIZE; \n"\
+"                    for (int i = 1; i < LDS_STACK_SIZE; ++i) \n"\
+"                    { \n"\
+"                        lds_stack[lds_stack_bottom + i] = stack[sptr + i]; \n"\
+"                    } \n"\
+" \n"\
+"                    lds_sptr = lds_stack_bottom + LDS_STACK_SIZE - 1; \n"\
+"                    addr = lds_stack[lds_sptr]; \n"\
+"                } \n"\
+"            } \n"\
+" \n"\
+"            // Check if we have found an intersection \n"\
+"            if (closest_addr != INVALID_ADDR) \n"\
+"            { \n"\
+"                // Calculate hit position \n"\
+"                const bvh_node node = nodes[closest_addr]; \n"\
+"                const float3 p = my_ray.o.xyz + closest_t * my_ray.d.xyz; \n"\
+" \n"\
+"                // Calculate barycentric coordinates \n"\
+"                const float2 uv = triangle_calculate_barycentrics( \n"\
+"                    p, \n"\
+"                    node.aabb_left_min_or_v0_and_addr_left.xyz, \n"\
+"                    node.aabb_left_max_or_v1_and_mesh_id.xyz, \n"\
+"                    node.aabb_right_min_or_v2_and_addr_right.xyz); \n"\
+" \n"\
+"                // Update hit information \n"\
+"                hits[index].prim_id = GetPrimId(node); \n"\
+"                hits[index].shape_id = GetMeshId(node); \n"\
+"                hits[index].uvwt = (float4)(uv.x, uv.y, 0.0f, closest_t); \n"\
+"            } \n"\
+"            else \n"\
+"            { \n"\
+"                // Miss here \n"\
+"                hits[index].prim_id = MISS_MARKER; \n"\
+"                hits[index].shape_id = MISS_MARKER; \n"\
+"            } \n"\
+"        } \n"\
+"    } \n"\
+"} \n"\
+" \n"\
+"__attribute__((reqd_work_group_size(64, 1, 1))) \n"\
+"KERNEL void occluded_main( \n"\
+"    // Bvh nodes \n"\
+"    GLOBAL const bvh_node *restrict nodes, \n"\
+"    // Rays \n"\
+"    GLOBAL const ray *restrict rays, \n"\
+"    // Number of rays in rays buffer \n"\
+"    GLOBAL const int *restrict num_rays, \n"\
+"    // Stack memory \n"\
+"    GLOBAL uint *stack, \n"\
+"    // Hit results: 1 for hit and -1 for miss \n"\
+"    GLOBAL int *hits) \n"\
+"{ \n"\
+"    uint index = get_global_id(0); \n"\
+"    uint local_index = get_local_id(0); \n"\
+" \n"\
+"    // Handle only working subset \n"\
+"    if (index < *num_rays) \n"\
+"    { \n"\
+"        const ray my_ray = rays[index]; \n"\
+" \n"\
+"        if (ray_is_active(&my_ray)) \n"\
+"        { \n"\
+"            __local uint lds_stack[GROUP_SIZE * LDS_STACK_SIZE]; \n"\
+" \n"\
+"            const float3 invDir = safe_invdir(my_ray); \n"\
+"            const float3 oxInvDir = -my_ray.o.xyz * invDir; \n"\
+" \n"\
+"            // Intersection parametric distance \n"\
+"            float closest_t = my_ray.o.w; \n"\
+" \n"\
+"            // Current node address \n"\
+"            uint addr = 0; \n"\
+"            // Current closest address \n"\
+"            uint closest_addr = INVALID_ADDR; \n"\
+" \n"\
+"            uint stack_bottom = STACK_SIZE * index; \n"\
+"            uint sptr = stack_bottom; \n"\
+"            uint lds_stack_bottom = local_index * LDS_STACK_SIZE; \n"\
+"            uint lds_sptr = lds_stack_bottom; \n"\
+" \n"\
+"            lds_stack[lds_sptr++] = INVALID_ADDR; \n"\
+" \n"\
+"            while (addr != INVALID_ADDR) \n"\
+"            { \n"\
+"                const bvh_node node = nodes[addr]; \n"\
+" \n"\
+"                if (INTERNAL_NODE(node)) \n"\
+"                { \n"\
+"                    float2 s0 = fast_intersect_bbox2( \n"\
+"                        node.aabb_left_min_or_v0_and_addr_left.xyz, \n"\
+"                        node.aabb_left_max_or_v1_and_mesh_id.xyz, \n"\
+"                        invDir, oxInvDir, closest_t); \n"\
+"                    float2 s1 = fast_intersect_bbox2( \n"\
+"                        node.aabb_right_min_or_v2_and_addr_right.xyz, \n"\
+"                        node.aabb_right_max_and_prim_id.xyz, \n"\
+"                        invDir, oxInvDir, closest_t); \n"\
+" \n"\
+"                    bool traverse_c0 = (s0.x <= s0.y); \n"\
+"                    bool traverse_c1 = (s1.x <= s1.y); \n"\
+"                    bool c1first = traverse_c1 && (s0.x > s1.x); \n"\
+" \n"\
+"                    if (traverse_c0 || traverse_c1) \n"\
+"                    { \n"\
+"                        uint deferred = INVALID_ADDR; \n"\
+" \n"\
+"                        if (c1first || !traverse_c0) \n"\
+"                        { \n"\
+"                            addr = GetAddrRight(node); \n"\
+"                            deferred = GetAddrLeft(node); \n"\
+"                        } \n"\
+"                        else \n"\
+"                        { \n"\
+"                            addr = GetAddrLeft(node); \n"\
+"                            deferred = GetAddrRight(node); \n"\
+"                        } \n"\
+" \n"\
+"                        if (traverse_c0 && traverse_c1) \n"\
+"                        { \n"\
+"                            if (lds_sptr - lds_stack_bottom >= LDS_STACK_SIZE) \n"\
+"                            { \n"\
+"                                for (int i = 1; i < LDS_STACK_SIZE; ++i) \n"\
+"                                { \n"\
+"                                    stack[sptr + i] = lds_stack[lds_stack_bottom + i]; \n"\
+"                                } \n"\
+" \n"\
+"                                sptr += LDS_STACK_SIZE; \n"\
+"                                lds_sptr = lds_stack_bottom + 1; \n"\
+"                            } \n"\
+" \n"\
+"                            lds_stack[lds_sptr++] = deferred; \n"\
+"                        } \n"\
+" \n"\
+"                        continue; \n"\
+"                    } \n"\
+"                } \n"\
+"                else \n"\
+"                { \n"\
+"                    float t = fast_intersect_triangle( \n"\
+"                        my_ray, \n"\
+"                        node.aabb_left_min_or_v0_and_addr_left.xyz, \n"\
+"                        node.aabb_left_max_or_v1_and_mesh_id.xyz, \n"\
+"                        node.aabb_right_min_or_v2_and_addr_right.xyz, \n"\
+"                        closest_t); \n"\
+" \n"\
+"                    if (t < closest_t) \n"\
+"                    { \n"\
+"                        hits[index] = HIT_MARKER; \n"\
+"                        return; \n"\
+"                    } \n"\
+"                } \n"\
+" \n"\
+"                addr = lds_stack[--lds_sptr]; \n"\
+" \n"\
+"                if (addr == INVALID_ADDR && sptr > stack_bottom) \n"\
+"                { \n"\
+"                    sptr -= LDS_STACK_SIZE; \n"\
+"                    for (int i = 1; i < LDS_STACK_SIZE; ++i) \n"\
+"                    { \n"\
+"                        lds_stack[lds_stack_bottom + i] = stack[sptr + i]; \n"\
+"                    } \n"\
+" \n"\
+"                    lds_sptr = lds_stack_bottom + LDS_STACK_SIZE - 1; \n"\
+"                    addr = lds_stack[lds_sptr]; \n"\
+"                } \n"\
+"            } \n"\
+" \n"\
+"            // Finished traversal, but no intersection found \n"\
+"            hits[index] = MISS_MARKER; \n"\
+"        } \n"\
+"    } \n"\
+"} \n"\
+;
+static const char g_intersect_bvh2_lds_fp16_opencl[]= \
+"/********************************************************************** \n"\
+"Copyright (c) 2016 Advanced Micro Devices, Inc. All rights reserved. \n"\
+" \n"\
+"Permission is hereby granted, free of charge, to any person obtaining a copy \n"\
+"of this software and associated documentation files (the \"Software\"), to deal \n"\
+"in the Software without restriction, including without limitation the rights \n"\
+"to use, copy, modify, merge, publish, distribute, sublicense, and/or sell \n"\
+"copies of the Software, and to permit persons to whom the Software is \n"\
+"furnished to do so, subject to the following conditions: \n"\
+" \n"\
+"The above copyright notice and this permission notice shall be included in \n"\
+"all copies or substantial portions of the Software. \n"\
+" \n"\
+"THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR \n"\
+"IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, \n"\
+"FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE \n"\
+"AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER \n"\
+"LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, \n"\
+"OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN \n"\
+"THE SOFTWARE. \n"\
+"********************************************************************/ \n"\
+" \n"\
+"#pragma OPENCL EXTENSION cl_khr_fp16 : enable \n"\
+" \n"\
+"/************************************************************************* \n"\
+"INCLUDES \n"\
+"**************************************************************************/ \n"\
+"/********************************************************************** \n"\
+"Copyright (c) 2016 Advanced Micro Devices, Inc. All rights reserved. \n"\
+" \n"\
+"Permission is hereby granted, free of charge, to any person obtaining a copy \n"\
+"of this software and associated documentation files (the \"Software\"), to deal \n"\
+"in the Software without restriction, including without limitation the rights \n"\
+"to use, copy, modify, merge, publish, distribute, sublicense, and/or sell \n"\
+"copies of the Software, and to permit persons to whom the Software is \n"\
+"furnished to do so, subject to the following conditions: \n"\
+" \n"\
+"The above copyright notice and this permission notice shall be included in \n"\
+"all copies or substantial portions of the Software. \n"\
+" \n"\
+"THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR \n"\
+"IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, \n"\
+"FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE \n"\
+"AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER \n"\
+"LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, \n"\
+"OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN \n"\
+"THE SOFTWARE. \n"\
+"********************************************************************/ \n"\
+" \n"\
+"/************************************************************************* \n"\
+"DEFINES \n"\
+"**************************************************************************/ \n"\
+"#define PI 3.14159265358979323846f \n"\
+"#define KERNEL __kernel \n"\
+"#define GLOBAL __global \n"\
+"#define INLINE __attribute__((always_inline)) \n"\
+"#define HIT_MARKER 1 \n"\
+"#define MISS_MARKER -1 \n"\
+"#define INVALID_IDX -1 \n"\
+" \n"\
+"/************************************************************************* \n"\
+"EXTENSIONS \n"\
+"**************************************************************************/ \n"\
+"#ifdef AMD_MEDIA_OPS \n"\
+"#pragma OPENCL EXTENSION cl_amd_media_ops2 : enable \n"\
+"#endif \n"\
+" \n"\
+"/************************************************************************* \n"\
+"TYPES \n"\
+"**************************************************************************/ \n"\
+" \n"\
+"// Axis aligned bounding box \n"\
+"typedef struct \n"\
+"{ \n"\
+"    float4 pmin; \n"\
+"    float4 pmax; \n"\
+"} bbox; \n"\
+" \n"\
+"// Ray definition \n"\
+"typedef struct \n"\
+"{ \n"\
+"    float4 o; \n"\
+"    float4 d; \n"\
+"    int2 extra; \n"\
+"    int2 padding; \n"\
+"} ray; \n"\
+" \n"\
+"// Intersection definition \n"\
+"typedef struct \n"\
+"{ \n"\
+"    int shape_id; \n"\
+"    int prim_id; \n"\
+"    int2 padding; \n"\
+" \n"\
+"    float4 uvwt; \n"\
+"} Intersection; \n"\
+" \n"\
+" \n"\
+"/************************************************************************* \n"\
+"HELPER FUNCTIONS \n"\
+"**************************************************************************/ \n"\
+"INLINE \n"\
+"int ray_get_mask(ray const* r) \n"\
+"{ \n"\
+"    return r->extra.x; \n"\
+"} \n"\
+" \n"\
+"INLINE \n"\
+"int ray_is_active(ray const* r) \n"\
+"{ \n"\
+"    return r->extra.y; \n"\
+"} \n"\
+" \n"\
+"INLINE \n"\
+"float ray_get_maxt(ray const* r) \n"\
+"{ \n"\
+"    return r->o.w; \n"\
+"} \n"\
+" \n"\
+"INLINE \n"\
+"float ray_get_time(ray const* r) \n"\
+"{ \n"\
+"    return r->d.w; \n"\
+"} \n"\
+" \n"\
+"/************************************************************************* \n"\
+"FUNCTIONS \n"\
+"**************************************************************************/ \n"\
+"#ifndef APPLE \n"\
+"INLINE \n"\
+"float4 make_float4(float x, float y, float z, float w) \n"\
+"{ \n"\
+"    float4 res; \n"\
+"    res.x = x; \n"\
+"    res.y = y; \n"\
+"    res.z = z; \n"\
+"    res.w = w; \n"\
+"    return res; \n"\
+"} \n"\
+"INLINE \n"\
+"float3 make_float3(float x, float y, float z) \n"\
+"{ \n"\
+"    float3 res; \n"\
+"    res.x = x; \n"\
+"    res.y = y; \n"\
+"    res.z = z; \n"\
+"    return res; \n"\
+"} \n"\
+"INLINE \n"\
+"float2 make_float2(float x, float y) \n"\
+"{ \n"\
+"    float2 res; \n"\
+"    res.x = x; \n"\
+"    res.y = y; \n"\
+"    return res; \n"\
+"} \n"\
+"INLINE \n"\
+"int2 make_int2(int x, int y) \n"\
+"{ \n"\
+"    int2 res; \n"\
+"    res.x = x; \n"\
+"    res.y = y; \n"\
+"    return res; \n"\
+"} \n"\
+"INLINE \n"\
+"int3 make_int3(int x, int y, int z) \n"\
+"{ \n"\
+"    int3 res; \n"\
+"    res.x = x; \n"\
+"    res.y = y; \n"\
+"    res.z = z; \n"\
+"    return res; \n"\
+"} \n"\
+"#endif \n"\
+" \n"\
+"INLINE float min3(float a, float b, float c) \n"\
+"{ \n"\
+"#ifdef AMD_MEDIA_OPS \n"\
+"    return amd_min3(a, b, c); \n"\
+"#else \n"\
+"    return min(min(a,b), c); \n"\
+"#endif \n"\
+"} \n"\
+" \n"\
+"INLINE float max3(float a, float b, float c) \n"\
+"{ \n"\
+"#ifdef AMD_MEDIA_OPS \n"\
+"    return amd_max3(a, b, c); \n"\
+"#else \n"\
+"    return max(max(a,b), c); \n"\
+"#endif \n"\
+"} \n"\
+" \n"\
+" \n"\
+"// Intersect ray against a triangle and return intersection interval value if it is in \n"\
+"// (0, t_max], return t_max otherwise. \n"\
+"INLINE \n"\
+"float fast_intersect_triangle(ray r, float3 v1, float3 v2, float3 v3, float t_max) \n"\
+"{ \n"\
+"    float3 const e1 = v2 - v1; \n"\
+"    float3 const e2 = v3 - v1; \n"\
+"    float3 const s1 = cross(r.d.xyz, e2); \n"\
+" \n"\
+"#ifdef USE_SAFE_MATH \n"\
+"    float const invd = 1.f / dot(s1, e1); \n"\
+"#else \n"\
+"    float const invd = native_recip(dot(s1, e1)); \n"\
+"#endif \n"\
+" \n"\
+"    float3 const d = r.o.xyz - v1; \n"\
+"    float const b1 = dot(d, s1) * invd; \n"\
+"    float3 const s2 = cross(d, e1); \n"\
+"    float const b2 = dot(r.d.xyz, s2) * invd; \n"\
+"    float const temp = dot(e2, s2) * invd; \n"\
+" \n"\
+"    if (b1 < 0.f || b1 > 1.f || b2 < 0.f || b1 + b2 > 1.f || temp < 0.f || temp > t_max) \n"\
+"    { \n"\
+"        return t_max; \n"\
+"    } \n"\
+"    else \n"\
+"    { \n"\
+"        return temp; \n"\
+"    } \n"\
+"} \n"\
+" \n"\
+"INLINE \n"\
+"float3 safe_invdir(ray r) \n"\
+"{ \n"\
+"    float const dirx = r.d.x; \n"\
+"    float const diry = r.d.y; \n"\
+"    float const dirz = r.d.z; \n"\
+"    float const ooeps = 1e-8; \n"\
+"    float3 invdir; \n"\
+"    invdir.x = 1.0f / (fabs(dirx) > ooeps ? dirx : copysign(ooeps, dirx)); \n"\
+"    invdir.y = 1.0f / (fabs(diry) > ooeps ? diry : copysign(ooeps, diry)); \n"\
+"    invdir.z = 1.0f / (fabs(dirz) > ooeps ? dirz : copysign(ooeps, dirz)); \n"\
+"    return invdir; \n"\
+"} \n"\
+" \n"\
+"// Intersect rays vs bbox and return intersection span.  \n"\
+"// Intersection criteria is ret.x <= ret.y \n"\
+"INLINE \n"\
+"float2 fast_intersect_bbox1(bbox box, float3 invdir, float3 oxinvdir, float t_max) \n"\
+"{ \n"\
+"    float3 const f = mad(box.pmax.xyz, invdir, oxinvdir); \n"\
+"    float3 const n = mad(box.pmin.xyz, invdir, oxinvdir); \n"\
+"    float3 const tmax = max(f, n); \n"\
+"    float3 const tmin = min(f, n); \n"\
+"    float const t1 = min(min3(tmax.x, tmax.y, tmax.z), t_max); \n"\
+"    float const t0 = max(max3(tmin.x, tmin.y, tmin.z), 0.f); \n"\
+"    return make_float2(t0, t1); \n"\
+"} \n"\
+" \n"\
+"// Given a point in triangle plane, calculate its barycentrics \n"\
+"INLINE \n"\
+"float2 triangle_calculate_barycentrics(float3 p, float3 v1, float3 v2, float3 v3) \n"\
+"{ \n"\
+"    float3 const e1 = v2 - v1; \n"\
+"    float3 const e2 = v3 - v1; \n"\
+"    float3 const e = p - v1; \n"\
+"    float const d00 = dot(e1, e1); \n"\
+"    float const d01 = dot(e1, e2); \n"\
+"    float const d11 = dot(e2, e2); \n"\
+"    float const d20 = dot(e, e1); \n"\
+"    float const d21 = dot(e, e2); \n"\
+" \n"\
+"#ifdef USE_SAFE_MATH \n"\
+"    float const invdenom = 1.f / (d00 * d11 - d01 * d01); \n"\
+"#else \n"\
+"    float const invdenom = native_recip(d00 * d11 - d01 * d01); \n"\
+"#endif \n"\
+" \n"\
+"    float const b1 = (d11 * d20 - d01 * d21) * invdenom; \n"\
+"    float const b2 = (d00 * d21 - d01 * d20) * invdenom; \n"\
+"    return make_float2(b1, b2); \n"\
+"} \n"\
+" \n"\
+"/************************************************************************* \n"\
+"TYPE DEFINITIONS \n"\
+"**************************************************************************/ \n"\
+" \n"\
+"#define INVALID_ADDR 0xffffffffu \n"\
+"#define INTERNAL_NODE(node) ((node).aabb01_min_or_v0_and_addr0.w != INVALID_ADDR) \n"\
+" \n"\
+"#define GROUP_SIZE 64 \n"\
+"#define STACK_SIZE 32 \n"\
+"#define LDS_STACK_SIZE 16 \n"\
+" \n"\
+"// BVH node \n"\
+"typedef struct \n"\
+"{ \n"\
+"    uint4 aabb01_min_or_v0_and_addr0; \n"\
+"    uint4 aabb01_max_or_v1_and_addr1_or_mesh_id; \n"\
+"    uint4 aabb23_min_or_v2_and_addr2_or_prim_id; \n"\
+"    uint4 aabb23_max_and_addr3; \n"\
+" \n"\
+"} bvh_node; \n"\
+" \n"\
+"#define mymin3(a, b, c) min(min((a), (b)), (c)) \n"\
+"#define mymax3(a, b, c) max(max((a), (b)), (c)) \n"\
+" \n"\
+"INLINE half2 unpackFloat2x16(uint v) \n"\
+"{ \n"\
+"    return (half2) \n"\
+"        (as_half(convert_ushort(v & 0xffffu)), \n"\
+"         as_half(convert_ushort(v >> 16))); \n"\
+"} \n"\
+" \n"\
+"INLINE half4 fast_intersect_bbox2(uint3 pmin, uint3 pmax, half3 invdir, half3 oxinvdir, float t_max) \n"\
+"{ \n"\
+"    half2 pmin_x = unpackFloat2x16(pmin.x); \n"\
+"    half2 pmin_y = unpackFloat2x16(pmin.y); \n"\
+"    half2 pmin_z = unpackFloat2x16(pmin.z); \n"\
+"    half2 pmax_x = unpackFloat2x16(pmax.x); \n"\
+"    half2 pmax_y = unpackFloat2x16(pmax.y); \n"\
+"    half2 pmax_z = unpackFloat2x16(pmax.z); \n"\
+" \n"\
+"    half2 f_x = fma(pmax_x, invdir.xx, oxinvdir.xx); \n"\
+"    half2 f_y = fma(pmax_y, invdir.yy, oxinvdir.yy); \n"\
+"    half2 f_z = fma(pmax_z, invdir.zz, oxinvdir.zz); \n"\
+" \n"\
+"    half2 n_x = fma(pmin_x, invdir.xx, oxinvdir.xx); \n"\
+"    half2 n_y = fma(pmin_y, invdir.yy, oxinvdir.yy); \n"\
+"    half2 n_z = fma(pmin_z, invdir.zz, oxinvdir.zz); \n"\
+" \n"\
+"    half2 t_max_x = max(f_x, n_x); \n"\
+"    half2 t_max_y = max(f_y, n_y); \n"\
+"    half2 t_max_z = max(f_z, n_z); \n"\
+" \n"\
+"    half2 t_min_x = min(f_x, n_x); \n"\
+"    half2 t_min_y = min(f_y, n_y); \n"\
+"    half2 t_min_z = min(f_z, n_z); \n"\
+" \n"\
+"    half2 t_zero = (half2)(0.0f, 0.0f); \n"\
+"    half2 t_max2 = (half2)(t_max, t_max); \n"\
+"    half2 t1 = min(mymin3(t_max_x, t_max_y, t_max_z), t_max2); \n"\
+"    half2 t0 = max(mymax3(t_min_x, t_min_y, t_min_z), t_zero); \n"\
+" \n"\
+"    return (half4)(t0, t1); \n"\
+"} \n"\
+" \n"\
+"INLINE float3 safe_invdir2(ray r) \n"\
+"{ \n"\
+"    float const dirx = r.d.x; \n"\
+"    float const diry = r.d.y; \n"\
+"    float const dirz = r.d.z; \n"\
+"    float const ooeps = 1e-5; \n"\
+"    float3 invdir; \n"\
+"    invdir.x = 1.0f / (fabs(dirx) > ooeps ? dirx : copysign(ooeps, dirx)); \n"\
+"    invdir.y = 1.0f / (fabs(diry) > ooeps ? diry : copysign(ooeps, diry)); \n"\
+"    invdir.z = 1.0f / (fabs(dirz) > ooeps ? dirz : copysign(ooeps, dirz)); \n"\
+"    return invdir; \n"\
+"} \n"\
+" \n"\
+"INLINE void stack_push( \n"\
+"    __local uint *lds_stack, \n"\
+"    __private uint *lds_sptr, \n"\
+"    uint lds_stack_bottom, \n"\
+"    __global uint *stack, \n"\
+"    __private uint *sptr, \n"\
+"    uint idx) \n"\
+"{ \n"\
+"    if (*lds_sptr - lds_stack_bottom >= LDS_STACK_SIZE) \n"\
+"    { \n"\
+"        for (int i = 1; i < LDS_STACK_SIZE; ++i) \n"\
+"        { \n"\
+"            stack[*sptr + i] = lds_stack[lds_stack_bottom + i]; \n"\
+"        } \n"\
+" \n"\
+"        *sptr = *sptr + LDS_STACK_SIZE; \n"\
+"        *lds_sptr = lds_stack_bottom + 1; \n"\
+"    } \n"\
+" \n"\
+"    lds_stack[*lds_sptr] = idx; \n"\
+"    *lds_sptr = *lds_sptr + 1; \n"\
+"} \n"\
+" \n"\
+"__attribute__((reqd_work_group_size(64, 1, 1))) \n"\
+"KERNEL void intersect_main( \n"\
+"    // Bvh nodes \n"\
+"    GLOBAL const bvh_node *restrict nodes, \n"\
+"    // Rays \n"\
+"    GLOBAL const ray *restrict rays, \n"\
+"    // Number of rays in rays buffer \n"\
+"    GLOBAL const int *restrict num_rays, \n"\
+"    // Stack memory \n"\
+"    GLOBAL uint *stack, \n"\
+"    // Hit data \n"\
+"    GLOBAL Intersection *hits) \n"\
+"{ \n"\
+"    uint index = get_global_id(0); \n"\
+"    uint local_index = get_local_id(0); \n"\
+" \n"\
+"    // Handle only working subset \n"\
+"    if (index < *num_rays) \n"\
+"    { \n"\
+"        const ray my_ray = rays[index]; \n"\
+" \n"\
+"        if (ray_is_active(&my_ray)) \n"\
+"        { \n"\
+"            __local uint lds_stack[GROUP_SIZE * LDS_STACK_SIZE]; \n"\
+" \n"\
+"            // Precompute inverse direction and origin / dir for bbox testing \n"\
+"            const float3 invDir32 = safe_invdir2(my_ray); \n"\
+"            const half3 invDir = convert_half3(invDir32); \n"\
+"            const half3 oxInvDir = convert_half3(-my_ray.o.xyz * invDir32); \n"\
+" \n"\
+"            // Intersection parametric distance \n"\
+"            float closest_t = my_ray.o.w; \n"\
+" \n"\
+"            // Current node address \n"\
+"            uint addr = 0; \n"\
+"            // Current closest address \n"\
+"            uint closest_addr = INVALID_ADDR; \n"\
+" \n"\
+"            uint stack_bottom = STACK_SIZE * index; \n"\
+"            uint sptr = stack_bottom; \n"\
+"            uint lds_stack_bottom = local_index * LDS_STACK_SIZE; \n"\
+"            uint lds_sptr = lds_stack_bottom; \n"\
+" \n"\
+"            lds_stack[lds_sptr++] = INVALID_ADDR; \n"\
+" \n"\
+"            while (addr != INVALID_ADDR) \n"\
+"            { \n"\
+"                const bvh_node node = nodes[addr]; \n"\
+" \n"\
+"                if (INTERNAL_NODE(node)) \n"\
+"                { \n"\
+"                    half4 s01 = fast_intersect_bbox2( \n"\
+"                        node.aabb01_min_or_v0_and_addr0.xyz, \n"\
+"                        node.aabb01_max_or_v1_and_addr1_or_mesh_id.xyz, \n"\
+"                        invDir, oxInvDir, closest_t); \n"\
+"                    half4 s23 = fast_intersect_bbox2( \n"\
+"                        node.aabb23_min_or_v2_and_addr2_or_prim_id.xyz, \n"\
+"                        node.aabb23_max_and_addr3.xyz, \n"\
+"                        invDir, oxInvDir, closest_t); \n"\
+" \n"\
+"                    bool traverse_c0 = (s01.x <= s01.z); \n"\
+"                    bool traverse_c1 = (s01.y <= s01.w) && (node.aabb01_max_or_v1_and_addr1_or_mesh_id.w != INVALID_ADDR); \n"\
+"                    bool traverse_c2 = (s23.x <= s23.z); \n"\
+"                    bool traverse_c3 = (s23.y <= s23.w) && (node.aabb23_max_and_addr3.w != INVALID_ADDR); \n"\
+" \n"\
+"                    if (traverse_c0 || traverse_c1 || traverse_c2 || traverse_c3) \n"\
+"                    { \n"\
+"                        uint a = INVALID_ADDR; \n"\
+"                        half d = 100000000.0f; \n"\
+" \n"\
+"                        if (traverse_c0) \n"\
+"                        { \n"\
+"                            a = node.aabb01_min_or_v0_and_addr0.w; \n"\
+"                            d = s01.x; \n"\
+"                        } \n"\
+" \n"\
+"                        if (traverse_c1) \n"\
+"                        { \n"\
+"                            if (a == INVALID_ADDR) \n"\
+"                                a = node.aabb01_max_or_v1_and_addr1_or_mesh_id.w; \n"\
+"                            else \n"\
+"                            { \n"\
+"                                uint topush = s01.y < d ? a : node.aabb01_max_or_v1_and_addr1_or_mesh_id.w; \n"\
+"                                d = min(s01.y, d); \n"\
+"                                a = topush == a ? node.aabb01_max_or_v1_and_addr1_or_mesh_id.w : a; \n"\
+"                                stack_push(lds_stack, &lds_sptr, lds_stack_bottom, stack, &sptr, topush); \n"\
+"                            } \n"\
+"                        } \n"\
+" \n"\
+"                        if (traverse_c2) \n"\
+"                        { \n"\
+"                            if (a == INVALID_ADDR) \n"\
+"                                a = node.aabb23_min_or_v2_and_addr2_or_prim_id.w; \n"\
+"                            else \n"\
+"                            { \n"\
+"                                uint topush = s23.x < d ? a : node.aabb23_min_or_v2_and_addr2_or_prim_id.w; \n"\
+"                                d = min(s23.x, d); \n"\
+"                                a = topush == a ? node.aabb23_min_or_v2_and_addr2_or_prim_id.w : a; \n"\
+"                                stack_push(lds_stack, &lds_sptr, lds_stack_bottom, stack, &sptr, topush); \n"\
+"                            } \n"\
+"                        } \n"\
+" \n"\
+"                        if (traverse_c3) \n"\
+"                        { \n"\
+"                            if (a == INVALID_ADDR) \n"\
+"                                a = node.aabb23_max_and_addr3.w; \n"\
+"                            else \n"\
+"                            { \n"\
+"                                uint topush = s23.y < d ? a : node.aabb23_max_and_addr3.w; \n"\
+"                                d = min(s23.y, d); \n"\
+"                                a = topush == a ? node.aabb23_max_and_addr3.w : a; \n"\
+"                                stack_push(lds_stack, &lds_sptr, lds_stack_bottom, stack, &sptr, topush); \n"\
+"                            } \n"\
+"                        } \n"\
+" \n"\
+"                        addr = a; \n"\
+"                        continue; \n"\
+"                    } \n"\
+"                } \n"\
+"                else \n"\
+"                { \n"\
+"                    float t = fast_intersect_triangle( \n"\
+"                        my_ray, \n"\
+"                        as_float3(node.aabb01_min_or_v0_and_addr0.xyz), \n"\
+"                        as_float3(node.aabb01_max_or_v1_and_addr1_or_mesh_id.xyz), \n"\
+"                        as_float3(node.aabb23_min_or_v2_and_addr2_or_prim_id.xyz), \n"\
+"                        closest_t); \n"\
+" \n"\
+"                    if (t < closest_t) \n"\
+"                    { \n"\
+"                        closest_t = t; \n"\
+"                        closest_addr = addr; \n"\
+"                    } \n"\
+"                } \n"\
+" \n"\
+"                addr = lds_stack[--lds_sptr]; \n"\
+" \n"\
+"                if (addr == INVALID_ADDR && sptr > stack_bottom) \n"\
+"                { \n"\
+"                    sptr -= LDS_STACK_SIZE; \n"\
+"                    for (int i = 1; i < LDS_STACK_SIZE; ++i) \n"\
+"                    { \n"\
+"                        lds_stack[lds_stack_bottom + i] = stack[sptr + i]; \n"\
+"                    } \n"\
+" \n"\
+"                    lds_sptr = lds_stack_bottom + LDS_STACK_SIZE - 1; \n"\
+"                    addr = lds_stack[lds_sptr]; \n"\
+"                } \n"\
+"            } \n"\
+" \n"\
+"            // Check if we have found an intersection \n"\
+"            if (closest_addr != INVALID_ADDR) \n"\
+"            { \n"\
+"                // Calculate hit position \n"\
+"                const bvh_node node = nodes[closest_addr]; \n"\
+"                const float3 p = my_ray.o.xyz + closest_t * my_ray.d.xyz; \n"\
+" \n"\
+"                // Calculate barycentric coordinates \n"\
+"                const float2 uv = triangle_calculate_barycentrics( \n"\
+"                    p, \n"\
+"                    as_float3(node.aabb01_min_or_v0_and_addr0.xyz), \n"\
+"                    as_float3(node.aabb01_max_or_v1_and_addr1_or_mesh_id.xyz), \n"\
+"                    as_float3(node.aabb23_min_or_v2_and_addr2_or_prim_id.xyz)); \n"\
+" \n"\
+"                // Update hit information \n"\
+"                hits[index].prim_id = node.aabb23_min_or_v2_and_addr2_or_prim_id.w; \n"\
+"                hits[index].shape_id = node.aabb01_max_or_v1_and_addr1_or_mesh_id.w; \n"\
+"                hits[index].uvwt = (float4)(uv.x, uv.y, 0.0f, closest_t); \n"\
+"            } \n"\
+"            else \n"\
+"            { \n"\
+"                // Miss here \n"\
+"                hits[index].prim_id = MISS_MARKER; \n"\
+"                hits[index].shape_id = MISS_MARKER; \n"\
+"            } \n"\
+"        } \n"\
+"    } \n"\
+"} \n"\
+" \n"\
+"__attribute__((reqd_work_group_size(64, 1, 1))) \n"\
+"KERNEL void occluded_main( \n"\
+"    // Bvh nodes \n"\
+"    GLOBAL const bvh_node *restrict nodes, \n"\
+"    // Rays \n"\
+"    GLOBAL const ray *restrict rays, \n"\
+"    // Number of rays in rays buffer \n"\
+"    GLOBAL const int *restrict num_rays, \n"\
+"    // Stack memory \n"\
+"    GLOBAL uint *stack, \n"\
+"    // Hit results: 1 for hit and -1 for miss \n"\
+"    GLOBAL int *hits) \n"\
+"{ \n"\
+"    uint index = get_global_id(0); \n"\
+"    uint local_index = get_local_id(0); \n"\
+" \n"\
+"    // Handle only working subset \n"\
+"    if (index < *num_rays) \n"\
+"    { \n"\
+"        const ray my_ray = rays[index]; \n"\
+" \n"\
+"        if (ray_is_active(&my_ray)) \n"\
+"        { \n"\
+"            __local uint lds_stack[GROUP_SIZE * LDS_STACK_SIZE]; \n"\
+" \n"\
+"            // Precompute inverse direction and origin / dir for bbox testing \n"\
+"            const float3 invDir32 = safe_invdir2(my_ray); \n"\
+"            const half3 invDir = convert_half3(invDir32); \n"\
+"            const half3 oxInvDir = convert_half3(-my_ray.o.xyz * invDir32); \n"\
+" \n"\
+"            // Intersection parametric distance \n"\
+"            float closest_t = my_ray.o.w; \n"\
+" \n"\
+"            // Current node address \n"\
+"            uint addr = 0; \n"\
+"            // Current closest address \n"\
+"            uint closest_addr = INVALID_ADDR; \n"\
+" \n"\
+"            uint stack_bottom = STACK_SIZE * index; \n"\
+"            uint sptr = stack_bottom; \n"\
+"            uint lds_stack_bottom = local_index * LDS_STACK_SIZE; \n"\
+"            uint lds_sptr = lds_stack_bottom; \n"\
+" \n"\
+"            lds_stack[lds_sptr++] = INVALID_ADDR; \n"\
+" \n"\
+"            while (addr != INVALID_ADDR) \n"\
+"            { \n"\
+"                const bvh_node node = nodes[addr]; \n"\
+" \n"\
+"                if (INTERNAL_NODE(node)) \n"\
+"                { \n"\
+"                    half4 s01 = fast_intersect_bbox2( \n"\
+"                        node.aabb01_min_or_v0_and_addr0.xyz, \n"\
+"                        node.aabb01_max_or_v1_and_addr1_or_mesh_id.xyz, \n"\
+"                        invDir, oxInvDir, closest_t); \n"\
+"                    half4 s23 = fast_intersect_bbox2( \n"\
+"                        node.aabb23_min_or_v2_and_addr2_or_prim_id.xyz, \n"\
+"                        node.aabb23_max_and_addr3.xyz, \n"\
+"                        invDir, oxInvDir, closest_t); \n"\
+" \n"\
+"                    bool traverse_c0 = (s01.x <= s01.z); \n"\
+"                    bool traverse_c1 = (s01.y <= s01.w) && (node.aabb01_max_or_v1_and_addr1_or_mesh_id.w != INVALID_ADDR); \n"\
+"                    bool traverse_c2 = (s23.x <= s23.z); \n"\
+"                    bool traverse_c3 = (s23.y <= s23.w) && (node.aabb23_max_and_addr3.w != INVALID_ADDR); \n"\
+" \n"\
+"                    if (traverse_c0 || traverse_c1 || traverse_c2 || traverse_c3) \n"\
+"                    { \n"\
+"                        uint a = INVALID_ADDR; \n"\
+"                        half d = 100000000.0f; \n"\
+" \n"\
+"                        if (traverse_c0) \n"\
+"                        { \n"\
+"                            a = node.aabb01_min_or_v0_and_addr0.w; \n"\
+"                            d = s01.x; \n"\
+"                        } \n"\
+" \n"\
+"                        if (traverse_c1) \n"\
+"                        { \n"\
+"                            if (a == INVALID_ADDR) \n"\
+"                                a = node.aabb01_max_or_v1_and_addr1_or_mesh_id.w; \n"\
+"                            else \n"\
+"                            { \n"\
+"                                uint topush = s01.y < d ? a : node.aabb01_max_or_v1_and_addr1_or_mesh_id.w; \n"\
+"                                d = min(s01.y, d); \n"\
+"                                a = topush == a ? node.aabb01_max_or_v1_and_addr1_or_mesh_id.w : a; \n"\
+"                                stack_push(lds_stack, &lds_sptr, lds_stack_bottom, stack, &sptr, topush); \n"\
+"                            } \n"\
+"                        } \n"\
+" \n"\
+"                        if (traverse_c2) \n"\
+"                        { \n"\
+"                            if (a == INVALID_ADDR) \n"\
+"                                a = node.aabb23_min_or_v2_and_addr2_or_prim_id.w; \n"\
+"                            else \n"\
+"                            { \n"\
+"                                uint topush = s23.x < d ? a : node.aabb23_min_or_v2_and_addr2_or_prim_id.w; \n"\
+"                                d = min(s23.x, d); \n"\
+"                                a = topush == a ? node.aabb23_min_or_v2_and_addr2_or_prim_id.w : a; \n"\
+"                                stack_push(lds_stack, &lds_sptr, lds_stack_bottom, stack, &sptr, topush); \n"\
+"                            } \n"\
+"                        } \n"\
+" \n"\
+"                        if (traverse_c3) \n"\
+"                        { \n"\
+"                            if (a == INVALID_ADDR) \n"\
+"                                a = node.aabb23_max_and_addr3.w; \n"\
+"                            else \n"\
+"                            { \n"\
+"                                uint topush = s23.y < d ? a : node.aabb23_max_and_addr3.w; \n"\
+"                                d = min(s23.y, d); \n"\
+"                                a = topush == a ? node.aabb23_max_and_addr3.w : a; \n"\
+"                                stack_push(lds_stack, &lds_sptr, lds_stack_bottom, stack, &sptr, topush); \n"\
+"                            } \n"\
+"                        } \n"\
+" \n"\
+"                        addr = a; \n"\
+"                        continue; \n"\
+"                    } \n"\
+"                } \n"\
+"                else \n"\
+"                { \n"\
+"                    float t = fast_intersect_triangle( \n"\
+"                        my_ray, \n"\
+"                        as_float3(node.aabb01_min_or_v0_and_addr0.xyz), \n"\
+"                        as_float3(node.aabb01_max_or_v1_and_addr1_or_mesh_id.xyz), \n"\
+"                        as_float3(node.aabb23_min_or_v2_and_addr2_or_prim_id.xyz), \n"\
+"                        closest_t); \n"\
+" \n"\
+"                    if (t < closest_t) \n"\
+"                    { \n"\
+"                        hits[index] = HIT_MARKER; \n"\
+"                        return; \n"\
+"                    } \n"\
+"                } \n"\
+" \n"\
+"                addr = lds_stack[--lds_sptr]; \n"\
+" \n"\
+"                if (addr == INVALID_ADDR && sptr > stack_bottom) \n"\
+"                { \n"\
+"                    sptr -= LDS_STACK_SIZE; \n"\
+"                    for (int i = 1; i < LDS_STACK_SIZE; ++i) \n"\
+"                    { \n"\
+"                        lds_stack[lds_stack_bottom + i] = stack[sptr + i]; \n"\
+"                    } \n"\
+" \n"\
+"                    lds_sptr = lds_stack_bottom + LDS_STACK_SIZE - 1; \n"\
+"                    addr = lds_stack[lds_sptr]; \n"\
+"                } \n"\
+"            } \n"\
+" \n"\
+"            // Finished traversal, but no intersection found \n"\
+"            hits[index] = MISS_MARKER; \n"\
 "        } \n"\
 "    } \n"\
 "} \n"\
@@ -2430,7 +3777,13 @@ static const char g_intersect_bvh2_short_stack_opencl[]= \
 "    float3 const e1 = v2 - v1; \n"\
 "    float3 const e2 = v3 - v1; \n"\
 "    float3 const s1 = cross(r.d.xyz, e2); \n"\
+" \n"\
+"#ifdef USE_SAFE_MATH \n"\
+"    float const invd = 1.f / dot(s1, e1); \n"\
+"#else \n"\
 "    float const invd = native_recip(dot(s1, e1)); \n"\
+"#endif \n"\
+" \n"\
 "    float3 const d = r.o.xyz - v1; \n"\
 "    float const b1 = dot(d, s1) * invd; \n"\
 "    float3 const s2 = cross(d, e1); \n"\
@@ -2450,19 +3803,15 @@ static const char g_intersect_bvh2_short_stack_opencl[]= \
 "INLINE \n"\
 "float3 safe_invdir(ray r) \n"\
 "{ \n"\
-"#ifdef USE_SAFE_MATH \n"\
 "    float const dirx = r.d.x; \n"\
 "    float const diry = r.d.y; \n"\
 "    float const dirz = r.d.z; \n"\
-"    float const ooeps = exp2(-80.0f); // Avoid div by zero. \n"\
+"    float const ooeps = 1e-8; \n"\
 "    float3 invdir; \n"\
 "    invdir.x = 1.0f / (fabs(dirx) > ooeps ? dirx : copysign(ooeps, dirx)); \n"\
 "    invdir.y = 1.0f / (fabs(diry) > ooeps ? diry : copysign(ooeps, diry)); \n"\
 "    invdir.z = 1.0f / (fabs(dirz) > ooeps ? dirz : copysign(ooeps, dirz)); \n"\
 "    return invdir; \n"\
-"#else \n"\
-"    return native_recip(r.d.xyz); \n"\
-"#endif \n"\
 "} \n"\
 " \n"\
 "// Intersect rays vs bbox and return intersection span.  \n"\
@@ -2491,7 +3840,13 @@ static const char g_intersect_bvh2_short_stack_opencl[]= \
 "    float const d11 = dot(e2, e2); \n"\
 "    float const d20 = dot(e, e1); \n"\
 "    float const d21 = dot(e, e2); \n"\
+" \n"\
+"#ifdef USE_SAFE_MATH \n"\
+"    float const invdenom = 1.f / (d00 * d11 - d01 * d01); \n"\
+"#else \n"\
 "    float const invdenom = native_recip(d00 * d11 - d01 * d01); \n"\
+"#endif \n"\
+" \n"\
 "    float const b1 = (d11 * d20 - d01 * d21) * invdenom; \n"\
 "    float const b2 = (d00 * d21 - d01 * d20) * invdenom; \n"\
 "    return make_float2(b1, b2); \n"\
@@ -2846,7 +4201,7 @@ static const char g_intersect_bvh2_short_stack_opencl[]= \
 "                float3 const v3 = vertices[node.i2]; \n"\
 "                // Calculate hit position \n"\
 "                float3 const p = r.o.xyz + r.d.xyz * t_max; \n"\
-"                // Calculte barycentric coordinates \n"\
+"                // Calculate barycentric coordinates \n"\
 "                float2 const uv = triangle_calculate_barycentrics(p, v1, v2, v3); \n"\
 "                // Update hit information \n"\
 "                hits[global_id].shape_id = node.shape_id; \n"\
@@ -3102,7 +4457,13 @@ static const char g_intersect_bvh2_skiplinks_opencl[]= \
 "    float3 const e1 = v2 - v1; \n"\
 "    float3 const e2 = v3 - v1; \n"\
 "    float3 const s1 = cross(r.d.xyz, e2); \n"\
+" \n"\
+"#ifdef USE_SAFE_MATH \n"\
+"    float const invd = 1.f / dot(s1, e1); \n"\
+"#else \n"\
 "    float const invd = native_recip(dot(s1, e1)); \n"\
+"#endif \n"\
+" \n"\
 "    float3 const d = r.o.xyz - v1; \n"\
 "    float const b1 = dot(d, s1) * invd; \n"\
 "    float3 const s2 = cross(d, e1); \n"\
@@ -3122,19 +4483,15 @@ static const char g_intersect_bvh2_skiplinks_opencl[]= \
 "INLINE \n"\
 "float3 safe_invdir(ray r) \n"\
 "{ \n"\
-"#ifdef USE_SAFE_MATH \n"\
 "    float const dirx = r.d.x; \n"\
 "    float const diry = r.d.y; \n"\
 "    float const dirz = r.d.z; \n"\
-"    float const ooeps = exp2(-80.0f); // Avoid div by zero. \n"\
+"    float const ooeps = 1e-8; \n"\
 "    float3 invdir; \n"\
 "    invdir.x = 1.0f / (fabs(dirx) > ooeps ? dirx : copysign(ooeps, dirx)); \n"\
 "    invdir.y = 1.0f / (fabs(diry) > ooeps ? diry : copysign(ooeps, diry)); \n"\
 "    invdir.z = 1.0f / (fabs(dirz) > ooeps ? dirz : copysign(ooeps, dirz)); \n"\
 "    return invdir; \n"\
-"#else \n"\
-"    return native_recip(r.d.xyz); \n"\
-"#endif \n"\
 "} \n"\
 " \n"\
 "// Intersect rays vs bbox and return intersection span.  \n"\
@@ -3163,7 +4520,13 @@ static const char g_intersect_bvh2_skiplinks_opencl[]= \
 "    float const d11 = dot(e2, e2); \n"\
 "    float const d20 = dot(e, e1); \n"\
 "    float const d21 = dot(e, e2); \n"\
+" \n"\
+"#ifdef USE_SAFE_MATH \n"\
+"    float const invdenom = 1.f / (d00 * d11 - d01 * d01); \n"\
+"#else \n"\
 "    float const invdenom = native_recip(d00 * d11 - d01 * d01); \n"\
+"#endif \n"\
+" \n"\
 "    float const b1 = (d11 * d20 - d01 * d21) * invdenom; \n"\
 "    float const b2 = (d00 * d21 - d01 * d20) * invdenom; \n"\
 "    return make_float2(b1, b2); \n"\
@@ -3601,7 +4964,13 @@ static const char g_intersect_hlbvh_stack_opencl[]= \
 "    float3 const e1 = v2 - v1; \n"\
 "    float3 const e2 = v3 - v1; \n"\
 "    float3 const s1 = cross(r.d.xyz, e2); \n"\
+" \n"\
+"#ifdef USE_SAFE_MATH \n"\
+"    float const invd = 1.f / dot(s1, e1); \n"\
+"#else \n"\
 "    float const invd = native_recip(dot(s1, e1)); \n"\
+"#endif \n"\
+" \n"\
 "    float3 const d = r.o.xyz - v1; \n"\
 "    float const b1 = dot(d, s1) * invd; \n"\
 "    float3 const s2 = cross(d, e1); \n"\
@@ -3621,19 +4990,15 @@ static const char g_intersect_hlbvh_stack_opencl[]= \
 "INLINE \n"\
 "float3 safe_invdir(ray r) \n"\
 "{ \n"\
-"#ifdef USE_SAFE_MATH \n"\
 "    float const dirx = r.d.x; \n"\
 "    float const diry = r.d.y; \n"\
 "    float const dirz = r.d.z; \n"\
-"    float const ooeps = exp2(-80.0f); // Avoid div by zero. \n"\
+"    float const ooeps = 1e-8; \n"\
 "    float3 invdir; \n"\
 "    invdir.x = 1.0f / (fabs(dirx) > ooeps ? dirx : copysign(ooeps, dirx)); \n"\
 "    invdir.y = 1.0f / (fabs(diry) > ooeps ? diry : copysign(ooeps, diry)); \n"\
 "    invdir.z = 1.0f / (fabs(dirz) > ooeps ? dirz : copysign(ooeps, dirz)); \n"\
 "    return invdir; \n"\
-"#else \n"\
-"    return native_recip(r.d.xyz); \n"\
-"#endif \n"\
 "} \n"\
 " \n"\
 "// Intersect rays vs bbox and return intersection span.  \n"\
@@ -3662,7 +5027,13 @@ static const char g_intersect_hlbvh_stack_opencl[]= \
 "    float const d11 = dot(e2, e2); \n"\
 "    float const d20 = dot(e, e1); \n"\
 "    float const d21 = dot(e, e2); \n"\
+" \n"\
+"#ifdef USE_SAFE_MATH \n"\
+"    float const invdenom = 1.f / (d00 * d11 - d01 * d01); \n"\
+"#else \n"\
 "    float const invdenom = native_recip(d00 * d11 - d01 * d01); \n"\
+"#endif \n"\
+" \n"\
 "    float const b1 = (d11 * d20 - d01 * d21) * invdenom; \n"\
 "    float const b2 = (d00 * d21 - d01 * d20) * invdenom; \n"\
 "    return make_float2(b1, b2); \n"\

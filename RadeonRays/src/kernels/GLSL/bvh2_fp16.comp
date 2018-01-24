@@ -1,0 +1,110 @@
+#version 430
+
+// TODO: AMD_gpu_shader_half_float requires 450 (https://www.khronos.org/registry/OpenGL/extensions/AMD/AMD_gpu_shader_half_float.txt)
+
+#if 0
+
+#extension GL_AMD_gpu_shader_half_float : require
+
+// Note Anvil define system assumes first line is alway a #version so don't rearrange
+
+//
+// Copyright (c) 2016 Advanced Micro Devices, Inc. All rights reserved.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+//
+
+#define INVALID_ADDR 0xffffffffu
+#define INTERNAL_NODE(node) ((node).addr0 != INVALID_ADDR)
+
+#define GROUP_SIZE 64
+#define STACK_SIZE 32
+#define LDS_STACK_SIZE 16
+
+struct BvhNode
+{
+    uvec3 aabb01_min_or_v0;
+    uint addr0;
+    uvec3 aabb01_max_or_v1;
+    uint addr1_or_mesh_id;
+    uvec3 aabb23_min_or_v2;
+    uint addr2_or_prim_id;
+    uvec3 aabb23_max;
+    uint addr3;
+};
+
+struct Intersection
+{
+    uint shape_id;
+    uint prim_id;
+    uvec2 padding;
+    vec4 uvwt;
+};
+
+struct ray
+{
+    vec4 o;
+    vec4 d;
+    ivec2 extra;
+    ivec2 padding;
+};
+
+layout(std140, binding = 0) buffer restrict readonly NodesBlock
+{
+    BvhNode Nodes[];
+};
+
+layout(std140, binding = 1) buffer restrict readonly RaysBlock
+{
+    ray Rays[];
+};
+
+layout(std140, binding = 2) buffer restrict readonly NumraysBlock
+{
+    int Numrays;
+};
+
+layout(std430, binding = 3) buffer StackBlock
+{
+    int Stack[];
+};
+
+layout(std430, binding = 4) buffer restrict writeonly HitsBlock
+{
+    Intersection Hits[];
+};
+
+layout(std430, binding = 4) buffer restrict writeonly HitsResults
+{
+    int Hitresults[];
+};
+
+layout(local_size_x = GROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
+
+shared uint lds_stack[GROUP_SIZE * LDS_STACK_SIZE];
+
+#endif
+
+void intersect_main()
+{
+}
+
+void occluded_main()
+{
+}

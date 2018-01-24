@@ -34,7 +34,7 @@
 
 #include <algorithm>
 
- // Preferred work group size for Radeon devices
+// Preferred work group size for Radeon devices
 static int const kWorkGroupSize = 64;
 static int const kMaxStackSize = 48;
 static int const kMaxBatchSize = 1024 * 1024;
@@ -57,13 +57,13 @@ namespace RadeonRays
         Calc::Function* occlude_func;
 
         GpuData(Calc::Device* d)
-        : device(d)
-                          , bvh(nullptr)
-                          , vertices(nullptr)
-                          , stack(nullptr)
-                          , executable(nullptr)
-                          , isect_func(nullptr)
-                          , occlude_func(nullptr)
+            : device(d)
+            , bvh(nullptr)
+            , vertices(nullptr)
+            , stack(nullptr)
+            , executable(nullptr)
+            , isect_func(nullptr)
+            , occlude_func(nullptr)
         {
         }
 
@@ -225,8 +225,7 @@ namespace RadeonRays
                 numvertices += mesh->num_vertices();
             }
 
-
-            // We can't avoild allocating it here, since bounds aren't stored anywhere
+            // We can't avoid allocating it here, since bounds aren't stored anywhere
             std::vector<bbox> bounds(numfaces);
 
             // We handle meshes first collecting their world space bounds

@@ -71,7 +71,7 @@ project "RadeonRays"
 
         if _OPTIONS["use_vulkan"] then
             os.execute( "python ../Tools/scripts/stringify.py " ..
-                                os.getcwd() .. "../RadeonRays/src/kernels/GLSL/ "  ..
+                                os.getcwd() .. "./../RadeonRays/src/kernels/GLSL/ "  ..
                                 ".comp " ..
                                 "vulkan " ..
                                  "> ./src/kernelcache/kernels_vk.h"
@@ -128,9 +128,9 @@ project "RadeonRays"
         end
         if vulkanSDKPath ~= nil then
             configuration {"x32"}
-            libdirs { vulkanSDKPath .. "/Bin32" }
+            libdirs { vulkanSDKPath .. "/Lib32" }
             configuration {"x64"}
-            libdirs { vulkanSDKPath .. "/Bin" }
+            libdirs { vulkanSDKPath .. "/Lib" }
             configuration {}
         end
         if os.is("macosx") then

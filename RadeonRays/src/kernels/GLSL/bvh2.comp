@@ -1,0 +1,440 @@
+#version 430
+
+// Note Anvil define system assumes first line is alway a #version so don't rearrange
+
+//
+// Copyright (c) 2016 Advanced Micro Devices, Inc. All rights reserved.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+//
+
+#define INVALID_ADDR 0xffffffffu
+#define INTERNAL_NODE(node) ((node).addr_left != INVALID_ADDR)
+
+#define HIT_MARKER  0x1u
+#define MISS_MARKER 0xffffffffu
+
+#define GROUP_SIZE 64
+#define STACK_SIZE 32
+#define LDS_STACK_SIZE 8
+
+struct BvhNode
+{
+    vec3 aabb_left_min_or_v0;
+    uint addr_left;
+    vec3 aabb_left_max_or_v1;
+    uint mesh_id;
+    vec3 aabb_right_min_or_v2;
+    uint addr_right;
+    vec3 aabb_right_max;
+    uint prim_id;
+};
+
+struct Intersection
+{
+    uint shape_id;
+    uint prim_id;
+    uvec2 padding;
+    vec4 uvwt;
+};
+
+struct ray
+{
+    vec4 o;
+    vec4 d;
+    ivec2 extra;
+    ivec2 padding;
+};
+
+layout(std140, binding = 0) buffer restrict readonly NodesBlock
+{
+    BvhNode Nodes[];
+};
+
+layout(std140, binding = 1) buffer restrict readonly RaysBlock
+{
+    ray Rays[];
+};
+
+layout(std140, binding = 2) buffer restrict readonly NumraysBlock
+{
+    uint Numrays;
+};
+
+layout(std430, binding = 3) buffer StackBlock
+{
+    uint Stack[];
+};
+
+layout(std430, binding = 4) buffer restrict writeonly HitsBlock
+{
+    Intersection Hits[];
+};
+
+layout(std430, binding = 4) buffer restrict writeonly HitsResults
+{
+    uint Hitresults[];
+};
+
+layout(local_size_x = GROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
+
+shared uint lds_stack[GROUP_SIZE * LDS_STACK_SIZE];
+
+float copysign(float a, float b)
+{
+    return sign(b) >= 0.f ? a : -a;
+}
+
+float mymin3(float a, float b, float c)
+{
+    return min(c, min(a, b));
+}
+
+float mymax3(float a, float b, float c)
+{
+    return max(c, max(a, b));
+}
+
+vec2 calculate_barycentrics(vec3 p, vec3 v1, vec3 v2, vec3 v3)
+{
+    vec3 e1 = v2 - v1;
+    vec3 e2 = v3 - v1;
+    vec3 e = p - v1;
+    float d00 = dot(e1, e1);
+    float d01 = dot(e1, e2);
+    float d11 = dot(e2, e2);
+    float d20 = dot(e, e1);
+    float d21 = dot(e, e2);
+    float invdenom = 1.0 / (d00 * d11 - d01 * d01);
+    float b1 = (d11 * d20 - d01 * d21) * invdenom;
+    float b2 = (d00 * d21 - d01 * d20) * invdenom;
+    return vec2(b1, b2);
+}
+
+vec2 fast_intersect_aabb(
+    vec3 pmin, vec3 pmax,
+    vec3 invdir, vec3 oxinvdir,
+    float t_max)
+{
+    vec3 f = fma(pmax, invdir, oxinvdir);
+    vec3 n = fma(pmin, invdir, oxinvdir);
+    vec3 tmax = max(f, n);
+    vec3 tmin = min(f, n);
+    float t1 = min(mymin3(tmax.x, tmax.y, tmax.z), t_max);
+    float t0 = max(mymax3(tmin.x, tmin.y, tmin.z), 0.0);
+    return vec2(t0, t1);
+}
+
+float fast_intersect_triangle(ray r, vec3 v1, vec3 v2, vec3 v3, float t_max)
+{
+    vec3 e1 = v2 - v1;
+    vec3 e2 = v3 - v1;
+    vec3 s1 = cross(r.d.xyz, e2);
+    float invd = 1.0 / dot(s1, e1);
+    vec3 d = r.o.xyz - v1;
+    float b1 = dot(d, s1) * invd;
+    vec3 s2 = cross(d, e1);
+    float b2 = dot(r.d.xyz, s2) * invd;
+    float temp = dot(e2, s2) * invd;
+
+    if (b1 < 0.0 || b1 > 1.0 ||
+        b2 < 0.0 || b1 + b2 > 1.0 ||
+        temp < 0.0 || temp > t_max)
+    {
+        return t_max;
+    }
+    else
+    {
+        return temp;
+    }
+}
+
+vec3 safe_invdir(vec3 d)
+{
+    float dirx = d.x;
+    float diry = d.y;
+    float dirz = d.z;
+    float ooeps = 1e-5;
+    vec3 invdir;
+    invdir.x = 1.0 / (abs(dirx) > ooeps ? dirx : copysign(ooeps, dirx));
+    invdir.y = 1.0 / (abs(diry) > ooeps ? diry : copysign(ooeps, diry));
+    invdir.z = 1.0 / (abs(dirz) > ooeps ? dirz : copysign(ooeps, dirz));
+    return invdir;
+}
+
+void intersect_main()
+{
+    uint index = gl_GlobalInvocationID.x;
+    uint local_index = gl_LocalInvocationID.x;
+
+    // Handle only working subset
+    if (index >= Numrays) return;
+
+    ray my_ray = Rays[index];
+    vec3 invDir = safe_invdir(my_ray.d.xyz);
+    vec3 oxInvDir = -my_ray.o.xyz * invDir;
+
+    // Intersection parametric distance
+    float closest_t = my_ray.o.w;
+
+    // Current node address
+    uint addr = 0;
+    // Current closest address
+    uint closest_addr = INVALID_ADDR;
+
+    uint stack_bottom = STACK_SIZE * index;
+    uint sptr = stack_bottom;
+    uint lds_stack_bottom = local_index * LDS_STACK_SIZE;
+    uint lds_sptr = lds_stack_bottom;
+
+    lds_stack[lds_sptr++] = INVALID_ADDR;
+
+    while (addr != INVALID_ADDR)
+    {
+        BvhNode node = Nodes[addr];
+
+        if (INTERNAL_NODE(node))
+        {
+            vec2 s0 = fast_intersect_aabb(
+                node.aabb_left_min_or_v0,
+                node.aabb_left_max_or_v1,
+                invDir, oxInvDir, closest_t);
+            vec2 s1 = fast_intersect_aabb(
+                node.aabb_right_min_or_v2,
+                node.aabb_right_max,
+                invDir, oxInvDir, closest_t);
+
+            bool traverse_c0 = (s0.x <= s0.y);
+            bool traverse_c1 = (s1.x <= s1.y);
+            bool c1first = traverse_c1 && (s0.x > s1.x);
+
+            if (traverse_c0 || traverse_c1)
+            {
+                uint deferred = INVALID_ADDR;
+
+                if (c1first || !traverse_c0)
+                {
+                    addr = node.addr_right;
+                    deferred = node.addr_left;
+                }
+                else
+                {
+                    addr = node.addr_left;
+                    deferred = node.addr_right;
+                }
+
+                if (traverse_c0 && traverse_c1)
+                {
+                    if (lds_sptr - lds_stack_bottom >= LDS_STACK_SIZE)
+                    {
+                        for (int i = 1; i < LDS_STACK_SIZE; ++i)
+                        {
+                            Stack[sptr + i] = lds_stack[lds_stack_bottom + i];
+                        }
+
+                        sptr += LDS_STACK_SIZE;
+                        lds_sptr = lds_stack_bottom + 1;
+                    }
+
+                    lds_stack[lds_sptr++] = deferred;
+                }
+
+                continue;
+            }
+        }
+        else
+        {
+            float t = fast_intersect_triangle(
+                my_ray,
+                node.aabb_left_min_or_v0,
+                node.aabb_left_max_or_v1,
+                node.aabb_right_min_or_v2,
+                closest_t);
+
+            if (t < closest_t)
+            {
+                closest_t = t;
+                closest_addr = addr;
+            }
+        }
+
+        addr = lds_stack[--lds_sptr];
+
+        if (addr == INVALID_ADDR && sptr > stack_bottom)
+        {
+            sptr -= LDS_STACK_SIZE;
+            for (int i = 1; i < LDS_STACK_SIZE; ++i)
+            {
+                lds_stack[lds_stack_bottom + i] = Stack[sptr + i];
+            }
+
+            lds_sptr = lds_stack_bottom + LDS_STACK_SIZE - 1;
+            addr = lds_stack[lds_sptr];
+        }
+    }
+
+    Intersection isect;
+    isect.padding.x = 667;
+    isect.padding.y = isect.padding.x;
+    isect.uvwt = vec4(0.0f, 0.0f, 0.0f, closest_t);
+
+    // Check if we have found an intersection
+    if (closest_addr != INVALID_ADDR)
+    {
+        // Calculate hit position
+        BvhNode node = Nodes[closest_addr];
+        vec3 p = my_ray.o.xyz + closest_t * my_ray.d.xyz;
+
+        // Calculate barycentric coordinates
+        isect.uvwt.xy = calculate_barycentrics(
+            p,
+            node.aabb_left_min_or_v0,
+            node.aabb_left_max_or_v1,
+            node.aabb_right_min_or_v2
+        );
+
+        // Update hit information
+        isect.prim_id = node.prim_id;
+        isect.shape_id = node.mesh_id;
+    }
+    else
+    {
+        // Miss here
+        isect.prim_id = MISS_MARKER;
+        isect.shape_id = MISS_MARKER;
+    }
+
+    // Write result to memory
+    Hits[index] = isect;
+}
+
+void occluded_main()
+{
+    uint index = gl_GlobalInvocationID.x;
+    uint local_index = gl_LocalInvocationID.x;
+
+    // Handle only working subset
+    if (index >= Numrays) return;
+
+    ray my_ray = Rays[index];
+    vec3 invDir = safe_invdir(my_ray.d.xyz);
+    vec3 oxInvDir = -my_ray.o.xyz * invDir;
+
+    // Intersection parametric distance
+    float closest_t = my_ray.o.w;
+
+    // Current node address
+    uint addr = 0;
+    // Current closest address
+    uint closest_addr = INVALID_ADDR;
+
+    uint stack_bottom = STACK_SIZE * index;
+    uint sptr = stack_bottom;
+    uint lds_stack_bottom = local_index * LDS_STACK_SIZE;
+    uint lds_sptr = lds_stack_bottom;
+
+    lds_stack[lds_sptr++] = INVALID_ADDR;
+
+    while (addr != INVALID_ADDR)
+    {
+        BvhNode node = Nodes[addr];
+
+        if (INTERNAL_NODE(node))
+        {
+            vec2 s0 = fast_intersect_aabb(
+                node.aabb_left_min_or_v0,
+                node.aabb_left_max_or_v1,
+                invDir, oxInvDir, closest_t);
+            vec2 s1 = fast_intersect_aabb(
+                node.aabb_right_min_or_v2,
+                node.aabb_right_max,
+                invDir, oxInvDir, closest_t);
+
+            bool traverse_c0 = (s0.x <= s0.y);
+            bool traverse_c1 = (s1.x <= s1.y);
+            bool c1first = traverse_c1 && (s0.x > s1.x);
+
+            if (traverse_c0 || traverse_c1)
+            {
+                uint deferred = INVALID_ADDR;
+
+                if (c1first || !traverse_c0)
+                {
+                    addr = node.addr_right;
+                    deferred = node.addr_left;
+                }
+                else
+                {
+                    addr = node.addr_left;
+                    deferred = node.addr_right;
+                }
+
+                if (traverse_c0 && traverse_c1)
+                {
+                    if (lds_sptr - lds_stack_bottom >= LDS_STACK_SIZE)
+                    {
+                        for (int i = 1; i < LDS_STACK_SIZE; ++i)
+                        {
+                            Stack[sptr + i] = lds_stack[lds_stack_bottom + i];
+                        }
+
+                        sptr += LDS_STACK_SIZE;
+                        lds_sptr = lds_stack_bottom + 1;
+                    }
+
+                    lds_stack[lds_sptr++] = deferred;
+                }
+
+                continue;
+            }
+        }
+        else
+        {
+            float t = fast_intersect_triangle(
+                my_ray,
+                node.aabb_left_min_or_v0,
+                node.aabb_left_max_or_v1,
+                node.aabb_right_min_or_v2,
+                closest_t);
+
+            if (t < closest_t)
+            {
+                Hitresults[index] = HIT_MARKER;
+                return;
+            }
+        }
+
+        addr = lds_stack[--lds_sptr];
+
+        if (addr == INVALID_ADDR && sptr > stack_bottom)
+        {
+            sptr -= LDS_STACK_SIZE;
+            for (int i = 1; i < LDS_STACK_SIZE; ++i)
+            {
+                lds_stack[lds_stack_bottom + i] = Stack[sptr + i];
+            }
+
+            lds_sptr = lds_stack_bottom + LDS_STACK_SIZE - 1;
+            addr = lds_stack[lds_sptr];
+        }
+    }
+
+    // Finished traversal, but no intersection found
+    Hitresults[index] = MISS_MARKER;
+}
