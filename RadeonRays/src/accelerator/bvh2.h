@@ -25,6 +25,9 @@ THE SOFTWARE.
 #include <stack>
 #include <utility>
 #include <vector>
+#include <mmintrin.h>
+#include <xmmintrin.h>
+#include <smmintrin.h>
 
 #include "../primitive/mesh.h"
 
