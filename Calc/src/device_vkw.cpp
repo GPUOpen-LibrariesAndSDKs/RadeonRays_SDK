@@ -133,6 +133,7 @@ namespace Calc
         spec.max_alloc_size = static_cast< std::size_t >(hostMemory);
         spec.max_local_size = static_cast< std::size_t >(localMemory);
 
+        spec.has_fp16 = device->is_device_extension_supported("GL_AMD_gpu_shader_half_float");
     }
 
     // Buffer creation and deletion
