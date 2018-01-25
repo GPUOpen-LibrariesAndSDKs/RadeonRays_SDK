@@ -49,9 +49,12 @@ namespace RadeonRays
 
             ~Program()
             {
-                executable->DeleteFunction(isect_func);
-                executable->DeleteFunction(occlude_func);
-                device->DeleteExecutable(executable);
+                if (executable)
+                {
+                    executable->DeleteFunction(isect_func);
+                    executable->DeleteFunction(occlude_func);
+                    device->DeleteExecutable(executable);
+                }
             }
 
             Calc::Device *device;
@@ -101,6 +104,9 @@ namespace RadeonRays
         buildopts.append("-D USE_SAFE_MATH ");
 #endif
 
+        Calc::DeviceSpec spec;
+        m_device->GetSpec(spec);
+
 #ifndef RR_EMBED_KERNELS
         if (device->GetPlatform() == Calc::Platform::kOpenCL)
         {
@@ -109,20 +115,23 @@ namespace RadeonRays
             int numheaders = sizeof(headers) / sizeof(const char *);
 
             m_gpudata->bvh_prog.executable = m_device->CompileExecutable("../RadeonRays/src/kernels/CL/intersect_bvh2_lds.cl", headers, numheaders, buildopts.c_str());
-            m_gpudata->qbvh_prog.executable = m_device->CompileExecutable("../RadeonRays/src/kernels/CL/intersect_bvh2_lds_fp16.cl", headers, numheaders, buildopts.c_str());
+            if (spec.has_fp16)
+                m_gpudata->qbvh_prog.executable = m_device->CompileExecutable("../RadeonRays/src/kernels/CL/intersect_bvh2_lds_fp16.cl", headers, numheaders, buildopts.c_str());
         }
         else
         {
             assert(device->GetPlatform() == Calc::Platform::kVulkan);
             m_gpudata->bvh_prog.executable = m_device->CompileExecutable("../RadeonRays/src/kernels/GLSL/bvh2.comp", nullptr, 0, buildopts.c_str());
-            m_gpudata->qbvh_prog.executable = m_device->CompileExecutable("../RadeonRays/src/kernels/GLSL/bvh2_fp16.comp", nullptr, 0, buildopts.c_str());
+            if (spec.has_fp16)
+                m_gpudata->qbvh_prog.executable = m_device->CompileExecutable("../RadeonRays/src/kernels/GLSL/bvh2_fp16.comp", nullptr, 0, buildopts.c_str());
         }
 #else
 #if USE_OPENCL
         if (device->GetPlatform() == Calc::Platform::kOpenCL)
         {
             m_gpudata->bvh_prog.executable = m_device->CompileExecutable(g_intersect_bvh2_lds_opencl, std::strlen(g_intersect_bvh2_lds_opencl), buildopts.c_str());
-            m_gpudata->qbvh_prog.executable = m_device->CompileExecutable(g_intersect_bvh2_lds_fp16_opencl, std::strlen(g_intersect_bvh2_lds_fp16_opencl), buildopts.c_str());
+            if (spec.has_fp16)
+                m_gpudata->qbvh_prog.executable = m_device->CompileExecutable(g_intersect_bvh2_lds_fp16_opencl, std::strlen(g_intersect_bvh2_lds_fp16_opencl), buildopts.c_str());
         }
 #endif
 #if USE_VULKAN
@@ -130,16 +139,20 @@ namespace RadeonRays
         {
             if (m_gpudata->bvh_prog.executable == nullptr)
                 m_gpudata->bvh_prog.executable = m_device->CompileExecutable(g_bvh2_vulkan, std::strlen(g_bvh2_vulkan), buildopts.c_str());
-            if (m_gpudata->qbvh_prog.executable == nullptr)
+            if (m_gpudata->qbvh_prog.executable == nullptr && spec.has_fp16)
                 m_gpudata->qbvh_prog.executable = m_device->CompileExecutable(g_bvh2_fp16_vulkan, std::strlen(g_bvh2_fp16_vulkan), buildopts.c_str());
         }
 #endif
 #endif
 
         m_gpudata->bvh_prog.isect_func = m_gpudata->bvh_prog.executable->CreateFunction("intersect_main");
-        m_gpudata->qbvh_prog.isect_func = m_gpudata->qbvh_prog.executable->CreateFunction("intersect_main");
         m_gpudata->bvh_prog.occlude_func = m_gpudata->bvh_prog.executable->CreateFunction("occluded_main");
-        m_gpudata->qbvh_prog.occlude_func = m_gpudata->qbvh_prog.executable->CreateFunction("occluded_main");
+
+        if (m_gpudata->qbvh_prog.executable)
+        {
+            m_gpudata->qbvh_prog.isect_func = m_gpudata->qbvh_prog.executable->CreateFunction("intersect_main");
+            m_gpudata->qbvh_prog.occlude_func = m_gpudata->qbvh_prog.executable->CreateFunction("occluded_main");
+        }
     }
 
     void IntersectorLDS::Process(const World &world)
@@ -166,7 +179,7 @@ namespace RadeonRays
 #if 0
             if (type && type->AsString() == "qbvh")
             {
-                use_qbvh = true;
+                use_qbvh = (m_gpudata->qbvh_prog.executable != nullptr);
             }
 #endif
 

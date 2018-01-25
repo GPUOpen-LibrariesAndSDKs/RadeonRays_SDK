@@ -262,6 +262,8 @@ namespace Calc
         spec.min_alignment = m_device.GetMinAlignSize();
         spec.max_alloc_size = m_device.GetMaxAllocSize();
         spec.max_local_size = m_device.GetMaxWorkGroupSize();
+
+        spec.has_fp16 = (m_device.GetExtensions().find("cl_khr_fp16") != std::string::npos);
     }
 
     Buffer* DeviceClw::CreateBuffer(std::size_t size, std::uint32_t flags)

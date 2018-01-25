@@ -51,6 +51,8 @@ namespace Calc
         std::size_t local_mem_size;
         std::size_t max_alloc_size;
         std::size_t max_local_size;
+
+        bool has_fp16;
     };
 
     // Main interface to control compute device
