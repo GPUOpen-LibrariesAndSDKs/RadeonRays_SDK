@@ -1,0 +1,42 @@
+sudo: required
+dist: trusty
+language: cpp
+
+matrix:
+  include:
+    - os: linux
+      compiler: gcc
+      env: BTYPE=Release
+    - os: osx
+      compiler: clang
+      env: BTYPE=Release
+
+before_install:
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo apt-get --yes update; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test && sudo apt-get update -qq; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo apt-get install -qq gcc-6 g++-6; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-6 90; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-6 90; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo apt-get --yes install libopenimageio-dev; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo apt-get --yes install libglew-dev; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo apt-get --yes install freeglut3-dev; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo apt-get --yes install ocl-icd-opencl-dev; fi  # opencl-dev, nvidia-opencl-dev, ocl-icd-opencl-dev
+#  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew install gcc; fi
+
+install:
+  - pwd
+  - ls
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then g++ --version; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then ./Tools/premake/linux64/premake5 --help || true; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then ./Tools/premake/linux64/premake5 --allow_cpu_devices --safe_math --os=linux --verbose gmake || true; fi
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then ./Tools/premake/osx/premake5 --help || true; fi
+  # - if [ "$TRAVIS_OS_NAME" = "osx" ]; then ./Tools/premake/osx/premake5 --use_embree --use_opencl --embed_kernels --allow_cpu_devices --safe_math; fi
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then ./Tools/premake/osx/premake5 --allow_cpu_devices --safe_math --os=macosx --verbose gmake; fi
+
+script:
+  - make config=release_x64
+  - export LD_LIBRARY_PATH=`pwd`/Bin/Release/x64/:${LD_LIBRARY_PATH}
+  - cd UnitTest
+  - ../Bin/Release/x64/UnitTest64 --gtest_list_tests
+  - ../Bin/Release/x64/UnitTest64
+
