@@ -67,13 +67,13 @@ install:
   - if [ ${TRAVIS_OS_NAME} == "linux" ]; then
       g++ --version;
       ./Tools/premake/linux64/premake5 --help || true;
-      ./Tools/premake/linux64/premake5 --allow_cpu_devices --safe_math --os=linux --verbose gmake;
+      ./Tools/premake/linux64/premake5 --allow_cpu_devices --safe_math --os=linux --verbose --tutorials gmake;
       make config=release_x64;
       ldd `pwd`/Bin/Release/x64/libRadeonRays64.so;
     fi
   - if [ ${TRAVIS_OS_NAME} == "osx" ]; then
       ./Tools/premake/osx/premake5 --help || true;
-      ./Tools/premake/osx/premake5 --allow_cpu_devices --safe_math --os=macosx --verbose gmake;
+      ./Tools/premake/osx/premake5 --allow_cpu_devices --safe_math --os=macosx --verbose --tutorials gmake;
       make config=release_x64;
       otool -L `pwd`/Bin/Release/x64/libRadeonRays64.dylib;
     fi
