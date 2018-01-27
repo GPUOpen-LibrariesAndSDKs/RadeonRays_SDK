@@ -28,38 +28,38 @@ before_install:
       sudo apt-get --yes install ocl-icd-opencl-dev;
     fi
   - if [ ${TRAVIS_OS_NAME} == "osx" ]; then cat  /System/Library/Frameworks/OpenCL.framework/Headers/cl.h | grep -i version; fi
-  #  - if [ ${TRAVIS_OS_NAME}= "osx" ]; then brew install gcc; fi
-  # osx image does not contain cl.hpp file; download from Khronos
-  - if [ ${TRAVIS_OS_NAME} == "osx" ]; then
-      pushd /System/Library/Frameworks/OpenCL.framework/Versions/A/Headers/;
-      sudo wget -w 1 -np -nd -nv -A h,hpp ${OPENCL_REGISTRY}/api/2.1/cl.hpp;
-      popd;
-    fi
-  # The following linux logic is necessary because of Travis's move to the GCE platform, which does not
-  # currently contain packages for fglrx: https://github.com/travis-ci/travis-ci/issues/5221
-  # We build our own linkable .so file
-  - if [ ${TRAVIS_OS_NAME} == "linux" ]; then
-      mkdir -p ${OPENCL_ROOT};
-      pushd ${OPENCL_ROOT};
-      travis_retry git clone --depth 1 https://github.com/KhronosGroup/OpenCL-ICD-Loader.git;
-      mv ./OpenCL-ICD-Loader/* .;
-      travis_retry git clone --depth 1 https://github.com/KhronosGroup/OpenCL-Headers.git inc/CL;
-      pushd inc/CL;
-      travis_retry wget -w 1 -np -nd -nv -A h,hpp ${OPENCL_REGISTRY}/api/2.1/cl.hpp;
-      popd;
-      mkdir -p lib;
-      pushd lib;
-      cmake -G "Unix Makefiles" ..;
-      make;
-      cp ./bin/libOpenCL.so .;
-      popd;
-      pushd inc/CL;
-      travis_retry git fetch origin opencl12:opencl12;
-      git checkout opencl12;
-      popd;
-      mv inc/ include/;
-      popd;
-    fi
+  ##  - if [ ${TRAVIS_OS_NAME}= "osx" ]; then brew install gcc; fi
+  ## osx image does not contain cl.hpp file; download from Khronos
+  #- if [ ${TRAVIS_OS_NAME} == "osx" ]; then
+  #    pushd /System/Library/Frameworks/OpenCL.framework/Versions/A/Headers/;
+  #    sudo wget -w 1 -np -nd -nv -A h,hpp ${OPENCL_REGISTRY}/api/2.1/cl.hpp;
+  #    popd;
+  #  fi
+  ## The following linux logic is necessary because of Travis's move to the GCE platform, which does not
+  ## currently contain packages for fglrx: https://github.com/travis-ci/travis-ci/issues/5221
+  ## We build our own linkable .so file
+  #- if [ ${TRAVIS_OS_NAME} == "linux" ]; then
+  #    mkdir -p ${OPENCL_ROOT};
+  #    pushd ${OPENCL_ROOT};
+  #    travis_retry git clone --depth 1 https://github.com/KhronosGroup/OpenCL-ICD-Loader.git;
+  #    mv ./OpenCL-ICD-Loader/* .;
+  #    travis_retry git clone --depth 1 https://github.com/KhronosGroup/OpenCL-Headers.git inc/CL;
+  #    pushd inc/CL;
+  #    travis_retry wget -w 1 -np -nd -nv -A h,hpp ${OPENCL_REGISTRY}/api/2.1/cl.hpp;
+  #    popd;
+  #    mkdir -p lib;
+  #    pushd lib;
+  #    cmake -G "Unix Makefiles" ..;
+  #    make;
+  #    cp ./bin/libOpenCL.so .;
+  #    popd;
+  #    pushd inc/CL;
+  #    travis_retry git fetch origin opencl12:opencl12;
+  #    git checkout opencl12;
+  #    popd;
+  #    mv inc/ include/;
+  #    popd;
+  #  fi
 
 install:
   - pwd
