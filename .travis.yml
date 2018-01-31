@@ -1,0 +1,86 @@
+sudo: required
+dist: trusty
+language: cpp
+
+env:
+  global:
+    - OPENCL_REGISTRY=https://www.khronos.org/registry/cl
+    - OPENCL_ROOT=${TRAVIS_BUILD_DIR}/bin/opencl
+
+matrix:
+  include:
+    - os: linux
+      compiler: gcc
+    - os: osx
+      compiler: clang
+
+before_install:
+   # opencl-dev is a virtual package: we need to choose nvidia-opencl-dev, ocl-icd-opencl-dev
+  - if [ ${TRAVIS_OS_NAME} == "linux" ]; then
+      sudo apt-get --yes update;
+      sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test && sudo apt-get update -qq;
+      sudo apt-get install -qq gcc-6 g++-6;
+      sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-6 90;
+      sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-6 90;
+      sudo apt-get --yes install libopenimageio-dev;
+      sudo apt-get --yes install libglew-dev;
+      sudo apt-get --yes install freeglut3-dev;
+      sudo apt-get --yes install ocl-icd-opencl-dev;
+    fi
+  - if [ ${TRAVIS_OS_NAME} == "osx" ]; then cat  /System/Library/Frameworks/OpenCL.framework/Headers/cl.h | grep -i version; fi
+  ##  - if [ ${TRAVIS_OS_NAME}= "osx" ]; then brew install gcc; fi
+  ## osx image does not contain cl.hpp file; download from Khronos
+  #- if [ ${TRAVIS_OS_NAME} == "osx" ]; then
+  #    pushd /System/Library/Frameworks/OpenCL.framework/Versions/A/Headers/;
+  #    sudo wget -w 1 -np -nd -nv -A h,hpp ${OPENCL_REGISTRY}/api/2.1/cl.hpp;
+  #    popd;
+  #  fi
+  ## The following linux logic is necessary because of Travis's move to the GCE platform, which does not
+  ## currently contain packages for fglrx: https://github.com/travis-ci/travis-ci/issues/5221
+  ## We build our own linkable .so file
+  #- if [ ${TRAVIS_OS_NAME} == "linux" ]; then
+  #    mkdir -p ${OPENCL_ROOT};
+  #    pushd ${OPENCL_ROOT};
+  #    travis_retry git clone --depth 1 https://github.com/KhronosGroup/OpenCL-ICD-Loader.git;
+  #    mv ./OpenCL-ICD-Loader/* .;
+  #    travis_retry git clone --depth 1 https://github.com/KhronosGroup/OpenCL-Headers.git inc/CL;
+  #    pushd inc/CL;
+  #    travis_retry wget -w 1 -np -nd -nv -A h,hpp ${OPENCL_REGISTRY}/api/2.1/cl.hpp;
+  #    popd;
+  #    mkdir -p lib;
+  #    pushd lib;
+  #    cmake -G "Unix Makefiles" ..;
+  #    make;
+  #    cp ./bin/libOpenCL.so .;
+  #    popd;
+  #    pushd inc/CL;
+  #    travis_retry git fetch origin opencl12:opencl12;
+  #    git checkout opencl12;
+  #    popd;
+  #    mv inc/ include/;
+  #    popd;
+  #  fi
+
+install:
+  - pwd
+  - ls
+  - if [ ${TRAVIS_OS_NAME} == "linux" ]; then
+      g++ --version;
+      ./Tools/premake/linux64/premake5 --help || true;
+      ./Tools/premake/linux64/premake5 --allow_cpu_devices --safe_math --os=linux --verbose --tutorials gmake;
+      make config=release_x64;
+      ldd `pwd`/Bin/Release/x64/libRadeonRays64.so;
+    fi
+  - if [ ${TRAVIS_OS_NAME} == "osx" ]; then
+      ./Tools/premake/osx/premake5 --help || true;
+      ./Tools/premake/osx/premake5 --allow_cpu_devices --safe_math --os=macosx --verbose --tutorials gmake;
+      make config=release_x64;
+      otool -L `pwd`/Bin/Release/x64/libRadeonRays64.dylib;
+    fi
+
+script:
+  - ls `pwd`/Bin/Release/x64/
+  - export LD_LIBRARY_PATH=`pwd`/Bin/Release/x64/:${LD_LIBRARY_PATH}
+  - cd UnitTest
+  - ../Bin/Release/x64/UnitTest64 --gtest_list_tests
+#  - ../Bin/Release/x64/UnitTest64 --gtest_catch_exceptions=0
