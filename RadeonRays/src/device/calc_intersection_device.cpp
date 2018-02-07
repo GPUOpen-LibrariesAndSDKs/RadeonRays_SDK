@@ -126,7 +126,7 @@ namespace RadeonRays
                         m_intersector_string = "fatbvh";
 #else
                         m_intersector.reset(new IntersectorLDS(m_device.get()));
-                        m_intersector_string = "bvh2";
+                        m_intersector_string = "fatbvh";
 #endif
                     }
                 }
