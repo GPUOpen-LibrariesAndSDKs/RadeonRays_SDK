@@ -34,7 +34,7 @@ TYPE DEFINITIONS
 
 #define GROUP_SIZE 64
 #define STACK_SIZE 32
-#define LDS_STACK_SIZE 8
+#define LDS_STACK_SIZE 16
 
 // BVH node
 typedef struct
@@ -246,13 +246,10 @@ KERNEL void occluded_main(
             const float3 invDir = safe_invdir(my_ray);
             const float3 oxInvDir = -my_ray.o.xyz * invDir;
 
-            // Intersection parametric distance
-            float closest_t = my_ray.o.w;
-
             // Current node address
             uint addr = 0;
-            // Current closest address
-            uint closest_addr = INVALID_ADDR;
+            // Intersection parametric distance
+            const float closest_t = my_ray.o.w;
 
             uint stack_bottom = STACK_SIZE * index;
             uint sptr = stack_bottom;

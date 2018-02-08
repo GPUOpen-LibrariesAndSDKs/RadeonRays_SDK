@@ -67,7 +67,7 @@ namespace RadeonRays
 
     protected:
         using RefArray = std::vector<std::uint32_t>;
-        using MetaDataArray = std::vector<std::pair<const Mesh *, std::size_t> >;
+        using MetaDataArray = std::vector<std::pair<const Shape *, std::size_t> >;
 
         // Constant values
         enum Constants
@@ -157,7 +157,7 @@ namespace RadeonRays
         static inline void SetPrimitive(
             Node &node,
             std::uint32_t index,
-            std::pair<const Mesh *, std::size_t> ref);
+            std::pair<const Shape *, std::size_t> ref);
 
         static inline bool IsInternal(const Node &node);
         static inline std::uint32_t GetChildIndex(const Node &node, std::uint8_t idx);
@@ -283,7 +283,7 @@ namespace RadeonRays
                 _mm_store_ps(&aabb_max[current_face].x, pmax);
                 _mm_store_ps(&aabb_centroid[current_face].x, centroid);
 
-                metadata[current_face] = std::make_pair(mesh, face_index);
+                metadata[current_face] = std::make_pair(shape, face_index);
             }
         }
 
@@ -339,11 +339,12 @@ namespace RadeonRays
     void Bvh2::SetPrimitive(
         Node &node,
         std::uint32_t index,
-        std::pair<const Mesh *, std::size_t> ref)
+        std::pair<const Shape *, std::size_t> ref)
     {
-        auto mesh = ref.first;
+        auto shape = ref.first;
         matrix worldmat, worldmatinv;
-        mesh->GetTransform(worldmat, worldmatinv);
+        shape->GetTransform(worldmat, worldmatinv);
+        auto mesh = static_cast<const Mesh *>(static_cast<const ShapeImpl *>(shape)->is_instance() ? static_cast<const Instance *>(shape)->GetBaseShape() : shape);
         auto face = mesh->GetFaceData()[ref.second];
         auto v0 = transform_point(mesh->GetVertexData()[face.idx[0]], worldmat);
         auto v1 = transform_point(mesh->GetVertexData()[face.idx[1]], worldmat);
@@ -357,7 +358,7 @@ namespace RadeonRays
         node.aabb_right_min_or_v2[0] = v2.x;
         node.aabb_right_min_or_v2[1] = v2.y;
         node.aabb_right_min_or_v2[2] = v2.z;
-        node.mesh_id = mesh->GetId();
+        node.mesh_id = shape->GetId();
         node.prim_id = static_cast<std::uint32_t>(ref.second);
     }
 
