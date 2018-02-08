@@ -2515,7 +2515,7 @@ static const char g_intersect_bvh2_lds_opencl[]= \
 "    return (float2)(t0, t1); \n"\
 "} \n"\
 " \n"\
-"__attribute__((reqd_work_group_size(64, 1, 1))) \n"\
+"__attribute__((reqd_work_group_size(GROUP_SIZE, 1, 1))) \n"\
 "KERNEL void intersect_main( \n"\
 "    // Bvh nodes \n"\
 "    GLOBAL const bvh_node *restrict nodes, \n"\
@@ -2671,7 +2671,7 @@ static const char g_intersect_bvh2_lds_opencl[]= \
 "    } \n"\
 "} \n"\
 " \n"\
-"__attribute__((reqd_work_group_size(64, 1, 1))) \n"\
+"__attribute__((reqd_work_group_size(GROUP_SIZE, 1, 1))) \n"\
 "KERNEL void occluded_main( \n"\
 "    // Bvh nodes \n"\
 "    GLOBAL const bvh_node *restrict nodes, \n"\
@@ -3179,7 +3179,7 @@ static const char g_intersect_bvh2_lds_fp16_opencl[]= \
 "    *lds_sptr = *lds_sptr + 1; \n"\
 "} \n"\
 " \n"\
-"__attribute__((reqd_work_group_size(64, 1, 1))) \n"\
+"__attribute__((reqd_work_group_size(GROUP_SIZE, 1, 1))) \n"\
 "KERNEL void intersect_main( \n"\
 "    // Bvh nodes \n"\
 "    GLOBAL const bvh_node *restrict nodes, \n"\
@@ -3358,7 +3358,7 @@ static const char g_intersect_bvh2_lds_fp16_opencl[]= \
 "    } \n"\
 "} \n"\
 " \n"\
-"__attribute__((reqd_work_group_size(64, 1, 1))) \n"\
+"__attribute__((reqd_work_group_size(GROUP_SIZE, 1, 1))) \n"\
 "KERNEL void occluded_main( \n"\
 "    // Bvh nodes \n"\
 "    GLOBAL const bvh_node *restrict nodes, \n"\
