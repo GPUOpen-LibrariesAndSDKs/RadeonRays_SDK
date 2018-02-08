@@ -334,8 +334,8 @@ namespace RadeonRays
     {
         auto shape = ref.first;
         matrix worldmat, worldmatinv;
+        shape->GetTransform(worldmat, worldmatinv);
         auto mesh = static_cast<const Mesh *>(static_cast<const ShapeImpl *>(shape)->is_instance() ? static_cast<const Instance *>(shape)->GetBaseShape() : shape);
-        mesh->GetTransform(worldmat, worldmatinv);
         auto face = mesh->GetFaceData()[ref.second];
         auto v0 = transform_point(mesh->GetVertexData()[face.idx[0]], worldmat);
         auto v1 = transform_point(mesh->GetVertexData()[face.idx[1]], worldmat);
