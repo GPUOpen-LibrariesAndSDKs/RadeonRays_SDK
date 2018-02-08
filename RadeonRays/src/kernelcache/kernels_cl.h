@@ -2487,7 +2487,7 @@ static const char g_intersect_bvh2_lds_opencl[]= \
 " \n"\
 "#define GROUP_SIZE 64 \n"\
 "#define STACK_SIZE 32 \n"\
-"#define LDS_STACK_SIZE 8 \n"\
+"#define LDS_STACK_SIZE 16 \n"\
 " \n"\
 "// BVH node \n"\
 "typedef struct \n"\
@@ -2699,13 +2699,10 @@ static const char g_intersect_bvh2_lds_opencl[]= \
 "            const float3 invDir = safe_invdir(my_ray); \n"\
 "            const float3 oxInvDir = -my_ray.o.xyz * invDir; \n"\
 " \n"\
-"            // Intersection parametric distance \n"\
-"            float closest_t = my_ray.o.w; \n"\
-" \n"\
 "            // Current node address \n"\
 "            uint addr = 0; \n"\
-"            // Current closest address \n"\
-"            uint closest_addr = INVALID_ADDR; \n"\
+"            // Intersection parametric distance \n"\
+"            const float closest_t = my_ray.o.w; \n"\
 " \n"\
 "            uint stack_bottom = STACK_SIZE * index; \n"\
 "            uint sptr = stack_bottom; \n"\
