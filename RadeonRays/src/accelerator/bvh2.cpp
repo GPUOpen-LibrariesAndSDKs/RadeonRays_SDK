@@ -28,22 +28,14 @@ THE SOFTWARE.
 #define PARALLEL_BUILD
 
 // Macro for allocating 16-byte aligned stack memory
-#define STACK_ALLOC(COUNT, TYPE) static_cast<TYPE *>(Align(16, (COUNT) * sizeof(TYPE), alloca(RoundUp(16, (COUNT) * sizeof(TYPE)))))
+#define STACK_ALLOC(COUNT, TYPE) static_cast<TYPE *>(Align(16u, (COUNT) * sizeof(TYPE), (COUNT) * sizeof(TYPE) + 15u, alloca((COUNT) * sizeof(TYPE) + 15u)))
 
 namespace RadeonRays
 {
     inline
-    std::size_t RoundUp(std::size_t alignment, std::size_t size)
+    void *Align(std::size_t alignment, std::size_t size, std::size_t space, void *ptr)
     {
-        return (size + alignment - 1) & ~(alignment - 1);
-    }
-
-    inline
-    void *Align(std::size_t alignment, std::size_t size, void *ptr)
-    {
-        std::size_t space;
-        void *aligned_ptr = std::align(alignment, RoundUp(alignment, size), ptr, space);
-        return aligned_ptr;
+        return std::align(alignment, size, ptr, space);
     }
 
 #ifdef __GNUC__
@@ -225,15 +217,20 @@ namespace RadeonRays
             }
         }
 #else
-        std::mutex mutex;
+        // Parallel build variables
+        // Global requests stack
+        std::stack<SplitRequest> requests;
+        // Condition to wait on the global stack
         std::condition_variable cv;
-        std::atomic_bool shutdown;
+        // Mutex to guard cv
+        std::mutex mutex;
+        // Indicates if we need to shutdown all the threads
+        std::atomic<bool> shutdown;
+        // Number of primitives processed so far
         std::atomic<std::uint32_t> num_refs_processed;
 
 		num_refs_processed.store(0);
 		shutdown.store(false);
-
-        std::stack<SplitRequest> requests;
 
         requests.push(SplitRequest{
             scene_min,
@@ -311,8 +308,7 @@ namespace RadeonRays
 
         for (auto i = 0u; i < num_threads; ++i)
         {
-            threads[i] = std::move(std::thread(worker_thread));
-            threads[i].detach();
+            threads[i] = std::thread(worker_thread);
         }
 
         while (num_refs_processed != num_aabbs)
@@ -320,7 +316,15 @@ namespace RadeonRays
             std::this_thread::sleep_for(std::chrono::milliseconds(20));
         }
 
-        shutdown = true;
+         // Signal shutdown and wake up all the threads
+        shutdown.store(true);
+        cv.notify_all();
+            
+        // Wait for all the threads to finish
+        for (auto i = 0u; i < num_threads; ++i)
+        {
+            threads[i].join();
+        }
 #endif
     }
 
