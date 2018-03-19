@@ -21,6 +21,8 @@ elseif (UNIX)
     add_definitions(-fvisibility=hidden)
 endif (WIN32)
 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
 if (RR_SHARED_CALC AND RR_USE_VULKAN)
     message(FATAL_ERROR "shared_calc option is not yet supported for Vulkan backend")
 endif (RR_SHARED_CALC AND RR_USE_VULKAN)
@@ -59,7 +61,7 @@ add_subdirectory(RadeonRays)
 
 if (NOT RR_NO_TESTS)
     add_subdirectory(Gtest)
-#    add_subdirectory(UnitTest)
+    add_subdirectory(UnitTest)
 endif (NOT RR_NO_TESTS)
 
 if (RR_TUTORIALS)
