@@ -28,7 +28,12 @@ namespace RadeonRays
     {
         return true;
     }
-    
+
+    Buffer const* Intersector::GetBvhImpl() const
+    {
+        return nullptr;
+    }
+
     void Intersector::QueryIntersection(std::uint32_t queue_idx, Calc::Buffer const *rays, std::uint32_t num_rays,
         Calc::Buffer *hits, Calc::Event const *wait_event, Calc::Event **event) const
     {
@@ -55,5 +60,10 @@ namespace RadeonRays
         std::uint32_t max_rays, Calc::Buffer *hits, Calc::Event const *wait_event, Calc::Event **event) const
     {
         Occluded(queue_idx, rays, num_rays, max_rays, hits, wait_event, event);
+    }
+
+    Buffer const* Intersector::GetBvh() const
+    {
+        return GetBvhImpl();
     }
 }
