@@ -9,7 +9,7 @@ if (RR_USE_OPENCL)
 elseif (RR_USE_VULKAN)
     list(APPEND SOURCES 
         src/calc_vkw.cpp
-        src/device_vkw.cpp)
+        src/device_vkw.cpp)      
 endif (RR_USE_OPENCL)
 
 if (RR_SHARED_CALC)
@@ -33,3 +33,11 @@ endif (UNIX)
 if (RR_USE_OPENCL)
     target_link_libraries(Calc PUBLIC CLW)
 endif (RR_USE_OPENCL)
+
+if (RR_USE_VULKAN)
+    #Need to add Anvil to include path
+    target_include_directories(Calc
+        PRIVATE ${RadeonRaysSDK_SOURCE_DIR}/Anvil/deps
+        PRIVATE ${RadeonRaysSDK_SOURCE_DIR}/Anvil/include)
+    target_link_libraries(Calc PUBLIC Vulkan::Vulkan)
+endif (RR_USE_VULKAN)

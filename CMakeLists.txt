@@ -11,8 +11,9 @@ option(RR_NO_TESTS "Don't add any unit tests and remove any test functionality f
 option(RR_ENABLE_STATIC "Create static libraries rather than dynamic" OFF)
 option(RR_SHARED_CALC "Link Calc(compute abstraction layer) dynamically" OFF)
 option(RR_ENABLE_RAYMASK "Enable ray masking in intersection kernels" OFF)
-option(RR_TUTORIALS "Add tutorials projects" OFF)
+#option(RR_TUTORIALS "Add tutorials projects" OFF)
 option(RR_SAFE_MATH "use safe math" OFF)
+mark_as_advanced(FORCE RR_USE_VULKAN)
 
 #global settings
 if (WIN32)
@@ -63,10 +64,5 @@ if (NOT RR_NO_TESTS)
     add_subdirectory(Gtest)
     add_subdirectory(UnitTest)
 endif (NOT RR_NO_TESTS)
-
-if (RR_TUTORIALS)
-#    add_subdirectory(Tutorials)
-endif (RR_TUTORIALS)
-
 
 

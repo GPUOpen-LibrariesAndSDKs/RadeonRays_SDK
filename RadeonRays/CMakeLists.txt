@@ -122,6 +122,10 @@ set(SOURCES
     ${UTIL_SOURCES}
     ${WORLD_SOURCES})
 
+if (RR_EMBED_KERNELS)
+    add_subdirectory(src/kernels)
+endif (RR_EMBED_KERNELS)
+    
 #Declare RadeonRays library
 if (RR_ENABLE_STATIC)
     add_library(RadeonRays STATIC ${SOURCES})
@@ -130,6 +134,12 @@ else (NOT RR_ENABLE_STATIC)
     add_library(RadeonRays SHARED ${SOURCES})
     target_compile_definitions(RadeonRays PUBLIC RR_STATIC_LIBRARY=0)
 endif(RR_ENABLE_STATIC)
+
+if (RR_EMBED_KERNELS)
+    target_compile_definitions(RadeonRays PRIVATE RR_EMBED_KERNELS=1)
+    add_dependencies(RadeonRays RadeonRaysKernelCache)
+    target_include_directories(RadeonRays PRIVATE ${RadeonRays_BINARY_DIR})
+endif (RR_EMBED_KERNELS)
 
 #Configure RadeonRays build
 target_include_directories(RadeonRays PUBLIC include)
@@ -159,7 +169,13 @@ if (RR_USE_OPENCL)
 endif (RR_USE_OPENCL)
 
 if (RR_USE_VULKAN)
-    target_link_libraries(RadeonRays PUBLIC Vulkan::Vulkan Anvil Thread::Threads)
+    #Need to add Anvil to include path
+    
+    target_include_directories(RadeonRays
+        PRIVATE ${RadeonRaysSDK_SOURCE_DIR}/Anvil/deps
+        PRIVATE ${RadeonRaysSDK_SOURCE_DIR}/Anvil/include)
+    
+    target_link_libraries(RadeonRays PUBLIC Vulkan::Vulkan Anvil Threads::Threads)
 endif (RR_USE_VULKAN)
 
 if (UNIX)
