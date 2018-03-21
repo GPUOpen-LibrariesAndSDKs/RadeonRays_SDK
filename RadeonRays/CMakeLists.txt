@@ -163,11 +163,11 @@ target_link_libraries(RadeonRays PUBLIC Calc Threads::Threads)
 target_compile_definitions(RadeonRays PRIVATE EXPORT_API)
 
 if (RR_SAFE_MATH)
-    target_compile_definitions(RadeonRays PRIVATE USE_SAFE_MATH=1)
+    target_compile_definitions(RadeonRays PUBLIC USE_SAFE_MATH=1)
 endif (RR_SAFE_MATH)
 
 if (RR_USE_EMBREE)
-    target_compile_definitions(RadeonRays PRIVATE USE_EMBREE=1)
+    target_compile_definitions(RadeonRays PUBLIC USE_EMBREE=1)
     target_link_libraries(RadeonRays PUBLIC ${EMBREE_LIB})
 endif (RR_USE_EMBREE)
 
@@ -177,6 +177,7 @@ endif (RR_ENABLE_RAYMASK)
 
 if (RR_USE_OPENCL)
     target_link_libraries(RadeonRays PUBLIC OpenCL::OpenCL)
+    target_compile_definitions(RadeonRays PUBLIC USE_OPENCL=1)
 endif (RR_USE_OPENCL)
 
 if (RR_USE_VULKAN)
@@ -186,6 +187,7 @@ if (RR_USE_VULKAN)
         PRIVATE ${RadeonRaysSDK_SOURCE_DIR}/Anvil/include)
   
     target_link_libraries(RadeonRays PUBLIC Vulkan::Vulkan Anvil)
+    target_compile_definitions(RadeonRays PUBLIC USE_VULKAN=1)
 endif (RR_USE_VULKAN)
 
 target_compile_features(RadeonRays PRIVATE cxx_std_14)
