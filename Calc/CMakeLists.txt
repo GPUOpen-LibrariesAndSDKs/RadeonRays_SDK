@@ -25,12 +25,12 @@ target_include_directories(Calc PRIVATE .)
 
 target_compile_features(Calc PRIVATE cxx_std_11)
 
-if (UNIX)
+if (UNIX AND NOT APPLE)
     target_compile_options(Calc PUBLIC -fPIC)
     target_link_libraries(Calc INTERFACE "-Wl,--no-undefined")
 elseif (APPLE)
     target_compile_options(Calc PUBLIC -stdlib=libc++)
-endif (UNIX)
+endif (UNIX AND NOT APPLE)
 
 if (RR_USE_OPENCL)
     target_link_libraries(Calc PUBLIC CLW)
