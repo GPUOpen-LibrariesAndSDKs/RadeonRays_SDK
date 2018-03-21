@@ -496,6 +496,11 @@ namespace RadeonRays
         Throw("Not implemented for embree device.");
     }
 
+    Buffer const* EmbreeIntersectionDevice::GetBvh() const
+    {
+        return nullptr;
+    }
+
     RTCScene EmbreeIntersectionDevice::GetEmbreeMesh(const RadeonRays::Mesh* mesh)
     {
         if (m_meshes.count(mesh))
