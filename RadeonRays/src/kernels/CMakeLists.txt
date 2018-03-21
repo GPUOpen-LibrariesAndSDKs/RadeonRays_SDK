@@ -1,0 +1,5 @@
+if (RR_USE_OPENCL)
+    add_subdirectory(CL)
+elseif (RR_USE_VULKAN)
+    add_subdirectory(GLSL)
+endif (RR_USE_OPENCL)

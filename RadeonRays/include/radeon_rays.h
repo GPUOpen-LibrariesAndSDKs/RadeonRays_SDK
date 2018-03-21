@@ -39,15 +39,9 @@ THE SOFTWARE.
     #else
         #define RRAPI __declspec(dllimport)
     #endif
-#elif defined(__GNUC__)
-    #ifdef EXPORT_API
-        #define RRAPI __attribute__((visibility ("default")))
-    #else
-        #define RRAPI
-    #endif
-#endif
 #else
-#define RRAPI
+        #define RRAPI __attribute__((visibility ("default")))
+#endif
 #endif
 namespace RadeonRays
 {
