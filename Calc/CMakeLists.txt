@@ -23,11 +23,13 @@ endif (RR_SHARED_CALC)
 target_include_directories(Calc PUBLIC inc)
 target_include_directories(Calc PRIVATE .)
 
+target_compile_features(Calc PRIVATE cxx_std_11)
+
 if (UNIX)
-    target_compile_options(Calc PUBLIC -std=c++11 -fPIC)
-    target_link_libraries(RadeonRays INTERFACE "-Wl,--no-undefined")
+    target_compile_options(Calc PUBLIC -fPIC)
+    target_link_libraries(Calc INTERFACE "-Wl,--no-undefined")
 elseif (APPLE)
-    target_compile_options(Calc PUBLIC -std=c++11 -stdlib=libc++)
+    target_compile_options(Calc PUBLIC -stdlib=libc++)
 endif (UNIX)
 
 if (RR_USE_OPENCL)

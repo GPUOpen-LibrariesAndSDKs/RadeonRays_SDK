@@ -5,6 +5,18 @@ set(SOURCES
     tiny_obj_loader.cpp
     utils.cpp)
 
+if (RR_USE_VULKAN)
+    #Anvil specify vulkan-1 lib directly so we need to add correct paths
+    if (WIN32)
+        link_directories   ($ENV{VK_SDK_PATH}/Lib
+                            $ENV{VULKAN_SDK}/Lib)
+    else()
+        link_directories   ($ENV{VK_SDK_PATH}/x86_64/lib
+                            $ENV{VULKAN_SDK}/x86_64/lib)
+    endif (WIN32)
+endif (RR_USE_VULKAN)
+
+    
 add_executable(UnitTest ${SOURCES})
 
 target_link_libraries(UnitTest PRIVATE GTest RadeonRays Calc)

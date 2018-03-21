@@ -125,7 +125,18 @@ set(SOURCES
 if (RR_EMBED_KERNELS)
     add_subdirectory(src/kernels)
 endif (RR_EMBED_KERNELS)
-    
+
+if (RR_USE_VULKAN)
+    #Anvil specify vulkan-1 lib directly so we need to add correct paths
+    if (WIN32)
+        link_directories   ($ENV{VK_SDK_PATH}/Lib
+                            $ENV{VULKAN_SDK}/Lib)
+    else()
+        link_directories   ($ENV{VK_SDK_PATH}/x86_64/lib
+                            $ENV{VULKAN_SDK}/x86_64/lib)
+    endif (WIN32)
+endif (RR_USE_VULKAN)
+
 #Declare RadeonRays library
 if (RR_ENABLE_STATIC)
     add_library(RadeonRays STATIC ${SOURCES})
@@ -147,7 +158,7 @@ target_include_directories(RadeonRays
     PRIVATE . 
     PRIVATE ${EMBREE_INCLUDE_PATH})
 
-target_link_libraries(RadeonRays PUBLIC Calc)
+target_link_libraries(RadeonRays PUBLIC Calc Threads::Threads)
 
 target_compile_definitions(RadeonRays PRIVATE EXPORT_API)
 
@@ -170,16 +181,17 @@ endif (RR_USE_OPENCL)
 
 if (RR_USE_VULKAN)
     #Need to add Anvil to include path
-    
     target_include_directories(RadeonRays
         PRIVATE ${RadeonRaysSDK_SOURCE_DIR}/Anvil/deps
         PRIVATE ${RadeonRaysSDK_SOURCE_DIR}/Anvil/include)
-    
-    target_link_libraries(RadeonRays PUBLIC Vulkan::Vulkan Anvil Threads::Threads)
+  
+    target_link_libraries(RadeonRays PUBLIC Vulkan::Vulkan Anvil)
 endif (RR_USE_VULKAN)
 
+target_compile_features(RadeonRays PRIVATE cxx_std_14)
+
 if (UNIX)
-        target_compile_options(RadeonRays PUBLIC -std=c++14 -msse4.2 -fPIC)
+        target_compile_options(RadeonRays PUBLIC -msse4.2 -fPIC)
         target_link_libraries(RadeonRays INTERFACE "-Wl,--no-undefined")
         
         #read version from header
@@ -188,7 +200,7 @@ if (UNIX)
         
         set_target_properties(RadeonRays PROPERTIES SOVERSION ${RR_API_VERSION})
 elseif (APPLE)
-    target_compile_options(RadeonRays PUBLIC -std=c++14 -stdlib=libc++)
+    target_compile_options(RadeonRays PUBLIC -stdlib=libc++)
 endif (UNIX)
 
 
