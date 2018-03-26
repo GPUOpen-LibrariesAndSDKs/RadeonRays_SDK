@@ -48,6 +48,9 @@ namespace Calc
         Buffer* CreateBuffer(std::size_t size, std::uint32_t flags, void* initdata) override;
         void DeleteBuffer(Buffer* buffer) override;
 
+        // Unity hack for accessing internal BVH
+        void* GetNativeHandle(Buffer const* buffer) const override;
+
         // Data movement
         void ReadBuffer(Buffer const* buffer, std::uint32_t queue, std::size_t offset, std::size_t size, void* dst, Event** e) const override;
         void WriteBuffer(Buffer const* buffer, std::uint32_t queue, std::size_t offset, std::size_t size, void* src, Event** e) override;
@@ -88,9 +91,6 @@ namespace Calc
         Buffer* CreateBuffer(cl_mem buffer) override;
 
         Platform GetPlatform() const override { return Platform::kOpenCL; }
-
-        // Unity hack for accessing internal BVH
-        cl_mem GetNativeHandle(Buffer const* buffer);
 
     protected:
         EventClw* CreateEventClw() const;

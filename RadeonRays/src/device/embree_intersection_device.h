@@ -53,7 +53,7 @@ namespace RadeonRays
         void QueryOcclusion(Buffer const* rays, int numrays, Buffer* hitresults, Event const* waitevent, Event** event) const override;
         void QueryIntersection(Buffer const* rays, Buffer const* numrays, int maxrays, Buffer* hitinfos, Event const* waitevent, Event** event) const override;
         void QueryOcclusion(Buffer const* rays, Buffer const* numrays, int maxrays, Buffer* hitresults, Event const* waitevent, Event** event) const override;
-        Buffer const* GetBvh() const override;
+        void* GetBvh() const override;
     
     protected:
         RTCScene GetEmbreeMesh(const Mesh*);

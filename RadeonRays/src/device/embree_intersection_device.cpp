@@ -496,7 +496,7 @@ namespace RadeonRays
         Throw("Not implemented for embree device.");
     }
 
-    Buffer const* EmbreeIntersectionDevice::GetBvh() const
+    void* EmbreeIntersectionDevice::GetBvh() const
     {
         return nullptr;
     }
