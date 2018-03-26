@@ -288,7 +288,7 @@ namespace RadeonRays
         Unity hack for accessing internal BVH
         ******************************************/
         // Gets the BVH
-        virtual Buffer const *GetBvh() const = 0;
+        virtual void* GetBvh() const = 0;
 
         /******************************************
         Utility

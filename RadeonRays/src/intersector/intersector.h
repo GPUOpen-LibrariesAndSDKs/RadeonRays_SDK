@@ -139,7 +139,7 @@ namespace RadeonRays
         \brief Gets the BVH
         \returns The requested BVH
         */
-        Buffer const* GetBvh() const;
+        void* GetBvh() const;
 
         // Disallow intersector copies
         Intersector(Intersector const&) = delete;
@@ -151,7 +151,7 @@ namespace RadeonRays
         // Compatibility check implemetation
         virtual bool IsCompatibleImpl(World const& world) const;
         // Gets BVH implementation.
-        virtual Buffer const* GetBvhImpl() const;
+        virtual void* GetBvhImpl() const;
 
         // Intersection implementation
         virtual void Intersect(std::uint32_t queue_idx, Calc::Buffer const *rays, Calc::Buffer const *num_rays, 

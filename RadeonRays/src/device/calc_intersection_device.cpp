@@ -336,7 +336,7 @@ namespace RadeonRays
         }
     }
 
-    Buffer const* CalcIntersectionDevice::GetBvh() const
+    void* CalcIntersectionDevice::GetBvh() const
     {
         return m_intersector->GetBvh();
     }

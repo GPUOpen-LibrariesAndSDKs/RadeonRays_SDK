@@ -29,7 +29,7 @@ namespace RadeonRays
         return true;
     }
 
-    Buffer const* Intersector::GetBvhImpl() const
+    void* Intersector::GetBvhImpl() const
     {
         return nullptr;
     }
@@ -62,7 +62,7 @@ namespace RadeonRays
         Occluded(queue_idx, rays, num_rays, max_rays, hits, wait_event, event);
     }
 
-    Buffer const* Intersector::GetBvh() const
+    void* Intersector::GetBvh() const
     {
         return GetBvhImpl();
     }

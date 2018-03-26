@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include "../primitive/mesh.h"
 #include "../primitive/instance.h"
 #include "../translator/q_bvh_translator.h"
+#include "../../Calc/src/device_clw.h"
 #include "../world/world.h"
 
 namespace RadeonRays
@@ -72,8 +73,6 @@ namespace RadeonRays
         // Traversal stack
         Calc::Buffer *stack;
 
-        CalcBufferHolder bvhHolder;
-
         Program *prog;
         Program bvh_prog;
         Program qbvh_prog;
@@ -82,7 +81,6 @@ namespace RadeonRays
             : device(device)
             , bvh(nullptr)
             , stack(nullptr)
-            , bvhHolder(device, bvh)
             , prog(nullptr)
             , bvh_prog(device)
             , qbvh_prog(device)
@@ -262,9 +260,11 @@ namespace RadeonRays
         }
     }
 
-    Buffer const* IntersectorLDS::GetBvhImpl() const
+    void* IntersectorLDS::GetBvhImpl() const
     {
-        return &m_gpudata->bvhHolder;
+        if (m_device->GetPlatform() == Calc::Platform::kOpenCL)
+            return static_cast<Calc::DeviceClw *>(m_device)->GetNativeHandle(m_gpudata->bvh);
+        return NULL;
     }
 
     void IntersectorLDS::Intersect(std::uint32_t queue_idx, const Calc::Buffer *rays, const Calc::Buffer *num_rays,

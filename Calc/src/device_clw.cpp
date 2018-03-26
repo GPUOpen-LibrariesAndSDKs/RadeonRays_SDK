@@ -574,7 +574,7 @@ namespace Calc
     {
         m_event_pool.push(e);
     }
-    
+
     Buffer* DeviceClw::CreateBuffer(cl_mem buffer)
     {
         try
@@ -587,6 +587,13 @@ namespace Calc
         }
     }
 
+    cl_mem DeviceClw::GetNativeHandle(Buffer const* buffer)
+    {
+        BufferClw const* bufferClw = static_cast<BufferClw const*>(buffer);
+        if (!bufferClw)
+            return nullptr;
+        return bufferClw->GetData();
+    }
 
     class PrimitivesClw : public Primitives
     {

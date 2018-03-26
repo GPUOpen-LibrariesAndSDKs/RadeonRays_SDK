@@ -90,7 +90,7 @@ namespace RadeonRays
         virtual void QueryOcclusion(Buffer const* rays, Buffer const* numrays, int maxrays, Buffer* hits, Event const* waitevent, Event** event) const = 0;
 
         // Gets the BVH
-        virtual Buffer const* GetBvh() const = 0;
+        virtual void* GetBvh() const = 0;
 
         IntersectionDevice(IntersectionDevice const&) = delete;
         IntersectionDevice& operator = (IntersectionDevice const&) = delete;

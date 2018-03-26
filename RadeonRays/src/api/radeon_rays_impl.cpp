@@ -145,7 +145,7 @@ namespace RadeonRays
         m_device->QueryOcclusion(rays, numrays, maxrays, hitresults, waitevent, event);
     }
 
-    Buffer const* IntersectionApiImpl::GetBvh() const
+    void* IntersectionApiImpl::GetBvh() const
     {
         return m_device->GetBvh();
     }

@@ -125,7 +125,7 @@ namespace RadeonRays
         Unity hack
         ******************************************/
         // Gets the BVH
-        Buffer const *GetBvh() const override;
+        void* GetBvh() const override;
 
         /******************************************
         Utility

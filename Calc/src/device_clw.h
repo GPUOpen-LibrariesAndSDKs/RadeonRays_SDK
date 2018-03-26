@@ -23,7 +23,7 @@ THE SOFTWARE.
 
 #include "device.h"
 #include "device_cl.h"
-#include "CLW.h"
+#include "../../CLW/CLW.h"
 
 #include <queue>
 
@@ -88,6 +88,9 @@ namespace Calc
         Buffer* CreateBuffer(cl_mem buffer) override;
 
         Platform GetPlatform() const override { return Platform::kOpenCL; }
+
+        // Unity hack for accessing internal BVH
+        cl_mem GetNativeHandle(Buffer const* buffer);
 
     protected:
         EventClw* CreateEventClw() const;
