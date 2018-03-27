@@ -42,6 +42,8 @@ THE SOFTWARE.
 #else
         #define RRAPI __attribute__((visibility ("default")))
 #endif
+#else
+    #define RRAPI
 #endif
 namespace RadeonRays
 {
