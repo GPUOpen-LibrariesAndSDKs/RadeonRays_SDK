@@ -89,12 +89,30 @@ if (RR_USE_OPENCL)
     list (APPEND DEVICE_SOURCES 
         src/device/calc_intersection_device_cl.cpp
         src/device/calc_intersection_device_cl.h)
+    set(KERNEL_SOURCES
+        src/kernels/CL/build_hlbvh.cl
+        src/kernels/CL/common.cl
+        src/kernels/CL/intersect_bvh2level_skiplinks.cl
+        src/kernels/CL/intersect_bvh2_bittrail.cl
+        src/kernels/CL/intersect_bvh2_lds.cl
+        src/kernels/CL/intersect_bvh2_lds_fp16.cl
+        src/kernels/CL/intersect_bvh2_short_stack.cl
+        src/kernels/CL/intersect_bvh2_skiplinks.cl
+        src/kernels/CL/intersect_hlbvh_stack.cl)
 endif (RR_USE_OPENCL)
 
 if (RR_USE_VULKAN)
     list (APPEND DEVICE_SOURCES 
         src/device/calc_intersection_device_vk.cpp
         src/device/calc_intersection_device_vk.h)
+    set(KERNEL_SOURCES
+        src/kernels/GLSL/bvh.comp
+        src/kernels/GLSL/bvh2.comp
+        src/kernels/GLSL/bvh2l.comp
+        src/kernels/GLSL/bvh2_fp16.comp
+        src/kernels/GLSL/fatbvh.comp
+        src/kernels/GLSL/hlbvh.comp
+        src/kernels/GLSL/hlbvh_build.comp)
 endif (RR_USE_VULKAN)
 
 source_group("accelerator" FILES ${ACCELERATOR_SOURCES})
@@ -102,11 +120,12 @@ source_group("api" FILES ${API_SOURCES})
 source_group("async" FILES ${ASYNC_SOURCES})
 source_group("device" FILES ${DEVICE_SOURCES})
 source_group("except" FILES ${EXCEPT_SOURCES})
-source_group("intersecotr" FILES ${INTERSECTOR_SOURCES})
+source_group("intersector" FILES ${INTERSECTOR_SOURCES})
 source_group("primitive" FILES ${PRIMITIVE_SOURCES})
 source_group("translator" FILES ${TRANSLATOR_SOURCES})
 source_group("util" FILES ${UTIL_SOURCES})
 source_group("world" FILES ${WORLD_SOURCES})
+source_group("kernels" FILES ${KERNEL_SOURCES})
 
 #Gather all sources together
 set(SOURCES
@@ -120,7 +139,8 @@ set(SOURCES
     ${PRIMITIVE_SOURCES}
     ${TRANSLATOR_SOURCES}
     ${UTIL_SOURCES}
-    ${WORLD_SOURCES})
+    ${WORLD_SOURCES}
+    ${KERNEL_SOURCES})
 
 if (RR_EMBED_KERNELS)
     add_subdirectory(src/kernels)
@@ -183,8 +203,8 @@ endif (RR_USE_OPENCL)
 if (RR_USE_VULKAN)
     #Need to add Anvil to include path
     target_include_directories(RadeonRays
-        PRIVATE ${RadeonRaysSDK_SOURCE_DIR}/Anvil/deps
-        PRIVATE ${RadeonRaysSDK_SOURCE_DIR}/Anvil/include)
+        PRIVATE "${RadeonRaysSDK_SOURCE_DIR}/Anvil/deps"
+        PRIVATE "${RadeonRaysSDK_SOURCE_DIR}/Anvil/include")
   
     target_link_libraries(RadeonRays PUBLIC Vulkan::Vulkan Anvil)
     target_compile_definitions(RadeonRays PUBLIC USE_VULKAN=1)
