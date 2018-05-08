@@ -47,6 +47,21 @@ public:
         // Create all available platforms
         CLWPlatform::CreateAllPlatforms(platforms);
 
+        // Remove platforms that don't have any associated devices
+        for (auto it = platforms.begin(); it != platforms.end();)
+        {
+            if (it->GetDeviceCount() == 0)
+            {
+                it = platforms.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+
+        ThrowIf(platforms.empty(), CL_DEVICE_NOT_FOUND, "CLW::SetUp failed => no available OpenCL platforms with at least 1 device!");
+
         // Try to find AMD platform and set a flag if found
         bool       amdctx_ = false;
         for (int i = 0; i < platforms.size(); ++i)
