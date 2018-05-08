@@ -256,6 +256,7 @@ TEST_F(ApiBackendOpenCL, DISABLED_Intersection_1Ray_Masked)
     Shape* mesh = nullptr;
 
     api_->SetOption("acc.type", "bvh");
+    api_->SetOption("bvh.force2level", 1.f);
 
     // Create mesh
     ASSERT_NO_THROW(mesh = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
