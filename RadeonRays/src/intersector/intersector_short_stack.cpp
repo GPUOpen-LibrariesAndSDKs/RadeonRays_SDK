@@ -385,7 +385,6 @@ namespace RadeonRays
                     facedata[i].idx[2] = myfacedata[faceidx].idx[2] + mystartidx;
 
                     facedata[i].shapeidx = shapes[shapeidx]->GetId();
-                    facedata[i].shape_mask = shapes[shapeidx]->GetMask();
                     facedata[i].id = faceidx;
                 }
 

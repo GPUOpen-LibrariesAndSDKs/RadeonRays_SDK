@@ -51,8 +51,6 @@ namespace RadeonRays
             int shapeidx;
             // Primitive ID within the mesh
             int id;
-            // Shape mask
-            int shape_mask;
         };
 
         // Constructor
@@ -82,8 +80,6 @@ namespace RadeonRays
                     int i0, i1, i2;
                     // Address of a left child
                     int child0;
-                    // Shape mask
-                    int shape_mask;
                     // Shape ID
                     int shape_id;
                     // Primitive ID

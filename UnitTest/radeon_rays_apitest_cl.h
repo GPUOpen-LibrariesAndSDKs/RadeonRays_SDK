@@ -246,10 +246,10 @@ TEST_F(ApiBackendOpenCL, Intersection_1Ray)
 
 #ifdef RR_RAY_MASK
 // The test creates a single triangle mesh and tests attach/detach functionality
-TEST_F(ApiBackendOpenCL, Intersection_1Ray_Masked)
+TEST_F(ApiBackendOpenCL, Intersection_1Ray_Masked_2level)
 #else
 // The test creates a single triangle mesh and tests attach/detach functionality
-TEST_F(ApiBackendOpenCL, DISABLED_Intersection_1Ray_Masked)
+TEST_F(ApiBackendOpenCL, DISABLED_Intersection_1Ray_Masked_2level)
 #endif
 {
 
@@ -261,17 +261,17 @@ TEST_F(ApiBackendOpenCL, DISABLED_Intersection_1Ray_Masked)
     // Create mesh
     ASSERT_NO_THROW(mesh = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
 
-    // Set mask 
-    ASSERT_NO_THROW(mesh->SetMask(0xFFFFFFFF));
-
     ASSERT_TRUE(mesh != nullptr);
+
+    // Set mesh Id
+    ASSERT_NO_THROW(mesh->SetId(0));
 
     // Attach the mesh to the scene
     ASSERT_NO_THROW(api_->AttachShape(mesh));
 
     // Prepare the ray
     ray r(float3(0.f, 0.f, -10.f), float3(0.f, 0.f, 1.f), 10000.f);
-    r.SetMask(0xFFFFFFFF);
+    r.SetMask(-1);
 
     // Intersection and hit data
     Intersection isect;
@@ -296,10 +296,15 @@ TEST_F(ApiBackendOpenCL, DISABLED_Intersection_1Ray_Masked)
     // Check results
     ASSERT_EQ(isect.shapeid, mesh->GetId());
 
-    mesh->SetMask(0x0);
+    r.SetMask(0);
 
-    // Commit geometry update
-    ASSERT_NO_THROW(api_->Commit());
+    // Update ray buffer
+    ray* rr = nullptr;
+    ASSERT_NO_THROW(api_->MapBuffer(ray_buffer, kMapWrite, 0, sizeof(ray), (void**)&rr, &e_));
+    Wait();
+    *rr = r;
+    ASSERT_NO_THROW(api_->UnmapBuffer(ray_buffer, rr, &e_));
+    Wait();
     
     // Intersect
     ASSERT_NO_THROW(api_->QueryIntersection(ray_buffer, 1, isect_buffer, nullptr, nullptr ));
@@ -314,7 +319,7 @@ TEST_F(ApiBackendOpenCL, DISABLED_Intersection_1Ray_Masked)
     // Check results
     ASSERT_EQ(isect.shapeid, kNullId);
 
-    mesh->SetMask(0xFF000000);
+    mesh->SetId(1);
     
     int result = kNullId;
     // Commit geometry update
@@ -331,11 +336,94 @@ TEST_F(ApiBackendOpenCL, DISABLED_Intersection_1Ray_Masked)
     
     // Check results
     ASSERT_GT(result, 0);
+    
+    r.SetMask(1);
+    
+    // Update ray buffer
+    rr = nullptr;
+    ASSERT_NO_THROW(api_->MapBuffer(ray_buffer, kMapWrite, 0, sizeof(ray), (void**)&rr, &e_));
+    Wait();
+    *rr = r;
+    ASSERT_NO_THROW(api_->UnmapBuffer(ray_buffer, rr, &e_));
+    Wait();
 
-    mesh->SetMask(0xFF000000);
+    // Intersect
+    ASSERT_NO_THROW(api_->QueryOcclusion(ray_buffer, 1, isect_flag_buffer, nullptr, nullptr ));
     
-    r.SetMask(0x000000FF);
-    
+    isect_flag = nullptr;
+    ASSERT_NO_THROW(api_->MapBuffer(isect_flag_buffer, kMapRead, 0, sizeof(int), (void**)&isect_flag, &e_));
+    Wait();
+    result = *isect_flag;
+    ASSERT_NO_THROW(api_->UnmapBuffer(isect_flag_buffer, isect_flag, &e_));
+    Wait();
+    // Check results
+    ASSERT_EQ(result, kNullId);
+
+
+    // Bail out
+    ASSERT_NO_THROW(api_->DetachShape(mesh));
+    ASSERT_NO_THROW(api_->DeleteShape(mesh));
+    ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
+    ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
+    ASSERT_NO_THROW(api_->DeleteBuffer(isect_flag_buffer));
+
+}
+
+
+#ifdef RR_RAY_MASK
+// The test creates a single triangle mesh and tests attach/detach functionality
+TEST_F(ApiBackendOpenCL, Intersection_1Ray_Masked_bvh)
+#else
+// The test creates a single triangle mesh and tests attach/detach functionality
+TEST_F(ApiBackendOpenCL, DISABLED_Intersection_1Ray_Masked_bvh)
+#endif
+{
+
+    Shape* mesh = nullptr;
+
+    api_->SetOption("acc.type", "bvh");
+
+    // Create mesh
+    ASSERT_NO_THROW(mesh = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
+
+    ASSERT_TRUE(mesh != nullptr);
+
+    // Set mesh Id
+    ASSERT_NO_THROW(mesh->SetId(0));
+
+    // Attach the mesh to the scene
+    ASSERT_NO_THROW(api_->AttachShape(mesh));
+
+    // Prepare the ray
+    ray r(float3(0.f, 0.f, -10.f), float3(0.f, 0.f, 1.f), 10000.f);
+    r.SetMask(-1);
+
+    // Intersection and hit data
+    Intersection isect;
+
+    auto ray_buffer = api_->CreateBuffer(sizeof(ray), &r);
+    auto isect_buffer = api_->CreateBuffer(sizeof(Intersection), nullptr);
+    auto isect_flag_buffer = api_->CreateBuffer(sizeof(int), nullptr);
+
+    // Commit geometry update
+    ASSERT_NO_THROW(api_->Commit());
+
+    // Intersect
+    ASSERT_NO_THROW(api_->QueryIntersection(ray_buffer, 1, isect_buffer, nullptr, nullptr));
+
+    Intersection* tmp = nullptr;
+    ASSERT_NO_THROW(api_->MapBuffer(isect_buffer, kMapRead, 0, sizeof(Intersection), (void**)&tmp, &e_));
+    Wait();
+    isect = *tmp;
+    ASSERT_NO_THROW(api_->UnmapBuffer(isect_buffer, tmp, &e_));
+    Wait();
+
+    // Check results
+    ASSERT_EQ(isect.shapeid, mesh->GetId());
+
+    r.SetMask(0);
+
+    // Update ray buffer
     ray* rr = nullptr;
     ASSERT_NO_THROW(api_->MapBuffer(ray_buffer, kMapWrite, 0, sizeof(ray), (void**)&rr, &e_));
     Wait();
@@ -343,11 +431,425 @@ TEST_F(ApiBackendOpenCL, DISABLED_Intersection_1Ray_Masked)
     ASSERT_NO_THROW(api_->UnmapBuffer(ray_buffer, rr, &e_));
     Wait();
 
+    // Intersect
+    ASSERT_NO_THROW(api_->QueryIntersection(ray_buffer, 1, isect_buffer, nullptr, nullptr));
+
+    tmp = nullptr;
+    ASSERT_NO_THROW(api_->MapBuffer(isect_buffer, kMapRead, 0, sizeof(Intersection), (void**)&tmp, &e_));
+    Wait();
+    isect = *tmp;
+    ASSERT_NO_THROW(api_->UnmapBuffer(isect_buffer, tmp, &e_));
+    Wait();
+
+    // Check results
+    ASSERT_EQ(isect.shapeid, kNullId);
+
+    mesh->SetId(1);
+
+    int result = kNullId;
     // Commit geometry update
     ASSERT_NO_THROW(api_->Commit());
     // Intersect
-    ASSERT_NO_THROW(api_->QueryOcclusion(ray_buffer, 1, isect_flag_buffer, nullptr, nullptr ));
-    
+    ASSERT_NO_THROW(api_->QueryOcclusion(ray_buffer, 1, isect_flag_buffer, nullptr, nullptr));
+
+    int* isect_flag = nullptr;
+    ASSERT_NO_THROW(api_->MapBuffer(isect_flag_buffer, kMapRead, 0, sizeof(int), (void**)&isect_flag, &e_));
+    Wait();
+    result = *isect_flag;
+    ASSERT_NO_THROW(api_->UnmapBuffer(isect_flag_buffer, isect_flag, &e_));
+    Wait();
+
+    // Check results
+    ASSERT_GT(result, 0);
+
+    r.SetMask(1);
+
+    // Update ray buffer
+    rr = nullptr;
+    ASSERT_NO_THROW(api_->MapBuffer(ray_buffer, kMapWrite, 0, sizeof(ray), (void**)&rr, &e_));
+    Wait();
+    *rr = r;
+    ASSERT_NO_THROW(api_->UnmapBuffer(ray_buffer, rr, &e_));
+    Wait();
+
+    // Intersect
+    ASSERT_NO_THROW(api_->QueryOcclusion(ray_buffer, 1, isect_flag_buffer, nullptr, nullptr));
+
+    isect_flag = nullptr;
+    ASSERT_NO_THROW(api_->MapBuffer(isect_flag_buffer, kMapRead, 0, sizeof(int), (void**)&isect_flag, &e_));
+    Wait();
+    result = *isect_flag;
+    ASSERT_NO_THROW(api_->UnmapBuffer(isect_flag_buffer, isect_flag, &e_));
+    Wait();
+    // Check results
+    ASSERT_EQ(result, kNullId);
+
+
+    // Bail out
+    ASSERT_NO_THROW(api_->DetachShape(mesh));
+    ASSERT_NO_THROW(api_->DeleteShape(mesh));
+    ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
+    ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
+    ASSERT_NO_THROW(api_->DeleteBuffer(isect_flag_buffer));
+
+}
+
+
+#ifdef RR_RAY_MASK
+// The test creates a single triangle mesh and tests attach/detach functionality
+TEST_F(ApiBackendOpenCL, Intersection_1Ray_Masked_fatbvh)
+#else
+// The test creates a single triangle mesh and tests attach/detach functionality
+TEST_F(ApiBackendOpenCL, DISABLED_Intersection_1Ray_Masked_fatbvh)
+#endif
+{
+
+    Shape* mesh = nullptr;
+
+    api_->SetOption("acc.type", "fatbvh");
+
+    // Create mesh
+    ASSERT_NO_THROW(mesh = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
+
+    ASSERT_TRUE(mesh != nullptr);
+
+    // Set mesh Id
+    ASSERT_NO_THROW(mesh->SetId(0));
+
+    // Attach the mesh to the scene
+    ASSERT_NO_THROW(api_->AttachShape(mesh));
+
+    // Prepare the ray
+    ray r(float3(0.f, 0.f, -10.f), float3(0.f, 0.f, 1.f), 10000.f);
+    r.SetMask(-1);
+
+    // Intersection and hit data
+    Intersection isect;
+
+    auto ray_buffer = api_->CreateBuffer(sizeof(ray), &r);
+    auto isect_buffer = api_->CreateBuffer(sizeof(Intersection), nullptr);
+    auto isect_flag_buffer = api_->CreateBuffer(sizeof(int), nullptr);
+
+    // Commit geometry update
+    ASSERT_NO_THROW(api_->Commit());
+
+    // Intersect
+    ASSERT_NO_THROW(api_->QueryIntersection(ray_buffer, 1, isect_buffer, nullptr, nullptr));
+
+    Intersection* tmp = nullptr;
+    ASSERT_NO_THROW(api_->MapBuffer(isect_buffer, kMapRead, 0, sizeof(Intersection), (void**)&tmp, &e_));
+    Wait();
+    isect = *tmp;
+    ASSERT_NO_THROW(api_->UnmapBuffer(isect_buffer, tmp, &e_));
+    Wait();
+
+    // Check results
+    ASSERT_EQ(isect.shapeid, mesh->GetId());
+
+    r.SetMask(0);
+
+    // Update ray buffer
+    ray* rr = nullptr;
+    ASSERT_NO_THROW(api_->MapBuffer(ray_buffer, kMapWrite, 0, sizeof(ray), (void**)&rr, &e_));
+    Wait();
+    *rr = r;
+    ASSERT_NO_THROW(api_->UnmapBuffer(ray_buffer, rr, &e_));
+    Wait();
+
+    // Intersect
+    ASSERT_NO_THROW(api_->QueryIntersection(ray_buffer, 1, isect_buffer, nullptr, nullptr));
+
+    tmp = nullptr;
+    ASSERT_NO_THROW(api_->MapBuffer(isect_buffer, kMapRead, 0, sizeof(Intersection), (void**)&tmp, &e_));
+    Wait();
+    isect = *tmp;
+    ASSERT_NO_THROW(api_->UnmapBuffer(isect_buffer, tmp, &e_));
+    Wait();
+
+    // Check results
+    ASSERT_EQ(isect.shapeid, kNullId);
+
+    mesh->SetId(1);
+
+    int result = kNullId;
+    // Commit geometry update
+    ASSERT_NO_THROW(api_->Commit());
+    // Intersect
+    ASSERT_NO_THROW(api_->QueryOcclusion(ray_buffer, 1, isect_flag_buffer, nullptr, nullptr));
+
+    int* isect_flag = nullptr;
+    ASSERT_NO_THROW(api_->MapBuffer(isect_flag_buffer, kMapRead, 0, sizeof(int), (void**)&isect_flag, &e_));
+    Wait();
+    result = *isect_flag;
+    ASSERT_NO_THROW(api_->UnmapBuffer(isect_flag_buffer, isect_flag, &e_));
+    Wait();
+
+    // Check results
+    ASSERT_GT(result, 0);
+
+    r.SetMask(1);
+
+    // Update ray buffer
+    rr = nullptr;
+    ASSERT_NO_THROW(api_->MapBuffer(ray_buffer, kMapWrite, 0, sizeof(ray), (void**)&rr, &e_));
+    Wait();
+    *rr = r;
+    ASSERT_NO_THROW(api_->UnmapBuffer(ray_buffer, rr, &e_));
+    Wait();
+
+    // Intersect
+    ASSERT_NO_THROW(api_->QueryOcclusion(ray_buffer, 1, isect_flag_buffer, nullptr, nullptr));
+
+    isect_flag = nullptr;
+    ASSERT_NO_THROW(api_->MapBuffer(isect_flag_buffer, kMapRead, 0, sizeof(int), (void**)&isect_flag, &e_));
+    Wait();
+    result = *isect_flag;
+    ASSERT_NO_THROW(api_->UnmapBuffer(isect_flag_buffer, isect_flag, &e_));
+    Wait();
+    // Check results
+    ASSERT_EQ(result, kNullId);
+
+
+    // Bail out
+    ASSERT_NO_THROW(api_->DetachShape(mesh));
+    ASSERT_NO_THROW(api_->DeleteShape(mesh));
+    ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
+    ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
+    ASSERT_NO_THROW(api_->DeleteBuffer(isect_flag_buffer));
+
+}
+
+
+#ifdef RR_RAY_MASK
+// The test creates a single triangle mesh and tests attach/detach functionality
+TEST_F(ApiBackendOpenCL, DISABLED_Intersection_1Ray_Masked_hlbvh)
+#else
+// The test creates a single triangle mesh and tests attach/detach functionality
+TEST_F(ApiBackendOpenCL, DISABLED_Intersection_1Ray_Masked_hlbvh)
+#endif
+{
+
+    Shape* mesh = nullptr;
+
+    api_->SetOption("acc.type", "hlbvh");
+
+    // Create mesh
+    ASSERT_NO_THROW(mesh = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
+
+    ASSERT_TRUE(mesh != nullptr);
+
+    // Set mesh Id
+    ASSERT_NO_THROW(mesh->SetId(0));
+
+    // Attach the mesh to the scene
+    ASSERT_NO_THROW(api_->AttachShape(mesh));
+
+    // Prepare the ray
+    ray r(float3(0.f, 0.f, -10.f), float3(0.f, 0.f, 1.f), 10000.f);
+    r.SetMask(-1);
+
+    // Intersection and hit data
+    Intersection isect;
+
+    auto ray_buffer = api_->CreateBuffer(sizeof(ray), &r);
+    auto isect_buffer = api_->CreateBuffer(sizeof(Intersection), nullptr);
+    auto isect_flag_buffer = api_->CreateBuffer(sizeof(int), nullptr);
+
+    // Commit geometry update
+    ASSERT_NO_THROW(api_->Commit());
+
+    // Intersect
+    ASSERT_NO_THROW(api_->QueryIntersection(ray_buffer, 1, isect_buffer, nullptr, nullptr));
+
+    Intersection* tmp = nullptr;
+    ASSERT_NO_THROW(api_->MapBuffer(isect_buffer, kMapRead, 0, sizeof(Intersection), (void**)&tmp, &e_));
+    Wait();
+    isect = *tmp;
+    ASSERT_NO_THROW(api_->UnmapBuffer(isect_buffer, tmp, &e_));
+    Wait();
+
+    // Check results
+    ASSERT_EQ(isect.shapeid, mesh->GetId());
+
+    r.SetMask(0);
+
+    // Update ray buffer
+    ray* rr = nullptr;
+    ASSERT_NO_THROW(api_->MapBuffer(ray_buffer, kMapWrite, 0, sizeof(ray), (void**)&rr, &e_));
+    Wait();
+    *rr = r;
+    ASSERT_NO_THROW(api_->UnmapBuffer(ray_buffer, rr, &e_));
+    Wait();
+
+    // Intersect
+    ASSERT_NO_THROW(api_->QueryIntersection(ray_buffer, 1, isect_buffer, nullptr, nullptr));
+
+    tmp = nullptr;
+    ASSERT_NO_THROW(api_->MapBuffer(isect_buffer, kMapRead, 0, sizeof(Intersection), (void**)&tmp, &e_));
+    Wait();
+    isect = *tmp;
+    ASSERT_NO_THROW(api_->UnmapBuffer(isect_buffer, tmp, &e_));
+    Wait();
+
+    // Check results
+    ASSERT_EQ(isect.shapeid, kNullId);
+
+    mesh->SetId(1);
+
+    int result = kNullId;
+    // Commit geometry update
+    ASSERT_NO_THROW(api_->Commit());
+    // Intersect
+    ASSERT_NO_THROW(api_->QueryOcclusion(ray_buffer, 1, isect_flag_buffer, nullptr, nullptr));
+
+    int* isect_flag = nullptr;
+    ASSERT_NO_THROW(api_->MapBuffer(isect_flag_buffer, kMapRead, 0, sizeof(int), (void**)&isect_flag, &e_));
+    Wait();
+    result = *isect_flag;
+    ASSERT_NO_THROW(api_->UnmapBuffer(isect_flag_buffer, isect_flag, &e_));
+    Wait();
+
+    // Check results
+    ASSERT_GT(result, 0);
+
+    r.SetMask(1);
+
+    // Update ray buffer
+    rr = nullptr;
+    ASSERT_NO_THROW(api_->MapBuffer(ray_buffer, kMapWrite, 0, sizeof(ray), (void**)&rr, &e_));
+    Wait();
+    *rr = r;
+    ASSERT_NO_THROW(api_->UnmapBuffer(ray_buffer, rr, &e_));
+    Wait();
+
+    // Intersect
+    ASSERT_NO_THROW(api_->QueryOcclusion(ray_buffer, 1, isect_flag_buffer, nullptr, nullptr));
+
+    isect_flag = nullptr;
+    ASSERT_NO_THROW(api_->MapBuffer(isect_flag_buffer, kMapRead, 0, sizeof(int), (void**)&isect_flag, &e_));
+    Wait();
+    result = *isect_flag;
+    ASSERT_NO_THROW(api_->UnmapBuffer(isect_flag_buffer, isect_flag, &e_));
+    Wait();
+    // Check results
+    ASSERT_EQ(result, kNullId);
+
+
+    // Bail out
+    ASSERT_NO_THROW(api_->DetachShape(mesh));
+    ASSERT_NO_THROW(api_->DeleteShape(mesh));
+    ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
+    ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
+    ASSERT_NO_THROW(api_->DeleteBuffer(isect_flag_buffer));
+
+}
+
+
+#ifdef RR_RAY_MASK
+// The test creates a single triangle mesh and tests attach/detach functionality
+TEST_F(ApiBackendOpenCL, DISABLED_Intersection_1Ray_Masked_hashbvh)
+#else
+// The test creates a single triangle mesh and tests attach/detach functionality
+TEST_F(ApiBackendOpenCL, DISABLED_Intersection_1Ray_Masked_hashbvh)
+#endif
+{
+
+    Shape* mesh = nullptr;
+
+    api_->SetOption("acc.type", "hashbvh");
+
+    // Create mesh
+    ASSERT_NO_THROW(mesh = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
+
+    ASSERT_TRUE(mesh != nullptr);
+
+    // Set mesh Id
+    ASSERT_NO_THROW(mesh->SetId(0));
+
+    // Attach the mesh to the scene
+    ASSERT_NO_THROW(api_->AttachShape(mesh));
+
+    // Prepare the ray
+    ray r(float3(0.f, 0.f, -10.f), float3(0.f, 0.f, 1.f), 10000.f);
+    r.SetMask(-1);
+
+    // Intersection and hit data
+    Intersection isect;
+
+    auto ray_buffer = api_->CreateBuffer(sizeof(ray), &r);
+    auto isect_buffer = api_->CreateBuffer(sizeof(Intersection), nullptr);
+    auto isect_flag_buffer = api_->CreateBuffer(sizeof(int), nullptr);
+
+    // Commit geometry update
+    ASSERT_NO_THROW(api_->Commit());
+
+    // Intersect
+    ASSERT_NO_THROW(api_->QueryIntersection(ray_buffer, 1, isect_buffer, nullptr, nullptr));
+
+    Intersection* tmp = nullptr;
+    ASSERT_NO_THROW(api_->MapBuffer(isect_buffer, kMapRead, 0, sizeof(Intersection), (void**)&tmp, &e_));
+    Wait();
+    isect = *tmp;
+    ASSERT_NO_THROW(api_->UnmapBuffer(isect_buffer, tmp, &e_));
+    Wait();
+
+    // Check results
+    ASSERT_EQ(isect.shapeid, mesh->GetId());
+
+    r.SetMask(0);
+
+    // Update ray buffer
+    ray* rr = nullptr;
+    ASSERT_NO_THROW(api_->MapBuffer(ray_buffer, kMapWrite, 0, sizeof(ray), (void**)&rr, &e_));
+    Wait();
+    *rr = r;
+    ASSERT_NO_THROW(api_->UnmapBuffer(ray_buffer, rr, &e_));
+    Wait();
+
+    // Intersect
+    ASSERT_NO_THROW(api_->QueryIntersection(ray_buffer, 1, isect_buffer, nullptr, nullptr));
+
+    tmp = nullptr;
+    ASSERT_NO_THROW(api_->MapBuffer(isect_buffer, kMapRead, 0, sizeof(Intersection), (void**)&tmp, &e_));
+    Wait();
+    isect = *tmp;
+    ASSERT_NO_THROW(api_->UnmapBuffer(isect_buffer, tmp, &e_));
+    Wait();
+
+    // Check results
+    ASSERT_EQ(isect.shapeid, kNullId);
+
+    mesh->SetId(1);
+
+    int result = kNullId;
+    // Commit geometry update
+    ASSERT_NO_THROW(api_->Commit());
+    // Intersect
+    ASSERT_NO_THROW(api_->QueryOcclusion(ray_buffer, 1, isect_flag_buffer, nullptr, nullptr));
+
+    int* isect_flag = nullptr;
+    ASSERT_NO_THROW(api_->MapBuffer(isect_flag_buffer, kMapRead, 0, sizeof(int), (void**)&isect_flag, &e_));
+    Wait();
+    result = *isect_flag;
+    ASSERT_NO_THROW(api_->UnmapBuffer(isect_flag_buffer, isect_flag, &e_));
+    Wait();
+
+    // Check results
+    ASSERT_GT(result, 0);
+
+    r.SetMask(1);
+
+    // Update ray buffer
+    rr = nullptr;
+    ASSERT_NO_THROW(api_->MapBuffer(ray_buffer, kMapWrite, 0, sizeof(ray), (void**)&rr, &e_));
+    Wait();
+    *rr = r;
+    ASSERT_NO_THROW(api_->UnmapBuffer(ray_buffer, rr, &e_));
+    Wait();
+
+    // Intersect
+    ASSERT_NO_THROW(api_->QueryOcclusion(ray_buffer, 1, isect_flag_buffer, nullptr, nullptr));
+
     isect_flag = nullptr;
     ASSERT_NO_THROW(api_->MapBuffer(isect_flag_buffer, kMapRead, 0, sizeof(int), (void**)&isect_flag, &e_));
     Wait();

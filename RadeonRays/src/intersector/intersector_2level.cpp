@@ -42,7 +42,8 @@ namespace RadeonRays
         Id id;
         // Index of root bvh node
         int bvhidx;
-        int mask;
+        // Is the shape disabled?
+        unsigned int shapeDisabled;
         int padding1;
         // Transform
         matrix minv;
@@ -56,8 +57,6 @@ namespace RadeonRays
     {
         // Up to 3 indices
         int idx[3];
-        // Shape maks
-        int shape_mask;
         // Shape ID
         int shape_id;
         // Primitive ID
@@ -455,11 +454,11 @@ namespace RadeonRays
                 // and we need to skip them while doing traversal.
                 if (shapes_disabled.find(shapeimpl) == shapes_disabled.cend())
                 {
-                    m_cpudata->shapedata[i].mask = shapeimpl->GetMask();
+                    m_cpudata->shapedata[i].shapeDisabled = 0;
                 }
                 else
                 {
-                    m_cpudata->shapedata[i].mask = 0x0;
+                    m_cpudata->shapedata[i].shapeDisabled = 1;
                 }
 
                 shapeimpl->GetTransform(m, m_cpudata->shapedata[i].minv);
@@ -618,11 +617,11 @@ namespace RadeonRays
                 // and we need to skip them while doing traversal.
                 if (shapes_disabled.find(shapeimpl) == shapes_disabled.cend())
                 {
-                    m_cpudata->shapedata[i].mask = shapeimpl->GetMask();
+                    m_cpudata->shapedata[i].shapeDisabled = 0;
                 }
                 else
                 {
-                    m_cpudata->shapedata[i].mask = 0x0;
+                    m_cpudata->shapedata[i].shapeDisabled = 1;
                 }
 
                 shapeimpl->GetTransform(m, m_cpudata->shapedata[i].minv);

@@ -107,10 +107,6 @@ namespace RadeonRays
         // ID of a shape
         virtual void SetId(Id id) = 0;
         virtual Id GetId() const = 0;
-
-        // Geometry mask to mask out intersections
-        virtual void SetMask(int mask) = 0;
-        virtual int  GetMask() const = 0;
     };
 
     // Buffer represents a chunk of memory hosted inside the API

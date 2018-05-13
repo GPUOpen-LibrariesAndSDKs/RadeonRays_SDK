@@ -40,7 +40,7 @@ namespace RadeonRays
         {
             SetMaxT(maxt);
             SetTime(time);
-            SetMask(0xFFFFFFFF);
+            SetMask(-1);
             SetActive(true);
         }
 

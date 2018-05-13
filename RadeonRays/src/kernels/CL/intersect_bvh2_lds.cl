@@ -160,18 +160,25 @@ KERNEL void intersect_main(
                 }
                 else
                 {
-                    float t = fast_intersect_triangle(
-                        my_ray,
-                        node.aabb_left_min_or_v0_and_addr_left.xyz,
-                        node.aabb_left_max_or_v1_and_mesh_id.xyz,
-                        node.aabb_right_min_or_v2_and_addr_right.xyz,
-                        closest_t);
-
-                    if (t < closest_t)
+#ifdef RR_RAY_MASK
+                    if (ray_get_mask(&my_ray) != convert_int(GetMeshId(node)))
                     {
-                        closest_t = t;
-                        closest_addr = addr;
+#endif
+                        float t = fast_intersect_triangle(
+                            my_ray,
+                            node.aabb_left_min_or_v0_and_addr_left.xyz,
+                            node.aabb_left_max_or_v1_and_mesh_id.xyz,
+                            node.aabb_right_min_or_v2_and_addr_right.xyz,
+                            closest_t);
+
+                        if (t < closest_t)
+                        {
+                            closest_t = t;
+                            closest_addr = addr;
+                        }
+#ifdef RR_RAY_MASK
                     }
+#endif
                 }
 
                 addr = lds_stack[--lds_sptr];
@@ -313,18 +320,25 @@ KERNEL void occluded_main(
                 }
                 else
                 {
-                    float t = fast_intersect_triangle(
-                        my_ray,
-                        node.aabb_left_min_or_v0_and_addr_left.xyz,
-                        node.aabb_left_max_or_v1_and_mesh_id.xyz,
-                        node.aabb_right_min_or_v2_and_addr_right.xyz,
-                        closest_t);
-
-                    if (t < closest_t)
+#ifdef RR_RAY_MASK
+                    if (ray_get_mask(&my_ray) != convert_int(GetMeshId(node)))
                     {
-                        hits[index] = HIT_MARKER;
-                        return;
+#endif
+                        float t = fast_intersect_triangle(
+                            my_ray,
+                            node.aabb_left_min_or_v0_and_addr_left.xyz,
+                            node.aabb_left_max_or_v1_and_mesh_id.xyz,
+                            node.aabb_right_min_or_v2_and_addr_right.xyz,
+                            closest_t);
+
+                        if (t < closest_t)
+                        {
+                            hits[index] = HIT_MARKER;
+                            return;
+                        }
+#ifdef RR_RAY_MASK
                     }
+#endif
                 }
 
                 addr = lds_stack[--lds_sptr];

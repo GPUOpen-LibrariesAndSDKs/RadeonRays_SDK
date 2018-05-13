@@ -331,8 +331,6 @@ namespace RadeonRays
                 {
                     // Up to 3 indices
                     int idx[3];
-                    // Shape maks
-                    int shape_mask;
                     // Shape ID
                     int shape_id;
                     // Primitive ID
@@ -393,7 +391,6 @@ namespace RadeonRays
 
                     // Optimization: we are putting faceid here
                     facedata[i].shape_id = shapes[shapeidx]->GetId();
-                    facedata[i].shape_mask = shapes[shapeidx]->GetMask();
                     facedata[i].prim_id = faceidx;
                 }
 
