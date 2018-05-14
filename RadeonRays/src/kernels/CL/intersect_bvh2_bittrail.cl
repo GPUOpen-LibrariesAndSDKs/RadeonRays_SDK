@@ -184,7 +184,7 @@ occluded_main(
 #ifdef RR_RAY_MASK
                     if (ray_get_mask(&r) != node.shape_id)
                     {
-#endif
+#endif // RR_RAY_MASK
                         // Leafs directly store vertex indices
                         // so we load vertices directly
                         float3 const v1 = vertices[node.i0];
@@ -200,7 +200,7 @@ occluded_main(
                         }
 #ifdef RR_RAY_MASK
                     }
-#endif
+#endif // RR_RAY_MASK
                 }
                 else
                 {
@@ -335,7 +335,7 @@ KERNEL void intersect_main(
 #ifdef RR_RAY_MASK
                     if (ray_get_mask(&r) != node.shape_id)
                     {
-#endif
+#endif // RR_RAY_MASK
                         // Leafs directly store vertex indices
                         // so we load vertices directly
                         float3 const v1 = vertices[node.i0];
@@ -351,7 +351,7 @@ KERNEL void intersect_main(
                         }
 #ifdef RR_RAY_MASK
                     }
-#endif
+#endif // RR_RAY_MASK
                 }
                 else
                 {

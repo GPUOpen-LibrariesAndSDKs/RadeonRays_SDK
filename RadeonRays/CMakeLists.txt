@@ -195,6 +195,10 @@ if (RR_ENABLE_RAYMASK)
     target_compile_definitions(RadeonRays PRIVATE RR_RAY_MASK)
 endif (RR_ENABLE_RAYMASK)
 
+if (RR_ENABLE_BACKFACE_CULL)
+    target_compile_definitions(RadeonRays PRIVATE RR_BACKFACE_CULL)
+endif (RR_ENABLE_BACKFACE_CULL)
+
 if (RR_USE_OPENCL)
     target_link_libraries(RadeonRays PUBLIC OpenCL::OpenCL)
     target_compile_definitions(RadeonRays PUBLIC USE_OPENCL=1)

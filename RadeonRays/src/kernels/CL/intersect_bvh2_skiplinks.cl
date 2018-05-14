@@ -146,7 +146,7 @@ void intersect_main(
 #ifdef RR_RAY_MASK
                         if (ray_get_mask(&r) != face.shape_id)
                         {
-#endif
+#endif // RR_RAY_MASK
                             float3 const v1 = vertices[face.idx[0]];
                             float3 const v2 = vertices[face.idx[1]];
                             float3 const v3 = vertices[face.idx[2]];
@@ -161,7 +161,7 @@ void intersect_main(
                             }
 #ifdef RR_RAY_MASK
                         }
-#endif
+#endif // RR_RAY_MASK
                     }
                     else
                     {
@@ -255,7 +255,7 @@ void occluded_main(
 #ifdef RR_RAY_MASK
                         if (ray_get_mask(&r) != face.shape_id)
                         {
-#endif
+#endif // RR_RAY_MASK
                             float3 const v1 = vertices[face.idx[0]];
                             float3 const v2 = vertices[face.idx[1]];
                             float3 const v3 = vertices[face.idx[2]];
@@ -270,7 +270,7 @@ void occluded_main(
                             }
 #ifdef RR_RAY_MASK
                         }
-#endif
+#endif // RR_RAY_MASK
                     }
                     else
                     {

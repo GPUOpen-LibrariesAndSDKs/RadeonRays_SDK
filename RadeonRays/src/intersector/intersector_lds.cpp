@@ -100,6 +100,11 @@ namespace RadeonRays
 #ifdef RR_RAY_MASK
         buildopts.append("-D RR_RAY_MASK ");
 #endif
+
+#ifdef RR_BACKFACE_CULL
+        buildopts.append("-D RR_BACKFACE_CULL ");
+#endif // RR_BACKFACE_CULL
+
 #ifdef USE_SAFE_MATH
         buildopts.append("-D USE_SAFE_MATH ");
 #endif

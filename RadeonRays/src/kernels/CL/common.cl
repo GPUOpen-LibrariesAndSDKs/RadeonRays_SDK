@@ -55,7 +55,8 @@ typedef struct
     float4 o;
     float4 d;
     int2 extra;
-    int2 padding;
+    int doBackfaceCulling;
+    int padding;
 } ray;
 
 // Intersection definition
@@ -94,6 +95,12 @@ INLINE
 float ray_get_time(ray const* r)
 {
     return r->d.w;
+}
+
+INLINE
+int ray_get_doBackfaceCull(ray const* r)
+{
+    return r->doBackfaceCulling;
 }
 
 /*************************************************************************
@@ -172,6 +179,14 @@ float fast_intersect_triangle(ray r, float3 v1, float3 v2, float3 v3, float t_ma
 {
     float3 const e1 = v2 - v1;
     float3 const e2 = v3 - v1;
+
+#ifdef RR_BACKFACE_CULL
+    if (ray_get_doBackfaceCull(&r) && dot(cross(e1, e2), r.d.xyz) > 0.f)
+    {
+        return t_max;
+    }
+#endif // RR_BACKFACE_CULL
+
     float3 const s1 = cross(r.d.xyz, e2);
 
     float denom = dot(s1, e1);

@@ -112,8 +112,8 @@ TEST_F(ApiCl, Intersection_1Ray)
     // Mesh vertices
     float vertices[] = {
         -1.f,-1.f,0.f,
-        1.f,-1.f,0.f,
         0.f,1.f,0.f,
+        1.f,-1.f,0.f,
         
     };
     
@@ -197,8 +197,8 @@ TEST_F(ApiCl, Intersection_1Ray_Buffer)
     // Mesh vertices
     float vertices[] = {
         -1.f,-1.f,0.f,
-        1.f,-1.f,0.f,
         0.f,1.f,0.f,
+        1.f,-1.f,0.f,
         
     };
     
@@ -268,8 +268,8 @@ TEST_F(ApiCl, Intersection_3Rays_Buffer)
     // Mesh vertices
     float vertices[] = {
         -1.f,-1.f,0.f,
-        1.f,-1.f,0.f,
         0.f,1.f,0.f,
+        1.f,-1.f,0.f,
     };
     
     // Indices
@@ -347,8 +347,8 @@ TEST_F(ApiCl, Intersection_3Rays_Buffer_Indirect)
     // Mesh vertices
     float vertices[] = {
         -1.f,-1.f,0.f,
-        1.f,-1.f,0.f,
         0.f,1.f,0.f,
+        1.f,-1.f,0.f,
         
     };
     
@@ -434,8 +434,8 @@ TEST_F(ApiCl, Intersection_Events)
     // Mesh vertices
     float vertices[] = {
         -1.f,-1.f,0.f,
-        1.f,-1.f,0.f,
         0.f,1.f,0.f,
+        1.f,-1.f,0.f,
         
     };
     
@@ -514,8 +514,8 @@ TEST_F(ApiCl, Intersection_DependencyEvents)
     // Mesh vertices
     float vertices[] = {
         -1.f,-1.f,0.f,
-        1.f,-1.f,0.f,
         0.f,1.f,0.f,
+        1.f,-1.f,0.f,
         
     };
     

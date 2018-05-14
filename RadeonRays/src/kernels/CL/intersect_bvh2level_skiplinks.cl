@@ -235,7 +235,7 @@ KERNEL void intersect_main(
                             if (!shapeDisabled
 #ifdef RR_RAY_MASK
                                 && ray_get_mask(&r) != shapeId
-#endif
+#endif // RR_RAY_MASK
                                 )
                             {
                                 // Fetch bottom level BVH index
@@ -395,13 +395,13 @@ KERNEL void occluded_main(
                             const unsigned int shapeDisabled = shapes[shape_idx].shapeDisabled;
 #ifdef RR_RAY_MASK
                             const int shapeId = shapes[shape_idx].id;
-#endif
+#endif // RR_RAY_MASK
                             // Drill into 2nd level BVH only if the geometry is not masked vs current ray
                             // otherwise skip the subtree
                             if (!shapeDisabled 
 #ifdef RR_RAY_MASK
                                 && ray_get_mask(&r) != shapeId
-#endif
+#endif // RR_RAY_MASK
                                 )
                             {
                                 // Fetch bottom level BVH index

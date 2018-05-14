@@ -163,7 +163,7 @@ KERNEL void intersect_main(
 #ifdef RR_RAY_MASK
                     if (ray_get_mask(&my_ray) != convert_int(GetMeshId(node)))
                     {
-#endif
+#endif // RR_RAY_MASK
                         float t = fast_intersect_triangle(
                             my_ray,
                             node.aabb_left_min_or_v0_and_addr_left.xyz,
@@ -178,7 +178,7 @@ KERNEL void intersect_main(
                         }
 #ifdef RR_RAY_MASK
                     }
-#endif
+#endif // RR_RAY_MASK
                 }
 
                 addr = lds_stack[--lds_sptr];
@@ -323,7 +323,7 @@ KERNEL void occluded_main(
 #ifdef RR_RAY_MASK
                     if (ray_get_mask(&my_ray) != convert_int(GetMeshId(node)))
                     {
-#endif
+#endif // RR_RAY_MASK
                         float t = fast_intersect_triangle(
                             my_ray,
                             node.aabb_left_min_or_v0_and_addr_left.xyz,
@@ -338,7 +338,7 @@ KERNEL void occluded_main(
                         }
 #ifdef RR_RAY_MASK
                     }
-#endif
+#endif // RR_RAY_MASK
                 }
 
                 addr = lds_stack[--lds_sptr];

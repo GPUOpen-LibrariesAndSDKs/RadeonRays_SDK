@@ -475,8 +475,10 @@ TEST_F(ApiConformanceCL, DISABLED_CornellBox_10000RaysRandom_ClosestHit_Events_B
         r_gpu[i].d = r_cpu[i].d = r_brute[i].d;
         r_gpu[i].SetActive(true);
         r_cpu[i].SetActive(true);
-        r_gpu[i].SetMask(0xFFFFFFFF);
-        r_cpu[i].SetMask(0xFFFFFFFF);
+        r_gpu[i].SetMask(-1);
+        r_cpu[i].SetMask(-1);
+        r_gpu[i].SetDoBackfaceCulling(false);
+        r_cpu[i].SetDoBackfaceCulling(false);
     }
 
     EXPECT_NO_THROW(apicpu_->UnmapBuffer(ray_buffer_cpu, r_cpu, &ecpu));
@@ -577,7 +579,8 @@ inline void ApiConformanceCL::ExpectClosestRaysOk(RadeonRays::IntersectionApi* a
         rays[i].d = r_brute[i].d;
 
         rays[i].SetActive(true);
-        rays[i].SetMask(0xFFFFFFFF);
+        rays[i].SetMask(-1);
+        rays[i].SetDoBackfaceCulling(false);
     }
 
     EXPECT_NO_THROW(api->UnmapBuffer(ray_buffer, rays, &ev));
@@ -644,7 +647,8 @@ inline void ApiConformanceCL::ExpectAnyRaysOk(RadeonRays::IntersectionApi* api) 
         rays[i].d = r_brute[i].d;
 
         rays[i].SetActive(true);
-        rays[i].SetMask(0xFFFFFFFF);
+        rays[i].SetMask(-1);
+        rays[i].SetDoBackfaceCulling(false);
     }
 
     EXPECT_NO_THROW(api->UnmapBuffer(ray_buffer, rays, &ev));
