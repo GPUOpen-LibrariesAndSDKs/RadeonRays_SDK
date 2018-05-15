@@ -115,11 +115,21 @@ namespace RadeonRays
 #endif // WIN32
         }
 
+#if defined(_MSC_VER)
+    #if defined(_WIN32)
+        #if defined(_WIN64)
+            #define MSVC_X86_ALIGNMENT_FIX
+        #else
+            #define MSVC_X86_ALIGNMENT_FIX &
+        #endif
+    #endif
+#endif
+
         void BuildImpl(
-            __m128 scene_min,
-            __m128 scene_max,
-            __m128 centroid_scene_min,
-            __m128 centroid_scene_max,
+            __m128 MSVC_X86_ALIGNMENT_FIX scene_min,
+            __m128 MSVC_X86_ALIGNMENT_FIX scene_max,
+            __m128 MSVC_X86_ALIGNMENT_FIX centroid_scene_min,
+            __m128 MSVC_X86_ALIGNMENT_FIX centroid_scene_max,
             const float3 *aabb_min,
             const float3 *aabb_max,
             const float3 *aabb_centroid,

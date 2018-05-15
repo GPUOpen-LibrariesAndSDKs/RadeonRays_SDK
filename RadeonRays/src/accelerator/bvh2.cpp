@@ -142,10 +142,10 @@ namespace RadeonRays
     }
 
     void Bvh2::BuildImpl(
-        __m128 scene_min,
-        __m128 scene_max,
-        __m128 centroid_scene_min,
-        __m128 centroid_scene_max,
+        __m128 MSVC_X86_ALIGNMENT_FIX scene_min,
+        __m128 MSVC_X86_ALIGNMENT_FIX scene_max,
+        __m128 MSVC_X86_ALIGNMENT_FIX centroid_scene_min,
+        __m128 MSVC_X86_ALIGNMENT_FIX centroid_scene_max,
         const float3 *aabb_min,
         const float3 *aabb_max,
         const float3 *aabb_centroid,
