@@ -115,14 +115,10 @@ namespace RadeonRays
 #endif // WIN32
         }
 
-#if defined(_MSC_VER)
-    #if defined(_WIN32)
-        #if defined(_WIN64)
-            #define MSVC_X86_ALIGNMENT_FIX
-        #else
-            #define MSVC_X86_ALIGNMENT_FIX &
-        #endif
-    #endif
+#if _MSC_VER <= 1900 && defined(_WIN32) && !defined(_WIN64)
+    #define MSVC_X86_ALIGNMENT_FIX &
+#else
+    #define MSVC_X86_ALIGNMENT_FIX
 #endif
 
         void BuildImpl(
