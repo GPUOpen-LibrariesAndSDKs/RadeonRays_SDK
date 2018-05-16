@@ -100,7 +100,7 @@ namespace RadeonRays
         {
             if (m_intersector_string != "bvh2l")
             {
-                m_intersector = std::make_unique<IntersectorTwoLevel>(m_device.get());
+                m_intersector.reset(new IntersectorTwoLevel(m_device.get()));
                 m_intersector_string = "bvh2l";
             }
         }
@@ -114,7 +114,7 @@ namespace RadeonRays
                 {
                     if (m_intersector_string != "bvh")
                     {
-                        m_intersector = std::make_unique<IntersectorSkipLinks>(m_device.get());
+                        m_intersector.reset(new IntersectorSkipLinks(m_device.get()));
                         m_intersector_string = "bvh";
                     }
                 }
@@ -126,7 +126,7 @@ namespace RadeonRays
                         m_intersector.reset(new IntersectorShortStack(m_device.get()));
                         m_intersector_string = "fatbvh";
 #else
-                        m_intersector = std::make_unique<IntersectorLDS>(m_device.get());
+                        m_intersector.reset(new IntersectorLDS(m_device.get()));
                         m_intersector_string = "fatbvh";
 #endif
                     }
@@ -135,7 +135,7 @@ namespace RadeonRays
                 {
                     if (m_intersector_string != "hlbvh")
                     {
-                        m_intersector = std::make_unique<IntersectorHlbvh>(m_device.get());
+                        m_intersector.reset(new IntersectorHlbvh(m_device.get()));
                         m_intersector_string = "hlbvh";
                     }
                 }
@@ -143,7 +143,7 @@ namespace RadeonRays
                 {
                     if (m_intersector_string != "hashbvh")
                     {
-                        m_intersector = std::make_unique<IntersectorBitTrail>(m_device.get());
+                        m_intersector.reset(new IntersectorBitTrail(m_device.get()));
                         m_intersector_string = "hashbvh";
                     }
                 }*/

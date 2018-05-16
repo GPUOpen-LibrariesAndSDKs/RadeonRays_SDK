@@ -47,9 +47,9 @@ namespace Calc
         std::uint32_t min_alignment;
         std::uint32_t max_num_queues;
 
-        unsigned __int64 global_mem_size;
-        unsigned __int64 local_mem_size;
-        unsigned __int64 max_alloc_size;
+        unsigned long long global_mem_size;
+        unsigned long long local_mem_size;
+        unsigned long long max_alloc_size;
         std::size_t max_local_size;
 
         bool has_fp16;
