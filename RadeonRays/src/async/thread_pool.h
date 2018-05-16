@@ -40,8 +40,8 @@ namespace RadeonRays
     template <typename T> class thread_safe_queue
     {
     public:
-        thread_safe_queue(){}
-        ~thread_safe_queue(){}
+        thread_safe_queue() = default;
+        ~thread_safe_queue() = default;
 
         // Push element: one of the threads is going to 
         // be woken up to process this if any

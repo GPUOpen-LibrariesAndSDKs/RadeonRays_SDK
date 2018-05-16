@@ -38,6 +38,7 @@ THE SOFTWARE.
 #include "../intersector/intersector_bittrail.h"
 #include "../world/world.h"
 #include <iostream>
+#include <memory>
 
 namespace RadeonRays
 {
@@ -85,10 +86,10 @@ namespace RadeonRays
             else
             {
                 // Otherwise check if there are instances in the world
-                for (auto iter = world.shapes_.cbegin(); iter != world.shapes_.cend(); ++iter)
+                for (auto shape : world.shapes_)
                 {
                     // Get implementation
-                    auto shapeimpl = static_cast<ShapeImpl const*>(*iter);
+                    auto shapeimpl = static_cast<ShapeImpl const*>(shape);
                     // Check if it is an instance and update flag
                     use2level = use2level | shapeimpl->is_instance();
                 }
@@ -99,7 +100,7 @@ namespace RadeonRays
         {
             if (m_intersector_string != "bvh2l")
             {
-                m_intersector.reset(new IntersectorTwoLevel(m_device.get()));
+                m_intersector = std::make_unique<IntersectorTwoLevel>(m_device.get());
                 m_intersector_string = "bvh2l";
             }
         }
@@ -113,7 +114,7 @@ namespace RadeonRays
                 {
                     if (m_intersector_string != "bvh")
                     {
-                        m_intersector.reset(new IntersectorSkipLinks(m_device.get()));
+                        m_intersector = std::make_unique<IntersectorSkipLinks>(m_device.get());
                         m_intersector_string = "bvh";
                     }
                 }
@@ -125,7 +126,7 @@ namespace RadeonRays
                         m_intersector.reset(new IntersectorShortStack(m_device.get()));
                         m_intersector_string = "fatbvh";
 #else
-                        m_intersector.reset(new IntersectorLDS(m_device.get()));
+                        m_intersector = std::make_unique<IntersectorLDS>(m_device.get());
                         m_intersector_string = "fatbvh";
 #endif
                     }
@@ -134,7 +135,7 @@ namespace RadeonRays
                 {
                     if (m_intersector_string != "hlbvh")
                     {
-                        m_intersector.reset(new IntersectorHlbvh(m_device.get()));
+                        m_intersector = std::make_unique<IntersectorHlbvh>(m_device.get());
                         m_intersector_string = "hlbvh";
                     }
                 }
@@ -142,7 +143,7 @@ namespace RadeonRays
                 {
                     if (m_intersector_string != "hashbvh")
                     {
-                        m_intersector.reset(new IntersectorBitTrail(m_device.get()));
+                        m_intersector = std::make_unique<IntersectorBitTrail>(m_device.get());
                         m_intersector_string = "hashbvh";
                     }
                 }*/

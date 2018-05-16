@@ -39,8 +39,8 @@ class CLWKernel : public ReferenceCounter<cl_kernel, clRetainKernel, clReleaseKe
 public:
     static CLWKernel Create(cl_kernel kernel);
     /// to use in std::map
-    CLWKernel(){}
-    virtual ~CLWKernel(){}
+    CLWKernel() = default;
+    virtual ~CLWKernel() = default;
 
     virtual void SetArg(unsigned int idx, ParameterHolder param);
     virtual void SetArg(unsigned int idx, size_t size, void* ptr);

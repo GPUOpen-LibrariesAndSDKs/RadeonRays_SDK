@@ -30,7 +30,9 @@ THE SOFTWARE.
 #include "device.h"
 #include "executable.h"
 #include "../except/except.h"
+
 #include <algorithm>
+#include <memory>
 
 // Preferred work group size for Radeon devices
 static int const kWorkGroupSize = 64;
@@ -146,7 +148,7 @@ namespace RadeonRays
             std::vector<int> mesh_faces_start_idx(numshapes);
 
             //
-            m_bvh.reset(new Hlbvh(m_device));
+            m_bvh = std::make_unique<Hlbvh>(m_device);
 
             // Here we now that only Meshes are present, otherwise 2level strategy would have been used
             for (int i = 0; i < numshapes; ++i)

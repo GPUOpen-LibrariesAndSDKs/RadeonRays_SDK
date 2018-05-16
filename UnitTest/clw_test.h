@@ -40,7 +40,7 @@ THE SOFTWARE.
 class CLW : public ::testing::Test
 {
 public:
-    virtual void SetUp()
+    void SetUp() override
     {
         std::vector<CLWPlatform> platforms;
 
@@ -64,12 +64,12 @@ public:
 
         // Try to find AMD platform and set a flag if found
         bool       amdctx_ = false;
-        for (int i = 0; i < platforms.size(); ++i)
+        for (auto & platform : platforms)
         {
-            if (platforms[i].GetVendor().find("AMD") != std::string::npos ||
-                platforms[i].GetVendor().find("Advanced Micro Devices") != std::string::npos)
+            if (platform.GetVendor().find("AMD") != std::string::npos ||
+                platform.GetVendor().find("Advanced Micro Devices") != std::string::npos)
             {
-                context_ = CLWContext::Create(platforms[i].GetDevice(0));
+                context_ = CLWContext::Create(platform.GetDevice(0));
                 amdctx_ = true;
             }
         }
@@ -97,7 +97,7 @@ public:
                          );
     }
     
-    virtual void TearDown()
+    void TearDown() override
     {
     }
     
@@ -175,7 +175,7 @@ TEST_F(CLW, BufferWrite)
 TEST_F(CLW, ExclusiveScanSmall)
 {
     // Init rand
-    std::srand((unsigned)std::time(0));
+    std::srand((unsigned)std::time(nullptr));
     // Small array test
     int arraysize = 111;
 
@@ -221,7 +221,7 @@ TEST_F(CLW, ExclusiveScanSmall)
 TEST_F(CLW, ExclusiveScanSmallSizeDifference)
 {
     // Init rand
-    std::srand((unsigned)std::time(0));
+    std::srand((unsigned)std::time(nullptr));
     // Small array test
     int arraysize = 4096;
 
@@ -267,7 +267,7 @@ TEST_F(CLW, ExclusiveScanSmallSizeDifference)
 TEST_F(CLW, ExclusiveScanLarge)
 {
     // Init rand
-    std::srand((unsigned)std::time(0));
+    std::srand((unsigned)std::time(nullptr));
     // Large array test
     int arraysize = 13820049;
 
@@ -313,7 +313,7 @@ TEST_F(CLW, ExclusiveScanLarge)
 TEST_F(CLW, ExclusiveScanRandom)
 {
     // Init rand
-    std::srand((unsigned)std::time(0));
+    std::srand((unsigned)std::time(nullptr));
 
     for (int i = 0; i < 10; ++i)
     {
@@ -362,7 +362,7 @@ TEST_F(CLW, ExclusiveScanRandom)
 TEST_F(CLW, CompactIdentity)
 {
     // Init rand
-    std::srand((unsigned)std::time(0));
+    std::srand((unsigned)std::time(nullptr));
     // Small array test
     int arraysize = 480021;
 
@@ -409,7 +409,7 @@ TEST_F(CLW, CompactIdentity)
 TEST_F(CLW, RadixSortLarge)
 {
     // Init rand
-    std::srand((unsigned)std::time(0));
+    std::srand((unsigned)std::time(nullptr));
     // Large array test
     int arraysize = 64237846;
 

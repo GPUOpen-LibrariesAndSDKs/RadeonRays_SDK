@@ -52,8 +52,8 @@ typedef struct
 class MaterialReader
 {
 public:
-    MaterialReader(){}
-    virtual ~MaterialReader(){}
+    MaterialReader() = default;
+    virtual ~MaterialReader() = default;
 
     virtual std::string operator() (
         const std::string& matId,
@@ -66,11 +66,11 @@ class MaterialFileReader:
 {
     public:
         MaterialFileReader(const std::string& mtl_basepath): m_mtlBasePath(mtl_basepath) {}
-        virtual ~MaterialFileReader() {}
-        virtual std::string operator() (
+        virtual ~MaterialFileReader() = default;
+        std::string operator() (
           const std::string& matId,
           std::vector<material_t>& materials,
-          std::map<std::string, int>& matMap);
+          std::map<std::string, int>& matMap) override;
 
     private:
         std::string m_mtlBasePath;
@@ -85,7 +85,7 @@ std::string LoadObj(
     std::vector<shape_t>& shapes,   // [output]
     std::vector<material_t>& materials,   // [output]
     const char* filename,
-    const char* mtl_basepath = NULL);
+    const char* mtl_basepath = nullptr);
 
 /// Loads object from a std::istream, uses GetMtlIStreamFn to retrieve
 /// std::istream for materials.

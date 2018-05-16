@@ -41,10 +41,6 @@ void CLWEvent::Wait()
     ThrowIf(status != CL_SUCCESS, status, "clWaitForEvents failed");
 }
 
-CLWEvent::~CLWEvent()
-{
-}
-
 float CLWEvent::GetDuration() const
 {
     cl_ulong commandStart, commandEnd;

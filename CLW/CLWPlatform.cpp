@@ -64,14 +64,14 @@ void CLWPlatform::CreateAllPlatforms(std::vector<CLWPlatform>& platforms)
 
     platforms.clear();
     // Only use CL1.2+ platforms
-    for (int i = 0; i < (int)platformIds.size(); ++i)
+    for (auto & platformId : platformIds)
     {
         size_t size = 0;
-        status = clGetPlatformInfo(platformIds[i], CL_PLATFORM_VERSION, 0, nullptr, &size);
+        status = clGetPlatformInfo(platformId, CL_PLATFORM_VERSION, 0, nullptr, &size);
 
         std::vector<char> version(size);
 
-        status = clGetPlatformInfo(platformIds[i], CL_PLATFORM_VERSION, size, &version[0], 0);
+        status = clGetPlatformInfo(platformId, CL_PLATFORM_VERSION, size, &version[0], nullptr);
 
         std::string versionstr(version.begin(), version.end());
 
@@ -81,15 +81,11 @@ void CLWPlatform::CreateAllPlatforms(std::vector<CLWPlatform>& platforms)
             continue;
         }
 
-        validIds.push_back(platformIds[i]);
+        validIds.push_back(platformId);
     }
 
     std::transform(validIds.cbegin(), validIds.cend(), std::back_inserter(platforms),
         std::bind(&CLWPlatform::Create, std::placeholders::_1, type));
-}
-
-CLWPlatform::~CLWPlatform()
-{
 }
 
 void CLWPlatform::GetPlatformInfoParameter(cl_platform_id id, cl_platform_info param, std::string& result)
@@ -145,7 +141,7 @@ std::string CLWPlatform::GetExtensions() const
 // Get number of devices
 unsigned int                CLWPlatform::GetDeviceCount() const
 {
-    if (devices_.size() == 0)
+    if (devices_.empty())
     {
         InitDeviceList(type_);
     }
@@ -156,7 +152,7 @@ unsigned int                CLWPlatform::GetDeviceCount() const
 // Get idx-th device
 CLWDevice CLWPlatform::GetDevice(unsigned int idx) const
 {
-    if (devices_.size() == 0)
+    if (devices_.empty())
     {
         InitDeviceList(type_);
     }

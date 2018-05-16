@@ -70,7 +70,7 @@ namespace RadeonRays
             int nfaces);
         
         //
-        ~Mesh();
+        ~Mesh() = default;
         //
         int num_faces() const;
         //
@@ -86,8 +86,8 @@ namespace RadeonRays
 
     private:
         /// Disallow to copy meshes, too heavy
-        Mesh(Mesh const& o);
-        Mesh& operator = (Mesh const& o);
+        Mesh(Mesh const& o) = delete;
+        Mesh& operator = (Mesh const& o) = delete;
 
         // transforms face vertices, outverts but be at least 4 float3 in size, no of vertices in face returned
         int GetTransformedFace(int const faceidx, matrix const & transform, float3* outverts) const;

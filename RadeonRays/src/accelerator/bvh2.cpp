@@ -229,8 +229,8 @@ namespace RadeonRays
         // Number of primitives processed so far
         std::atomic<std::uint32_t> num_refs_processed;
 
-		num_refs_processed.store(0);
-		shutdown.store(false);
+        num_refs_processed.store(0);
+        shutdown.store(false);
 
         requests.push(SplitRequest{
             scene_min,

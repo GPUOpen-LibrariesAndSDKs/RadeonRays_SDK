@@ -45,10 +45,10 @@ namespace RadeonRays
         };
         
         // Constructor
-        ShapeImpl();
+        ShapeImpl() = default;
 
         // Destructor
-        ~ShapeImpl() = 0;
+        ~ShapeImpl() = default;
 
         // This is needed since instances need special API handling
         virtual bool is_instance() const;
@@ -94,14 +94,6 @@ namespace RadeonRays
         // State change
         mutable int statechange_;
     };
-
-    inline ShapeImpl::ShapeImpl()
-    {
-    }
-
-    inline ShapeImpl::~ShapeImpl()
-    {
-    }
     
     inline void ShapeImpl::SetTransform(matrix const& m, matrix const& minv)
     {

@@ -40,7 +40,7 @@ THE SOFTWARE.
 namespace RadeonRays
 {
     /// Initialize RNG
-    inline void rand_init() { std::srand((unsigned)std::time(0)); }
+    inline void rand_init() { std::srand((unsigned)std::time(nullptr)); }
 
     /// Generate random float value within [0,1] range
     inline float rand_float() { return (float)std::rand()/RAND_MAX; }
@@ -177,7 +177,7 @@ namespace RadeonRays
     /// This perspective projection matrix effectively maps view frustum to [-1,1]x[-1,1]x[-1,1] clip space, i.e. OpenGL depth
     matrix perspective_proj_rh_gl(float l, float r, float b, float t, float n, float f);
 
-    matrix perspective_proj_fovy(float fovy, float aspect, float n, float f);
+    //matrix perspective_proj_fovy(float fovy, float aspect, float n, float f);
     matrix perspective_proj_fovy_lh_dx(float fovy, float aspect, float n, float f);
     matrix perspective_proj_fovy_lh_gl(float fovy, float aspect, float n, float f);
 

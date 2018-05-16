@@ -57,10 +57,6 @@ namespace RadeonRays
         world_.options_.SetValue(name, value);
     }
 
-    IntersectionApiImpl::~IntersectionApiImpl()
-    {
-    }
-
     Shape* IntersectionApiImpl::CreateMesh(
         // Position data
         float const * vertices, int vnum, int vstride,
@@ -172,7 +168,7 @@ namespace RadeonRays
 
     bool IntersectionApiImpl::IsWorldEmpty()
     {
-        return world_.shapes_.size() == 0;
+        return world_.shapes_.empty();
     }
 
 #ifdef USE_OPENCL

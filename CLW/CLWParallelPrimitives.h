@@ -32,7 +32,7 @@ class CLWParallelPrimitives
 public:
     // Create primitive instances for the context
     CLWParallelPrimitives(CLWContext context, char const* buildopts = nullptr);
-    CLWParallelPrimitives(){}
+    CLWParallelPrimitives() = default;
     ~CLWParallelPrimitives();
 
     ///  TODO: Make these templates at some point

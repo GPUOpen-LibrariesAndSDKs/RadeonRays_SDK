@@ -54,9 +54,9 @@ namespace RadeonRays
     {
         int statechange_ = ShapeImpl::kStateChangeNone;
 
-        for (auto iter = shapes_.cbegin(); iter != shapes_.cend(); ++iter)
+        for (auto shape : shapes_)
         {
-            ShapeImpl const* shapeimpl = static_cast<ShapeImpl const*>(*iter);
+            ShapeImpl const* shapeimpl = static_cast<ShapeImpl const*>(shape);
 
             statechange_ |= shapeimpl->GetStateChange();
         }
@@ -66,9 +66,9 @@ namespace RadeonRays
 
     void World::OnCommit()
     {
-        for (auto iter = shapes_.cbegin(); iter != shapes_.cend(); ++iter)
+        for (auto shape : shapes_)
         {
-            auto shapeimpl = static_cast<ShapeImpl const*>(*iter);
+            auto shapeimpl = static_cast<ShapeImpl const*>(shape);
 
             shapeimpl->OnCommit();
         }

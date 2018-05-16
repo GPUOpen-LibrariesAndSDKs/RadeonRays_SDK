@@ -38,7 +38,7 @@ using namespace RadeonRays;
 class ApiBackendOpenCL : public ::testing::Test
 {
 public:
-    virtual void SetUp()
+    void SetUp() override
     {
         api_ = nullptr;
         int nativeidx = -1;
@@ -62,7 +62,7 @@ public:
         api_ = IntersectionApi::Create(nativeidx);
     }
 
-    virtual void TearDown()
+    void TearDown() override
     {
         if(api_ != nullptr) IntersectionApi::Delete(api_);
     }
@@ -760,11 +760,11 @@ TEST_F(ApiBackendOpenCL, CornellBoxLoad)
     ASSERT_NO_THROW(api_->SetOption("acc.type", "grid"));
 
     // Create meshes within IntersectionApi
-    for  (int i=0; i<(int)shapes.size(); ++i)
+    for  (auto & tObjShape : shapes)
     {
         Shape* shape = nullptr;
-        ASSERT_NO_THROW(shape = api_->CreateMesh(&shapes[i].mesh.positions[0], (int)shapes[i].mesh.positions.size() / 3, 3*sizeof(float),
-            &shapes[i].mesh.indices[0], 0, nullptr, (int)shapes[i].mesh.indices.size() / 3));
+        ASSERT_NO_THROW(shape = api_->CreateMesh(&tObjShape.mesh.positions[0], (int)tObjShape.mesh.positions.size() / 3, 3*sizeof(float),
+            &tObjShape.mesh.indices[0], 0, nullptr, (int)tObjShape.mesh.indices.size() / 3));
 
         ASSERT_NO_THROW(api_->AttachShape(shape));
         apishapes.push_back(shape);
@@ -774,9 +774,9 @@ TEST_F(ApiBackendOpenCL, CornellBoxLoad)
     ASSERT_NO_THROW(api_->Commit());
 
     // Delete meshes
-    for (int i=0; i<(int)apishapes.size(); ++i)
+    for (auto & apishape : apishapes)
     {
-        ASSERT_NO_THROW(api_->DeleteShape(apishapes[i]));
+        ASSERT_NO_THROW(api_->DeleteShape(apishape));
     }
 }
 
@@ -793,11 +793,11 @@ TEST_F(ApiBackendOpenCL, CornellBox_1Ray)
     //ASSERT_NO_THROW(api_->SetOption("acc.type", "grid"));
 
     // Create meshes within IntersectionApi
-    for (int i = 0; i<(int)shapes.size(); ++i)
+    for (auto & tObjShape : shapes)
     {
         Shape* shape = nullptr;
-        ASSERT_NO_THROW(shape = api_->CreateMesh(&shapes[i].mesh.positions[0], (int)shapes[i].mesh.positions.size() / 3, 3 * sizeof(float),
-            &shapes[i].mesh.indices[0], 0, nullptr, (int)shapes[i].mesh.indices.size() / 3));
+        ASSERT_NO_THROW(shape = api_->CreateMesh(&tObjShape.mesh.positions[0], (int)tObjShape.mesh.positions.size() / 3, 3 * sizeof(float),
+            &tObjShape.mesh.indices[0], 0, nullptr, (int)tObjShape.mesh.indices.size() / 3));
 
         ASSERT_NO_THROW(api_->AttachShape(shape));
         apishapes.push_back(shape);
@@ -830,9 +830,9 @@ TEST_F(ApiBackendOpenCL, CornellBox_1Ray)
 
 
     // Delete meshes
-    for (int i = 0; i<(int)apishapes.size(); ++i)
+    for (auto & apishape : apishapes)
     {
-        ASSERT_NO_THROW(api_->DeleteShape(apishapes[i]));
+        ASSERT_NO_THROW(api_->DeleteShape(apishape));
     }
 
     ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
@@ -1170,7 +1170,7 @@ void ApiBackendOpenCL::Perform_1Ray_Masked_Test()
     // Set mesh Id
     ASSERT_NO_THROW(mesh2->SetId(10));
 
-    // Attach the mesh to the scene
+    // Attach mesh2 to the scene
     ASSERT_NO_THROW(api_->AttachShape(mesh2));
 
     // Prepare the ray
@@ -1225,7 +1225,7 @@ void ApiBackendOpenCL::Perform_1Ray_Masked_Test()
 
     mesh->SetId(1);
 
-    // Attach the mesh to the scene
+    // Detach mesh2 from the scene
     ASSERT_NO_THROW(api_->DetachShape(mesh2));
 
     int result = kNullId;
@@ -1270,6 +1270,7 @@ void ApiBackendOpenCL::Perform_1Ray_Masked_Test()
     // Bail out
     ASSERT_NO_THROW(api_->DetachShape(mesh));
     ASSERT_NO_THROW(api_->DeleteShape(mesh));
+    ASSERT_NO_THROW(api_->DeleteShape(mesh2));
     ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));
     ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
     ASSERT_NO_THROW(api_->DeleteBuffer(isect_flag_buffer));

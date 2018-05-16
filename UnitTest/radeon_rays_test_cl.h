@@ -48,7 +48,7 @@ using namespace RadeonRays;
 class ApiCl : public ::testing::Test
 {
 public:
-    virtual void SetUp()
+    void SetUp() override
     {
         cl_int status = CL_SUCCESS;
         cl_platform_id platform[2];
@@ -92,7 +92,7 @@ public:
         //}
     }
     
-    virtual void TearDown()
+    void TearDown() override
     {
         IntersectionApi::Delete(api_);
         clReleaseCommandQueue(queue_);

@@ -245,8 +245,8 @@ namespace RadeonRays
 
                 // Copy BVH data
                 std::size_t i = 0;
-                for (auto it = translator.nodes_.begin(); it != translator.nodes_.end(); ++it)
-                    bvhdata[i++] = *it;
+                for (auto & node : translator.nodes_)
+                    bvhdata[i++] = node;
 
                 // Unmap gpu data
                 m_device->UnmapBuffer(m_gpudata->bvh, 0, bvhdata, &e);

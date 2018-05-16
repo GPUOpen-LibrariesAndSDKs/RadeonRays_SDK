@@ -40,8 +40,8 @@ class CLWEvent : public ReferenceCounter<cl_event, clRetainEvent, clReleaseEvent
 {
 public:
     static CLWEvent Create(cl_event);
-    CLWEvent(){}
-    virtual      ~CLWEvent();
+    CLWEvent() = default;
+    virtual ~CLWEvent() = default;
 
     void  Wait();
     float GetDuration() const;

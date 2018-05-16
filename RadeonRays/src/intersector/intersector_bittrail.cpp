@@ -340,7 +340,7 @@ namespace RadeonRays
                 // Besides that we need to permute the faces accorningly to BVH reordering, whihc
                 // is contained within bvh.primids_
                 int const* reordering = m_bvh->GetIndices();
-                for (int i = 0; i < numindices; ++i)
+                for (size_t i = 0; i < numindices; ++i)
                 {
                     int indextolook4 = reordering[i];
 

@@ -170,8 +170,8 @@ namespace RadeonRays
         static inline void PropagateBounds(Bvh2 &bvh);
 
     private:
-        Bvh2(const Bvh2 &);
-        Bvh2 &operator = (const Bvh2 &);
+        Bvh2(const Bvh2 &) = delete;
+        Bvh2 &operator = (const Bvh2 &) = delete;
 
         friend class QBvhTranslator;
         friend class IntersectorLDS;
@@ -261,7 +261,7 @@ namespace RadeonRays
             matrix m, minv;
             shape->GetTransform(m, minv);
 
-            for (std::size_t face_index = 0; face_index < mesh->num_faces(); ++face_index, ++current_face)
+            for (int face_index = 0; face_index < mesh->num_faces(); ++face_index, ++current_face)
             {
                 bbox bounds;
                 mesh->GetFaceBounds(face_index, isinstance, bounds);
@@ -289,7 +289,7 @@ namespace RadeonRays
                 _mm_store_ps(&aabb_max[current_face].x, pmax);
                 _mm_store_ps(&aabb_centroid[current_face].x, centroid);
 
-                metadata[current_face] = std::make_pair(shape, face_index);
+                metadata[current_face] = std::make_pair(shape, static_cast<size_t>(face_index));
             }
         }
 

@@ -39,9 +39,9 @@ namespace RadeonRays
     {
     public:
         //
-        World();
+        World() = default;
         //
-        virtual ~World();
+        virtual ~World() = default;
         // Attach the shape updating all the flags
         void AttachShape(Shape const* shape);
         // Detach the shape 
@@ -63,21 +63,12 @@ namespace RadeonRays
         std::vector<int> shapes_dirty_;
 
         // TODO: Do more preciese dirty flags tracking
-        bool has_changed_;
+        bool has_changed_ = true;
         // Global flags
         int hint_;
         // Options
         Options options_;
     };
-
-    inline World::World()
-        : has_changed_(true)
-    {
-    }
-
-    inline World::~World()
-    {
-    }
 
     inline bool World::has_changed() const
     {
