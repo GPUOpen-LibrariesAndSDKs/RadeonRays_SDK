@@ -75,7 +75,7 @@ public:
         queue_ = clCreateCommandQueue(rawcontext_, device, 0, &status);
         ASSERT_EQ(status, CL_SUCCESS);
 
-        ASSERT_NO_THROW(api_ = IntersectionApiCL::CreateFromOpenClContext(rawcontext_, device, queue_));
+        ASSERT_NO_THROW(api_ = RadeonRays::CreateFromOpenClContext(rawcontext_, device, queue_));
 
         // Load obj file 
         std::string res = LoadObj(shapes_, materials_, "../Resources/bmw/i8.obj");

@@ -189,6 +189,10 @@ TEST_F(ApiCl, ClBuffer)
     ASSERT_NO_THROW(apibuffer = RadeonRays::CreateFromOpenClBuffer(api_,buffer));
     
     ASSERT_NO_THROW(api_->DeleteBuffer(apibuffer));
+
+    status = clReleaseMemObject(buffer);
+
+    ASSERT_EQ(status, CL_SUCCESS);
 }
 
 // The test creates a single triangle mesh and tests attach/detach functionality
@@ -259,6 +263,12 @@ TEST_F(ApiCl, Intersection_1Ray_Buffer)
     ASSERT_NO_THROW(api_->DeleteBuffer(hitinfos));
     ASSERT_NO_THROW(api_->DetachShape(mesh));
     ASSERT_NO_THROW(api_->DeleteShape(mesh));
+
+    status = clReleaseMemObject(rays_buffer);
+    ASSERT_EQ(status, CL_SUCCESS);
+
+    status = clReleaseMemObject(hitinfos_buffer);
+    ASSERT_EQ(status, CL_SUCCESS);
 }
 
 
@@ -311,7 +321,6 @@ TEST_F(ApiCl, Intersection_3Rays_Buffer)
     ASSERT_EQ(status, CL_SUCCESS);
     
     Buffer* rays = nullptr;
-    Buffer* hits = nullptr;
     Buffer* hitinfos = nullptr;
     
     // Create API objects
@@ -335,10 +344,15 @@ TEST_F(ApiCl, Intersection_3Rays_Buffer)
     
     // Bail out
     ASSERT_NO_THROW(api_->DeleteBuffer(rays));
-    ASSERT_NO_THROW(api_->DeleteBuffer(hits));
     ASSERT_NO_THROW(api_->DeleteBuffer(hitinfos));
     ASSERT_NO_THROW(api_->DetachShape(mesh));
     ASSERT_NO_THROW(api_->DeleteShape(mesh));
+
+    status = clReleaseMemObject(rays_buffer);
+    ASSERT_EQ(status, CL_SUCCESS);
+
+    status = clReleaseMemObject(hitinfos_buffer);
+    ASSERT_EQ(status, CL_SUCCESS);
 }
 
 // The test creates a single triangle mesh and tests attach/detach functionality
@@ -395,7 +409,6 @@ TEST_F(ApiCl, Intersection_3Rays_Buffer_Indirect)
     ASSERT_EQ(status, CL_SUCCESS);
 
     Buffer* rays = nullptr;
-    Buffer* hits = nullptr;
     Buffer* hitinfos = nullptr;
     Buffer* numrays = nullptr;
 
@@ -421,10 +434,19 @@ TEST_F(ApiCl, Intersection_3Rays_Buffer_Indirect)
     
     // Bail out
     ASSERT_NO_THROW(api_->DeleteBuffer(rays));
-    ASSERT_NO_THROW(api_->DeleteBuffer(hits));
     ASSERT_NO_THROW(api_->DeleteBuffer(hitinfos));
+    ASSERT_NO_THROW(api_->DeleteBuffer(numrays));
     ASSERT_NO_THROW(api_->DetachShape(mesh));
     ASSERT_NO_THROW(api_->DeleteShape(mesh));
+
+    status = clReleaseMemObject(rays_buffer);
+    ASSERT_EQ(status, CL_SUCCESS);
+
+    status = clReleaseMemObject(hitinfos_buffer);
+    ASSERT_EQ(status, CL_SUCCESS);
+
+    status = clReleaseMemObject(numrays_buffer);
+    ASSERT_EQ(status, CL_SUCCESS);
 }
 
 
@@ -505,6 +527,12 @@ TEST_F(ApiCl, Intersection_Events)
     ASSERT_NO_THROW(api_->DeleteBuffer(hitinfos));
     ASSERT_NO_THROW(api_->DetachShape(mesh));
     ASSERT_NO_THROW(api_->DeleteShape(mesh));
+
+    status = clReleaseMemObject(rays_buffer);
+    ASSERT_EQ(status, CL_SUCCESS);
+
+    status = clReleaseMemObject(hitinfos_buffer);
+    ASSERT_EQ(status, CL_SUCCESS);
 }
 
 
@@ -592,6 +620,12 @@ TEST_F(ApiCl, Intersection_DependencyEvents)
     ASSERT_NO_THROW(api_->DeleteBuffer(hitinfos));
     ASSERT_NO_THROW(api_->DetachShape(mesh));
     ASSERT_NO_THROW(api_->DeleteShape(mesh));
+
+    status = clReleaseMemObject(rays_buffer);
+    ASSERT_EQ(status, CL_SUCCESS);
+
+    status = clReleaseMemObject(hitinfos_buffer);
+    ASSERT_EQ(status, CL_SUCCESS);
 }
 
 #endif // USE_OPENCL
