@@ -24,9 +24,11 @@ THE SOFTWARE.
 #include "calc.h"
 #include "executable.h"
 #include "../accelerator/bvh2.h"
+#include "../device/calc_holder.h"
 #include "../primitive/mesh.h"
 #include "../primitive/instance.h"
 #include "../translator/q_bvh_translator.h"
+#include "../../Calc/src/device_clw.h"
 #include "../world/world.h"
 
 namespace RadeonRays
@@ -256,6 +258,13 @@ namespace RadeonRays
             // Make sure everything is committed
             m_device->Finish(0);
         }
+    }
+
+    void* IntersectorLDS::GetBvhImpl() const
+    {
+        if (m_device->GetPlatform() == Calc::Platform::kOpenCL)
+            return static_cast<Calc::DeviceClw *>(m_device)->GetNativeHandle(m_gpudata->bvh);
+        return NULL;
     }
 
     void IntersectorLDS::Intersect(std::uint32_t queue_idx, const Calc::Buffer *rays, const Calc::Buffer *num_rays,

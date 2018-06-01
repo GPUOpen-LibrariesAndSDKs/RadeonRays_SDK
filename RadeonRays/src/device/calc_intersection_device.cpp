@@ -334,7 +334,11 @@ namespace RadeonRays
         {
             m_intersector->QueryOcclusion(0, ray_buffer, numrays_buffer, maxrays, hit_buffer, e, nullptr);
         }
+    }
 
+    void* CalcIntersectionDevice::GetBvh() const
+    {
+        return m_intersector->GetBvh();
     }
 
     CalcEventHolder* CalcIntersectionDevice::CreateEventHolder() const

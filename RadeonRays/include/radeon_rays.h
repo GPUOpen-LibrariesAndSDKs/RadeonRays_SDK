@@ -29,7 +29,7 @@ THE SOFTWARE.
 #include "math/ray.h"
 #include "math/mathutils.h"
 #include <cstdint>
-        
+
 #define RADEONRAYS_API_VERSION 2.0
 
 #if !RR_STATIC_LIBRARY
@@ -279,6 +279,12 @@ namespace RadeonRays
         // Find any intersection.
         // The call is asynchronous. Event pointer mights be nullptrs.
         virtual void QueryOcclusion(Buffer const* rays, Buffer const* numrays, int maxrays, Buffer* hitresults, Event const* waitevent, Event** event) const = 0;
+
+        /******************************************
+        Unity hack for accessing internal BVH
+        ******************************************/
+        // Gets the BVH
+        virtual void* GetBvh() const = 0;
 
         /******************************************
         Utility

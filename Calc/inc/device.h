@@ -77,6 +77,9 @@ namespace Calc
         virtual Buffer* CreateBuffer(std::size_t size, std::uint32_t flags, void* initdata) = 0;
         virtual void DeleteBuffer(Buffer* buffer) = 0;
 
+        // Unity hack for accessing internal BVH
+        virtual void* GetNativeHandle(Buffer const* buffer) const = 0;
+
         // Data movement
         // Calls are blocking if passed nullptr for an event, otherwise use Event to sync
         virtual void ReadBuffer(Buffer const* buffer, std::uint32_t queue, std::size_t offset, std::size_t size, void* dst, Event** e) const = 0;

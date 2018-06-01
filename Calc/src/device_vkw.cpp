@@ -173,6 +173,11 @@ namespace Calc
         }
     }
 
+    void* DeviceVulkanw::GetNativeHandle(Buffer const* buffer) const
+    {
+        return nullptr;
+    }
+
     // Data movement
     void DeviceVulkanw::ReadBuffer( Buffer const* buffer, std::uint32_t queue, std::size_t offset, std::size_t size, void* dst, Event** e ) const
     {

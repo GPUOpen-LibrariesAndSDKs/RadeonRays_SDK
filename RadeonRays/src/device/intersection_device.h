@@ -88,7 +88,10 @@ namespace RadeonRays
         // The call waits until waitevent is resolved (on a target device) if waitevent != nullptr.
         // The call is non-blocking if event is passed it, otherwise (event == nullptr) it is blocking.
         virtual void QueryOcclusion(Buffer const* rays, Buffer const* numrays, int maxrays, Buffer* hits, Event const* waitevent, Event** event) const = 0;
-    
+
+        // Gets the BVH
+        virtual void* GetBvh() const = 0;
+
         IntersectionDevice(IntersectionDevice const&) = delete;
         IntersectionDevice& operator = (IntersectionDevice const&) = delete;
     };

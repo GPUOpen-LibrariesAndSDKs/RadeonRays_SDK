@@ -295,6 +295,14 @@ namespace Calc
         delete buffer;
     }
 
+    void* DeviceClw::GetNativeHandle(Buffer const* buffer) const
+    {
+        BufferClw const* bufferClw = static_cast<BufferClw const*>(buffer);
+        if (!bufferClw)
+            return nullptr;
+        return bufferClw->GetData();
+    }
+
     void DeviceClw::ReadBuffer(Buffer const* buffer, std::uint32_t queue, std::size_t offset, std::size_t size, void* dst, Event** e) const
     {
         auto buffer_clw = static_cast<BufferClw const*>(buffer);
@@ -574,7 +582,7 @@ namespace Calc
     {
         m_event_pool.push(e);
     }
-    
+
     Buffer* DeviceClw::CreateBuffer(cl_mem buffer)
     {
         try
@@ -586,7 +594,6 @@ namespace Calc
             throw ExceptionClw(e.what());
         }
     }
-
 
     class PrimitivesClw : public Primitives
     {
