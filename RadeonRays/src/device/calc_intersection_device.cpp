@@ -38,6 +38,7 @@ THE SOFTWARE.
 #include "../intersector/intersector_bittrail.h"
 #include "../world/world.h"
 #include <iostream>
+#include <memory>
 
 namespace RadeonRays
 {
@@ -85,10 +86,10 @@ namespace RadeonRays
             else
             {
                 // Otherwise check if there are instances in the world
-                for (auto iter = world.shapes_.cbegin(); iter != world.shapes_.cend(); ++iter)
+                for (auto shape : world.shapes_)
                 {
                     // Get implementation
-                    auto shapeimpl = static_cast<ShapeImpl const*>(*iter);
+                    auto shapeimpl = static_cast<ShapeImpl const*>(shape);
                     // Check if it is an instance and update flag
                     use2level = use2level | shapeimpl->is_instance();
                 }

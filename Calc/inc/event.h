@@ -29,8 +29,8 @@ namespace Calc
     class CALC_API Event
     {
     public:
-        Event() {}
-        virtual ~Event() = 0;
+        Event() = default;
+        virtual ~Event() = default;
 
         virtual void Wait() = 0;
         virtual bool IsComplete() const = 0;
@@ -39,5 +39,4 @@ namespace Calc
         Event& operator = (Event const&) = delete;
     };
 
-    inline Event::~Event() {}
 }

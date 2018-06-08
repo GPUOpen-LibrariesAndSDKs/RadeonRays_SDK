@@ -47,7 +47,7 @@ using namespace tinyobj;
 class ApiPerformance : public ::testing::Test
 {
 public:
-    virtual void SetUp()
+    void SetUp() override
     {
         cl_int status = CL_SUCCESS;
         cl_platform_id platform;
@@ -75,18 +75,18 @@ public:
         queue_ = clCreateCommandQueue(rawcontext_, device, 0, &status);
         ASSERT_EQ(status, CL_SUCCESS);
 
-        ASSERT_NO_THROW(api_ = IntersectionApiCL::CreateFromOpenClContext(rawcontext_, device, queue_));
+        ASSERT_NO_THROW(api_ = RadeonRays::CreateFromOpenClContext(rawcontext_, device, queue_));
 
         // Load obj file 
         std::string res = LoadObj(shapes_, materials_, "../Resources/bmw/i8.obj");
 
         // Create meshes within IntersectionApi
-        for  (int i=0; i<(int)shapes_.size(); ++i)
+        for (auto & tObjShape : shapes_)
         {
             Shape* shape = nullptr;
 
-            ASSERT_NO_THROW(shape = api_->CreateMesh(&shapes_[i].mesh.positions[0], (int)shapes_[i].mesh.positions.size(), 3*sizeof(float),
-                &shapes_[i].mesh.indices[0], 0, nullptr, (int)shapes_[i].mesh.indices.size() / 3));
+            ASSERT_NO_THROW(shape = api_->CreateMesh(&tObjShape.mesh.positions[0], (int)tObjShape.mesh.positions.size(), 3*sizeof(float),
+                &tObjShape.mesh.indices[0], 0, nullptr, (int)tObjShape.mesh.indices.size() / 3));
 
             ASSERT_NO_THROW(api_->AttachShape(shape));
 
@@ -94,12 +94,12 @@ public:
         }
     }
 
-    virtual void TearDown()
+    void TearDown() override
     {
         // Delete meshes
-        for (int i=0; i<(int)apishapes_.size(); ++i)
+        for (auto & apishape : apishapes_)
         {
-            ASSERT_NO_THROW(api_->DeleteShape(apishapes_[i]));
+            ASSERT_NO_THROW(api_->DeleteShape(apishape));
         }
 
         IntersectionApi::Delete(api_);

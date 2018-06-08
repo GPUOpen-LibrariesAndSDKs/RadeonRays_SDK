@@ -296,10 +296,6 @@ CLWProgram::CLWProgram(cl_program program)
                   });
 }
 
-CLWProgram::~CLWProgram()
-{
-}
-
 unsigned int CLWProgram::GetKernelCount() const
 {
     return static_cast<unsigned int>(kernels_.size());

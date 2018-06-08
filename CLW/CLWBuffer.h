@@ -48,8 +48,8 @@ public:
     static CLWBuffer<T> Create(cl_context context, cl_mem_flags flags, size_t elementCount, void* data);
     static CLWBuffer<T> CreateFromClBuffer(cl_mem buffer);
 
-    CLWBuffer() : elementCount_(0){}
-    virtual ~CLWBuffer();
+    CLWBuffer() = default;
+    virtual ~CLWBuffer() = default;
     
     size_t GetElementCount() const { return elementCount_; }
     
@@ -70,7 +70,7 @@ private:
 
     CLWBuffer(cl_mem buffer, size_t elementCount);
 
-    size_t elementCount_;
+    size_t elementCount_ = 0;
     
     friend class CLWContext;
 };
@@ -120,10 +120,6 @@ template <typename T> CLWBuffer<T>::CLWBuffer(cl_mem buffer, size_t elementCount
 , elementCount_(elementCount)
 {
    
-}
-
-template <typename T> CLWBuffer<T>::~CLWBuffer()
-{
 }
 
 template <typename T> CLWEvent CLWBuffer<T>::WriteDeviceBuffer(CLWCommandQueue cmdQueue, T const* hostBuffer, size_t elemCount)

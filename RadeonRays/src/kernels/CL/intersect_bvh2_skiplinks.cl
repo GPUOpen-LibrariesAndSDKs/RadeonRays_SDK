@@ -86,8 +86,6 @@ typedef struct
 {
     // Vertex indices
     int idx[3];
-    // Shape maks
-    int shape_mask;
     // Shape ID
     int shape_id;
     // Primitive ID
@@ -145,18 +143,25 @@ void intersect_main(
                     {
                         int const face_idx = STARTIDX(node);
                         Face const face = faces[face_idx];
-                        float3 const v1 = vertices[face.idx[0]];
-                        float3 const v2 = vertices[face.idx[1]];
-                        float3 const v3 = vertices[face.idx[2]];
-
-                        // Intersect triangle
-                        float const f = fast_intersect_triangle(r, v1, v2, v3, t_max);
-                        // If hit update closest hit distance and index
-                        if (f < t_max)
+#ifdef RR_RAY_MASK
+                        if (ray_get_mask(&r) != face.shape_id)
                         {
-                            t_max = f;
-                            isect_idx = face_idx;
+#endif // RR_RAY_MASK
+                            float3 const v1 = vertices[face.idx[0]];
+                            float3 const v2 = vertices[face.idx[1]];
+                            float3 const v3 = vertices[face.idx[2]];
+
+                            // Intersect triangle
+                            float const f = fast_intersect_triangle(r, v1, v2, v3, t_max);
+                            // If hit update closest hit distance and index
+                            if (f < t_max)
+                            {
+                                t_max = f;
+                                isect_idx = face_idx;
+                            }
+#ifdef RR_RAY_MASK
                         }
+#endif // RR_RAY_MASK
                     }
                     else
                     {
@@ -247,18 +252,25 @@ void occluded_main(
                     {
                         int const face_idx = STARTIDX(node);
                         Face const face = faces[face_idx];
-                        float3 const v1 = vertices[face.idx[0]];
-                        float3 const v2 = vertices[face.idx[1]];
-                        float3 const v3 = vertices[face.idx[2]];
-
-                        // Intersect triangle
-                        float const f = fast_intersect_triangle(r, v1, v2, v3, t_max);
-                        // If hit store the result and bail out
-                        if (f < t_max)
+#ifdef RR_RAY_MASK
+                        if (ray_get_mask(&r) != face.shape_id)
                         {
-                            hits[global_id] = HIT_MARKER;
-                            return;
+#endif // RR_RAY_MASK
+                            float3 const v1 = vertices[face.idx[0]];
+                            float3 const v2 = vertices[face.idx[1]];
+                            float3 const v3 = vertices[face.idx[2]];
+
+                            // Intersect triangle
+                            float const f = fast_intersect_triangle(r, v1, v2, v3, t_max);
+                            // If hit store the result and bail out
+                            if (f < t_max)
+                            {
+                                hits[global_id] = HIT_MARKER;
+                                return;
+                            }
+#ifdef RR_RAY_MASK
                         }
+#endif // RR_RAY_MASK
                     }
                     else
                     {

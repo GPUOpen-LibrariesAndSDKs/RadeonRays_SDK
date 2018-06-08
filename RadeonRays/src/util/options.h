@@ -69,7 +69,7 @@ namespace RadeonRays
         };
 
         // Constructor
-        Options(){}
+        Options() = default;
 
         // Set string value
         void SetValue(std::string const& name, std::string const& value);

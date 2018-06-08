@@ -57,11 +57,6 @@ namespace RadeonRays
         InitGpuData();
     }
     
-    
-    Hlbvh::~Hlbvh()
-    {
-    }
-    
     void Hlbvh::AllocateBuffers(size_t num_prims)
     {
         // * 3 since only triangles are supported just yet
@@ -167,7 +162,7 @@ namespace RadeonRays
         // Make sure to allocate enough mem on GPU
         // We are trying to reuse space as reallocation takes time
         // but this call might be really frequent
-        if (size > m_gpudata->positions->GetSize())
+        if (static_cast<size_t>(size) > m_gpudata->positions->GetSize())
         {
             AllocateBuffers(size);
         }

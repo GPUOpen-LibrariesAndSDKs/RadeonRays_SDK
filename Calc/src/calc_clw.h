@@ -33,7 +33,7 @@ namespace Calc
     {
     public:
         CalcClw();
-        ~CalcClw();
+        ~CalcClw() = default;
 
         // Enumerate devices 
         std::uint32_t GetDeviceCount() const override;

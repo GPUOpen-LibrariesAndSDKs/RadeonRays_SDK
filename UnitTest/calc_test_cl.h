@@ -44,12 +44,12 @@ THE SOFTWARE.
 class CalcTestkOpenCL : public ::testing::Test
 {
 public:
-    virtual void SetUp()
+    void SetUp() override
     {
         m_calc = CreateCalc(Calc::Platform::kOpenCL, 0);
     }
 
-    virtual void TearDown()
+    void TearDown() override
     {
         DeleteCalc(m_calc);
     }

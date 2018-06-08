@@ -65,8 +65,8 @@ public:
 
     static CLWProgram CreateFromBinary(std::uint8_t** binaries, std::size_t* binary_sizes, CLWContext context);
 
-    CLWProgram() {}
-    virtual      ~CLWProgram();
+    CLWProgram() = default;
+    virtual ~CLWProgram() = default;
 
     unsigned int GetKernelCount() const;
     CLWKernel    GetKernel(std::string const& funcName) const;

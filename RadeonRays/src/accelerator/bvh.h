@@ -48,7 +48,7 @@ namespace RadeonRays
         {
         }
 
-        ~Bvh();
+        ~Bvh() = default;
 
         // World space bounding box
         bbox const& Bounds() const;
@@ -141,8 +141,8 @@ namespace RadeonRays
 
 
     private:
-        Bvh(Bvh const&);
-        Bvh& operator = (Bvh const&);
+        Bvh(Bvh const&) = delete;
+        Bvh& operator = (Bvh const&) = delete;
 
         friend class PlainBvhTranslator;
         friend class FatNodeBvhTranslator;
@@ -174,10 +174,6 @@ namespace RadeonRays
             };
         };
     };
-
-    inline Bvh::~Bvh()
-    {
-    }
 
     inline int const* Bvh::GetIndices() const
     {

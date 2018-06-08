@@ -136,7 +136,7 @@ namespace RadeonRays
     protected:
         friend class IntersectionApi;
 
-        ~IntersectionApiImpl();
+        ~IntersectionApiImpl() = default;
 
     private:
         // Container for all shapes

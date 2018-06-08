@@ -53,10 +53,6 @@ namespace Calc
         }
     }
 
-    CalcClw::~CalcClw()
-    {
-    }
-
     // Enumerate devices 
     std::uint32_t CalcClw::GetDeviceCount() const
     {

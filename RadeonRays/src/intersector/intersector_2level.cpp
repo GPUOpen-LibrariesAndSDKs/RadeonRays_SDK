@@ -30,6 +30,7 @@ THE SOFTWARE.
 #include "device.h"
 #include "executable.h"
 
+#include <memory>
 #include <set>
 
 static int const kWorkGroupSize = 64;
@@ -42,7 +43,8 @@ namespace RadeonRays
         Id id;
         // Index of root bvh node
         int bvhidx;
-        int mask;
+        // Is the shape disabled?
+        unsigned int shapeDisabled;
         int padding1;
         // Transform
         matrix minv;
@@ -56,8 +58,6 @@ namespace RadeonRays
     {
         // Up to 3 indices
         int idx[3];
-        // Shape maks
-        int shape_mask;
         // Shape ID
         int shape_id;
         // Primitive ID
@@ -128,13 +128,15 @@ namespace RadeonRays
         , m_gpudata(new GpuData(device))
         , m_cpudata(new CpuData)
     {
-        std::string buildopts =
+        std::string buildopts;
 #ifdef RR_RAY_MASK
-            "-D RR_RAY_MASK ";
-#else
-            "";
+        buildopts.append("-D RR_RAY_MASK ");
 #endif
-        
+
+#ifdef RR_BACKFACE_CULL
+        buildopts.append("-D RR_BACKFACE_CULL ");
+#endif // RR_BACKFACE_CULL
+
 #ifdef USE_SAFE_MATH
         buildopts.append("-D USE_SAFE_MATH ");
 #endif
@@ -180,9 +182,9 @@ namespace RadeonRays
         int statechange = world.GetStateChange();
 
         // Full rebuild in case number of objects changes
-        if (m_bvhs.size() == 0 || world.has_changed())
+        if (m_bvhs.empty() || world.has_changed())
         {
-            if (m_bvhs.size() != 0)
+            if (!m_bvhs.empty())
             {
                 m_device->DeleteBuffer(m_gpudata->bvh);
                 m_device->DeleteBuffer(m_gpudata->vertices);
@@ -259,7 +261,7 @@ namespace RadeonRays
             // Create actual BVH objects
             for (int i = 0; i < nummeshes + 1; ++i)
             {
-                m_bvhs[i].reset(new Bvh(traversal_cost, num_bins, use_sah));
+                m_bvhs[i] = std::make_unique<Bvh>(traversal_cost, num_bins, use_sah);
                 m_cpudata->bvhptrs[i] = m_bvhs[i].get();
             }
 
@@ -455,11 +457,11 @@ namespace RadeonRays
                 // and we need to skip them while doing traversal.
                 if (shapes_disabled.find(shapeimpl) == shapes_disabled.cend())
                 {
-                    m_cpudata->shapedata[i].mask = shapeimpl->GetMask();
+                    m_cpudata->shapedata[i].shapeDisabled = 0;
                 }
                 else
                 {
-                    m_cpudata->shapedata[i].mask = 0x0;
+                    m_cpudata->shapedata[i].shapeDisabled = 1;
                 }
 
                 shapeimpl->GetTransform(m, m_cpudata->shapedata[i].minv);
@@ -587,7 +589,7 @@ namespace RadeonRays
                 use_sah = true;
             }
 
-            m_bvhs[nummeshes].reset(new Bvh(traversal_cost, num_bins, use_sah));
+            m_bvhs[nummeshes] = std::make_unique<Bvh>(traversal_cost, num_bins, use_sah);
             m_bvhs[nummeshes]->Build(&object_bounds[0], nummeshes + numinstances);
             m_cpudata->bvhptrs[nummeshes] = m_bvhs[nummeshes].get();
 
@@ -618,11 +620,11 @@ namespace RadeonRays
                 // and we need to skip them while doing traversal.
                 if (shapes_disabled.find(shapeimpl) == shapes_disabled.cend())
                 {
-                    m_cpudata->shapedata[i].mask = shapeimpl->GetMask();
+                    m_cpudata->shapedata[i].shapeDisabled = 0;
                 }
                 else
                 {
-                    m_cpudata->shapedata[i].mask = 0x0;
+                    m_cpudata->shapedata[i].shapeDisabled = 1;
                 }
 
                 shapeimpl->GetTransform(m, m_cpudata->shapedata[i].minv);

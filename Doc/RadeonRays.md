@@ -354,12 +354,7 @@ virtual Id Shape::GetId() const = 0;
 ```
 Work with shape id. This id will be used in results of QueryIntersection().  
 * *id* - new shape id.
-```
-virtual void Shape::SetMask(int mask) = 0;
-virtual int Shape::GetMask() const = 0;
-```
-Geometry mask to mask out intersections.  
-* *mask* - mask of shape.
+
 #### Memory management
 ```
 Buffer* IntersectionApi::CreateBuffer(size_t size, void* initdata) const override;

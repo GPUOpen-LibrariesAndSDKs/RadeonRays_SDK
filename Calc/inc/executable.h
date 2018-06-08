@@ -38,8 +38,8 @@ namespace Calc
     class CALC_API Function
     {
     public:
-        Function() {}
-        virtual ~Function() = 0;
+        Function() = default;
+        virtual ~Function() = default;
 
         // Argument setters
         virtual void SetArg(std::uint32_t idx, std::size_t arg_size, void* arg) = 0;
@@ -54,8 +54,8 @@ namespace Calc
     class CALC_API Executable
     {
     public:
-        Executable() {}
-        virtual ~Executable() = 0;
+        Executable() = default;
+        virtual ~Executable() = default;
 
         // Function management
         virtual Function* CreateFunction(char const* name) = 0;
@@ -65,11 +65,4 @@ namespace Calc
         Executable& operator = (Executable const&) = delete;
     };
 
-    inline Executable::~Executable()
-    {
-    }
-
-    inline Function::~Function()
-    {
-    }
 }

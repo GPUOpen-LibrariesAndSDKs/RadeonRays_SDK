@@ -100,6 +100,11 @@ namespace RadeonRays
 #ifdef RR_RAY_MASK
         buildopts.append("-D RR_RAY_MASK ");
 #endif
+
+#ifdef RR_BACKFACE_CULL
+        buildopts.append("-D RR_BACKFACE_CULL ");
+#endif // RR_BACKFACE_CULL
+
 #ifdef USE_SAFE_MATH
         buildopts.append("-D USE_SAFE_MATH ");
 #endif
@@ -240,8 +245,8 @@ namespace RadeonRays
 
                 // Copy BVH data
                 std::size_t i = 0;
-                for (auto it = translator.nodes_.begin(); it != translator.nodes_.end(); ++it)
-                    bvhdata[i++] = *it;
+                for (auto & node : translator.nodes_)
+                    bvhdata[i++] = node;
 
                 // Unmap gpu data
                 m_device->UnmapBuffer(m_gpudata->bvh, 0, bvhdata, &e);

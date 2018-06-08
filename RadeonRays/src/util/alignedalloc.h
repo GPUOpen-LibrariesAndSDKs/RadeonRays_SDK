@@ -45,17 +45,17 @@ namespace RadeonRays {
         typedef const T&  const_reference;
         typedef T         value_type;
 #endif
-        typedef typename std::allocator<T>::size_type size_type;
-        typedef typename std::allocator<T>::pointer pointer;
-        typedef typename std::allocator<T>::const_pointer const_pointer;
+        using size_type = typename std::allocator<T>::size_type;
+        using pointer = typename std::allocator<T>::pointer;
+        using const_pointer = typename std::allocator<T>::const_pointer;
 
         /// Defines an aligned allocator suitable for allocating elements of type
         /// @c U.
         template <class U>
-        struct rebind { typedef aligned_allocator<U, Alignment> other; };
+        struct rebind { using other = aligned_allocator<U, Alignment>; };
 
         /// Default-constructs an allocator.
-        aligned_allocator() throw() { }
+        aligned_allocator() throw() = default;
 
         /// Copy-constructs an allocator.
         aligned_allocator(const aligned_allocator& other) throw()
@@ -66,7 +66,7 @@ namespace RadeonRays {
         aligned_allocator(const aligned_allocator<U, Alignment>&) throw() { }
 
         /// Destroys an allocator.
-        ~aligned_allocator() throw() { }
+        ~aligned_allocator() throw() = default;
 
         /// Allocates @c n elements of type @c T, aligned to a multiple of
         /// @c Alignment.

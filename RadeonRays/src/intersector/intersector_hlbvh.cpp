@@ -30,7 +30,9 @@ THE SOFTWARE.
 #include "device.h"
 #include "executable.h"
 #include "../except/except.h"
+
 #include <algorithm>
+#include <memory>
 
 // Preferred work group size for Radeon devices
 static int const kWorkGroupSize = 64;
@@ -77,13 +79,15 @@ namespace RadeonRays
         , m_gpudata(new GpuData(device))
         , m_bvh(nullptr)
     {
-        std::string buildopts =
+        std::string buildopts;
 #ifdef RR_RAY_MASK
-            "-D RR_RAY_MASK ";
-#else
-            "";
+        buildopts.append("-D RR_RAY_MASK ");
 #endif
-        
+
+#ifdef RR_BACKFACE_CULL
+        buildopts.append("-D RR_BACKFACE_CULL ");
+#endif // RR_BACKFACE_CULL
+
 #ifdef USE_SAFE_MATH
         buildopts.append("-D USE_SAFE_MATH ");
 #endif
@@ -144,7 +148,7 @@ namespace RadeonRays
             std::vector<int> mesh_faces_start_idx(numshapes);
 
             //
-            m_bvh.reset(new Hlbvh(m_device));
+            m_bvh = std::make_unique<Hlbvh>(m_device);
 
             // Here we now that only Meshes are present, otherwise 2level strategy would have been used
             for (int i = 0; i < numshapes; ++i)
@@ -222,8 +226,6 @@ namespace RadeonRays
                 {
                     // Up to 3 indices
                     int idx[3];
-                    // Shape maks
-                    int shape_mask;
                     // Shape ID
                     int shape_id;
                     // Primitive ID
@@ -273,7 +275,6 @@ namespace RadeonRays
 
                     // Optimization: we are putting faceid here
                     facedata[i].shape_id = mesh->GetId();
-                    facedata[i].shape_mask = mesh->GetMask();
                     facedata[i].prim_id = faceidx;
                 }
 

@@ -74,8 +74,4 @@ CLWImage2D::CLWImage2D(cl_mem image)
 {
 }
 
-CLWImage2D::~CLWImage2D()
-{
-}
-
 #pragma warning(pop)

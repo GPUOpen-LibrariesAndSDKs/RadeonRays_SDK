@@ -118,27 +118,27 @@ inline void ApiConformanceCL::SetUp()
     std::string res = LoadObj(shapes_, materials_, "../Resources/CornellBox/orig.objm");
 
     // Create meshes within IntersectionApi
-    for (int i = 0; i<(int)shapes_.size(); ++i)
+    for (auto & tObjShape : shapes_)
     {
         Shape* shape = nullptr;
 
         if( apicpu_ != nullptr )
         {
-            EXPECT_NO_THROW(shape = apicpu_->CreateMesh(&shapes_[i].mesh.positions[0], (int)shapes_[i].mesh.positions.size() / 3, 3 * sizeof(float),
-                &shapes_[i].mesh.indices[0], 0, nullptr, (int)shapes_[i].mesh.indices.size() / 3));
+            EXPECT_NO_THROW(shape = apicpu_->CreateMesh(&tObjShape.mesh.positions[0], (int)tObjShape.mesh.positions.size() / 3, 3 * sizeof(float),
+                &tObjShape.mesh.indices[0], 0, nullptr, (int)tObjShape.mesh.indices.size() / 3));
 
             EXPECT_NO_THROW(apicpu_->AttachShape(shape));
 
             apishapes_cpu_.push_back(shape);
         }
 
-        EXPECT_NO_THROW(shape = apigpu_->CreateMesh(&shapes_[i].mesh.positions[0], (int)shapes_[i].mesh.positions.size() / 3, 3 * sizeof(float),
-            &shapes_[i].mesh.indices[0], 0, nullptr, (int)shapes_[i].mesh.indices.size() / 3));
+        EXPECT_NO_THROW(shape = apigpu_->CreateMesh(&tObjShape.mesh.positions[0], (int)tObjShape.mesh.positions.size() / 3, 3 * sizeof(float),
+            &tObjShape.mesh.indices[0], 0, nullptr, (int)tObjShape.mesh.indices.size() / 3));
 
         EXPECT_NO_THROW(apigpu_->AttachShape(shape));
 
-        test_shapes_.push_back({ &shapes_[i].mesh.positions[0], (int)shapes_[i].mesh.positions.size() / 3,
-            &shapes_[i].mesh.indices[0], (int)shapes_[i].mesh.indices.size(), nullptr, (int)shapes_[i].mesh.indices.size() / 3 });
+        test_shapes_.emplace_back( &tObjShape.mesh.positions[0], (int)tObjShape.mesh.positions.size() / 3,
+            &tObjShape.mesh.indices[0], (int)tObjShape.mesh.indices.size(), nullptr, (int)tObjShape.mesh.indices.size() / 3 );
         test_shapes_.back().shape = shape;
 
         apishapes_gpu_.push_back(shape);
@@ -443,10 +443,10 @@ TEST_F(ApiConformanceCL, DISABLED_CornellBox_10000RaysRandom_ClosestHit_Events_B
     ray r_brute[kNumRays];
 
     // generate some random vectors
-    for (int i = 0; i < kNumRays; ++i)
+    for (auto & ray : r_brute)
     {
-        r_brute[i].o = float3(rand_float() * 3.f - 1.5f, rand_float() * 3.f - 1.5f, rand_float() * 3.f - 1.5f, 1000.f);
-        r_brute[i].d = normalize(float3(rand_float(), rand_float(), rand_float()));
+        ray.o = float3(rand_float() * 3.f - 1.5f, rand_float() * 3.f - 1.5f, rand_float() * 3.f - 1.5f, 1000.f);
+        ray.d = normalize(float3(rand_float(), rand_float(), rand_float()));
     }
 
     EXPECT_NO_THROW(apicpu_->Commit());
@@ -475,8 +475,10 @@ TEST_F(ApiConformanceCL, DISABLED_CornellBox_10000RaysRandom_ClosestHit_Events_B
         r_gpu[i].d = r_cpu[i].d = r_brute[i].d;
         r_gpu[i].SetActive(true);
         r_cpu[i].SetActive(true);
-        r_gpu[i].SetMask(0xFFFFFFFF);
-        r_cpu[i].SetMask(0xFFFFFFFF);
+        r_gpu[i].SetMask(-1);
+        r_cpu[i].SetMask(-1);
+        r_gpu[i].SetDoBackfaceCulling(false);
+        r_cpu[i].SetDoBackfaceCulling(false);
     }
 
     EXPECT_NO_THROW(apicpu_->UnmapBuffer(ray_buffer_cpu, r_cpu, &ecpu));
@@ -577,7 +579,8 @@ inline void ApiConformanceCL::ExpectClosestRaysOk(RadeonRays::IntersectionApi* a
         rays[i].d = r_brute[i].d;
 
         rays[i].SetActive(true);
-        rays[i].SetMask(0xFFFFFFFF);
+        rays[i].SetMask(-1);
+        rays[i].SetDoBackfaceCulling(false);
     }
 
     EXPECT_NO_THROW(api->UnmapBuffer(ray_buffer, rays, &ev));
@@ -644,7 +647,8 @@ inline void ApiConformanceCL::ExpectAnyRaysOk(RadeonRays::IntersectionApi* api) 
         rays[i].d = r_brute[i].d;
 
         rays[i].SetActive(true);
-        rays[i].SetMask(0xFFFFFFFF);
+        rays[i].SetMask(-1);
+        rays[i].SetDoBackfaceCulling(false);
     }
 
     EXPECT_NO_THROW(api->UnmapBuffer(ray_buffer, rays, &ev));

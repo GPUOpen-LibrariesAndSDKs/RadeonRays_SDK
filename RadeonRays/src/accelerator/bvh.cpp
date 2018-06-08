@@ -83,7 +83,7 @@ namespace RadeonRays
             node->startidx = static_cast<int>(m_packed_indices.size());
             node->numprims = req.numprims;
 
-            for (auto i = 0U; i < req.numprims; ++i)
+            for (auto i = 0; i < req.numprims; ++i)
             {
                 m_packed_indices.push_back(primindices[req.startidx + i]);
             }
@@ -112,7 +112,7 @@ namespace RadeonRays
                         node->startidx = static_cast<int>(m_packed_indices.size());
                         node->numprims = req.numprims;
 
-                        for (auto i = 0U; i < req.numprims; ++i)
+                        for (auto i = 0; i < req.numprims; ++i)
                         {
                             m_packed_indices.push_back(primindices[req.startidx + i]);
                         }
@@ -138,7 +138,7 @@ namespace RadeonRays
 
                 if (near2far)
                 {
-                    while (1)
+                    while (true)
                     {
                         while ((first != last) &&
                             centroids[primindices[first]][axis] < border)
@@ -171,7 +171,7 @@ namespace RadeonRays
                 }
                 else
                 {
-                    while (1)
+                    while (true)
                     {
                         while ((first != last) &&
                             centroids[primindices[first]][axis] >= border)
@@ -295,7 +295,7 @@ namespace RadeonRays
             if (centroid_rng == 0.f) continue;
 
             // Initialize bins
-            for (unsigned i = 0; i < m_num_bins; ++i)
+            for (int i = 0; i < m_num_bins; ++i)
             {
                 bins[axis][i].count = 0;
                 bins[axis][i].bounds = bbox();
@@ -305,7 +305,7 @@ namespace RadeonRays
             for (int i = req.startidx; i < req.startidx + req.numprims; ++i)
             {
                 int idx = primindices[i];
-                int binidx = (int)std::min<float>(m_num_bins * ((centroids[idx][axis] - rootminc) * invcentroid_rng), m_num_bins - 1);
+                int binidx = (int)std::min<float>(static_cast<float>(m_num_bins) * ((centroids[idx][axis] - rootminc) * invcentroid_rng), static_cast<float>(m_num_bins - 1));
 
                 ++bins[axis][binidx].count;
                 bins[axis][binidx].bounds.grow(bounds[idx]);
@@ -368,7 +368,7 @@ namespace RadeonRays
 
         // Calc bbox
         bbox centroid_bounds;
-        for (size_t i = 0; i < numbounds; ++i)
+        for (size_t i = 0; i < static_cast<size_t>(numbounds); ++i)
         {
             float3 c = bounds[i].center();
             centroid_bounds.grow(c);

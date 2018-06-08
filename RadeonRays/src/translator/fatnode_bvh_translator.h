@@ -51,16 +51,10 @@ namespace RadeonRays
             int shapeidx;
             // Primitive ID within the mesh
             int id;
-            // Shape mask
-            int shape_mask;
         };
 
         // Constructor
-        FatNodeBvhTranslator()
-            : nodecnt_(0)
-            , root_(0)
-        {
-        }
+        FatNodeBvhTranslator() = default;
 
         // Fat BVH node
         // Encoding:
@@ -82,8 +76,6 @@ namespace RadeonRays
                     int i0, i1, i2;
                     // Address of a left child
                     int child0;
-                    // Shape mask
-                    int shape_mask;
                     // Shape ID
                     int shape_id;
                     // Primitive ID
@@ -111,8 +103,8 @@ namespace RadeonRays
         std::vector<int> roots_;
         std::vector<int> indices_;
         std::vector<int> addresses_;
-        int nodecnt_;
-        int root_;
+        int nodecnt_ = 0;
+        int root_ = 0;
         std::unique_ptr<PerfectHashMap<int, int>> m_hash_map;
         int max_idx_;
 
@@ -120,8 +112,8 @@ namespace RadeonRays
         int ProcessRootNode(Bvh::Node const* node);
         //int ProcessNode(Bvh::Node const* n, int offset);
 
-        FatNodeBvhTranslator(FatNodeBvhTranslator const&);
-        FatNodeBvhTranslator& operator =(FatNodeBvhTranslator const&);
+        FatNodeBvhTranslator(FatNodeBvhTranslator const&) = delete;
+        FatNodeBvhTranslator& operator =(FatNodeBvhTranslator const&) = delete;
     };
 }
 

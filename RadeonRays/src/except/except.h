@@ -36,7 +36,7 @@ namespace RadeonRays
         {
         }
 
-        virtual char const* what() const
+        char const* what() const override
         {
             return message_.c_str();
         }

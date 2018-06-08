@@ -90,9 +90,10 @@ namespace RadeonRays
             if (split_type == SplitType::kSpatial)
             {
                 // First we need maximum 2x numprims elements allocated
-                if (primrefs.size() < req.startidx + req.numprims * 2)
+                size_t elems = req.startidx + req.numprims * 2;
+                if (primrefs.size() < elems)
                 {
-                    primrefs.resize(req.startidx + req.numprims * 2);
+                    primrefs.resize(elems);
                 }
 
                 // Split prim refs and add extra refs to request
@@ -124,7 +125,7 @@ namespace RadeonRays
                 auto first = req.startidx;
                 auto last = req.startidx + req.numprims;
 
-                while (1)
+                while (true)
                 {
                     while ((first != last) && cmp1(primrefs[first].center[axis], border))
                     {
@@ -249,7 +250,7 @@ namespace RadeonRays
             if (centroid_rng == 0.f) continue;
 
             // Initialize bins
-            for (unsigned i = 0; i < m_num_bins; ++i)
+            for (int i = 0; i < m_num_bins; ++i)
             {
                 bins[axis][i].count = 0;
                 bins[axis][i].bounds = bbox();
@@ -259,7 +260,7 @@ namespace RadeonRays
             for (int i = req.startidx; i < req.startidx + req.numprims; ++i)
             {
                 auto idx = i;
-                auto binidx = (int)std::min<float>(m_num_bins * ((refs[idx].center[axis] - rootminc) * invcentroid_rng), m_num_bins - 1);
+                auto binidx = (int)std::min<float>(static_cast<float>(m_num_bins) * ((refs[idx].center[axis] - rootminc) * invcentroid_rng), static_cast<float>(m_num_bins - 1));
 
                 ++bins[axis][binidx].count;
                 bins[axis][binidx].bounds.grow(refs[idx].bounds);
@@ -480,7 +481,7 @@ namespace RadeonRays
         // Split refs if any of them require to be split
         for (int i = req.startidx; i < req.startidx + req.numprims; ++i)
         {
-            assert(req.startidx + appendprims < refs.size());
+            assert(static_cast<size_t>(req.startidx + appendprims) < refs.size());
 
             PrimRef leftref, rightref;
             if (SplitPrimRef(refs[i], split.dim, split.split, leftref, rightref))

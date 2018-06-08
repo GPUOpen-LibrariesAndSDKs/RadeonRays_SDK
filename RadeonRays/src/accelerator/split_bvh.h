@@ -44,7 +44,7 @@ namespace RadeonRays
         {
         }
 
-        ~SplitBvh();
+        ~SplitBvh() = default;
 
     protected:
         struct PrimRef;
@@ -90,8 +90,8 @@ namespace RadeonRays
         // Container for archived chunks
         std::list<std::vector<Node>> m_node_archive;
 
-        SplitBvh(SplitBvh const&);
-        SplitBvh& operator = (SplitBvh const&);
+        SplitBvh(SplitBvh const&) = delete;
+        SplitBvh& operator = (SplitBvh const&) = delete;
 
         friend class PlainBvhTranslator;
         friend class FatNodeBvhTranslator;
@@ -104,8 +104,5 @@ namespace RadeonRays
         float3 center;
         int idx;
     };
-    
-    inline SplitBvh::~SplitBvh()
-    {
-    }
+
 }

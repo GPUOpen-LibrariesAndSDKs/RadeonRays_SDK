@@ -31,7 +31,7 @@ namespace RadeonRays
     {
     public:
         // Destructor
-        virtual ~ProgressReporter(){}
+        virtual ~ProgressReporter() = default;
         // Progress callback: pass current progress in percents.
         // The caller decides on the resolution, but reporter 
         // is free to coarsen it

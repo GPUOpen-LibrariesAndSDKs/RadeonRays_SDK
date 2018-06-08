@@ -142,10 +142,10 @@ namespace RadeonRays
     }
 
     void Bvh2::BuildImpl(
-        __m128 scene_min,
-        __m128 scene_max,
-        __m128 centroid_scene_min,
-        __m128 centroid_scene_max,
+        __m128 MSVC_X86_ALIGNMENT_FIX scene_min,
+        __m128 MSVC_X86_ALIGNMENT_FIX scene_max,
+        __m128 MSVC_X86_ALIGNMENT_FIX centroid_scene_min,
+        __m128 MSVC_X86_ALIGNMENT_FIX centroid_scene_max,
         const float3 *aabb_min,
         const float3 *aabb_max,
         const float3 *aabb_centroid,
@@ -229,8 +229,8 @@ namespace RadeonRays
         // Number of primitives processed so far
         std::atomic<std::uint32_t> num_refs_processed;
 
-		num_refs_processed.store(0);
-		shutdown.store(false);
+        num_refs_processed.store(0);
+        shutdown.store(false);
 
         requests.push(SplitRequest{
             scene_min,

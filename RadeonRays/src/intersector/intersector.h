@@ -55,7 +55,7 @@ namespace RadeonRays
         // which is going to be used by an intersector.
         Intersector(Calc::Device* device);
         // Destructor.
-        virtual ~Intersector();
+        virtual ~Intersector() = default;
 
         /** 
         \brief Check if the intersector is compatible with a given world.

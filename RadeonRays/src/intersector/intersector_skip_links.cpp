@@ -81,12 +81,14 @@ namespace RadeonRays
         , m_gpudata(new GpuData(device))
         , m_bvh(nullptr)
     {
-        std::string buildopts =
+        std::string buildopts;
 #ifdef RR_RAY_MASK
-            "-D RR_RAY_MASK ";
-#else
-            "";
+        buildopts.append("-D RR_RAY_MASK ");
 #endif
+
+#ifdef RR_BACKFACE_CULL
+        buildopts.append("-D RR_BACKFACE_CULL ");
+#endif // RR_BACKFACE_CULL
 
 #ifdef USE_SAFE_MATH
         buildopts.append("-D USE_SAFE_MATH ");
@@ -331,8 +333,6 @@ namespace RadeonRays
                 {
                     // Up to 3 indices
                     int idx[3];
-                    // Shape maks
-                    int shape_mask;
                     // Shape ID
                     int shape_id;
                     // Primitive ID
@@ -358,7 +358,7 @@ namespace RadeonRays
                 // Besides that we need to permute the faces accorningly to BVH reordering, whihc
                 // is contained within bvh.primids_
                 int const* reordering = m_bvh->GetIndices();
-                for (int i = 0; i < numindices; ++i)
+                for (size_t i = 0; i < numindices; ++i)
                 {
                     int indextolook4 = reordering[i];
 
@@ -393,7 +393,6 @@ namespace RadeonRays
 
                     // Optimization: we are putting faceid here
                     facedata[i].shape_id = shapes[shapeidx]->GetId();
-                    facedata[i].shape_mask = shapes[shapeidx]->GetMask();
                     facedata[i].prim_id = faceidx;
                 }
 
