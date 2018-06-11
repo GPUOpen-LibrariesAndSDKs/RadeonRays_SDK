@@ -289,11 +289,14 @@ namespace RadeonRays
     {
         if (s_calc_platform == DeviceInfo::kEmbree)
         {
-            IntersectionApi* api = IntersectionApi::Create(0);
+            IntersectionApi* api = nullptr;
+#ifdef USE_EMBREE
+            api = IntersectionApi::Create(0);
             if (!api)
                 return nullptr;
             EmbreeIntersectionDevice* device = static_cast<EmbreeIntersectionDevice*>(static_cast<IntersectionApiImpl*>(api)->GetDevice());
             device->SetCommandQueue(queue);
+#endif
             return api;
         }
 
