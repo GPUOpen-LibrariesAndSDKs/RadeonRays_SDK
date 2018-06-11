@@ -52,11 +52,11 @@ THE SOFTWARE.
 #define HANDLE_TYPE HMODULE
 
 #ifndef _DEBUG
-#define LIBNAME "Calc64.dll"
-#define LONGNAME "../Bin/Release/x64/##LIBNAME"
+#define LIBNAME "Calc.dll"
+#define LONGNAME "../bin/Release/##LIBNAME"
 #else
-#define LIBNAME "Calc64D.dll"
-#define LONGNAME "../Bin/Debug/x64/##LIBNAME"
+#define LIBNAME "CalcD.dll"
+#define LONGNAME "../bin/Debug/##LIBNAME"
 #endif
 #elif __linux__
 // Linux
@@ -66,11 +66,11 @@ THE SOFTWARE.
 #define HANDLE_TYPE void*
 
 #ifndef _DEBUG
-#define LIBNAME "libCalc64.so"
-#define LONGNAME "../Bin/Release/x64/##LIBNAME"
+#define LIBNAME "libCalc.so"
+#define LONGNAME "../bin/Release/##LIBNAME"
 #else
-#define LIBNAME "libCalc64D.so"
-#define LONGNAME "../Bin/Debug/x64/##LIBNAME"
+#define LIBNAME "libCalcD.so"
+#define LONGNAME "../bin/Debug/##LIBNAME"
 #endif
 #else
 // MacOS
@@ -80,11 +80,11 @@ THE SOFTWARE.
 #define HANDLE_TYPE void*
 
 #ifndef _DEBUG
-#define LIBNAME "libCalc64.dylib"
-#define LONGNAME "../Bin/Release/x64/##LIBNAME"
+#define LIBNAME "libCalc.dylib"
+#define LONGNAME "../bin/Release/##LIBNAME"
 #else
-#define LIBNAME "libCalc64D.dylib"
-#define LONGNAME "../Bin/Debug/x64/##LIBNAME"
+#define LIBNAME "libCalcD.dylib"
+#define LONGNAME "../bin/Debug/##LIBNAME"
 #endif
 #endif
 #endif
@@ -287,6 +287,16 @@ namespace RadeonRays
 #ifdef USE_OPENCL
     RRAPI IntersectionApi* CreateFromOpenClContext(cl_context        context, cl_device_id device, cl_command_queue queue)
     {
+        if (s_calc_platform == DeviceInfo::kEmbree)
+        {
+            IntersectionApi* api = IntersectionApi::Create(0);
+            if (!api)
+                return nullptr;
+            EmbreeIntersectionDevice* device = static_cast<EmbreeIntersectionDevice*>(static_cast<IntersectionApiImpl*>(api)->GetDevice());
+            device->SetCommandQueue(queue);
+            return api;
+        }
+
         auto calc = dynamic_cast<Calc::Calc*>(GetCalcOpenCL());
 
         if (calc)

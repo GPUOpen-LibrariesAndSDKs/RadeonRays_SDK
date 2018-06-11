@@ -109,7 +109,8 @@ namespace RadeonRays
     };
 
     EmbreeIntersectionDevice::EmbreeIntersectionDevice()
-        : m_pool(1)
+        : m_command_queue(nullptr)
+        , m_pool(1)
     {
         m_device = rtcNewDevice(nullptr);
         RTCError result = rtcDeviceGetError(m_device);
@@ -488,12 +489,18 @@ namespace RadeonRays
 
     void EmbreeIntersectionDevice::QueryIntersection(Buffer const* rays, Buffer const* numrays, int maxrays, Buffer* hits, Event const* waitevent, Event** event) const
     {
-        Throw("Not implemented for embree device.");
+        if (m_command_queue)
+            clFinish(m_command_queue);  // wait for kernels to complete so numrays is available
+        const EmbreeBuffer* fireNumrays = dynamic_cast<const EmbreeBuffer*>(numrays); ThrowIf(!fireNumrays, "Invalid embree buffer.");
+        QueryIntersection(rays, std::min(*static_cast<const int*>(fireNumrays->GetData()), maxrays), hits, waitevent, event);
     }
 
     void EmbreeIntersectionDevice::QueryOcclusion(Buffer const* rays, Buffer const* numrays, int maxrays, Buffer* hits, Event const* waitevent, Event** event) const
     {
-        Throw("Not implemented for embree device.");
+        if (m_command_queue)
+            clFinish(m_command_queue);  // wait for kernels to complete so numrays is available
+        const EmbreeBuffer* fireNumrays = dynamic_cast<const EmbreeBuffer*>(numrays); ThrowIf(!fireNumrays, "Invalid embree buffer.");
+        QueryOcclusion(rays, std::min(*static_cast<const int*>(fireNumrays->GetData()), maxrays), hits, waitevent, event);
     }
 
     void* EmbreeIntersectionDevice::GetBvh() const
