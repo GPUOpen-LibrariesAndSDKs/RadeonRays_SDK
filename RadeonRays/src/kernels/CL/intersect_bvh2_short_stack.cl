@@ -142,6 +142,9 @@ occluded_main(
     GLOBAL int* hits
     )
 {
+    // Allocate stack in LDS
+    __local int lds[SHORT_STACK_SIZE * WAVEFRONT_SIZE];
+
     int global_id = get_global_id(0);
     int local_id = get_local_id(0);
     int group_id = get_group_id(0);
@@ -156,8 +159,7 @@ occluded_main(
             // Allocate stack in global memory 
             __global int* gm_stack_base = stack + (group_id * WAVEFRONT_SIZE + local_id) * GLOBAL_STACK_SIZE;
             __global int* gm_stack = gm_stack_base;
-            // Allocate stack in LDS
-            __local int lds[SHORT_STACK_SIZE * WAVEFRONT_SIZE];
+
             __local int* lm_stack_base = lds + local_id;
             __local int* lm_stack = lm_stack_base;
 
@@ -293,6 +295,9 @@ KERNEL void intersect_main(
     // Hit data
     GLOBAL Intersection* hits)
 {
+    // Allocate stack in LDS
+    __local int lds[SHORT_STACK_SIZE * WAVEFRONT_SIZE];
+
     int global_id = get_global_id(0);
     int local_id = get_local_id(0);
     int group_id = get_group_id(0);
@@ -307,8 +312,6 @@ KERNEL void intersect_main(
             // Allocate stack in global memory 
             __global int* gm_stack_base = stack + (group_id * WAVEFRONT_SIZE + local_id) * GLOBAL_STACK_SIZE;
             __global int* gm_stack = gm_stack_base;
-            // Allocate stack in LDS
-            __local int lds[SHORT_STACK_SIZE * WAVEFRONT_SIZE];
             __local int* lm_stack_base = lds + local_id;
             __local int* lm_stack = lm_stack_base;
 

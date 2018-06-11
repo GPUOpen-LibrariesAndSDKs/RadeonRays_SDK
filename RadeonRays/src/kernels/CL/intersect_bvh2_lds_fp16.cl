@@ -140,6 +140,8 @@ KERNEL void intersect_main(
     // Hit data
     GLOBAL Intersection *hits)
 {
+    __local uint lds_stack[GROUP_SIZE * LDS_STACK_SIZE];
+
     uint index = get_global_id(0);
     uint local_index = get_local_id(0);
 
@@ -150,8 +152,6 @@ KERNEL void intersect_main(
 
         if (ray_is_active(&my_ray))
         {
-            __local uint lds_stack[GROUP_SIZE * LDS_STACK_SIZE];
-
             // Precompute inverse direction and origin / dir for bbox testing
             const float3 invDir32 = safe_invdir2(my_ray);
             const half3 invDir = convert_half3(invDir32);
@@ -319,6 +319,8 @@ KERNEL void occluded_main(
     // Hit results: 1 for hit and -1 for miss
     GLOBAL int *hits)
 {
+    __local uint lds_stack[GROUP_SIZE * LDS_STACK_SIZE];
+
     uint index = get_global_id(0);
     uint local_index = get_local_id(0);
 
@@ -329,8 +331,6 @@ KERNEL void occluded_main(
 
         if (ray_is_active(&my_ray))
         {
-            __local uint lds_stack[GROUP_SIZE * LDS_STACK_SIZE];
-
             // Precompute inverse direction and origin / dir for bbox testing
             const float3 invDir32 = safe_invdir2(my_ray);
             const half3 invDir = convert_half3(invDir32);

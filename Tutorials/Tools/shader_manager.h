@@ -30,7 +30,7 @@ THE SOFTWARE.
 #define NOMINMAX
 #include <Windows.h>
 #include "GL/glew.h"
-#include "GLUT/GLUT.h"
+#include "GL/glut.h"
 #else
 #include <CL/cl.h>
 #include <GL/glew.h>

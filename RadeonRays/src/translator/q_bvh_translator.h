@@ -29,12 +29,7 @@ namespace RadeonRays
     class QBvhTranslator
     {
     public:
-        // Constant values
-        enum Constants
-        {
-            // Invalid index marker
-            kInvalidId = 0xffffffffu
-        };
+        static constexpr std::uint32_t kInvalidId = 0xffffffffu;
 
         // Encoded node format.
         // In QBVH we store 4x16-bits AABBs per node

@@ -25,6 +25,11 @@ THE SOFTWARE.
 #include <stack>
 #include <utility>
 #include <vector>
+#include <thread>
+#include <condition_variable>
+#include <mmintrin.h>
+#include <xmmintrin.h>
+#include <smmintrin.h>
 
 #include "../primitive/mesh.h"
 #include "../primitive/instance.h"
@@ -72,7 +77,7 @@ namespace RadeonRays
             // Max triangles per leaf
             kMaxLeafPrimitives = 1u,
             // Threshold number of primitives to disable SAH split
-            kMinSAHPrimitives = 32u,
+            kMinSAHPrimitives = 8u,
             // Maximum stack size for non-parallel builds
             kStackSize = 1024u
         };

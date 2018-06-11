@@ -30,6 +30,8 @@ The library is cross-platform and the following compilers are supported:
 
 - GCC 4.8 and later
 
+- CMake 3.8 and later
+
 - Python (for --embed_kernels option only)
 
 - [Anvil](https://github.com/GPUOpen-LibrariesAndSDKs/Anvil) for Vulkan backend only
@@ -56,7 +58,7 @@ If the default behaviour is not what you want, an API call `IntersectionApi::Set
 ### Windows
 - Create Visual Studio 2015 Solution
 
-`./Tools/premake/win/premake5.exe vs2015`
+`cmake -G "Visual Studio 14 2015 Win64"`
 
 ### OSX
 - Install Homebrew
@@ -67,15 +69,15 @@ If the default behaviour is not what you want, an API call `IntersectionApi::Set
 
 `brew install homebrew/science/openimageio`
 
-- Create Xcode project
+- Make build folder and generate make files
 
-`./Tools/premake/osx/premake5 xcode4`
+`mkdir build`
 
-- Alternatively use gmake version
+`cd build`
 
-`./Tools/premake/osx/premake5 gmake`
+`cmake -DCMAKE_BUILD_TYPE=<Release or Debug> ..` 
 
-`make config=release_x64`
+`make`
 
 ### Linux
 on Ubuntu:
@@ -89,64 +91,27 @@ install build dependencies:
 
 Also make sure you have the `opencl-dev` headers installed. Then create the Makefile:
 
-`./Tools/premake/linux64/premake5 gmake`
+`mkdir build`
 
-`make config=release_x64`
+`cd build`
+
+`cmake -DCMAKE_BUILD_TYPE=<Release ro Debug> ..`
+
+`make`
 
 ### Options
 Available premake options:
- - `--package` will package the library for a binary release in `dist` folder.  
- example of usage :
- `./Tools/premake/win/premake5.exe --package`
+- `RR_USE_EMBREE` will enable the embree backend. Embree device will be the last one in IntersectionApi device list.
+ example of usage : 
+ `cmake -DCMAKE_BUILD_TYPE=<Release ro Debug> -DRR_USE_EMBREE=ON ..`
 
-- `--use_embree` will enable the embree backend. Embree device will be the last one in IntersectionApi device list.
- example of usage :
- `./Tools/premake/win/premake5.exe --use_embree vs2015`
+- `RR_USE_OPENCL` will enable the OpenCL backend. If no other option is provided, this is the default
 
-- `--use_vulkan` will enable the vulkan backend.
-
-- `--use_opencl` will enable the OpenCL backend. If no other --use_ option is provided, this is the default
-
-- `--shared_calc` will build Calc (Compute Abstraction Layer) as a shared object. This means RadeonRays library does not directly depend on OpenCL and can be used on the systems where OpenCL is not available (with Embree backend). 
-
-## Run
-
-## Run standalone app
- - `export LD_LIBRARY_PATH=<Radeon Rays_SDK path>/Radeon Rays/lib/x64/:${LD_LIBRARY_PATH}`
- - `cd App`
- - `../Bin/Release/x64/App64`
-
-Possible command line args:
-
-- `-p path` path to mesh/material files
-- `-f file` mesh file to render
-- `-w` set window width
-- `-h` set window height
-- `-nb num` run in GI mode and calculate num bounces of light
-- `-ns num` limit the number of samples per pixel
-- `-cs speed` set camera movement speed
-- `-cpx x -cpy y -cpz z` set camera position
-- `-tpx x -tpy y -tpz z` set camera target
-- `-fd distance` set camera focus distance in meters
-- `-fl length` set lens focal length in meters (default 35mm)
-- `-a aperture` set lens aperture value in meters (values > 0 switches camera model from pinhole to physical)
-- `-interop [0|1]` disable | enable OpenGL interop (enabled by default, might be broken on some Linux systems)
-- `-config [gpu|cpu|mgpu|mcpu|all]` set device configuration to run on: single gpu (default) | single cpu | all available gpus | all available cpus | all devices
-
-The app only supports loading of pure triangle .obj meshes. The list of supported texture formats:
-
-- png
-- bmp
-- jpg
-- gif
-- exr
-- tex
-- dds (limited support)
-- tga
+- `RR_SHARED_CALC` will build Calc (Compute Abstraction Layer) as a shared object. This means RadeonRays library does not directly depend on OpenCL and can be used on the systems where OpenCL is not available (with Embree backend). 
 
 ## Run unit tests
 They need to be run from the <Radeon Rays_SDK path>/UnitTest path.
-Premake should be runned with the `--safe_math` option.
+CMake should be runned with the `RR_SAFE_MATH` option.
 
 # Hardware  support
 
