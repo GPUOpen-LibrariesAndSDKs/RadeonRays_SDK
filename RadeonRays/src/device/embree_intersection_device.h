@@ -27,6 +27,12 @@ THE SOFTWARE.
 #include <embree2/rtcore.h>
 #include "../async/thread_pool.h"
 
+#ifdef __APPLE__
+#include <OpenCL/OpenCL.h>
+#else
+#include <CL/cl.h>
+#endif
+
 namespace RadeonRays
 {
     class Mesh;
@@ -54,7 +60,10 @@ namespace RadeonRays
         void QueryIntersection(Buffer const* rays, Buffer const* numrays, int maxrays, Buffer* hitinfos, Event const* waitevent, Event** event) const override;
         void QueryOcclusion(Buffer const* rays, Buffer const* numrays, int maxrays, Buffer* hitresults, Event const* waitevent, Event** event) const override;
         void* GetBvh() const override;
-    
+
+        inline cl_command_queue GetCommandQueue() const { return m_command_queue; }
+        inline void SetCommandQueue(cl_command_queue command_queue) { m_command_queue = command_queue; }
+
     protected:
         RTCScene GetEmbreeMesh(const Mesh*);
         void UpdateShape(const ShapeImpl*);
@@ -66,9 +75,10 @@ namespace RadeonRays
         
         // embree device
         RTCDevice m_device;
-        
+        // Unity hack: OpenCL command queue
+        cl_command_queue m_command_queue;
         // scene for intersection
-        RTCScene m_scene; 
+        RTCScene m_scene;
 
         //thread pool for parallelizing work with buffers
         mutable thread_pool<void> m_pool;
