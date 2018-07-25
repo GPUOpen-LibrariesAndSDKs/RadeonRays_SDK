@@ -23,6 +23,21 @@ THE SOFTWARE.
 #pragma OPENCL EXTENSION cl_khr_local_int32_base_atomics : enable
 #pragma OPENCL EXTENSION cl_khr_global_int32_base_atomics : enable
 
+// --------------------- CONSTANTS ------------------------
+// add neutral elements
+__constant int neutral_add_int = 0;
+__constant float neutral_add_float = 0;
+__constant float3 neutral_add_float3 = (float3)(0.0, 0.0, 0.0);
+// max neutral elements
+__constant int neutral_max_int = INT_MIN;
+__constant float neutral_max_float = FLT_MIN;
+__constant float3 neutral_max_float3 = (float3)(FLT_MIN, FLT_MIN, FLT_MIN);
+// min neutral elements
+__constant int neutral_min_int = INT_MAX;
+__constant float neutral_min_float = FLT_MAX;
+__constant float3 neutral_min_float3 = (float3)(FLT_MAX, FLT_MAX, FLT_MAX);
+
+__constant float epsilon = .00001f;
 
 // --------------------- HELPERS ------------------------
 //#define INT_MAX 0x7FFFFFFF
@@ -1492,3 +1507,196 @@ __kernel void segmented_distribute_part_sum_int_nocut(
         }
     }
 }
+
+// --------------------- ATOMIC OPERTIONS ------------------------
+
+#define DEFINE_ATOMIC(operation)\
+    inline void atomic_##operation##_float(volatile __global float* addr, float value)\
+    {\
+        union{\
+        unsigned int u32;\
+        float        f32;\
+        } next, expected, current;\
+        current.f32 = *addr;\
+        do{\
+            expected.f32 = current.f32;\
+            next.f32 = operation(expected.f32, value);\
+            current.u32 = atomic_cmpxchg((volatile __global unsigned int *)addr,\
+                expected.u32, next.u32);\
+        } while (current.u32 != expected.u32);\
+    }
+
+#define DEFINE_ATOMIC_FLOAT3(operation)\
+    inline void atomic_##operation##_float3(volatile __global float3* addr, float3 value)\
+    {\
+        volatile __global float* p = (volatile __global float*)addr;\
+        atomic_##operation##_float(p, value.x);\
+        atomic_##operation##_float(p + 1, value.y);\
+        atomic_##operation##_float(p + 2, value.z);\
+    }
+
+inline void atomic_max_int(volatile __global int* addr, int value)
+{
+    atomic_max(addr, value);
+}
+
+inline void atomic_min_int(volatile __global int* addr, int value)
+{
+    atomic_min(addr, value);
+}
+
+// --------------------- HELPERS ------------------------
+
+#define DEFINE_ASSIGN_OPERATOR(type)\
+    inline void assign_##type(__local type* addr, type value)\
+    {\
+        *addr = value;\
+    }
+
+inline void assign_float3(__local float3* addr, float3 value)
+{
+    (*addr).xyz = value.xyz;
+}
+
+inline int divide_int(int dividend, int divider)
+{
+    return dividend / (divider != 0 ? divider : 1);
+}
+
+inline float divide_float(float dividend, float divider)
+{
+    return dividend / (fabs(divider) > epsilon ? divider : 1.f);
+}
+
+inline float3 divide_float3(float3 dividend, float3 divider)
+{
+    return (float3)(divide_float(dividend.x, divider.x),
+                    divide_float(dividend.y, divider.y),
+                    divide_float(dividend.z, divider.z));
+} 
+
+// --------------------- REDUCTION ------------------------
+
+#define DEFINE_REDUCTION(bin_op, type)\
+__kernel void reduction_##bin_op##_##type(__global type* buffer,\
+                                          int buf_count,\
+                                          __local type* shared_mem,\
+                                          __global type* out)\
+{\
+    int global_id = get_global_id(0);\
+    int group_id = get_group_id(0);\
+    int local_id = get_local_id(0);\
+    int group_size = get_local_size(0);\
+    \
+    if (global_id < buf_count)\
+    {\
+        assign_##type(shared_mem + local_id, buffer[global_id]);\
+    }\
+    else\
+    {\
+        assign_##type(shared_mem + local_id, neutral_##bin_op##_##type);\
+    }\
+    \
+    if (global_id == 0)\
+    {\
+        *out = neutral_##bin_op##_##type;\
+    }\
+    \
+    barrier(CLK_LOCAL_MEM_FENCE);\
+    for (int i = group_size / 2; i > 0; i >>= 1)\
+    {\
+        if (local_id < i)\
+        {\
+            assign_##type(shared_mem + local_id,\
+                          bin_op(shared_mem[local_id], shared_mem[local_id + i]));\
+        }\
+        barrier(CLK_LOCAL_MEM_FENCE);\
+    }\
+    \
+    if (local_id == 0)\
+    {\
+        atomic_##bin_op##_##type(out, shared_mem[0]);\
+    }\
+}
+
+// --------------------- NORMALIZATION ------------------------
+
+#define DEFINE_BUFFER_NORMALIZATION(type)\
+__kernel void buffer_normalization_##type(__global type* input,\
+                                          __global type* output,\
+                                          int buffer_count,\
+                                          __local type* shared_mem,\
+                                          __global type* auxiliary_buf)\
+{\
+    int global_id = get_global_id(0);\
+    int group_id = get_group_id(0);\
+    int local_id = get_local_id(0);\
+    int group_size = get_local_size(0);\
+    \
+    __local type* min_buffer = shared_mem;\
+    __local type* max_buffer = shared_mem + group_size;\
+    \
+    if (global_id < buffer_count)\
+    {\
+        min_buffer[local_id] = input[global_id];\
+        max_buffer[local_id] = input[global_id];\
+    }\
+    else\
+    {\
+        min_buffer[local_id] = neutral_min_##type;\
+        max_buffer[local_id] = neutral_max_##type;\
+    }\
+    \
+    if (global_id == 0)\
+    {\
+        auxiliary_buf[0] = neutral_min_##type;\
+        auxiliary_buf[1] = neutral_max_##type;\
+    }\
+    \
+    barrier(CLK_LOCAL_MEM_FENCE);\
+    \
+    for (int i = group_size / 2; i > 0; i >>= 1)\
+    {\
+        if (local_id < i)\
+        {\
+            assign_##type(min_buffer + local_id,\
+                          min(min_buffer[local_id], min_buffer[local_id + i]));\
+            assign_##type(max_buffer + local_id,\
+                          max(max_buffer[local_id], max_buffer[local_id + i]));\
+        }\
+        barrier(CLK_LOCAL_MEM_FENCE);\
+    }\
+    \
+    if (local_id == 0)\
+    {\
+        atomic_min_##type(auxiliary_buf, min_buffer[0]);\
+        atomic_max_##type(auxiliary_buf + 1, max_buffer[0]);\
+    }\
+    \
+    barrier(CLK_LOCAL_MEM_FENCE);\
+    type diff = auxiliary_buf[1] - auxiliary_buf[0];\
+    if (global_id < buffer_count)\
+    {\
+        output[global_id] = divide_##type(input[global_id], diff);\
+    }\
+}
+
+// Do not change the order
+DEFINE_ATOMIC(min)
+DEFINE_ATOMIC(max)
+DEFINE_ATOMIC_FLOAT3(min)
+DEFINE_ATOMIC_FLOAT3(max)
+
+DEFINE_ASSIGN_OPERATOR(int)
+DEFINE_ASSIGN_OPERATOR(float)
+
+DEFINE_REDUCTION(min, int)
+DEFINE_REDUCTION(min, float)
+DEFINE_REDUCTION(min, float3)
+DEFINE_REDUCTION(max, int)
+DEFINE_REDUCTION(max, float)
+DEFINE_REDUCTION(max, float3)
+
+DEFINE_BUFFER_NORMALIZATION(int)
+DEFINE_BUFFER_NORMALIZATION(float)
+DEFINE_BUFFER_NORMALIZATION(float3)

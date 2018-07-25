@@ -30,7 +30,7 @@ THE SOFTWARE.
 
 #ifdef RR_EMBED_KERNELS
 #if USE_OPENCL
-#include "CLW/kernelcache/clwkernels_cl.h"
+#include "clwkernels_cl.h"
 #endif
 #endif // RR_EMBED_KERNELS
 
@@ -39,6 +39,7 @@ THE SOFTWARE.
 #define NUM_SEG_SCAN_ELEMS_PER_WI 1
 #define NUM_SCAN_ELEMS_PER_WG (WG_SIZE * NUM_SCAN_ELEMS_PER_WI)
 #define NUM_SEG_SCAN_ELEMS_PER_WG (WG_SIZE * NUM_SEG_SCAN_ELEMS_PER_WI)
+#define NORMALIZATION_CACHE (2)
 
 CLWParallelPrimitives::CLWParallelPrimitives(CLWContext context, char const* buildopts)
     : context_(context)
@@ -79,7 +80,7 @@ CLWEvent CLWParallelPrimitives::ScanExclusiveAddTwoLevel(unsigned int deviceIdx,
     int NUM_GROUPS_BOTTOM_LEVEL_DISTRIBUTE = (numElems + GROUP_BLOCK_SIZE_DISTRIBUTE - 1) / GROUP_BLOCK_SIZE_DISTRIBUTE;
 
     auto devicePartSums = GetTempIntBuffer(NUM_GROUPS_BOTTOM_LEVEL_SCAN);
-        //context_.CreateBuffer<cl_int>(NUM_GROUPS_BOTTOM_LEVEL);
+    //context_.CreateBuffer<cl_int>(NUM_GROUPS_BOTTOM_LEVEL);
 
     CLWKernel bottomLevelScan = program_.GetKernel("scan_exclusive_part_int4");
     CLWKernel topLevelScan = program_.GetKernel("scan_exclusive_int4");
@@ -113,11 +114,11 @@ CLWEvent CLWParallelPrimitives::ScanExclusiveAddTwoLevel(unsigned int deviceIdx,
 CLWEvent CLWParallelPrimitives::SegmentedScanExclusiveAddTwoLevel(unsigned int deviceIdx, CLWBuffer<cl_int> input, CLWBuffer<cl_int> inputHeads, CLWBuffer<cl_int> output)
 {
     cl_uint numElems = (cl_uint)input.GetElementCount();
-    
+
     int GROUP_BLOCK_SIZE_SCAN = (WG_SIZE);
     int NUM_GROUPS_BOTTOM_LEVEL_SCAN = (numElems + GROUP_BLOCK_SIZE_SCAN - 1) / GROUP_BLOCK_SIZE_SCAN;
     int NUM_GROUPS_TOP_LEVEL_SCAN = (NUM_GROUPS_BOTTOM_LEVEL_SCAN + GROUP_BLOCK_SIZE_SCAN - 1) / GROUP_BLOCK_SIZE_SCAN;
-    
+
     auto devicePartSums = GetTempIntBuffer(NUM_GROUPS_BOTTOM_LEVEL_SCAN);
     auto devicePartFlags = GetTempIntBuffer(NUM_GROUPS_BOTTOM_LEVEL_SCAN);
     //context_.CreateBuffer<cl_int>(NUM_GROUPS_BOTTOM_LEVEL);
@@ -143,7 +144,7 @@ CLWEvent CLWParallelPrimitives::SegmentedScanExclusiveAddTwoLevel(unsigned int d
 
     //context_.ReadBuffer(0,  devicePartSums, &hostPartSums[0], NUM_GROUPS_BOTTOM_LEVEL_SCAN).Wait();
     //context_.ReadBuffer(0,  devicePartFlags, &hostPartFlags[0], NUM_GROUPS_BOTTOM_LEVEL_SCAN).Wait();
-    
+
     topLevelScan.SetArg(0, devicePartSums);
     topLevelScan.SetArg(1, devicePartFlags);
     topLevelScan.SetArg(2, (cl_uint)devicePartSums.GetElementCount());
@@ -152,30 +153,30 @@ CLWEvent CLWParallelPrimitives::SegmentedScanExclusiveAddTwoLevel(unsigned int d
     context_.Launch1D(0, NUM_GROUPS_TOP_LEVEL_SCAN * WG_SIZE, WG_SIZE, topLevelScan);
 
     //context_.ReadBuffer(0,  devicePartSums, &hostPartSums[0], NUM_GROUPS_BOTTOM_LEVEL_SCAN).Wait();
-    
+
     distributeSums.SetArg(0, output);
     distributeSums.SetArg(1, inputHeads);
     distributeSums.SetArg(2, numElems);
     distributeSums.SetArg(3, devicePartSums);
     return context_.Launch1D(0, NUM_GROUPS_BOTTOM_LEVEL_SCAN * WG_SIZE, WG_SIZE, distributeSums);
-    
+
     //context_.ReadBuffer(0,  output, &hostResult[0], numElems).Wait();
-    
+
     //return CLWEvent();
     //distributeSums.SetArg(0, devicePartSums);
     //distributeSums.SetArg(1, output);
     //distributeSums.SetArg(2, (cl_uint)numElems);
-    
+
     //ReclaimTempIntBuffer(devicePartSums);
     //ReclaimTempIntBuffer(devicePartFlags);
-    
+
     //return context_.Launch1D(0, NUM_GROUPS_BOTTOM_LEVEL_DISTRIBUTE * WG_SIZE, WG_SIZE, distributeSums);
 }
 
 CLWEvent CLWParallelPrimitives::SegmentedScanExclusiveAddThreeLevel(unsigned int deviceIdx, CLWBuffer<cl_int> input, CLWBuffer<cl_int> inputHeads, CLWBuffer<cl_int> output)
 {
     cl_uint numElems = (cl_uint)input.GetElementCount();
-    
+
     int GROUP_BLOCK_SIZE_SCAN = (WG_SIZE);
     int GROUP_BLOCK_SIZE_DISTRIBUTE = (WG_SIZE);
 
@@ -261,7 +262,7 @@ CLWEvent CLWParallelPrimitives::SegmentedScanExclusiveAddThreeLevel(unsigned int
 CLWEvent CLWParallelPrimitives::SegmentedScanExclusiveAddFourLevel(unsigned int deviceIdx, CLWBuffer<cl_int> input, CLWBuffer<cl_int> inputHeads, CLWBuffer<cl_int> output)
 {
     cl_uint numElems = (cl_uint)input.GetElementCount();
-    
+
     int GROUP_BLOCK_SIZE_SCAN = (WG_SIZE);
     int GROUP_BLOCK_SIZE_DISTRIBUTE = (WG_SIZE);
 
@@ -419,15 +420,15 @@ CLWEvent CLWParallelPrimitives::ScanExclusiveAddWG(unsigned int deviceIdx, CLWBu
 CLWEvent CLWParallelPrimitives::SegmentedScanExclusiveAddWG(unsigned int deviceIdx, CLWBuffer<cl_int> input, CLWBuffer<cl_int> inputHeads, CLWBuffer<cl_int> output)
 {
     cl_uint numElems = (cl_uint)input.GetElementCount();
-    
+
     CLWKernel topLevelScan = program_.GetKernel("segmented_scan_exclusive_int");
-    
+
     topLevelScan.SetArg(0, input);
     topLevelScan.SetArg(1, inputHeads);
     topLevelScan.SetArg(2, (cl_uint)numElems);
     topLevelScan.SetArg(3, output);
     topLevelScan.SetArg(4, SharedMemory(WG_SIZE * (sizeof(cl_int) + sizeof(cl_char))));
-    
+
     return context_.Launch1D(0, WG_SIZE, WG_SIZE, topLevelScan);
 }
 
@@ -443,7 +444,7 @@ CLWEvent CLWParallelPrimitives::ScanExclusiveAddTwoLevel(unsigned int deviceIdx,
     int NUM_GROUPS_BOTTOM_LEVEL_DISTRIBUTE = (numElems + GROUP_BLOCK_SIZE_DISTRIBUTE - 1) / GROUP_BLOCK_SIZE_DISTRIBUTE;
 
     auto devicePartSums = GetTempFloatBuffer(NUM_GROUPS_BOTTOM_LEVEL_SCAN);
-        //context_.CreateBuffer<cl_int>(NUM_GROUPS_BOTTOM_LEVEL);
+    //context_.CreateBuffer<cl_int>(NUM_GROUPS_BOTTOM_LEVEL);
 
     CLWKernel bottomLevelScan = program_.GetKernel("scan_exclusive_part_float4");
     CLWKernel topLevelScan = program_.GetKernel("scan_exclusive_float4");
@@ -573,9 +574,9 @@ CLWEvent CLWParallelPrimitives::ScanExclusiveAdd(unsigned int deviceIdx, CLWBuff
 CLWEvent CLWParallelPrimitives::SegmentedScanExclusiveAdd(unsigned int deviceIdx, CLWBuffer<cl_int> input, CLWBuffer<cl_int> inputHeads, CLWBuffer<cl_int> output)
 {
     assert(input.GetElementCount() == output.GetElementCount());
-    
+
     cl_uint numElems = (cl_uint)input.GetElementCount();
-    
+
     if (numElems <= NUM_SEG_SCAN_ELEMS_PER_WG)
     {
         return SegmentedScanExclusiveAddWG(deviceIdx, input, inputHeads, output);
@@ -588,7 +589,7 @@ CLWEvent CLWParallelPrimitives::SegmentedScanExclusiveAdd(unsigned int deviceIdx
     {
         return SegmentedScanExclusiveAddThreeLevel(deviceIdx, input, inputHeads, output);
     }
-    else if  (numElems <= NUM_SEG_SCAN_ELEMS_PER_WG * NUM_SEG_SCAN_ELEMS_PER_WG * NUM_SEG_SCAN_ELEMS_PER_WG * NUM_SEG_SCAN_ELEMS_PER_WG)
+    else if (numElems <= NUM_SEG_SCAN_ELEMS_PER_WG * NUM_SEG_SCAN_ELEMS_PER_WG * NUM_SEG_SCAN_ELEMS_PER_WG * NUM_SEG_SCAN_ELEMS_PER_WG)
     {
         return SegmentedScanExclusiveAddFourLevel(deviceIdx, input, inputHeads, output);
     }
@@ -596,50 +597,23 @@ CLWEvent CLWParallelPrimitives::SegmentedScanExclusiveAdd(unsigned int deviceIdx
     {
         throw std::runtime_error("The maximum number of elements for scan exceeded\n");
     }
-    
+
     return CLWEvent::Create(nullptr);
 }
 
 CLWBuffer<cl_int> CLWParallelPrimitives::GetTempIntBuffer(size_t size)
 {
-    auto iter = intBufferCache_.find(size);
-
-    if (iter != intBufferCache_.end())
-    {
-        CLWBuffer<int> tmp = iter->second;
-        intBufferCache_.erase(iter);
-        return tmp;
-    }
-
-    return context_.CreateBuffer<cl_int>(size, CL_MEM_READ_WRITE);
+    return GetTempBuffer<cl_int>(intBufferCache_, size);
 }
 
 CLWBuffer<char> CLWParallelPrimitives::GetTempCharBuffer(size_t size)
 {
-    auto iter = charBufferCache_.find(size);
-
-    if (iter != charBufferCache_.end())
-    {
-        CLWBuffer<char> tmp = iter->second;
-        charBufferCache_.erase(iter);
-        return tmp;
-    }
-
-    return context_.CreateBuffer<char>(size, CL_MEM_READ_WRITE);
+    return GetTempBuffer<char>(charBufferCache_, size);
 }
 
 CLWBuffer<cl_float> CLWParallelPrimitives::GetTempFloatBuffer(size_t size)
 {
-    auto iter = floatBufferCache_.find(size);
-
-    if (iter != floatBufferCache_.end())
-    {
-        CLWBuffer<cl_float> tmp = iter->second;
-        floatBufferCache_.erase(iter);
-        return tmp;
-    }
-
-    return context_.CreateBuffer<cl_float>(size, CL_MEM_READ_WRITE);
+    return GetTempBuffer<cl_float>(floatBufferCache_, size);
 }
 
 CLWEvent CLWParallelPrimitives::SortRadix(unsigned int deviceIdx, CLWBuffer<cl_int> inputKeys, CLWBuffer<cl_int> outputKeys,
@@ -785,18 +759,18 @@ CLWEvent CLWParallelPrimitives::SortRadix(unsigned int deviceIdx, CLWBuffer<char
 CLWEvent CLWParallelPrimitives::SortRadix(unsigned int deviceIdx, CLWBuffer<cl_int> inputKeys, CLWBuffer<cl_int> outputKeys)
 {
     assert(inputKeys.GetElementCount() == outputKeys.GetElementCount());
-    
+
     cl_uint numElems = (cl_uint)inputKeys.GetElementCount();
-    
+
     int GROUP_BLOCK_SIZE = (WG_SIZE * 4 * 8);
-    int NUM_BLOCKS =  (numElems + GROUP_BLOCK_SIZE - 1) / GROUP_BLOCK_SIZE;
-    
+    int NUM_BLOCKS = (numElems + GROUP_BLOCK_SIZE - 1) / GROUP_BLOCK_SIZE;
+
     auto deviceHistograms = GetTempIntBuffer(NUM_BLOCKS * 16);
     auto deviceTempKeys = GetTempIntBuffer(numElems);
-    
+
     auto fromKeys = &inputKeys;
     auto toKeys = &deviceTempKeys;
-    
+
     CLWKernel histogramKernel = program_.GetKernel("BitHistogram");
     CLWKernel scatterKeys = program_.GetKernel("ScatterKeys");
 
@@ -813,7 +787,7 @@ CLWEvent CLWParallelPrimitives::SortRadix(unsigned int deviceIdx, CLWBuffer<cl_i
         context_.Launch1D(0, NUM_BLOCKS*WG_SIZE, WG_SIZE, histogramKernel);
 
         // Scan histograms
-        ScanExclusiveAdd(0, deviceHistograms, deviceHistograms, deviceHistograms.GetElementCount());
+        ScanExclusiveAdd(0, deviceHistograms, deviceHistograms, static_cast<int>(deviceHistograms.GetElementCount()));
 
         // Scatter keys
         scatterKeys.SetArg(0, offset);
@@ -845,42 +819,23 @@ void CLWParallelPrimitives::ReclaimDeviceMemory()
 {
     intBufferCache_.clear();
     floatBufferCache_.clear();
+    charBufferCache_.clear();
+    float3_BufferCache_.clear();
 }
 
 void CLWParallelPrimitives::ReclaimTempIntBuffer(CLWBuffer<cl_int> buffer)
 {
-    auto iter = intBufferCache_.find(buffer.GetElementCount());
-
-    if (iter != intBufferCache_.end())
-    {
-        return;
-    }
-
-    intBufferCache_[buffer.GetElementCount()] = buffer;
+    ReclaimTempBuffer<cl_int>(intBufferCache_, buffer);
 }
 
 void CLWParallelPrimitives::ReclaimTempCharBuffer(CLWBuffer<char> buffer)
 {
-    auto iter = charBufferCache_.find(buffer.GetElementCount());
-
-    if (iter != charBufferCache_.end())
-    {
-        return;
-    }
-
-    charBufferCache_[buffer.GetElementCount()] = buffer;
+    ReclaimTempBuffer<char>(charBufferCache_, buffer);
 }
 
 void CLWParallelPrimitives::ReclaimTempFloatBuffer(CLWBuffer<cl_float> buffer)
 {
-    auto iter = floatBufferCache_.find(buffer.GetElementCount());
-
-    if (iter != floatBufferCache_.end())
-    {
-        return;
-    }
-
-    floatBufferCache_[buffer.GetElementCount()] = buffer;
+    ReclaimTempBuffer<cl_float>(floatBufferCache_, buffer);
 }
 
 CLWEvent CLWParallelPrimitives::Compact(unsigned int deviceIdx, CLWBuffer<cl_int> predicate, CLWBuffer<cl_int> input, CLWBuffer<cl_int> output, int numElems, cl_int& newSize)
@@ -898,7 +853,7 @@ CLWEvent CLWParallelPrimitives::Compact(unsigned int deviceIdx, CLWBuffer<cl_int
     context_.ReadBuffer(deviceIdx, predicate, &lastPredicate, numElems - 1, 1).Wait();
     newSize += lastPredicate;
 
-    int NUM_BLOCKS =  (int)((numElems + WG_SIZE - 1)/ WG_SIZE);
+    int NUM_BLOCKS = (int)((numElems + WG_SIZE - 1) / WG_SIZE);
 
     CLWKernel compactKernel = program_.GetKernel("compact_int");
 
@@ -938,12 +893,63 @@ CLWEvent CLWParallelPrimitives::Compact(unsigned int deviceIdx, CLWBuffer<cl_int
     return context_.Launch1D(deviceIdx, NUM_BLOCKS * WG_SIZE, WG_SIZE, compactKernel);
 }
 
+template <class T>
+CLWBuffer<T> CLWParallelPrimitives::GetTempBuffer(std::map<size_t, CLWBuffer<T> > collection, size_t size)
+{
+    auto iter = collection.find(size);
+
+    if (iter != collection.end())
+    {
+        CLWBuffer<T> tmp = iter->second;
+        collection.erase(iter);
+        return tmp;
+    }
+
+    return context_.CreateBuffer<T>(size, CL_MEM_READ_WRITE);
+}
+
+template <class T>
+void CLWParallelPrimitives::ReclaimTempBuffer(std::map<size_t, CLWBuffer<T> > collection, CLWBuffer<T> buffer)
+{
+    auto iter = collection.find(buffer.GetElementCount());
+
+    if (iter != collection.end())
+    {
+        return;
+    }
+
+    collection[buffer.GetElementCount()] = buffer;
+}
+
+template <class T>
+CLWEvent CLWParallelPrimitives::Normalize(const char* kernelName, unsigned int deviceIdx, CLWBuffer<T> input, CLWBuffer<T> output, int numElems, int groupSize, CLWBuffer<T> cache)
+{
+    assert(groupSize);
+    assert(input.GetElementCount() >= numElems);
+    assert(output.GetElementCount() >= numElems);
+
+    int ELEMS_PER_WI = 4;
+    int GROUP_BLOCK_SIZE = (groupSize * ELEMS_PER_WI);
+    int NUM_BLOCKS = (numElems + GROUP_BLOCK_SIZE - 1) / GROUP_BLOCK_SIZE;
+
+    CLWKernel normalizeKernel = program_.GetKernel(kernelName);
+
+    int argc = 0;
+
+    normalizeKernel.SetArg(argc++, input);
+    normalizeKernel.SetArg(argc++, output);
+    normalizeKernel.SetArg(argc++, numElems);
+    normalizeKernel.SetArg(argc++, SharedMemory(2 * sizeof(T) * groupSize));
+    normalizeKernel.SetArg(argc++, cache);
+
+    return context_.Launch1D(deviceIdx, NUM_BLOCKS * groupSize, groupSize, normalizeKernel);
+}
 
 CLWEvent CLWParallelPrimitives::Copy(unsigned int deviceIdx, CLWBuffer<cl_int> input, CLWBuffer<cl_int> output, int numElems)
 {
     int ELEMS_PER_WI = 4;
     int GROUP_BLOCK_SIZE = (WG_SIZE * ELEMS_PER_WI);
-    int NUM_BLOCKS =  (numElems + GROUP_BLOCK_SIZE - 1)/ GROUP_BLOCK_SIZE;
+    int NUM_BLOCKS = (numElems + GROUP_BLOCK_SIZE - 1) / GROUP_BLOCK_SIZE;
 
     CLWKernel copyKernel = program_.GetKernel("copy");
 
@@ -952,4 +958,28 @@ CLWEvent CLWParallelPrimitives::Copy(unsigned int deviceIdx, CLWBuffer<cl_int> i
     copyKernel.SetArg(2, output);
 
     return context_.Launch1D(0, NUM_BLOCKS * WG_SIZE, WG_SIZE, copyKernel);
+}
+
+CLWEvent CLWParallelPrimitives::Normalize(unsigned int deviceIdx, CLWBuffer<cl_int> input, CLWBuffer<cl_int> output, int numElems)
+{
+    CLWBuffer<cl_int> cache = GetTempIntBuffer(NORMALIZATION_CACHE);
+    CLWEvent event = Normalize<cl_int>("buffer_normalization_int", deviceIdx, input, output, numElems, WG_SIZE, cache);
+    ReclaimTempIntBuffer(cache);
+    return event;
+}
+
+CLWEvent CLWParallelPrimitives::Normalize(unsigned int deviceIdx, CLWBuffer<cl_float> input, CLWBuffer<cl_float> output, int numElems)
+{
+    CLWBuffer<cl_float> cache = GetTempFloatBuffer(NORMALIZATION_CACHE);
+    CLWEvent event = Normalize<cl_float>("buffer_normalization_float", deviceIdx, input, output, numElems, WG_SIZE, cache);
+    ReclaimTempFloatBuffer(cache);
+    return event;
+}
+
+CLWEvent CLWParallelPrimitives::Normalize(unsigned int deviceIdx, CLWBuffer<cl_float3> input, CLWBuffer<cl_float3> output, int numElems)
+{
+    CLWBuffer<cl_float3> cache = GetTempBuffer<cl_float3>(float3_BufferCache_, NORMALIZATION_CACHE);
+    CLWEvent event = Normalize<cl_float3>("buffer_normalization_float3", deviceIdx, input, output, numElems, WG_SIZE, cache);
+    ReclaimTempBuffer(float3_BufferCache_, cache);
+    return event;
 }
