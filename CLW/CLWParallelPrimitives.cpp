@@ -39,7 +39,6 @@ THE SOFTWARE.
 #define NUM_SEG_SCAN_ELEMS_PER_WI 1
 #define NUM_SCAN_ELEMS_PER_WG (WG_SIZE * NUM_SCAN_ELEMS_PER_WI)
 #define NUM_SEG_SCAN_ELEMS_PER_WG (WG_SIZE * NUM_SEG_SCAN_ELEMS_PER_WI)
-#define NORMALIZATION_CACHE (2)
 
 CLWParallelPrimitives::CLWParallelPrimitives(CLWContext context, char const* buildopts)
     : context_(context)
@@ -921,30 +920,6 @@ void CLWParallelPrimitives::ReclaimTempBuffer(std::map<size_t, CLWBuffer<T> > co
     collection[buffer.GetElementCount()] = buffer;
 }
 
-template <class T>
-CLWEvent CLWParallelPrimitives::Normalize(const char* kernelName, unsigned int deviceIdx, CLWBuffer<T> input, CLWBuffer<T> output, int numElems, int groupSize, CLWBuffer<T> cache)
-{
-    assert(groupSize);
-    assert(input.GetElementCount() >= numElems);
-    assert(output.GetElementCount() >= numElems);
-
-    int ELEMS_PER_WI = 4;
-    int GROUP_BLOCK_SIZE = (groupSize * ELEMS_PER_WI);
-    int NUM_BLOCKS = (numElems + GROUP_BLOCK_SIZE - 1) / GROUP_BLOCK_SIZE;
-
-    CLWKernel normalizeKernel = program_.GetKernel(kernelName);
-
-    int argc = 0;
-
-    normalizeKernel.SetArg(argc++, input);
-    normalizeKernel.SetArg(argc++, output);
-    normalizeKernel.SetArg(argc++, numElems);
-    normalizeKernel.SetArg(argc++, SharedMemory(2 * sizeof(T) * groupSize));
-    normalizeKernel.SetArg(argc++, cache);
-
-    return context_.Launch1D(deviceIdx, NUM_BLOCKS * groupSize, groupSize, normalizeKernel);
-}
-
 CLWEvent CLWParallelPrimitives::Copy(unsigned int deviceIdx, CLWBuffer<cl_int> input, CLWBuffer<cl_int> output, int numElems)
 {
     int ELEMS_PER_WI = 4;
@@ -960,26 +935,166 @@ CLWEvent CLWParallelPrimitives::Copy(unsigned int deviceIdx, CLWBuffer<cl_int> i
     return context_.Launch1D(0, NUM_BLOCKS * WG_SIZE, WG_SIZE, copyKernel);
 }
 
+const float epsilon = 0.001f;
+
+template <class T>
+T CLWParallelPrimitives::GetMaxNum()
+{
+    return std::numeric_limits<T>::max();
+}
+
+
+template <>
+cl_float3 CLWParallelPrimitives::GetMaxNum<cl_float3>()
+{
+    cl_float3 val;
+
+    val.s[0] = std::numeric_limits<float>::max();
+    val.s[1] = std::numeric_limits<float>::max();
+    val.s[2] = std::numeric_limits<float>::max();
+
+    return val;
+}
+
+template <class T>
+T CLWParallelPrimitives::GetMinNum()
+{
+    return std::numeric_limits<T>::min();
+}
+
+template <>
+cl_float3 CLWParallelPrimitives::GetMinNum<cl_float3>()
+{
+    cl_float3 val;
+
+    val.s[0] = std::numeric_limits<float>::min();
+    val.s[1] = std::numeric_limits<float>::min();
+    val.s[2] = std::numeric_limits<float>::min();
+
+    return val;
+}
+
+template <class T>
+CLWEvent CLWParallelPrimitives::Reduction(const char* kernelName,
+    unsigned int deviceIdx,
+    CLWBuffer<T> input,
+    int numElems,
+    CLWBuffer<T> out)
+{
+    assert(input.GetElementCount() >= numElems);
+
+    int NUM_BLOCKS = (int)((numElems + WG_SIZE - 1) / WG_SIZE);
+
+    CLWKernel reductionKernel = program_.GetKernel(kernelName);
+
+    int argc = 0;
+
+    reductionKernel.SetArg(argc++, input);
+    reductionKernel.SetArg(argc++, numElems);
+    reductionKernel.SetArg(argc++, SharedMemory(sizeof(T) * WG_SIZE));
+    reductionKernel.SetArg(argc++, out);
+
+    return context_.Launch1D(deviceIdx, NUM_BLOCKS * WG_SIZE, WG_SIZE, reductionKernel);
+}
+
+template <class T>
+CLWEvent CLWParallelPrimitives::Normalize(const char* normalizeKernelName,
+                                          const char* minReductionKernelName,
+                                          const char* maxReductionKernelName,
+                                          unsigned int deviceIdx,
+                                          CLWBuffer<T> input,
+                                          CLWBuffer<T> output,
+                                          int numElems,
+                                          CLWBuffer<T> cache)
+{
+    assert(input.GetElementCount() >= numElems);
+    assert(output.GetElementCount() >= numElems);
+
+    int NUM_BLOCKS = (int)((numElems + WG_SIZE - 1) / WG_SIZE);
+
+    T min = GetMaxNum<T>();
+    T max = GetMinNum<T>();
+
+    context_.WriteBuffer<T>(deviceIdx, cache, &min, 1);
+
+   Reduction(minReductionKernelName,
+             0,
+             input,
+             numElems,
+             cache).Wait();
+
+    context_.ReadBuffer<T>(deviceIdx, cache, &min, 1).Wait();
+    context_.WriteBuffer<T>(deviceIdx, cache, &max, 1).Wait();
+
+    Reduction(maxReductionKernelName,
+              0,
+              input,
+              numElems,
+              cache).Wait();
+
+    context_.ReadBuffer<T>(deviceIdx, cache, &max, 1).Wait();
+
+    // launch normalization kernel
+    CLWKernel normalizeKernel = program_.GetKernel(normalizeKernelName);
+
+    int argc = 0;
+
+    normalizeKernel.SetArg(argc++, input);
+    normalizeKernel.SetArg(argc++, output);
+    normalizeKernel.SetArg(argc++, numElems);
+    normalizeKernel.SetArg(argc++, max);
+    normalizeKernel.SetArg(argc++, min);
+
+    return context_.Launch1D(deviceIdx, NUM_BLOCKS * WG_SIZE, WG_SIZE, normalizeKernel);
+}
+
 CLWEvent CLWParallelPrimitives::Normalize(unsigned int deviceIdx, CLWBuffer<cl_int> input, CLWBuffer<cl_int> output, int numElems)
 {
-    CLWBuffer<cl_int> cache = GetTempIntBuffer(NORMALIZATION_CACHE);
-    CLWEvent event = Normalize<cl_int>("buffer_normalization_int", deviceIdx, input, output, numElems, WG_SIZE, cache);
+    CLWBuffer<cl_int> cache = GetTempIntBuffer(1);
+
+    CLWEvent event = Normalize("buffer_normalization_int",
+                               "reduction_min_int",
+                               "reduction_max_int",
+                               deviceIdx,
+                               input,
+                               output,
+                               numElems,
+                               cache);
+
     ReclaimTempIntBuffer(cache);
     return event;
 }
 
 CLWEvent CLWParallelPrimitives::Normalize(unsigned int deviceIdx, CLWBuffer<cl_float> input, CLWBuffer<cl_float> output, int numElems)
 {
-    CLWBuffer<cl_float> cache = GetTempFloatBuffer(NORMALIZATION_CACHE);
-    CLWEvent event = Normalize<cl_float>("buffer_normalization_float", deviceIdx, input, output, numElems, WG_SIZE, cache);
+    CLWBuffer<cl_float> cache = GetTempFloatBuffer(1);
+
+    CLWEvent event = Normalize("buffer_normalization_float",
+                               "reduction_min_float",
+                               "reduction_max_float",
+                               deviceIdx,
+                               input,
+                               output,
+                               numElems,
+                               cache);
+
     ReclaimTempFloatBuffer(cache);
     return event;
 }
 
 CLWEvent CLWParallelPrimitives::Normalize(unsigned int deviceIdx, CLWBuffer<cl_float3> input, CLWBuffer<cl_float3> output, int numElems)
 {
-    CLWBuffer<cl_float3> cache = GetTempBuffer<cl_float3>(float3_BufferCache_, NORMALIZATION_CACHE);
-    CLWEvent event = Normalize<cl_float3>("buffer_normalization_float3", deviceIdx, input, output, numElems, WG_SIZE, cache);
+    CLWBuffer<cl_float3> cache = GetTempBuffer<cl_float3>(float3_BufferCache_, 1);
+
+    CLWEvent event = Normalize("buffer_normalization_float3",
+                               "reduction_min_float3",
+                               "reduction_max_float3",
+                               deviceIdx,
+                               input,
+                               output,
+                               numElems,
+                               cache);
+
     ReclaimTempBuffer(float3_BufferCache_, cache);
     return event;
 }

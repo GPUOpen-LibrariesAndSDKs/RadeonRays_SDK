@@ -91,12 +91,26 @@ private:
     void ReclaimTempBuffer(std::map<size_t, CLWBuffer<T>> collection, CLWBuffer<T> buffer);
 
     template <class T>
-    CLWEvent Normalize(const char* kernelName,
+    CLWEvent Reduction(const char* kernelName,
+                       unsigned int deviceIdx,
+                       CLWBuffer<T> input,
+                       int numElems,
+                       CLWBuffer<T> out);
+
+    template <class T>
+    T GetMaxNum();
+
+    template <class T>
+    T GetMinNum();
+
+    template <class T>
+    CLWEvent Normalize(const char* normalizeKernelName,
+                       const char* minReductionKernelName,
+                       const char* maxReductionKernelName,
                        unsigned int deviceIdx,
                        CLWBuffer<T> input,
                        CLWBuffer<T> output,
                        int numElems,
-                       int groupSize,
                        CLWBuffer<T> cache);
 
     CLWContext context_;
