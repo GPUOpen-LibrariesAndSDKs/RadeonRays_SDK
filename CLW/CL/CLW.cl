@@ -1586,7 +1586,7 @@ __kernel void buffer_normalization_##type(const __global type* input,\
     type norm_coef = storage[0] - storage[1];\
     int global_id = get_global_id(0);\
     if (global_id < count)\
-        output[global_id] = input[global_id] / norm_coef;\
+        output[global_id] = (input[global_id] - storage[1]) / norm_coef;\
 }
 
 // Do not change the order
