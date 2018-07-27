@@ -1557,30 +1557,19 @@ __kernel void reduction_##bin_op##_##type(__global type* buffer,\
     int group_id = get_group_id(0);\
     int local_id = get_local_id(0);\
     int group_size = get_local_size(0);\
-    \
     if (global_id < count)\
-    {\
-        *(shared_mem + local_id) = buffer[global_id];\
-    }\
+        shared_mem[local_id] = buffer[global_id];\
     else\
-    {\
-        *(shared_mem + local_id) = neutral_##bin_op##_##type;\
-    }\
-    \
+        shared_mem[local_id] = neutral_##bin_op##_##type;\
     barrier(CLK_LOCAL_MEM_FENCE);\
     for (int i = group_size / 2; i > 0; i >>= 1)\
     {\
         if (local_id < i)\
-        {\
-            *(shared_mem + local_id) = bin_op(shared_mem[local_id], shared_mem[local_id + i]);\
-        }\
+            shared_mem[local_id] = bin_op(shared_mem[local_id], shared_mem[local_id + i]);\
         barrier(CLK_LOCAL_MEM_FENCE);\
     }\
-    \
     if (local_id == 0)\
-    {\
         atomic_##bin_op##_##type(out, shared_mem[0]);\
-    }\
 }
 
 // --------------------- NORMALIZATION ------------------------
@@ -1594,9 +1583,7 @@ __kernel void buffer_normalization_##type(__global type* input,\
 {\
     int global_id = get_global_id(0);\
     if (global_id < count)\
-    {\
         output[global_id] = input[global_id] / (max - min);\
-    }\
 }
 
 // Do not change the order
