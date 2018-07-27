@@ -1513,7 +1513,8 @@ __kernel void segmented_distribute_part_sum_int_nocut(
 #define DEFINE_ATOMIC(operation)\
     __attribute__((always_inline)) void atomic_##operation##_float(volatile __global float* addr, float value)\
     {\
-        union{\
+        union\
+        {\
         unsigned int u32;\
         float        f32;\
         } next, expected, current;\
@@ -1549,7 +1550,7 @@ __attribute__((always_inline)) void atomic_min_int(volatile __global int* addr, 
 // --------------------- REDUCTION ------------------------
 
 #define DEFINE_REDUCTION(bin_op, type)\
-__kernel void reduction_##bin_op##_##type(__global type* buffer,\
+__kernel void reduction_##bin_op##_##type(const __global type* buffer,\
                                           int count,\
                                           __local type* shared_mem,\
                                           __global type* out,\
@@ -1577,10 +1578,10 @@ __kernel void reduction_##bin_op##_##type(__global type* buffer,\
 // --------------------- NORMALIZATION ------------------------
 
 #define DEFINE_BUFFER_NORMALIZATION(type)\
-__kernel void buffer_normalization_##type(__global type* input,\
+__kernel void buffer_normalization_##type(const __global type* input,\
                                           __global type* output,\
                                           int count,\
-                                          __global type* storage)\
+                                          const __global type* storage)\
 {\
     type norm_coef = storage[0] - storage[1];\
     int global_id = get_global_id(0);\

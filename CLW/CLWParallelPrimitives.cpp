@@ -1047,39 +1047,39 @@ CLWEvent CLWParallelPrimitives::Normalize(const char* normalizeKernelName,
     return context_.Launch1D(deviceIdx, NUM_BLOCKS * WG_SIZE, WG_SIZE, normalizeKernel);
 }
 
-//CLWEvent CLWParallelPrimitives::Normalize(unsigned int deviceIdx, CLWBuffer<cl_int> input, CLWBuffer<cl_int> output, int numElems)
-//{
-//    CLWBuffer<cl_int> cache = GetTempIntBuffer(2);
-//
-//    CLWEvent event = Normalize("buffer_normalization_int",
-//                               "reduction_min_int",
-//                               "reduction_max_int",
-//                               deviceIdx,
-//                               input,
-//                               output,
-//                               numElems,
-//                               cache);
-//
-//    ReclaimTempIntBuffer(cache);
-//    return event;
-//}
-//
-//CLWEvent CLWParallelPrimitives::Normalize(unsigned int deviceIdx, CLWBuffer<cl_float> input, CLWBuffer<cl_float> output, int numElems)
-//{
-//    CLWBuffer<cl_float> cache = GetTempFloatBuffer(2);
-//
-//    CLWEvent event = Normalize("buffer_normalization_float",
-//                               "reduction_min_float",
-//                               "reduction_max_float",
-//                               deviceIdx,
-//                               input,
-//                               output,
-//                               numElems,
-//                               cache);
-//
-//    ReclaimTempFloatBuffer(cache);
-//    return event;
-//}
+CLWEvent CLWParallelPrimitives::Normalize(unsigned int deviceIdx, CLWBuffer<cl_int> input, CLWBuffer<cl_int> output, int numElems)
+{
+    CLWBuffer<cl_int> cache = GetTempIntBuffer(2);
+
+    CLWEvent event = Normalize("buffer_normalization_int",
+                               "reduction_min_int",
+                               "reduction_max_int",
+                               deviceIdx,
+                               input,
+                               output,
+                               numElems,
+                               cache);
+
+    ReclaimTempIntBuffer(cache);
+    return event;
+}
+
+CLWEvent CLWParallelPrimitives::Normalize(unsigned int deviceIdx, CLWBuffer<cl_float> input, CLWBuffer<cl_float> output, int numElems)
+{
+    CLWBuffer<cl_float> cache = GetTempFloatBuffer(2);
+
+    CLWEvent event = Normalize("buffer_normalization_float",
+                               "reduction_min_float",
+                               "reduction_max_float",
+                               deviceIdx,
+                               input,
+                               output,
+                               numElems,
+                               cache);
+
+    ReclaimTempFloatBuffer(cache);
+    return event;
+}
 
 CLWEvent CLWParallelPrimitives::Normalize(unsigned int deviceIdx, CLWBuffer<cl_float3> input, CLWBuffer<cl_float3> output, int numElems)
 {
