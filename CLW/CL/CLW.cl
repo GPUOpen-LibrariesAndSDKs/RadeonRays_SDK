@@ -1511,14 +1511,15 @@ __kernel void segmented_distribute_part_sum_int_nocut(
 // --------------------- ATOMIC OPERTIONS ------------------------
 
 #define DEFINE_ATOMIC(operation)\
-    inline void atomic_##operation##_float(volatile __global float* addr, float value)\
+    __attribute__((always_inline)) void atomic_##operation##_float(volatile __global float* addr, float value)\
     {\
         union{\
         unsigned int u32;\
         float        f32;\
         } next, expected, current;\
         current.f32 = *addr;\
-        do{\
+        do\
+        {\
             expected.f32 = current.f32;\
             next.f32 = operation(expected.f32, value);\
             current.u32 = atomic_cmpxchg((volatile __global unsigned int *)addr,\
@@ -1527,7 +1528,7 @@ __kernel void segmented_distribute_part_sum_int_nocut(
     }
 
 #define DEFINE_ATOMIC_FLOAT3(operation)\
-    inline void atomic_##operation##_float3(volatile __global float3* addr, float3 value)\
+    __attribute__((always_inline)) void atomic_##operation##_float3(volatile __global float3* addr, float3 value)\
     {\
         volatile __global float* p = (volatile __global float*)addr;\
         atomic_##operation##_float(p, value.x);\
@@ -1535,12 +1536,12 @@ __kernel void segmented_distribute_part_sum_int_nocut(
         atomic_##operation##_float(p + 2, value.z);\
     }
 
-inline void atomic_max_int(volatile __global int* addr, int value)
+__attribute__((always_inline)) void atomic_max_int(volatile __global int* addr, int value)
 {
     atomic_max(addr, value);
 }
 
-inline void atomic_min_int(volatile __global int* addr, int value)
+__attribute__((always_inline)) void atomic_min_int(volatile __global int* addr, int value)
 {
     atomic_min(addr, value);
 }
@@ -1551,7 +1552,8 @@ inline void atomic_min_int(volatile __global int* addr, int value)
 __kernel void reduction_##bin_op##_##type(__global type* buffer,\
                                           int count,\
                                           __local type* shared_mem,\
-                                          __global type* out)\
+                                          __global type* out,\
+                                          int /* in elements */ out_offset)\
 {\
     int global_id = get_global_id(0);\
     int group_id = get_group_id(0);\
@@ -1569,7 +1571,7 @@ __kernel void reduction_##bin_op##_##type(__global type* buffer,\
         barrier(CLK_LOCAL_MEM_FENCE);\
     }\
     if (local_id == 0)\
-        atomic_##bin_op##_##type(out, shared_mem[0]);\
+        atomic_##bin_op##_##type(out + out_offset, shared_mem[0]);\
 }
 
 // --------------------- NORMALIZATION ------------------------
@@ -1578,12 +1580,12 @@ __kernel void reduction_##bin_op##_##type(__global type* buffer,\
 __kernel void buffer_normalization_##type(__global type* input,\
                                           __global type* output,\
                                           int count,\
-                                          type max,\
-                                          type min)\
+                                          __global type* storage)\
 {\
+    type norm_coef = storage[0] - storage[1];\
     int global_id = get_global_id(0);\
     if (global_id < count)\
-        output[global_id] = input[global_id] / (max - min);\
+        output[global_id] = input[global_id] / norm_coef;\
 }
 
 // Do not change the order

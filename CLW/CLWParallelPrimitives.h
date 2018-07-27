@@ -95,7 +95,8 @@ private:
                        unsigned int deviceIdx,
                        CLWBuffer<T> input,
                        int numElems,
-                       CLWBuffer<T> out);
+                       CLWBuffer<T> out,
+                       int /* in elements */out_offset = 0);
 
     template <class T>
     T GetMaxNum();
