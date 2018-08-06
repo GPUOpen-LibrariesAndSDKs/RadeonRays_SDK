@@ -144,7 +144,7 @@ void intersect_main(
                         int const face_idx = STARTIDX(node);
                         Face const face = faces[face_idx];
 #ifdef RR_RAY_MASK
-                        if (ray_get_mask(&r) != face.shape_id)
+                        //if (ray_get_mask(&r) != face.shape_id)
                         {
 #endif // RR_RAY_MASK
                             float3 const v1 = vertices[face.idx[0]];
@@ -253,7 +253,7 @@ void occluded_main(
                         int const face_idx = STARTIDX(node);
                         Face const face = faces[face_idx];
 #ifdef RR_RAY_MASK
-                        if (ray_get_mask(&r) != face.shape_id)
+//                        if (ray_get_mask(&r) != face.shape_id)
                         {
 #endif // RR_RAY_MASK
                             float3 const v1 = vertices[face.idx[0]];

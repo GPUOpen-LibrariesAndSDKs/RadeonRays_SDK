@@ -161,7 +161,7 @@ KERNEL void intersect_main(
                 else
                 {
 #ifdef RR_RAY_MASK
-                    if (ray_get_mask(&my_ray) != convert_int(GetMeshId(node)))
+                    //if (ray_get_mask(&my_ray) != convert_int(GetMeshId(node)))
                     {
 #endif // RR_RAY_MASK
                         float t = fast_intersect_triangle(
@@ -321,7 +321,7 @@ KERNEL void occluded_main(
                 else
                 {
 #ifdef RR_RAY_MASK
-                    if (ray_get_mask(&my_ray) != convert_int(GetMeshId(node)))
+                    //if (ray_get_mask(&my_ray) != convert_int(GetMeshId(node)))
                     {
 #endif // RR_RAY_MASK
                         float t = fast_intersect_triangle(

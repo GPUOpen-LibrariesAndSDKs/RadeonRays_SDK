@@ -140,7 +140,7 @@ occluded_main(
                 {
                     Face face = faces[STARTIDX(node)];
 #ifdef RR_RAY_MASK
-                    if (ray_get_mask(&r) != face.shape_id)
+//                    if (ray_get_mask(&r) != face.shape_id)
                     {
 #endif // RR_RAY_MASK
                         // Leafs directly store vertex indices
@@ -303,7 +303,7 @@ KERNEL void intersect_main(
                 {
                     Face face = faces[STARTIDX(node)];
 #ifdef RR_RAY_MASK
-                    if (ray_get_mask(&r) != face.shape_id)
+                    //if (ray_get_mask(&r) != face.shape_id)
                     {
 #endif // RR_RAY_MASK
                         // Leafs directly store vertex indices

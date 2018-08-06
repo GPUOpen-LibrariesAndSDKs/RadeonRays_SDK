@@ -234,7 +234,7 @@ KERNEL void intersect_main(
                             // otherwise skip the subtree
                             if (!shapeDisabled
 #ifdef RR_RAY_MASK
-                                && ray_get_mask(&r) != shapeId
+//                                && ray_get_mask(&r) != shapeId
 #endif // RR_RAY_MASK
                                 )
                             {
@@ -400,7 +400,7 @@ KERNEL void occluded_main(
                             // otherwise skip the subtree
                             if (!shapeDisabled 
 #ifdef RR_RAY_MASK
-                                && ray_get_mask(&r) != shapeId
+                                //&& ray_get_mask(&r) != shapeId
 #endif // RR_RAY_MASK
                                 )
                             {
