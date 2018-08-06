@@ -55,6 +55,10 @@ public:
 
     void ReclaimDeviceMemory();
 
+    CLWEvent Normalize(unsigned int deviceIdx, CLWBuffer<cl_int> input, CLWBuffer<cl_int> output, int numElems);
+    CLWEvent Normalize(unsigned int deviceIdx, CLWBuffer<cl_float> input, CLWBuffer<cl_float> output, int numElems);
+    CLWEvent Normalize(unsigned int deviceIdx, CLWBuffer<cl_float3> input, CLWBuffer<cl_float3> output, int numElems);
+
 protected:
     CLWEvent ScanExclusiveAddWG(unsigned int deviceIdx, CLWBuffer<cl_int> input, CLWBuffer<cl_int> output, int numElems);
     CLWEvent SegmentedScanExclusiveAddWG(unsigned int deviceIdx, CLWBuffer<cl_int> input, CLWBuffer<cl_int> inputHeads, CLWBuffer<cl_int> output);
@@ -79,12 +83,44 @@ protected:
     void               ReclaimTempFloatBuffer(CLWBuffer<cl_float> buffer);
 
 private:
+
+    template <class T>
+    CLWBuffer<T> GetTempBuffer(std::map<size_t, CLWBuffer<T> > collection, size_t size);
+
+    template <class T>
+    void ReclaimTempBuffer(std::map<size_t, CLWBuffer<T>> collection, CLWBuffer<T> buffer);
+
+    template <class T>
+    CLWEvent Reduction(const char* kernelName,
+                       unsigned int deviceIdx,
+                       CLWBuffer<T> input,
+                       int numElems,
+                       CLWBuffer<T> out,
+                       int /* in elements */out_offset = 0);
+
+    template <class T>
+    T GetMaxNum();
+
+    template <class T>
+    T GetMinNum();
+
+    template <class T>
+    CLWEvent Normalize(const char* normalizeKernelName,
+                       const char* minReductionKernelName,
+                       const char* maxReductionKernelName,
+                       unsigned int deviceIdx,
+                       CLWBuffer<T> input,
+                       CLWBuffer<T> output,
+                       int numElems,
+                       CLWBuffer<T> cache);
+
     CLWContext context_;
     CLWProgram program_;
 
-    std::map<size_t, CLWBuffer<cl_int> > intBufferCache_;
-    std::map<size_t, CLWBuffer<char> > charBufferCache_;
-    std::map<size_t, CLWBuffer<cl_float> > floatBufferCache_;
+    std::map<size_t, CLWBuffer<cl_int>> intBufferCache_;
+    std::map<size_t, CLWBuffer<char>> charBufferCache_;
+    std::map<size_t, CLWBuffer<cl_float>> floatBufferCache_;
+    std::map<size_t, CLWBuffer<cl_float3>> float3_BufferCache_;
 };
 
 

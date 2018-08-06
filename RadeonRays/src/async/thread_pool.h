@@ -29,6 +29,7 @@ THE SOFTWARE.
 #include <atomic>
 #include <future>
 #include <iostream>
+#include <algorithm>
 
 namespace RadeonRays
 {
@@ -66,7 +67,7 @@ namespace RadeonRays
         {
             std::unique_lock<std::mutex> lock(mutex_);
             cv_.wait(lock, [this](){return !queue_.empty();});
-            t = queue_.front();
+            t = std::move(queue_.front());
             queue_.pop();
         }
 
