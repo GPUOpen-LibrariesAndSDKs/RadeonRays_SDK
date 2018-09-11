@@ -23,6 +23,21 @@ THE SOFTWARE.
 #pragma OPENCL EXTENSION cl_khr_local_int32_base_atomics : enable
 #pragma OPENCL EXTENSION cl_khr_global_int32_base_atomics : enable
 
+// --------------------- CONSTANTS ------------------------
+// add neutral elements
+__constant int neutral_add_int = 0;
+__constant float neutral_add_float = 0;
+__constant float3 neutral_add_float3 = (float3)(0.0, 0.0, 0.0);
+// max neutral elements
+__constant int neutral_max_int = INT_MIN;
+__constant float neutral_max_float = FLT_MIN;
+__constant float3 neutral_max_float3 = (float3)(FLT_MIN, FLT_MIN, FLT_MIN);
+// min neutral elements
+__constant int neutral_min_int = INT_MAX;
+__constant float neutral_min_float = FLT_MAX;
+__constant float3 neutral_min_float3 = (float3)(FLT_MAX, FLT_MAX, FLT_MAX);
+
+__constant float epsilon = .00001f;
 
 // --------------------- HELPERS ------------------------
 //#define INT_MAX 0x7FFFFFFF
@@ -1492,3 +1507,101 @@ __kernel void segmented_distribute_part_sum_int_nocut(
         }
     }
 }
+
+// --------------------- ATOMIC OPERTIONS ------------------------
+
+#define DEFINE_ATOMIC(operation)\
+    __attribute__((always_inline)) void atomic_##operation##_float(volatile __global float* addr, float value)\
+    {\
+        union\
+        {\
+        unsigned int u32;\
+        float        f32;\
+        } next, expected, current;\
+        current.f32 = *addr;\
+        do\
+        {\
+            expected.f32 = current.f32;\
+            next.f32 = operation(expected.f32, value);\
+            current.u32 = atomic_cmpxchg((volatile __global unsigned int *)addr,\
+                expected.u32, next.u32);\
+        } while (current.u32 != expected.u32);\
+    }
+
+#define DEFINE_ATOMIC_FLOAT3(operation)\
+    __attribute__((always_inline)) void atomic_##operation##_float3(volatile __global float3* addr, float3 value)\
+    {\
+        volatile __global float* p = (volatile __global float*)addr;\
+        atomic_##operation##_float(p, value.x);\
+        atomic_##operation##_float(p + 1, value.y);\
+        atomic_##operation##_float(p + 2, value.z);\
+    }
+
+__attribute__((always_inline)) void atomic_max_int(volatile __global int* addr, int value)
+{
+    atomic_max(addr, value);
+}
+
+__attribute__((always_inline)) void atomic_min_int(volatile __global int* addr, int value)
+{
+    atomic_min(addr, value);
+}
+
+// --------------------- REDUCTION ------------------------
+
+#define DEFINE_REDUCTION(bin_op, type)\
+__kernel void reduction_##bin_op##_##type(const __global type* buffer,\
+                                          int count,\
+                                          __local type* shared_mem,\
+                                          __global type* out,\
+                                          int /* in elements */ out_offset)\
+{\
+    int global_id = get_global_id(0);\
+    int group_id = get_group_id(0);\
+    int local_id = get_local_id(0);\
+    int group_size = get_local_size(0);\
+    if (global_id < count)\
+        shared_mem[local_id] = buffer[global_id];\
+    else\
+        shared_mem[local_id] = neutral_##bin_op##_##type;\
+    barrier(CLK_LOCAL_MEM_FENCE);\
+    for (int i = group_size / 2; i > 0; i >>= 1)\
+    {\
+        if (local_id < i)\
+            shared_mem[local_id] = bin_op(shared_mem[local_id], shared_mem[local_id + i]);\
+        barrier(CLK_LOCAL_MEM_FENCE);\
+    }\
+    if (local_id == 0)\
+        atomic_##bin_op##_##type(out + out_offset, shared_mem[0]);\
+}
+
+// --------------------- NORMALIZATION ------------------------
+
+#define DEFINE_BUFFER_NORMALIZATION(type)\
+__kernel void buffer_normalization_##type(const __global type* input,\
+                                          __global type* output,\
+                                          int count,\
+                                          const __global type* storage)\
+{\
+    type norm_coef = storage[0] - storage[1];\
+    int global_id = get_global_id(0);\
+    if (global_id < count)\
+        output[global_id] = (input[global_id] - storage[1]) / norm_coef;\
+}
+
+// Do not change the order
+DEFINE_ATOMIC(min)
+DEFINE_ATOMIC(max)
+DEFINE_ATOMIC_FLOAT3(min)
+DEFINE_ATOMIC_FLOAT3(max)
+
+DEFINE_REDUCTION(min, int)
+DEFINE_REDUCTION(min, float)
+DEFINE_REDUCTION(min, float3)
+DEFINE_REDUCTION(max, int)
+DEFINE_REDUCTION(max, float)
+DEFINE_REDUCTION(max, float3)
+
+DEFINE_BUFFER_NORMALIZATION(int)
+DEFINE_BUFFER_NORMALIZATION(float)
+DEFINE_BUFFER_NORMALIZATION(float3)

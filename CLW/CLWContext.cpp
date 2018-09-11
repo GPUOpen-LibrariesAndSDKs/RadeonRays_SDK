@@ -229,10 +229,6 @@ CLWContext::CLWContext(CLWDevice device)
     InitCL();
 }
 
-CLWContext::~CLWContext()
-{
-}
-
 unsigned int CLWContext::GetDeviceCount() const
 {
     return (unsigned int)devices_.size();
@@ -264,16 +260,15 @@ CLWImage2D CLWContext::CreateImage2DFromGLTexture(cl_GLint texture) const
 
 void CLWContext::AcquireGLObjects(unsigned int idx, std::vector<cl_mem> const& objects) const
 {
-    cl_int status = clEnqueueAcquireGLObjects(commandQueues_[idx], (cl_uint)objects.size(), &objects[0], 0,0,0);
+    cl_int status = clEnqueueAcquireGLObjects(commandQueues_[idx], (cl_uint)objects.size(), &objects[0], 0, nullptr, nullptr);
     ThrowIf(status != CL_SUCCESS, status, "clEnqueueAcquireGLObjects failed");
 }
 
 void CLWContext::ReleaseGLObjects(unsigned int idx, std::vector<cl_mem> const& objects) const
 {
-    cl_int status = clEnqueueReleaseGLObjects(commandQueues_[idx], (cl_uint)objects.size(), &objects[0], 0,0,0);
+    cl_int status = clEnqueueReleaseGLObjects(commandQueues_[idx], (cl_uint)objects.size(), &objects[0], 0, nullptr, nullptr);
     ThrowIf(status != CL_SUCCESS, status, "clEnqueueReleaseGLObjects failed");
 }
-
 
 void CLWContext::Finish(unsigned int idx) const
 {

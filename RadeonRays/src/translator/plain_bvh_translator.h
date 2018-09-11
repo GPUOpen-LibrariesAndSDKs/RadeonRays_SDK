@@ -40,11 +40,7 @@ namespace RadeonRays
     {
     public:
         // Constructor
-        PlainBvhTranslator()
-            : nodecnt_(0)
-            , root_(0)
-        {
-        }
+        PlainBvhTranslator() = default;
 
         // Plain BVH node
         struct Node
@@ -61,15 +57,15 @@ namespace RadeonRays
         std::vector<Node> nodes_;
         std::vector<int>  extra_;
         std::vector<int>  roots_;
-        int nodecnt_;
-        int root_;
+        int nodecnt_ = 0;
+        int root_ = 0;
 
     private:
         int ProcessNode(Bvh::Node const* node);
         int ProcessNode(Bvh::Node const* n, int offset);
 
-        PlainBvhTranslator(PlainBvhTranslator const&);
-        PlainBvhTranslator& operator =(PlainBvhTranslator const&);
+        PlainBvhTranslator(PlainBvhTranslator const&) = delete;
+        PlainBvhTranslator& operator =(PlainBvhTranslator const&) = delete;
     };
 }
 

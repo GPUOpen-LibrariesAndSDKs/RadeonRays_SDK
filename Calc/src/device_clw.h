@@ -34,7 +34,7 @@ namespace Calc
     class DeviceClw : public DeviceCl
     {
     public:
-        DeviceClw(cl_context context, cl_device_id device, cl_command_queue queue);
+        //DeviceClw(cl_context context, cl_device_id device, cl_command_queue queue);
         DeviceClw(CLWDevice device);
         DeviceClw(CLWDevice device, CLWContext context);
         ~DeviceClw();

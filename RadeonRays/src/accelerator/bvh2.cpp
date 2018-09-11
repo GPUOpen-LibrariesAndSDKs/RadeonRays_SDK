@@ -142,10 +142,10 @@ namespace RadeonRays
     }
 
     void Bvh2::BuildImpl(
-        __m128 scene_min,
-        __m128 scene_max,
-        __m128 centroid_scene_min,
-        __m128 centroid_scene_max,
+        __m128 MSVC_X86_ALIGNMENT_FIX scene_min,
+        __m128 MSVC_X86_ALIGNMENT_FIX scene_max,
+        __m128 MSVC_X86_ALIGNMENT_FIX centroid_scene_min,
+        __m128 MSVC_X86_ALIGNMENT_FIX centroid_scene_max,
         const float3 *aabb_min,
         const float3 *aabb_max,
         const float3 *aabb_centroid,
@@ -228,7 +228,7 @@ namespace RadeonRays
         bool shutdown = false;
         // Number of primitives processed so far
         std::atomic<std::uint32_t> num_refs_processed;
-        num_refs_processed.store(0);
+		num_refs_processed.store(0);
 
         // Push root request
         requests.push(SplitRequest{
@@ -337,13 +337,13 @@ namespace RadeonRays
             std::this_thread::sleep_for(std::chrono::milliseconds(20));
         }
 
-        // Signal shutdown and wake up all the threads
+         // Signal shutdown and wake up all the threads
         {
             std::unique_lock<std::mutex> lock(mutex);
             shutdown = true;
-            cv.notify_all();
+        cv.notify_all();
         }
-
+            
         // Wait for all the threads to finish
         for (auto i = 0u; i < num_threads; ++i)
         {

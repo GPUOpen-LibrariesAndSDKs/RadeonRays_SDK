@@ -31,7 +31,7 @@ namespace Calc
     {
     public:
         ExceptionClw(std::string what) : m_what(what) {}
-        ~ExceptionClw() {}
+        ~ExceptionClw() = default;
 
         char const* what() const override { return m_what.c_str(); }
 

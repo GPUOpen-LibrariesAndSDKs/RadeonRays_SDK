@@ -9,10 +9,6 @@ namespace RadeonRays
                   [device](Calc::Buffer* buffer) { device->DeleteBuffer(buffer); })
     {
     }
-
-    Intersector::~Intersector()
-    {
-    }
     
     void Intersector::SetWorld(World const &world)
     {

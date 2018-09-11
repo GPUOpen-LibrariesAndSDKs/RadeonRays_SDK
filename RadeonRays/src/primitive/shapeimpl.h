@@ -45,10 +45,10 @@ namespace RadeonRays
         };
         
         // Constructor
-        ShapeImpl();
+        ShapeImpl() = default;
 
         // Destructor
-        ~ShapeImpl() = 0;
+        ~ShapeImpl() = default;
 
         // This is needed since instances need special API handling
         virtual bool is_instance() const;
@@ -76,12 +76,6 @@ namespace RadeonRays
         
         // Get ID
         Id GetId() const override;
-
-        // Set intersection mask 
-        void SetMask(int mask) override;
-
-        // Get intersection mask
-        int  GetMask() const override;
         
         // Get state changes since last OnCommit
         int GetStateChange() const;
@@ -95,21 +89,11 @@ namespace RadeonRays
         matrix worldmatinv_;
         float3 linearmotion_;
         quaternion angulrmotion_;
-        int mask_;
         // Id
         Id id_;
         // State change
         mutable int statechange_;
     };
-
-    inline ShapeImpl::ShapeImpl()
-    {
-        SetMask(0xFFFFFFFF);
-    }
-
-    inline ShapeImpl::~ShapeImpl()
-    {
-    }
     
     inline void ShapeImpl::SetTransform(matrix const& m, matrix const& minv)
     {
@@ -170,17 +154,6 @@ namespace RadeonRays
     inline bool ShapeImpl::is_instance() const
     {
         return false;
-    }
-
-    inline void ShapeImpl::SetMask(int mask)
-    {
-        mask_ = mask;
-        statechange_ |= kStateChangeMask;
-    }
-
-    inline int  ShapeImpl::GetMask() const
-    {
-        return mask_;
     }
 }
 

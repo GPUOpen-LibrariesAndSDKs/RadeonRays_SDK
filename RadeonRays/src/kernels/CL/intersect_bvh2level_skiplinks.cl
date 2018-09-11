@@ -78,8 +78,8 @@ typedef struct
     int id;
     // Shape BVH index (bottom level)
     int bvh_idx;
-    // Shape mask
-    int mask;
+    // Is the shape disabled?
+    unsigned int shapeDisabled;
     int padding1;
     // Transform
     float4 m0;
@@ -95,8 +95,6 @@ typedef struct
 {
     // Vertex indices
     int idx[3];
-    // Shape maks
-    int shape_mask;
     // Shape ID
     int shape_id;
     // Primitive ID
@@ -230,14 +228,19 @@ KERNEL void intersect_main(
                             // Get shape descrition struct index
                             int shape_idx = SHAPEIDX(node);
                             // Get shape mask
-                            int shape_mask = shapes[shape_idx].mask;
+                            unsigned int const shapeDisabled = shapes[shape_idx].shapeDisabled;
+                            int const shapeId = shapes[shape_idx].id;
                             // Drill into 2nd level BVH only if the geometry is not masked vs current ray
                             // otherwise skip the subtree
-                            if (ray_get_mask(&r) & shape_mask)
+                            if (!shapeDisabled
+#ifdef RR_RAY_MASK
+                                && ray_get_mask(&r) != shapeId
+#endif // RR_RAY_MASK
+                                )
                             {
                                 // Fetch bottom level BVH index
                                 addr = shapes[shape_idx].bvh_idx;
-                                shape_id = shapes[shape_idx].id;
+                                shape_id = shapeId;
 
                                 // Fetch BVH transform
                                 float4 wmi0 = shapes[shape_idx].m0;
@@ -389,10 +392,17 @@ KERNEL void occluded_main(
                             // Get shape descrition struct index
                             int shape_idx = SHAPEIDX(node);
                             // Get shape mask
-                            int shape_mask = shapes[shape_idx].mask;
+                            const unsigned int shapeDisabled = shapes[shape_idx].shapeDisabled;
+#ifdef RR_RAY_MASK
+                            const int shapeId = shapes[shape_idx].id;
+#endif // RR_RAY_MASK
                             // Drill into 2nd level BVH only if the geometry is not masked vs current ray
                             // otherwise skip the subtree
-                            if (ray_get_mask(&r) & shape_mask)
+                            if (!shapeDisabled 
+#ifdef RR_RAY_MASK
+                                && ray_get_mask(&r) != shapeId
+#endif // RR_RAY_MASK
+                                )
                             {
                                 // Fetch bottom level BVH index
                                 addr = shapes[shape_idx].bvh_idx;
@@ -405,7 +415,7 @@ KERNEL void occluded_main(
 
                                 r = transform_ray(r, wmi0, wmi1, wmi2, wmi3);
                                 // Recalc invdir
-                                invdir = safe_invdir(r);;
+                                invdir = safe_invdir(r);
                                 // And continue traversal of the bottom level BVH
                                 continue;
                             }

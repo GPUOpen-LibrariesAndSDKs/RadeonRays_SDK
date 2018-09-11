@@ -46,11 +46,11 @@ namespace RadeonRays
         Shape const* GetBaseShape() const;
 
         // Instance flag
-        bool is_instance() const;
+        bool is_instance() const override;
     private:
         /// Disallow to copy meshes, too heavy
-        Instance(Instance const& o);
-        Instance& operator = (Instance const& o);
+        Instance(Instance const& o) = delete;
+        Instance& operator = (Instance const& o) = delete;
 
         /// Base shape
         Shape const* shape_;

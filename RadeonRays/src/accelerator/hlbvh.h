@@ -40,7 +40,7 @@ namespace RadeonRays
     public:
         Hlbvh(Calc::Device* device);
         
-        virtual ~Hlbvh();
+        virtual ~Hlbvh() = default;
         
         // World space bounding box
         bbox const& Bounds() const;
@@ -65,8 +65,8 @@ namespace RadeonRays
         void InitGpuData();
         void AllocateBuffers(size_t numprims);
         
-        Hlbvh(Hlbvh const&);
-        Hlbvh& operator = (Hlbvh const&);
+        Hlbvh(Hlbvh const&) = delete;
+        Hlbvh& operator = (Hlbvh const&) = delete;
         
         // Context for GPU work submision
         Calc::Device* m_device;

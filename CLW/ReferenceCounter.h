@@ -39,8 +39,8 @@ template <typename T, cl_int(STDCALL *Retain)(T), cl_int(STDCALL *Release)(T)>
 class ReferenceCounter
 {
 public:
-    typedef ReferenceCounter<T, Retain, Release> SelfType;
-    ReferenceCounter() : object_(nullptr) {}
+    using SelfType = ReferenceCounter<T, Retain, Release>;
+    ReferenceCounter() = default;
     explicit ReferenceCounter(T object) : object_(object)
     {
         RetainObject();
@@ -82,22 +82,20 @@ private:
     void RetainObject()  { if (object_) Retain(object_); }
     void ReleaseObject() { if (object_) Release(object_); }
     
-    T object_;
+    T object_ = nullptr;
 };
 
 template <>
 class ReferenceCounter<cl_platform_id, nullptr, nullptr>
 {
 public:
-    typedef ReferenceCounter<cl_platform_id, nullptr, nullptr> SelfType;
-    ReferenceCounter() : object_(nullptr) {}
+    using SelfType = ReferenceCounter<cl_platform_id, nullptr, nullptr>;
+    ReferenceCounter() = default;
     explicit ReferenceCounter(cl_platform_id object) : object_(object)
     {
     }
     
-    ~ReferenceCounter()
-    {
-    }
+    ~ReferenceCounter() = default;
     
     ReferenceCounter(SelfType const& rhs)
     {
@@ -121,7 +119,7 @@ public:
     
 private:
     
-    cl_platform_id object_;
+    cl_platform_id object_ = nullptr;
 };
 
 

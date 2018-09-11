@@ -46,7 +46,7 @@ THE SOFTWARE.
 class CLWCL : public ::testing::Test
 {
 public:
-    virtual void SetUp()
+    void SetUp() override
     {
         cl_int status = CL_SUCCESS;
         cl_platform_id platform;
@@ -80,7 +80,7 @@ public:
         ASSERT_NO_THROW(context_ = CLWContext::Create(rawcontext_, &device, &queue_, 1));
     }
     
-    virtual void TearDown()
+    void TearDown() override
     {
         clReleaseCommandQueue(queue_);
         clReleaseContext(rawcontext_);

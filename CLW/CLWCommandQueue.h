@@ -43,9 +43,8 @@ public:
     static CLWCommandQueue Create(cl_command_queue queue);
     
     
-    CLWCommandQueue();
-    virtual          ~CLWCommandQueue();
-    
+    CLWCommandQueue() = default;
+    virtual ~CLWCommandQueue() = default;
     
     
 private:

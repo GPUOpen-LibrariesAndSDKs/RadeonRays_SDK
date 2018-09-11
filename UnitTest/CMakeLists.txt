@@ -76,3 +76,7 @@ endif (RR_USE_VULKAN)
 if (RR_ENABLE_RAYMASK) 
     target_compile_definitions(UnitTest PRIVATE RR_RAY_MASK)
 endif (RR_ENABLE_RAYMASK)
+
+if (RR_ENABLE_BACKFACE_CULL)
+    target_compile_definitions(UnitTest PRIVATE RR_BACKFACE_CULL)
+endif (RR_ENABLE_BACKFACE_CULL)

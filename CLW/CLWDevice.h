@@ -43,8 +43,8 @@ class CLWDevice : public ReferenceCounter<cl_device_id, clRetainDevice, clReleas
 public:
     static CLWDevice Create(cl_device_id id);
     
-    CLWDevice(){}
-    virtual ~CLWDevice();
+    CLWDevice() = default;
+    virtual ~CLWDevice() = default;
 
     // Device info
     cl_ulong GetLocalMemSize() const;

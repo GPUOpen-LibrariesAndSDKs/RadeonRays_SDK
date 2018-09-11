@@ -29,8 +29,8 @@ namespace Calc
     class CALC_API Buffer
     {
     public:
-        Buffer() {}
-        virtual ~Buffer(){};
+        Buffer() = default;
+        virtual ~Buffer() = default;
 
         virtual std::size_t GetSize() const = 0;
 

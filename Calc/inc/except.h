@@ -29,12 +29,9 @@ namespace Calc
     class CALC_API Exception
     {
     public:
-        Exception() {}
-        virtual ~Exception() = 0;
+        Exception() = default;
+        virtual ~Exception() = default;
         virtual char const* what() const = 0;
     };
 
-    inline Exception::~Exception()
-    {
-    }
 }

@@ -36,7 +36,7 @@ namespace Calc
     {
     public:
         BufferClw(CLWBuffer<char> buffer) : m_buffer(buffer) {}
-        ~BufferClw() override {};
+        ~BufferClw() override = default;
 
         std::size_t GetSize() const override { return m_buffer.GetElementCount(); }
 
@@ -51,9 +51,9 @@ namespace Calc
     class EventClw : public Event
     {
     public:
-        EventClw() {}
+        EventClw() = default;
         EventClw(CLWEvent event);
-        ~EventClw();
+        ~EventClw() = default;
 
         void Wait() override;
         bool IsComplete() const override;
@@ -66,10 +66,6 @@ namespace Calc
 
     EventClw::EventClw(CLWEvent event)
         : m_event(event)
-    {
-    }
-
-    EventClw::~EventClw()
     {
     }
 
@@ -106,7 +102,7 @@ namespace Calc
     {
     public:
         FunctionClw(CLWKernel kernel);
-        ~FunctionClw();
+        ~FunctionClw() = default;
 
         // Argument setters
         void SetArg(std::uint32_t idx, std::size_t arg_size, void* arg) override;
@@ -123,10 +119,6 @@ namespace Calc
 
     FunctionClw::FunctionClw(CLWKernel kernel)
         : m_kernel(kernel)
-    {
-    }
-
-    FunctionClw::~FunctionClw()
     {
     }
 
@@ -178,7 +170,7 @@ namespace Calc
     {
     public:
         ExecutableClw(CLWProgram program);
-        ~ExecutableClw();
+        ~ExecutableClw() = default;
 
         // Function management
         Function* CreateFunction(char const* name) override;
@@ -191,11 +183,6 @@ namespace Calc
     ExecutableClw::ExecutableClw(CLWProgram program)
         : m_program(program)
     {
-    }
-
-    ExecutableClw::~ExecutableClw()
-    {
-
     }
 
     Function* ExecutableClw::CreateFunction(char const* name)
@@ -528,7 +515,7 @@ namespace Calc
 
     void DeviceClw::WaitForMultipleEvents(Event** e, std::size_t num_events)
     {
-        for (auto i = 0; i < num_events; ++i)
+        for (auto i = 0U; i < num_events; ++i)
         {
             e[i]->Wait();
         }

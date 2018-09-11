@@ -34,7 +34,7 @@ namespace tinyobj {
 
 struct vertex_index {
   int v_idx, vt_idx, vn_idx;
-  vertex_index() {};
+  vertex_index() = default;
   vertex_index(int idx) : v_idx(idx), vt_idx(idx), vn_idx(idx) {};
   vertex_index(int vidx, int vtidx, int vnidx) : v_idx(vidx), vt_idx(vtidx), vn_idx(vnidx) {};
 
@@ -243,9 +243,7 @@ exportFaceGroupToShape(
   offset = shape.mesh.indices.size();
 
   // Flatten vertices and indices
-  for (size_t i = 0; i < faceGroup.size(); i++) {
-    const std::vector<vertex_index>& face = faceGroup[i];
-
+  for (const std::vector<vertex_index>& face : faceGroup) {
     vertex_index i0 = face[0];
     vertex_index i1(-1);
     vertex_index i2 = face[1];
@@ -297,10 +295,10 @@ std::string LoadMtl (
     std::string linebuf(&buf[0]);
 
     // Trim newline '\r\n' or '\n'
-    if (linebuf.size() > 0) {
+    if (!linebuf.empty()) {
       if (linebuf[linebuf.size()-1] == '\n') linebuf.erase(linebuf.size()-1);
     }
-    if (linebuf.size() > 0) {
+    if (!linebuf.empty()) {
       if (linebuf[linebuf.size()-1] == '\r') linebuf.erase(linebuf.size()-1);
     }
 
@@ -546,10 +544,10 @@ std::string LoadObj(
     std::string linebuf(&buf[0]);
 
     // Trim newline '\r\n' or '\n'
-    if (linebuf.size() > 0) {
+    if (!linebuf.empty()) {
       if (linebuf[linebuf.size()-1] == '\n') linebuf.erase(linebuf.size()-1);
     }
-    if (linebuf.size() > 0) {
+    if (!linebuf.empty()) {
       if (linebuf[linebuf.size()-1] == '\r') linebuf.erase(linebuf.size()-1);
     }
 

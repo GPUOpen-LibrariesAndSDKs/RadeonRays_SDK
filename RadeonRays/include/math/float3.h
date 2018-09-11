@@ -54,7 +54,7 @@ namespace RadeonRays
         float x, y, z, w;
     };
 
-    typedef float3 float4;
+    using float4 = float3;
 
 
     inline float3 operator+(float3 const& v1, float3 const& v2)

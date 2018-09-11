@@ -11,6 +11,7 @@ option(RR_NO_TESTS "Don't add any unit tests and remove any test functionality f
 option(RR_ENABLE_STATIC "Create static libraries rather than dynamic" OFF)
 option(RR_SHARED_CALC "Link Calc(compute abstraction layer) dynamically" OFF)
 option(RR_ENABLE_RAYMASK "Enable ray masking in intersection kernels" OFF)
+option(RR_ENABLE_BACKFACE_CULL "Enable backface culling in intersection kernels" OFF)
 #option(RR_TUTORIALS "Add tutorials projects" OFF)
 option(RR_SAFE_MATH "use safe math" OFF)
 mark_as_advanced(FORCE RR_USE_VULKAN)

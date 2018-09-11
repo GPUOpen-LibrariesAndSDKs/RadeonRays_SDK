@@ -142,7 +142,4 @@ namespace RadeonRays
         }
     }
 
-    Mesh::~Mesh()
-    {
-    }
 }

@@ -46,7 +46,7 @@ public:
     static CLWPlatform Create(cl_platform_id id, cl_device_type type = CL_DEVICE_TYPE_ALL);
     static void CreateAllPlatforms(std::vector<CLWPlatform>& platforms);
     
-    virtual ~CLWPlatform();
+    virtual ~CLWPlatform() = default;
     
     // Platform info
     std::string GetName() const;
@@ -74,9 +74,6 @@ private:
     mutable std::vector<CLWDevice> devices_;
     cl_device_type type_;
 };
-
-
-
 
 
 #endif

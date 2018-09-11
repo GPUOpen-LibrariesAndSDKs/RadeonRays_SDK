@@ -47,8 +47,8 @@ public:
     static CLWImage2D Create(cl_context context, cl_image_format const* imgFormat, size_t width, size_t height, size_t rowPitch);
     static CLWImage2D CreateFromGLTexture(cl_context context, cl_GLint texture);
 
-    CLWImage2D(){}
-    virtual ~CLWImage2D();
+    CLWImage2D() = default;
+    virtual ~CLWImage2D() = default;
 
     operator ParameterHolder() const
     {

@@ -79,7 +79,6 @@ namespace RadeonRays
                 node.s1.i2 = faces[idx].idx[2];
                 node.s1.shape_id = faces[idx].shapeidx;
                 node.s1.prim_id = faces[idx].id;
-                node.s1.shape_mask = faces[idx].shape_mask;
             }
         }
     }

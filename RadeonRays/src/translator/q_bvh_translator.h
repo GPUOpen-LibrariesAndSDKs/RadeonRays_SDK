@@ -60,9 +60,7 @@ namespace RadeonRays
         };
 
         // Constructor
-        QBvhTranslator()
-        {
-        }
+        QBvhTranslator() = default;
 
         void Process(const Bvh2 &bvh);
 
