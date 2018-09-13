@@ -268,6 +268,9 @@ namespace RadeonRays
         // Find any intersection.
         // The call is asynchronous. Event pointer mights be nullptrs.
         virtual void QueryOcclusion(Buffer const* rays, int numrays, Buffer* hitresults, Event const* waitevent, Event** event) const = 0;
+        
+        
+        virtual void QueryOccluded2dSumLinear2(Buffer const* origins, Buffer const* directions, Buffer const* koeffs, Buffer const* offset_directions, Buffer const* offset_koeffs, int numorigins, int numdirections, Buffer* hitresults, Event const* waitevent, Event** event) const = 0;
 
         // Find closest intersection, number of rays is in remote memory
         // The call is asynchronous. Event pointers might be nullptrs.
