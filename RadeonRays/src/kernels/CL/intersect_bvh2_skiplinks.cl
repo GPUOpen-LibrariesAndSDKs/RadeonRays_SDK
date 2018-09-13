@@ -293,7 +293,7 @@ void occluded_main(
 
 __attribute__((reqd_work_group_size(64, 1, 1)))
 KERNEL
-void occluded_main_2d(
+void occluded_main_2d_sum_linear(
 // BVH nodes
 GLOBAL bvh_node const* restrict nodes,
 // Triangle vertices
@@ -302,32 +302,43 @@ GLOBAL float3 const* restrict vertices,
 GLOBAL Face const* restrict faces,
 
 // Rays
-GLOBAL float3 const* restrict origins,
-GLOBAL float3 const* restrict directions,
+GLOBAL float4 const* restrict origins,
+GLOBAL float4 const* restrict directions,
+GLOBAL float4 const* restrict koefs,
+
+GLOBAL int const* restrict offset_directions,
+GLOBAL int const* restrict offset_koefs,
 
 // Number of origins and directions
 GLOBAL int const* restrict num_origins,
 GLOBAL int const* restrict num_directions,
 // Hit data
-GLOBAL int* hits
+GLOBAL float4* hits
 )
 {
     int num_rays = (*num_origins) * (*num_directions);
     
     int global_id = get_global_id(0);
+
+    int origin_id = global_id % (*num_origins);
+    int direction_id = (int)(global_id / (*num_origins));
     
     // Handle only working subset
     if (global_id < num_rays)
     {
+        const int direction_offset = offset_directions[origin_id];
+        const int koefs_offset = offset_koefs[origin_id];
+
+        const float4 koef = koefs[direction_id + koefs_offset];
+
         // Create ray
         ray r;
-        int origin_id = global_id % (*num_origins);
-        int direction_id = global_id / (*num_origins);
-        
-        r.o.xyz = origins[origin_id];
-        r.o.w = 1000000.0;
-        r.d.xyz = directions[direction_id];
-        r.d.w = 1.0;
+        r.o = origins[origin_id];
+        r.d = directions[direction_id + direction_offset];
+        r.extra.x = -1;
+        r.extra.y = 1;
+        r.doBackfaceCulling = 0;
+        r.padding = 1;
         
         {
             // Precompute inverse direction and origin / dir for bbox testing
@@ -366,7 +377,8 @@ GLOBAL int* hits
                             // If hit store the result and bail out
                             if (f < t_max)
                             {
-                                hits[global_id] = HIT_MARKER;
+                                hits[origin_id].x += koef.x;
+                                hits[origin_id].y += koef.z;
                                 return;
                             }
                             #ifdef RR_RAY_MASK
@@ -386,7 +398,8 @@ GLOBAL int* hits
             }
             
             // Finished traversal, but no intersection found
-            hits[global_id] = MISS_MARKER;
+            hits[origin_id].x += koef.y;
+            hits[origin_id].y += koef.w;
         }
     }
 }
