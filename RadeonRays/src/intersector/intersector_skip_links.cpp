@@ -114,7 +114,6 @@ namespace RadeonRays
 #if USE_OPENCL
         if (device->GetPlatform() == Calc::Platform::kOpenCL)
         {
-            std::cout << std::string(g_intersect_bvh2_skiplinks_opencl);
             m_gpudata->executable = m_device->CompileExecutable(g_intersect_bvh2_skiplinks_opencl, std::strlen(g_intersect_bvh2_skiplinks_opencl), buildopts.c_str());
         }
 #endif
