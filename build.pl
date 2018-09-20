@@ -1,5 +1,6 @@
 #!/usr/bin/env perl -w
 use File::Path;
+use lib '3rdparty/Perl/lib/File/Copy';
 use File::Copy::Recursive qw(fcopy dircopy);
 use Config;
 use Archive::Zip;
@@ -69,13 +70,13 @@ CheckFileError();
 if ($Config{osname} eq "darwin")
 {
 	BuildRadeonRays($mac);
-	fcopy("build/libRadeonRays.dylib", "lib/macOS/libRadeonRays.dylib") or die "Copy of libRadeonRays.dylib failed: $!";
+	fcopy("build/libRadeonRays.dylib", "builds/lib/macOS/libRadeonRays.dylib") or die "Copy of libRadeonRays.dylib failed: $!";
 }
 
 if ($Config{osname} eq "linux")
 {
 	BuildRadeonRays($linux);
-	fcopy("build/libRadeonRays.a", "lib/linux/libRadeonRays.a") or die "Copy of libRadeonRays.a failed: $!";
+	fcopy("RadeonRays/libRadeonRays.a", "builds/lib/linux/libRadeonRays.a") or die "Copy of libRadeonRays.a failed: $!";
 }
 
 if ($Config{osname} eq "MSWin32")
@@ -83,17 +84,17 @@ if ($Config{osname} eq "MSWin32")
 	BuildRadeonRays($windows);
 	
 	# copy libs
-	fcopy("RadeonRays/RelWithDebInfo/RadeonRays.lib", "lib/Windows/RadeonRays.lib") or die "Copy of RadeonRays.lib failed: $!";
+	fcopy("RadeonRays/RelWithDebInfo/RadeonRays.lib", "builds/lib/Windows/RadeonRays.lib") or die "Copy of RadeonRays.lib failed: $!";
 	
 	# copy dll files
 	mkpath('builds/bin', {error => \ $err} );
 	CheckFileError();
-	fcopy("/Bin/RelWithDebInfo/x64/Calc.dll", "bin/Windows/Calc.dll") or die "Copy of Calc.dll failed: $!";
-	fcopy("/Bin/RelWithDebInfo/x64/Calc.pdb", "bin/Windows/Calc.pdb") or die "Copy of Calc.pdb failed: $!";
-	fcopy("/Bin/RelWithDebInfo/x64/RadeonRays.dll", "bin/Windows/RadeonRays.dll") or die "Copy of RadeonRays.dll failed: $!";
-	fcopy("/Bin/RelWithDebInfo/x64/RadeonRays.pdb", "bin/Windows/RadeonRays.pdb") or die "Copy of RadeonRays.pdb failed: $!";	
-	fcopy("3rdparty/embree/bin/x64/embree.dll", "bin/Windows/embree.dll") or die "Copy of embree.dll failed: $!";
-	fcopy("3rdparty/embree/bin/x64/tbb.dll", "bin/Windows/tbb.dll") or die "Copy of tbb.dll failed: $!";
+	fcopy("RadeonRays/RelWithDebInfo/x64/Calc.dll", "builds/bin/Windows/Calc.dll") or die "Copy of Calc.dll failed: $!";
+	fcopy("RadeonRays/RelWithDebInfo/x64/Calc.pdb", "builds/bin/Windows/Calc.pdb") or die "Copy of Calc.pdb failed: $!";
+	fcopy("RadeonRays/RelWithDebInfo/x64/RadeonRays.dll", "builds/bin/Windows/RadeonRays.dll") or die "Copy of RadeonRays.dll failed: $!";
+	fcopy("RadeonRays/RelWithDebInfo/x64/RadeonRays.pdb", "builds/bin/Windows/RadeonRays.pdb") or die "Copy of RadeonRays.pdb failed: $!";	
+	fcopy("3rdparty/embree/bin/x64/embree.dll", "builds/bin/Windows/embree.dll") or die "Copy of embree.dll failed: $!";
+	fcopy("3rdparty/embree/bin/x64/tbb.dll", "builds/bin/Windows/tbb.dll") or die "Copy of tbb.dll failed: $!";
 }
 
 ZipIt();
