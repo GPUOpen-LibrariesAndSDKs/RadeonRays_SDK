@@ -3,7 +3,7 @@ use Cwd qw(getcwd);
 use File::Path;
 
 my $pathToLib;
-BEGIN { $pathToLib = getcwd . '/3rdparty/Perl/lib/File/Copy' }
+BEGIN { $pathToLib = getcwd . '/3rdparty/Perl/lib' }
 use lib $pathToLib;
 
 use File::Copy::Recursive qw(fcopy dircopy);
@@ -13,7 +13,7 @@ use Archive::Zip;
 my $err;
 
 my $mac = "cmake -DCMAKE_BUILD_TYPE=Release -DRR_USE_EMBREE=OFF -DRR_USE_OPENCL=ON -DRR_EMBED_KERNELS=OFF -DRR_SAFE_MATH=ON -DRR_SHARED_CALC=OFF";
-my $linux = "cmake -DCMAKE_BUILD_TYPE=Release -DRR_USE_EMBREE=OFF -DRR_USE_OPENCL=ON -DRR_EMBED_KERNELS=OFF -DRR_SAFE_MATH=ON -DRR_SHARED_CALC=OFF";
+my $linux "cmake -DCMAKE_BUILD_TYPE=Release -DRR_USE_EMBREE=OFF -DRR_USE_OPENCL=ON -DRR_EMBED_KERNELS=ON -DRR_SAFE_MATH=ON -DRR_SHARED_CALC=ON -DRR_ENABLE_STATIC=ON";
 my $windows = "cmake -G \"Visual Studio 14 2015 Win64\" -DRR_USE_EMBREE=ON -DRR_USE_OPENCL=ON -DRR_EMBED_KERNELS=ON -DRR_SAFE_MATH=ON -DRR_SHARED_CALC=ON";
 
 sub BuildRadeonRays
