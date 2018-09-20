@@ -1,6 +1,11 @@
 #!/usr/bin/env perl -w
+use Cwd qw(getcwd);
 use File::Path;
-use lib '3rdparty/Perl/lib/File/Copy';
+
+my $pathToLib;
+BEGIN { $pathToLib = getcwd . '/3rdparty/Perl/lib/File/Copy' }
+use lib $pathToLib;
+
 use File::Copy::Recursive qw(fcopy dircopy);
 use Config;
 use Archive::Zip;
@@ -70,12 +75,16 @@ CheckFileError();
 if ($Config{osname} eq "darwin")
 {
 	BuildRadeonRays($mac);
+	mkpath('builds/lib/macOS', {error => \ $err} );
+	CheckFileError();
 	fcopy("build/libRadeonRays.dylib", "builds/lib/macOS/libRadeonRays.dylib") or die "Copy of libRadeonRays.dylib failed: $!";
 }
 
 if ($Config{osname} eq "linux")
 {
 	BuildRadeonRays($linux);
+	mkpath('builds/lib/linux', {error => \ $err} );
+	CheckFileError();
 	fcopy("RadeonRays/libRadeonRays.a", "builds/lib/linux/libRadeonRays.a") or die "Copy of libRadeonRays.a failed: $!";
 }
 
@@ -84,10 +93,14 @@ if ($Config{osname} eq "MSWin32")
 	BuildRadeonRays($windows);
 	
 	# copy libs
+	mkpath('builds/lib/Windows', {error => \ $err} );
+	CheckFileError();
 	fcopy("RadeonRays/RelWithDebInfo/RadeonRays.lib", "builds/lib/Windows/RadeonRays.lib") or die "Copy of RadeonRays.lib failed: $!";
 	
 	# copy dll files
 	mkpath('builds/bin', {error => \ $err} );
+	CheckFileError();
+	mkpath('builds/bin/Windows', {error => \ $err} );
 	CheckFileError();
 	fcopy("RadeonRays/RelWithDebInfo/x64/Calc.dll", "builds/bin/Windows/Calc.dll") or die "Copy of Calc.dll failed: $!";
 	fcopy("RadeonRays/RelWithDebInfo/x64/Calc.pdb", "builds/bin/Windows/Calc.pdb") or die "Copy of Calc.pdb failed: $!";
