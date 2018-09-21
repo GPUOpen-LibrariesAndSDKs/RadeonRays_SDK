@@ -25,10 +25,6 @@ my $windows = "cmake -G \"Visual Studio 14 2015 Win64\" -DRR_USE_EMBREE=OFF -DRR
 sub BuildRadeonRays
 {
 	my $cmakeString = shift;
-	if ($Config{osname} ne "MSWin32")
-	{
-		system("make clean") && die("Clean failed");
-	}
     system($cmakeString) && die("cmake failed");
 	if ($Config{osname} eq "MSWin32")
 	{
