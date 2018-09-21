@@ -59,7 +59,7 @@ sub ZipIt
 	# create builds.zip
 	my $zip = Archive::Zip->new();
 	$zip->addTree( './builds', '' );
-	$zip->writeToFileNamed('builds.zip');
+	$zip->writeToFileNamed('artifacts/builds.zip');
 	
 	#system("rm -r builds") && die("Unable to clean up builds directory.");
 }
