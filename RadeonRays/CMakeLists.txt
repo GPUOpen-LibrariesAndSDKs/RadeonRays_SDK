@@ -218,6 +218,7 @@ target_compile_features(RadeonRays PRIVATE cxx_std_14)
 
 if (UNIX AND NOT APPLE)
         target_compile_options(RadeonRays PUBLIC -msse4.2 -fPIC)
+		target_link_libraries(RadeonRays PUBLIC dl)
         target_link_libraries(RadeonRays INTERFACE "-Wl,--no-undefined")
         
         #read version from header
