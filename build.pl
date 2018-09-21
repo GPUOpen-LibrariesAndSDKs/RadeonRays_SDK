@@ -20,14 +20,24 @@ my $err; # used by CheckFileError
 
 my $mac = "cmake -DCMAKE_BUILD_TYPE=Release -DRR_USE_EMBREE=OFF -DRR_USE_OPENCL=ON -DRR_EMBED_KERNELS=OFF -DRR_SAFE_MATH=ON -DRR_SHARED_CALC=OFF";
 my $linux = "cmake -DCMAKE_BUILD_TYPE=Release -DRR_USE_EMBREE=OFF -DRR_USE_OPENCL=ON -DRR_EMBED_KERNELS=ON -DRR_SAFE_MATH=ON -DRR_SHARED_CALC=ON -DRR_ENABLE_STATIC=ON";
-my $windows = "cmake -G \"Visual Studio 14 2015 Win64\" -DRR_USE_EMBREE=ON -DRR_USE_OPENCL=ON -DRR_EMBED_KERNELS=ON -DRR_SAFE_MATH=ON -DRR_SHARED_CALC=ON -DCMAKE_PREFIX_PATH=3rdparty/opencl";
+my $windows = "cmake -G \"Visual Studio 14 2015 Win64\" -DRR_USE_EMBREE=OFF -DRR_USE_OPENCL=ON -DRR_EMBED_KERNELS=ON -DRR_SAFE_MATH=ON -DRR_SHARED_CALC=ON -DCMAKE_PREFIX_PATH=3rdparty/opencl";
 
 sub BuildRadeonRays
 {
-	my $makeString = shift;
-    #system("make clean") && die("Clean failed");
-    system($makeString) && die("cmake failed");
-    system("make") && die("Failed make");
+	my $cmakeString = shift;
+	if ($Config{osname} ne "MSWin32")
+	{
+		system("make clean") && die("Clean failed");
+	}
+    system($cmakeString) && die("cmake failed");
+	if ($Config{osname} eq "MSWin32")
+	{
+		system("\"C:/Program Files (x86)/Microsoft Visual Studio 14.0/Common7/IDE/devenv.exe\" RadeonRaysSDK.sln /Build RelWithDebInfo");
+	}
+	else
+	{
+		system("make") && die("Failed make");
+	}
 }
 
 sub ZipIt
@@ -112,12 +122,12 @@ if ($Config{osname} eq "MSWin32")
 	CheckFileError();
 	mkpath('builds/bin/Windows', {error => \ $err} );
 	CheckFileError();
-	fcopy("RadeonRays/RelWithDebInfo/x64/Calc.dll", "builds/bin/Windows/Calc.dll") or die "Copy of Calc.dll failed: $!";
-	fcopy("RadeonRays/RelWithDebInfo/x64/Calc.pdb", "builds/bin/Windows/Calc.pdb") or die "Copy of Calc.pdb failed: $!";
-	fcopy("RadeonRays/RelWithDebInfo/x64/RadeonRays.dll", "builds/bin/Windows/RadeonRays.dll") or die "Copy of RadeonRays.dll failed: $!";
-	fcopy("RadeonRays/RelWithDebInfo/x64/RadeonRays.pdb", "builds/bin/Windows/RadeonRays.pdb") or die "Copy of RadeonRays.pdb failed: $!";	
-	fcopy("3rdparty/embree/bin/x64/embree.dll", "builds/bin/Windows/embree.dll") or die "Copy of embree.dll failed: $!";
-	fcopy("3rdparty/embree/bin/x64/tbb.dll", "builds/bin/Windows/tbb.dll") or die "Copy of tbb.dll failed: $!";
+	fcopy("bin/RelWithDebInfo/Calc.dll", "builds/bin/Windows/Calc.dll") or die "Copy of Calc.dll failed: $!";
+	fcopy("bin/RelWithDebInfo/Calc.pdb", "builds/bin/Windows/Calc.pdb") or die "Copy of Calc.pdb failed: $!";
+	fcopy("bin/RelWithDebInfo/RadeonRays.dll", "builds/bin/Windows/RadeonRays.dll") or die "Copy of RadeonRays.dll failed: $!";
+	fcopy("bin/RelWithDebInfo/RadeonRays.pdb", "builds/bin/Windows/RadeonRays.pdb") or die "Copy of RadeonRays.pdb failed: $!";	
+	#fcopy("3rdparty/embree/bin/x64/embree.dll", "builds/bin/Windows/embree.dll") or die "Copy of embree.dll failed: $!";
+	#fcopy("3rdparty/embree/bin/x64/tbb.dll", "builds/bin/Windows/tbb.dll") or die "Copy of tbb.dll failed: $!";
 }
 
 ZipIt();
