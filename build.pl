@@ -12,15 +12,8 @@ use SDKDownloader;
 
 sub CheckInstallSDK
 {
-    if (exists $ENV{'UNITY_USE_LINUX_SDK'})
-    {
-        print 'Setting up the Linux SDK';
-        SDKDownloader::PrepareSDK('linux-sdk', '20180907', "artifacts");
-    }
-	else
-	{
-		die("UNITY_USE_LINUX_SDK environment variable not found");
-	}
+    print 'Setting up the Linux SDK';
+    SDKDownloader::PrepareSDK('linux-sdk', '20180907', "artifacts");
 }
 
 my $err; # used by CheckFileError
