@@ -46,6 +46,7 @@ elseif (UNIX)
 endif (WIN32)
 
 if (RR_USE_OPENCL)
+    find_package(OpenCL REQUIRED PATHS ${RadeonRaysSDK_SOURCE_DIR}/3rdparty/opencl)
     find_package(OpenCL REQUIRED)
     add_definitions(-DUSE_OPENCL=1)
     
