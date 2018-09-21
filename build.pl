@@ -5,12 +5,25 @@ use File::Path;
 my $pathToLib;
 BEGIN { $pathToLib = getcwd . '/3rdparty/Perl/lib' }
 use lib $pathToLib;
-
 use File::Copy::Recursive qw(fcopy dircopy);
 use Config;
 use Archive::Zip;
+use SDKDownloader;
 
-my $err;
+sub CheckInstallSDK
+{
+    if (exists $ENV{'UNITY_USE_LINUX_SDK'})
+    {
+        print 'Setting up the Linux SDK';
+        SDKDownloader::PrepareSDK('linux-sdk', '20180907', "artifacts");
+    }
+	else
+	{
+		die("UNITY_USE_LINUX_SDK environment variable not found");
+	}
+}
+
+my $err; # used by CheckFileError
 
 my $mac = "cmake -DCMAKE_BUILD_TYPE=Release -DRR_USE_EMBREE=OFF -DRR_USE_OPENCL=ON -DRR_EMBED_KERNELS=OFF -DRR_SAFE_MATH=ON -DRR_SHARED_CALC=OFF";
 my $linux = "cmake -DCMAKE_BUILD_TYPE=Release -DRR_USE_EMBREE=OFF -DRR_USE_OPENCL=ON -DRR_EMBED_KERNELS=ON -DRR_SAFE_MATH=ON -DRR_SHARED_CALC=ON -DRR_ENABLE_STATIC=ON";
@@ -67,6 +80,9 @@ sub CheckFileError
 	}
 }
 
+
+mkpath('artifacts', {error => \ $err} );
+CheckFileError();
 mkpath('builds', {error => \ $err} );
 CheckFileError();
 mkpath('builds/lib', {error => \ $err} );
@@ -82,6 +98,7 @@ if ($Config{osname} eq "darwin")
 
 if ($Config{osname} eq "linux")
 {
+	CheckInstallSDK();
 	BuildRadeonRays($linux);
 	mkpath('builds/lib/linux', {error => \ $err} );
 	CheckFileError();
