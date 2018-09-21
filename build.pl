@@ -77,7 +77,7 @@ if ($Config{osname} eq "darwin")
 	BuildRadeonRays($mac);
 	mkpath('builds/lib/macOS', {error => \ $err} );
 	CheckFileError();
-	fcopy("build/libRadeonRays.dylib", "builds/lib/macOS/libRadeonRays.dylib") or die "Copy of libRadeonRays.dylib failed: $!";
+	fcopy("bin/libRadeonRays.dylib", "builds/lib/macOS/libRadeonRays.dylib") or die "Copy of libRadeonRays.dylib failed: $!";
 }
 
 if ($Config{osname} eq "linux")
