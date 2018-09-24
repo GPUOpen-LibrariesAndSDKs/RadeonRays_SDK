@@ -228,6 +228,12 @@ if (UNIX AND NOT APPLE)
         set_target_properties(RadeonRays PROPERTIES SOVERSION ${RR_API_VERSION})
 elseif (APPLE)
     target_compile_options(RadeonRays PUBLIC -stdlib=libc++)
+	
+	# bvh2.cpp is using SSE4.1
+if (SSE4_1_FOUND)
+  set (CMAKE_C_FLAGS_ALL "${CMAKE_C_FLAGS_ALL} -msse4.1")
+endif()
+
 endif (UNIX AND NOT APPLE)
 
 
