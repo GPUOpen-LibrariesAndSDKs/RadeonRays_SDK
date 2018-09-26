@@ -161,7 +161,7 @@ namespace RadeonRays
                                           Calc::Buffer const *offset_directions, Calc::Buffer const *offset_koefs,
                                           Calc::Buffer const *num_origins, Calc::Buffer const *num_directions,
                                           std::uint32_t maxrays, Calc::Buffer *hits,
-                                          Calc::Event const *wait_event, Calc::Event **event) const { assert(false); /*TODO: Currently implemented in SkipLinks intersector only*/}
+                                          Calc::Event const *wait_event, Calc::Event **event) const {}
 
     protected: 
         // Device to use
