@@ -88,6 +88,13 @@ namespace RadeonRays
         void Occluded(std::uint32_t queue_idx, Calc::Buffer const *rays, Calc::Buffer const *num_rays, 
             std::uint32_t max_rays, Calc::Buffer *hits, 
             Calc::Event const *wait_event, Calc::Event **event) const override;
+        
+        // Occulusion2d implementation
+        void Occluded2dSumLinear2(std::uint32_t queueidx, Calc::Buffer const *origins, Calc::Buffer const *directions, Calc::Buffer const *koefs,
+                                  Calc::Buffer const *offset_directions, Calc::Buffer const *offset_koefs,
+                                  Calc::Buffer const *num_origins, Calc::Buffer const *num_directions,
+                                  std::uint32_t maxrays, Calc::Buffer *hits,
+                                  Calc::Event const *wait_event, Calc::Event **event) const override;
 
     private:
         struct GpuData;

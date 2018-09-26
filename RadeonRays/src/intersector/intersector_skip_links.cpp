@@ -52,6 +52,7 @@ namespace RadeonRays
         Calc::Executable* executable;
         Calc::Function* isect_func;
         Calc::Function* occlude_func;
+        Calc::Function* occlude_func2d_sum_linear;
 
         GpuData(Calc::Device* d)
             : device(d)
@@ -71,6 +72,7 @@ namespace RadeonRays
             {
                 executable->DeleteFunction(isect_func);
                 executable->DeleteFunction(occlude_func);
+                executable->DeleteFunction(occlude_func2d_sum_linear);
                 device->DeleteExecutable(executable);
             }
         }
@@ -128,6 +130,7 @@ namespace RadeonRays
 
         m_gpudata->isect_func = m_gpudata->executable->CreateFunction("intersect_main");
         m_gpudata->occlude_func = m_gpudata->executable->CreateFunction("occluded_main");
+        m_gpudata->occlude_func2d_sum_linear = m_gpudata->executable->CreateFunction("occluded_main_2d_sum_linear");
     }
 
     void IntersectorSkipLinks::Process(World const& world)
@@ -444,6 +447,34 @@ namespace RadeonRays
         size_t localsize = kWorkGroupSize;
         size_t globalsize = ((maxrays + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
 
+        m_device->Execute(func, queueidx, globalsize, localsize, event);
+    }
+    
+    void IntersectorSkipLinks::Occluded2dSumLinear2(std::uint32_t queueidx, Calc::Buffer const *origins, Calc::Buffer const *directions, Calc::Buffer const *koefs,
+                                          Calc::Buffer const *offset_directions, Calc::Buffer const *offset_koefs,
+                                          Calc::Buffer const *num_origins, Calc::Buffer const *num_directions,
+                                          std::uint32_t maxrays, Calc::Buffer *hits,
+                                          Calc::Event const *wait_event, Calc::Event **event) const {
+        auto& func = m_gpudata->occlude_func2d_sum_linear;
+        
+        // Set args
+        int arg = 0;
+        
+        func->SetArg(arg++, m_gpudata->bvh);
+        func->SetArg(arg++, m_gpudata->vertices);
+        func->SetArg(arg++, m_gpudata->faces);
+        func->SetArg(arg++, origins);
+        func->SetArg(arg++, directions);
+        func->SetArg(arg++, koefs);
+        func->SetArg(arg++, offset_directions);
+        func->SetArg(arg++, offset_koefs);
+        func->SetArg(arg++, num_origins);
+        func->SetArg(arg++, num_directions);
+        func->SetArg(arg++, hits);
+        
+        size_t localsize = kWorkGroupSize;
+        size_t globalsize = ((maxrays + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
+        
         m_device->Execute(func, queueidx, globalsize, localsize, event);
     }
 

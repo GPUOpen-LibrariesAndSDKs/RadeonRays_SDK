@@ -130,6 +130,11 @@ namespace RadeonRays
     {
         m_device->QueryOcclusion(rays, numrays, hitresults, waitevent, event);
     }
+    
+    void IntersectionApiImpl::QueryOccluded2dSumLinear2(Buffer const* origins, Buffer const* directions, Buffer const* koeffs, Buffer const* offset_directions, Buffer const* offset_koeffs, int numorigins, int numdirections, Buffer* hitresults, Event const* waitevent, Event** event) const
+    {
+        m_device->QueryOccluded2dSumLinear2(origins, directions, koeffs, offset_directions, offset_koeffs, numorigins, numdirections, hitresults, waitevent, event);
+    }
 
     void IntersectionApiImpl::QueryIntersection(Buffer const* rays, Buffer const* numrays, int maxrays, Buffer* hitinfos, Event const* waitevent, Event** event) const
     {

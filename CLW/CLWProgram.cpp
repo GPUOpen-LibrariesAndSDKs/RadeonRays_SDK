@@ -46,9 +46,10 @@ static void load_file_contents(std::string const& name, std::vector<char>& conte
 
         in.seekg(0, std::ios::beg);
 
-        contents.resize(static_cast<unsigned>(fileSize));
+        contents.resize(static_cast<unsigned>(fileSize) + 1);
 
         in.read(&contents[0], fileSize);
+        contents[static_cast<unsigned>(fileSize)] = '\0';
     }
     else
     {
