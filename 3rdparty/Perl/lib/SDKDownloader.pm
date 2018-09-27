@@ -113,7 +113,7 @@ sub PrepareSDK
     # Load in the SDK specific perl module
     my $module = "SDK.pm";
     delete($INC{$module});
-    push(@INC, catdir(($dir, $repo_name)));
+    push(@INC, catdir(($cwd, $dir, $repo_name)));
     require $module;
 
     # Obtain default SDK configuration so we can fill out values
