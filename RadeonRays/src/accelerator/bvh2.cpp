@@ -35,7 +35,21 @@ namespace RadeonRays
     inline
     void *Align(std::size_t alignment, std::size_t size, std::size_t space, void *ptr)
     {
+#if !defined(__GNUC__) || __GNUC__ >= 5
         return std::align(alignment, size, ptr, space);
+#else
+	// gcc4 doesn't have std::align
+        const auto intptr = reinterpret_cast<uintptr_t>(ptr);
+        const auto aligned = (intptr - 1u + alignment) & -alignment;
+        const auto diff = aligned - intptr;
+        if ((size + diff) > space)
+          return nullptr;
+        else
+        {
+            space -= diff;
+            return ptr = reinterpret_cast<void*>(aligned);
+        }
+#endif
     }
 
 #ifdef __GNUC__
