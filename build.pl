@@ -14,7 +14,7 @@ my $buildCommandPrefix = '';
 sub CheckInstallSDK
 {
     print 'Setting up the Linux SDK';
-    SDKDownloader::PrepareSDK('linux-sdk', '20180907', "artifacts");
+    SDKDownloader::PrepareSDK('linux-sdk', '20180928', "artifacts");
     $buildCommandPrefix = "schroot -c $ENV{LINUX_BUILD_ENVIRONMENT} --";
 }
 
