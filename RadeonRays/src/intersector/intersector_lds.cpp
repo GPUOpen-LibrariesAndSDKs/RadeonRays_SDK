@@ -152,9 +152,11 @@ namespace RadeonRays
 #endif
 #endif
 
-        m_gpudata->bvh_prog.isect_func = m_gpudata->bvh_prog.executable->CreateFunction("intersect_main");
-        m_gpudata->bvh_prog.occlude_func = m_gpudata->bvh_prog.executable->CreateFunction("occluded_main");
-
+        if (m_gpudata->bvh_prog.executable)
+        {
+            m_gpudata->bvh_prog.isect_func = m_gpudata->bvh_prog.executable->CreateFunction("intersect_main");
+            m_gpudata->bvh_prog.occlude_func = m_gpudata->bvh_prog.executable->CreateFunction("occluded_main");
+        }
         if (m_gpudata->qbvh_prog.executable)
         {
             m_gpudata->qbvh_prog.isect_func = m_gpudata->qbvh_prog.executable->CreateFunction("intersect_main");

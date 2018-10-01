@@ -123,11 +123,6 @@ namespace RadeonRays
         }
 #endif
 #endif
-
-        assert(m_gpudata->executable);
-
-        m_gpudata->isect_func = m_gpudata->executable->CreateFunction("intersect_main");
-        m_gpudata->occlude_func = m_gpudata->executable->CreateFunction("occluded_main");
     }
 
     void IntersectorSkipLinks::Process(World const& world)
