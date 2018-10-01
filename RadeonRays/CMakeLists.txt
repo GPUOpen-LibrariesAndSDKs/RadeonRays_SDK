@@ -228,7 +228,7 @@ if (UNIX AND NOT APPLE)
         
         set_target_properties(RadeonRays PROPERTIES SOVERSION ${RR_API_VERSION})
 elseif (APPLE)
-    target_compile_options(RadeonRays PUBLIC -stdlib=libc++ -msse4.1)
+    target_compile_options(RadeonRays PUBLIC -stdlib=libc++ -msse4.1 -mmacosx-version-min=10.10)
 endif (UNIX AND NOT APPLE)
 
 
