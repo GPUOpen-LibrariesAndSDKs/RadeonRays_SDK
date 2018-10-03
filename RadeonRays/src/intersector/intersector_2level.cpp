@@ -261,7 +261,7 @@ namespace RadeonRays
             // Create actual BVH objects
             for (int i = 0; i < nummeshes + 1; ++i)
             {
-                m_bvhs[i] = std::make_unique<Bvh>(traversal_cost, num_bins, use_sah);
+                m_bvhs[i] = std::unique_ptr<Bvh>(new Bvh(traversal_cost, num_bins, use_sah));
                 m_cpudata->bvhptrs[i] = m_bvhs[i].get();
             }
 
@@ -589,7 +589,7 @@ namespace RadeonRays
                 use_sah = true;
             }
 
-            m_bvhs[nummeshes] = std::make_unique<Bvh>(traversal_cost, num_bins, use_sah);
+            m_bvhs[nummeshes] = std::unique_ptr<Bvh>(new Bvh(traversal_cost, num_bins, use_sah));
             m_bvhs[nummeshes]->Build(&object_bounds[0], nummeshes + numinstances);
             m_cpudata->bvhptrs[nummeshes] = m_bvhs[nummeshes].get();
 

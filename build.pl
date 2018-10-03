@@ -10,10 +10,12 @@ use Config;
 use Archive::Zip;
 use SDKDownloader;
 
+my $buildCommandPrefix = '';
 sub CheckInstallSDK
 {
     print 'Setting up the Linux SDK';
-    SDKDownloader::PrepareSDK('linux-sdk', '20180907', "artifacts");
+    SDKDownloader::PrepareSDK('linux-sdk', '20180928', "artifacts");
+    $buildCommandPrefix = "schroot -c $ENV{LINUX_BUILD_ENVIRONMENT} --";
 }
 
 my $err; # used by CheckFileError
@@ -25,14 +27,14 @@ my $windows = "cmake -G \"Visual Studio 14 2015 Win64\" -DRR_USE_EMBREE=OFF -DRR
 sub BuildRadeonRays
 {
 	my $cmakeString = shift;
-    system($cmakeString) && die("cmake failed");
+    system("$buildCommandPrefix $cmakeString") && die("cmake failed");
 	if ($Config{osname} eq "MSWin32")
 	{
 		system("\"C:/Program Files (x86)/Microsoft Visual Studio 14.0/Common7/IDE/devenv.exe\" RadeonRaysSDK.sln /Build RelWithDebInfo");
 	}
 	else
 	{
-		system("make") && die("Failed make");
+		system("$buildCommandPrefix make") && die("Failed make");
 	}
 }
 

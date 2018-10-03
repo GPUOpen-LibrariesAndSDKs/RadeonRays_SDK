@@ -148,7 +148,7 @@ namespace RadeonRays
             std::vector<int> mesh_faces_start_idx(numshapes);
 
             //
-            m_bvh = std::make_unique<Hlbvh>(m_device);
+            m_bvh = std::unique_ptr<Hlbvh>(new Hlbvh(m_device));
 
             // Here we now that only Meshes are present, otherwise 2level strategy would have been used
             for (int i = 0; i < numshapes; ++i)
