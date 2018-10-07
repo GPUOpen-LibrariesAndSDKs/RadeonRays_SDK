@@ -1,4 +1,4 @@
-/**********************************************************************
+﻿/**********************************************************************
 Copyright (c) 2016 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -37,7 +37,7 @@ using namespace RadeonRays;
 class ApiBackendEmbree : public ::testing::Test
 {
 public:
-    virtual void SetUp()
+    void SetUp() override
     {
         api_ = nullptr;
         int nativeidx = -1;
@@ -64,7 +64,7 @@ public:
         //        printf("[ok] RadeonRays test setup");
     }
 
-    virtual void TearDown()
+    void TearDown() override
     {
         if (api_) { IntersectionApi::Delete(api_); }
     }
@@ -267,9 +267,13 @@ TEST_F(ApiBackendEmbree, Intersection_1Ray)
     ASSERT_NO_THROW(api_->DeleteBuffer(isect_buffer));
 }
 
-
+#ifdef RR_RAY_MASK
 // The test creates a single triangle mesh and tests attach/detach functionality
 TEST_F(ApiBackendEmbree, Intersection_1Ray_Masked)
+#else
+// The test creates a single triangle mesh and tests attach/detach functionality
+TEST_F(ApiBackendEmbree, DISABLED_Intersection_1Ray_Masked)
+#endif // RR_RAY_MASK
 {
     Shape* mesh = nullptr;
 
@@ -280,7 +284,7 @@ TEST_F(ApiBackendEmbree, Intersection_1Ray_Masked)
     ASSERT_NO_THROW(mesh = api_->CreateMesh(vertices(), 3, 3 * sizeof(float), indices(), 0, numfaceverts(), 1));
 
     // Set mask 
-    ASSERT_NO_THROW(mesh->SetMask(0xFFFFFFFF));
+    ASSERT_NO_THROW(mesh->SetMaskEmbree(0xFFFFFFFF));
 
     ASSERT_TRUE(mesh != nullptr);
 
@@ -289,7 +293,7 @@ TEST_F(ApiBackendEmbree, Intersection_1Ray_Masked)
 
     // Prepare the ray
     ray r(float3(0.f, 0.f, -10.f), float3(0.f, 0.f, 1.f), 10000.f);
-    r.SetMask(0xFFFFFFFF);
+    r.SetMaskEmbree(0xFFFFFFFF);
 
     // Intersection and hit data
     Intersection isect;
@@ -314,7 +318,7 @@ TEST_F(ApiBackendEmbree, Intersection_1Ray_Masked)
     // Check results
     ASSERT_EQ(isect.shapeid, mesh->GetId());
 
-    mesh->SetMask(0x0);
+    mesh->SetMaskEmbree(0x0);
 
     // Commit geometry update
     ASSERT_NO_THROW(api_->Commit());
@@ -332,7 +336,7 @@ TEST_F(ApiBackendEmbree, Intersection_1Ray_Masked)
     // Check results
     ASSERT_EQ(isect.shapeid, kNullId);
 
-    mesh->SetMask(0xFF000000);
+    mesh->SetMaskEmbree(0xFF000000);
 
     int result = kNullId;
     // Commit geometry update
@@ -350,9 +354,9 @@ TEST_F(ApiBackendEmbree, Intersection_1Ray_Masked)
     // Check results
     ASSERT_GT(result, 0);
 
-    mesh->SetMask(0xFF000000);
+    mesh->SetMaskEmbree(0xFF000000);
 
-    r.SetMask(0x000000FF);
+    r.SetMaskEmbree(0x000000FF);
 
     ray* rr = nullptr;
     ASSERT_NO_THROW(api_->MapBuffer(ray_buffer, kMapWrite, 0, sizeof(ray), (void**)&rr, &e_));
@@ -731,11 +735,11 @@ TEST_F(ApiBackendEmbree, CornellBoxLoad)
     ASSERT_NO_THROW(api_->SetOption("acc.type", "grid"));
 
     // Create meshes within IntersectionApi
-    for (int i = 0; i<(int)shapes.size(); ++i)
+    for (auto const& shape_ : shapes)
     {
         Shape* shape = nullptr;
-        ASSERT_NO_THROW(shape = api_->CreateMesh(&shapes[i].mesh.positions[0], (int)shapes[i].mesh.positions.size() / 3, 3 * sizeof(float),
-            &shapes[i].mesh.indices[0], 0, nullptr, (int)shapes[i].mesh.indices.size() / 3));
+        ASSERT_NO_THROW(shape = api_->CreateMesh(&shape_.mesh.positions[0], (int)shape_.mesh.positions.size() / 3, 3 * sizeof(float),
+            &shape_.mesh.indices[0], 0, nullptr, (int)shape_.mesh.indices.size() / 3));
 
         ASSERT_NO_THROW(api_->AttachShape(shape));
         apishapes.push_back(shape);
@@ -745,9 +749,9 @@ TEST_F(ApiBackendEmbree, CornellBoxLoad)
     ASSERT_NO_THROW(api_->Commit());
 
     // Delete meshes
-    for (int i = 0; i<(int)apishapes.size(); ++i)
+    for (auto const* apishape : apishapes)
     {
-        ASSERT_NO_THROW(api_->DeleteShape(apishapes[i]));
+        ASSERT_NO_THROW(api_->DeleteShape(apishape));
     }
 }
 
@@ -764,11 +768,11 @@ TEST_F(ApiBackendEmbree, CornellBox_1Ray)
     //ASSERT_NO_THROW(api_->SetOption("acc.type", "grid"));
 
     // Create meshes within IntersectionApi
-    for (int i = 0; i<(int)shapes.size(); ++i)
+    for (auto const& shape_ : shapes)
     {
         Shape* shape = nullptr;
-        ASSERT_NO_THROW(shape = api_->CreateMesh(&shapes[i].mesh.positions[0], (int)shapes[i].mesh.positions.size() / 3, 3 * sizeof(float),
-            &shapes[i].mesh.indices[0], 0, nullptr, (int)shapes[i].mesh.indices.size() / 3));
+        ASSERT_NO_THROW(shape = api_->CreateMesh(&shape_.mesh.positions[0], (int)shape_.mesh.positions.size() / 3, 3 * sizeof(float),
+            &shape_.mesh.indices[0], 0, nullptr, (int)shape_.mesh.indices.size() / 3));
 
         ASSERT_NO_THROW(api_->AttachShape(shape));
         apishapes.push_back(shape);
@@ -801,9 +805,9 @@ TEST_F(ApiBackendEmbree, CornellBox_1Ray)
 
 
     // Delete meshes
-    for (int i = 0; i<(int)apishapes.size(); ++i)
+    for (auto const* apishape : apishapes)
     {
-        ASSERT_NO_THROW(api_->DeleteShape(apishapes[i]));
+        ASSERT_NO_THROW(api_->DeleteShape(apishape));
     }
 
     ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));

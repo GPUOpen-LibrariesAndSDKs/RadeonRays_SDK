@@ -1,4 +1,4 @@
-/**********************************************************************
+﻿/**********************************************************************
 Copyright (c) 2016 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -132,9 +132,9 @@ inline void ApiConformanceEmbree::TearDown()
     if (apigpu_) { EXPECT_NO_THROW(apigpu_->Commit()); }
 
     // Delete meshes
-    for (int i = 0; i<(int)apishapes_gpu_.size(); ++i)
+    for (auto const* apishape_gpu : apishapes_gpu_)
     {
-        if (apigpu_) { EXPECT_NO_THROW(apigpu_->DeleteShape(apishapes_gpu_[i])); }
+        if (apigpu_) { EXPECT_NO_THROW(apigpu_->DeleteShape(apishape_gpu)); }
     }
 
     if (apigpu_) { IntersectionApi::Delete(apigpu_); }
@@ -278,10 +278,10 @@ TEST_F(ApiConformanceEmbree, CornellBox_10000RaysRandom_ClosestHit_Events_Brutef
     ray r_brute[kNumRays];
 
     // generate some random vectors
-    for (int i = 0; i < kNumRays; ++i)
+    for (auto & ray_ : r_brute)
     {
-        r_brute[i].o = float3(rand_float() * 3.f - 1.5f, rand_float() * 3.f - 1.5f, rand_float() * 3.f - 1.5f, 1000.f);
-        r_brute[i].d = normalize(float3(rand_float(), rand_float(), rand_float()));
+        ray_.o = float3(rand_float() * 3.f - 1.5f, rand_float() * 3.f - 1.5f, rand_float() * 3.f - 1.5f, 1000.f);
+        ray_.d = normalize(float3(rand_float(), rand_float(), rand_float()));
     }
 
     EXPECT_NO_THROW(apigpu_->Commit());
@@ -302,7 +302,7 @@ TEST_F(ApiConformanceEmbree, CornellBox_10000RaysRandom_ClosestHit_Events_Brutef
         r_gpu[i].o = r_brute[i].o;
         r_gpu[i].d = r_brute[i].d;
         r_gpu[i].SetActive(true);
-        r_gpu[i].SetMask(0xFFFFFFFF);
+        r_gpu[i].SetMaskEmbree(0xFFFFFFFF);
     }
 
     EXPECT_NO_THROW(apigpu_->UnmapBuffer(ray_buffer_gpu, r_gpu, &egpu));
@@ -386,7 +386,7 @@ inline void ApiConformanceEmbree::ExpectClosestRaysOk(RadeonRays::IntersectionAp
         rays[i].d = r_brute[i].d;
 
         rays[i].SetActive(true);
-        rays[i].SetMask(0xFFFFFFFF);
+        rays[i].SetMaskEmbree(0xFFFFFFFF);
     }
 
     EXPECT_NO_THROW(api->UnmapBuffer(ray_buffer, rays, &ev));
@@ -450,7 +450,7 @@ inline void ApiConformanceEmbree::ExpectAnyRaysOk(RadeonRays::IntersectionApi* a
         rays[i].d = r_brute[i].d;
 
         rays[i].SetActive(true);
-        rays[i].SetMask(0xFFFFFFFF);
+        rays[i].SetMaskEmbree(0xFFFFFFFF);
     }
 
     EXPECT_NO_THROW(api->UnmapBuffer(ray_buffer, rays, &ev));

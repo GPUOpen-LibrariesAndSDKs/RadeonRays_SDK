@@ -1,4 +1,4 @@
-/**********************************************************************
+﻿/**********************************************************************
 Copyright (c) 2016 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -95,12 +95,12 @@ namespace RadeonRays
             Wait();
         }
 
-        virtual bool Complete() const
+        bool Complete() const override
         {
             return m_ftr.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
         }
 
-        virtual void Wait()
+        void Wait() override
         {
             m_ftr.wait();
         }
@@ -138,10 +138,9 @@ namespace RadeonRays
             it.second.updated = false;
 
         //checking removed shapes
-        for (auto it = world.shapes_.begin(); it != world.shapes_.end(); ++it)
+        for (auto wShape_ : world.shapes_)
         {
-            auto& i = *it;
-            const ShapeImpl* shape = dynamic_cast<const ShapeImpl*>(i);
+            const ShapeImpl* shape = dynamic_cast<const ShapeImpl*>(wShape_);
             if (m_instances.count(shape))
                 m_instances[shape].updated = true;
         }
@@ -173,9 +172,9 @@ namespace RadeonRays
         rtcDeleteScene(m_scene); CheckEmbreeError();
         m_scene = rtcDeviceNewScene(m_device, RTC_SCENE_STATIC, RTC_INTERSECT1 | RTC_INTERSECT4 | RTC_INTERSECT8 | RTC_INTERSECT16 ); CheckEmbreeError();
 
-        for (auto i : world.shapes_)
+        for (auto wShape_ : world.shapes_)
         {
-            const ShapeImpl* shape = dynamic_cast<const ShapeImpl*>(i);
+            const ShapeImpl* shape = dynamic_cast<const ShapeImpl*>(wShape_);
             ThrowIf(!shape, "Invalid shape.");
 
             //update only if shape already precessed before
@@ -207,7 +206,7 @@ namespace RadeonRays
             shape->GetTransform(trans, transInv);
             rtcSetTransform(m_scene, geom, RTC_MATRIX_ROW_MAJOR, &trans.m00);
             CheckEmbreeError();
-            rtcSetMask(m_scene, geom, shape->GetMask());
+            rtcSetMask(m_scene, geom, shape->GetMaskEmbree());
             CheckEmbreeError();
             rtcSetUserData(m_scene, geom, &data);
             CheckEmbreeError();
@@ -549,7 +548,7 @@ namespace RadeonRays
 
         if (state & ShapeImpl::kStateChangeMask)
         {
-            rtcSetMask(m_scene, data.geom, shape->GetMask());
+            rtcSetMask(m_scene, data.geom, shape->GetMaskEmbree());
             CheckEmbreeError();
         }
         if (state & ShapeImpl::kStateChangeTransform)
@@ -583,7 +582,7 @@ namespace RadeonRays
         dst.primID = RTC_INVALID_GEOMETRY_ID;
         dst.instID = RTC_INVALID_GEOMETRY_ID;
         dst.time = src.GetTime();
-        dst.mask = src.GetMask();
+        dst.mask = src.GetMaskEmbree();
     }
 
     void EmbreeIntersectionDevice::FillRTCRay(RTCRay4& dst, int i, const ray& src) const
@@ -602,7 +601,7 @@ namespace RadeonRays
         dst.primID[i] = RTC_INVALID_GEOMETRY_ID;
         dst.instID[i] = RTC_INVALID_GEOMETRY_ID;
         dst.time[i] = src.GetTime();
-        dst.mask[i] = src.GetMask();
+        dst.mask[i] = src.GetMaskEmbree();
     }
 
 

@@ -1,4 +1,4 @@
-/**********************************************************************
+﻿/**********************************************************************
 Copyright (c) 2016 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -45,7 +45,7 @@ namespace RadeonRays
         };
         
         // Constructor
-        ShapeImpl() = default;
+        ShapeImpl();
 
         // Destructor
         ~ShapeImpl() = default;
@@ -76,6 +76,12 @@ namespace RadeonRays
         
         // Get ID
         Id GetId() const override;
+
+        // Set intersection mask for embree
+        void SetMaskEmbree(int mask_embree) override;
+
+        // Get intersection mask for embree
+        int  GetMaskEmbree() const override;
         
         // Get state changes since last OnCommit
         int GetStateChange() const;
@@ -89,12 +95,18 @@ namespace RadeonRays
         matrix worldmatinv_;
         float3 linearmotion_;
         quaternion angulrmotion_;
+        int mask_embree_;
         // Id
         Id id_;
         // State change
         mutable int statechange_;
     };
     
+    inline ShapeImpl::ShapeImpl()
+    {
+        SetMaskEmbree(0xFFFFFFFF);
+    }
+
     inline void ShapeImpl::SetTransform(matrix const& m, matrix const& minv)
     {
         worldmat_ = m;
@@ -141,6 +153,17 @@ namespace RadeonRays
         return id_;
     }
     
+    inline void ShapeImpl::SetMaskEmbree(int mask_embree)
+    {
+        mask_embree_ = mask_embree;
+        statechange_ |= kStateChangeMask;
+    }
+
+    inline int ShapeImpl::GetMaskEmbree() const
+    {
+        return mask_embree_;
+    }
+
     inline int ShapeImpl::GetStateChange() const
     {
         return statechange_;

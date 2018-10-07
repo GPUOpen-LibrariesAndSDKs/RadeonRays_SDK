@@ -1,4 +1,4 @@
-/**********************************************************************
+﻿/**********************************************************************
 Copyright (c) 2016 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -107,6 +107,10 @@ namespace RadeonRays
         // ID of a shape
         virtual void SetId(Id id) = 0;
         virtual Id GetId() const = 0;
+
+        // Geometry mask to mask out intersections in embree
+        virtual void SetMaskEmbree(int mask_embree) = 0;
+        virtual int  GetMaskEmbree() const = 0;
     };
 
     // Buffer represents a chunk of memory hosted inside the API
