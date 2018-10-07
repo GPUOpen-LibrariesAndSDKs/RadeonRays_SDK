@@ -37,7 +37,7 @@ using namespace RadeonRays;
 class ApiBackendEmbree : public ::testing::Test
 {
 public:
-    virtual void SetUp()
+    void SetUp() override
     {
         api_ = nullptr;
         int nativeidx = -1;
@@ -64,7 +64,7 @@ public:
         //        printf("[ok] RadeonRays test setup");
     }
 
-    virtual void TearDown()
+    void TearDown() override
     {
         if (api_) { IntersectionApi::Delete(api_); }
     }
@@ -735,11 +735,11 @@ TEST_F(ApiBackendEmbree, CornellBoxLoad)
     ASSERT_NO_THROW(api_->SetOption("acc.type", "grid"));
 
     // Create meshes within IntersectionApi
-    for (int i = 0; i<(int)shapes.size(); ++i)
+    for (auto const& shape_ : shapes)
     {
         Shape* shape = nullptr;
-        ASSERT_NO_THROW(shape = api_->CreateMesh(&shapes[i].mesh.positions[0], (int)shapes[i].mesh.positions.size() / 3, 3 * sizeof(float),
-            &shapes[i].mesh.indices[0], 0, nullptr, (int)shapes[i].mesh.indices.size() / 3));
+        ASSERT_NO_THROW(shape = api_->CreateMesh(&shape_.mesh.positions[0], (int)shape_.mesh.positions.size() / 3, 3 * sizeof(float),
+            &shape_.mesh.indices[0], 0, nullptr, (int)shape_.mesh.indices.size() / 3));
 
         ASSERT_NO_THROW(api_->AttachShape(shape));
         apishapes.push_back(shape);
@@ -749,9 +749,9 @@ TEST_F(ApiBackendEmbree, CornellBoxLoad)
     ASSERT_NO_THROW(api_->Commit());
 
     // Delete meshes
-    for (int i = 0; i<(int)apishapes.size(); ++i)
+    for (auto const* apishape : apishapes)
     {
-        ASSERT_NO_THROW(api_->DeleteShape(apishapes[i]));
+        ASSERT_NO_THROW(api_->DeleteShape(apishape));
     }
 }
 
@@ -768,11 +768,11 @@ TEST_F(ApiBackendEmbree, CornellBox_1Ray)
     //ASSERT_NO_THROW(api_->SetOption("acc.type", "grid"));
 
     // Create meshes within IntersectionApi
-    for (int i = 0; i<(int)shapes.size(); ++i)
+    for (auto const& shape_ : shapes)
     {
         Shape* shape = nullptr;
-        ASSERT_NO_THROW(shape = api_->CreateMesh(&shapes[i].mesh.positions[0], (int)shapes[i].mesh.positions.size() / 3, 3 * sizeof(float),
-            &shapes[i].mesh.indices[0], 0, nullptr, (int)shapes[i].mesh.indices.size() / 3));
+        ASSERT_NO_THROW(shape = api_->CreateMesh(&shape_.mesh.positions[0], (int)shape_.mesh.positions.size() / 3, 3 * sizeof(float),
+            &shape_.mesh.indices[0], 0, nullptr, (int)shape_.mesh.indices.size() / 3));
 
         ASSERT_NO_THROW(api_->AttachShape(shape));
         apishapes.push_back(shape);
@@ -805,9 +805,9 @@ TEST_F(ApiBackendEmbree, CornellBox_1Ray)
 
 
     // Delete meshes
-    for (int i = 0; i<(int)apishapes.size(); ++i)
+    for (auto const* apishape : apishapes)
     {
-        ASSERT_NO_THROW(api_->DeleteShape(apishapes[i]));
+        ASSERT_NO_THROW(api_->DeleteShape(apishape));
     }
 
     ASSERT_NO_THROW(api_->DeleteBuffer(ray_buffer));

@@ -95,12 +95,12 @@ namespace RadeonRays
             Wait();
         }
 
-        virtual bool Complete() const
+        bool Complete() const override
         {
             return m_ftr.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
         }
 
-        virtual void Wait()
+        void Wait() override
         {
             m_ftr.wait();
         }
@@ -138,10 +138,9 @@ namespace RadeonRays
             it.second.updated = false;
 
         //checking removed shapes
-        for (auto it = world.shapes_.begin(); it != world.shapes_.end(); ++it)
+        for (auto wShape_ : world.shapes_)
         {
-            auto& i = *it;
-            const ShapeImpl* shape = dynamic_cast<const ShapeImpl*>(i);
+            const ShapeImpl* shape = dynamic_cast<const ShapeImpl*>(wShape_);
             if (m_instances.count(shape))
                 m_instances[shape].updated = true;
         }
@@ -173,9 +172,9 @@ namespace RadeonRays
         rtcDeleteScene(m_scene); CheckEmbreeError();
         m_scene = rtcDeviceNewScene(m_device, RTC_SCENE_STATIC, RTC_INTERSECT1 | RTC_INTERSECT4 | RTC_INTERSECT8 | RTC_INTERSECT16 ); CheckEmbreeError();
 
-        for (auto i : world.shapes_)
+        for (auto wShape_ : world.shapes_)
         {
-            const ShapeImpl* shape = dynamic_cast<const ShapeImpl*>(i);
+            const ShapeImpl* shape = dynamic_cast<const ShapeImpl*>(wShape_);
             ThrowIf(!shape, "Invalid shape.");
 
             //update only if shape already precessed before

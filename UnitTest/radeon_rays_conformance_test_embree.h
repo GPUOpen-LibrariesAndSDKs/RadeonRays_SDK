@@ -132,9 +132,9 @@ inline void ApiConformanceEmbree::TearDown()
     if (apigpu_) { EXPECT_NO_THROW(apigpu_->Commit()); }
 
     // Delete meshes
-    for (int i = 0; i<(int)apishapes_gpu_.size(); ++i)
+    for (auto const* apishape_gpu : apishapes_gpu_)
     {
-        if (apigpu_) { EXPECT_NO_THROW(apigpu_->DeleteShape(apishapes_gpu_[i])); }
+        if (apigpu_) { EXPECT_NO_THROW(apigpu_->DeleteShape(apishape_gpu)); }
     }
 
     if (apigpu_) { IntersectionApi::Delete(apigpu_); }
@@ -278,10 +278,10 @@ TEST_F(ApiConformanceEmbree, CornellBox_10000RaysRandom_ClosestHit_Events_Brutef
     ray r_brute[kNumRays];
 
     // generate some random vectors
-    for (int i = 0; i < kNumRays; ++i)
+    for (auto & ray_ : r_brute)
     {
-        r_brute[i].o = float3(rand_float() * 3.f - 1.5f, rand_float() * 3.f - 1.5f, rand_float() * 3.f - 1.5f, 1000.f);
-        r_brute[i].d = normalize(float3(rand_float(), rand_float(), rand_float()));
+        ray_.o = float3(rand_float() * 3.f - 1.5f, rand_float() * 3.f - 1.5f, rand_float() * 3.f - 1.5f, 1000.f);
+        ray_.d = normalize(float3(rand_float(), rand_float(), rand_float()));
     }
 
     EXPECT_NO_THROW(apigpu_->Commit());
