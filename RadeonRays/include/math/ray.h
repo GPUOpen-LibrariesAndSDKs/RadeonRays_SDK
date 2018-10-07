@@ -1,4 +1,4 @@
-/**********************************************************************
+﻿/**********************************************************************
 Copyright (c) 2016 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -43,6 +43,7 @@ namespace RadeonRays
             SetMask(-1);
             SetActive(true);
             SetDoBackfaceCulling(false);
+            SetMask(0xFFFFFFFF);
         }
 
         float3 operator ()(float t) const
@@ -100,10 +101,20 @@ namespace RadeonRays
             return doBackfaceCulling > 0;
         }
 
+        void SetMaskEmbree(int mask_embree_)
+        {
+            mask_embree = mask_embree_;
+        }
+
+        int GetMaskEmbree() const
+        {
+            return mask_embree;
+        }
+
         float4 o;
         float4 d;
         int2 extra;
         int doBackfaceCulling;
-        int padding;
+        int mask_embree;
     };
 }

@@ -1,4 +1,4 @@
-/**********************************************************************
+﻿/**********************************************************************
 Copyright (c) 2016 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -302,7 +302,7 @@ TEST_F(ApiConformanceEmbree, CornellBox_10000RaysRandom_ClosestHit_Events_Brutef
         r_gpu[i].o = r_brute[i].o;
         r_gpu[i].d = r_brute[i].d;
         r_gpu[i].SetActive(true);
-        r_gpu[i].SetMask(0xFFFFFFFF);
+        r_gpu[i].SetMaskEmbree(0xFFFFFFFF);
     }
 
     EXPECT_NO_THROW(apigpu_->UnmapBuffer(ray_buffer_gpu, r_gpu, &egpu));
@@ -386,7 +386,7 @@ inline void ApiConformanceEmbree::ExpectClosestRaysOk(RadeonRays::IntersectionAp
         rays[i].d = r_brute[i].d;
 
         rays[i].SetActive(true);
-        rays[i].SetMask(0xFFFFFFFF);
+        rays[i].SetMaskEmbree(0xFFFFFFFF);
     }
 
     EXPECT_NO_THROW(api->UnmapBuffer(ray_buffer, rays, &ev));
@@ -450,7 +450,7 @@ inline void ApiConformanceEmbree::ExpectAnyRaysOk(RadeonRays::IntersectionApi* a
         rays[i].d = r_brute[i].d;
 
         rays[i].SetActive(true);
-        rays[i].SetMask(0xFFFFFFFF);
+        rays[i].SetMaskEmbree(0xFFFFFFFF);
     }
 
     EXPECT_NO_THROW(api->UnmapBuffer(ray_buffer, rays, &ev));

@@ -354,6 +354,12 @@ virtual Id Shape::GetId() const = 0;
 ```
 Work with shape id. This id will be used in results of QueryIntersection().  
 * *id* - new shape id.
+```
+virtual void SetMaskEmbree(int mask_embree) = 0;
+virtual int GetMaskEmbree() const = 0;
+```
+Geometry mask to mask out intersections when using embree.  
+* *mask_embree* - mask of shape.
 
 #### Memory management
 ```
