@@ -38,7 +38,7 @@ sub BuildRadeonRays
 	}
 }
 
-sub ZipIt
+sub PrepareForZip
 {
 	# copy headers
 	mkpath('builds/include', {error => \ $err} );
@@ -55,9 +55,9 @@ sub ZipIt
 	close(BUILD_INFO_FILE);
 
 	# create builds.zip
-	my $zip = Archive::Zip->new();
-	$zip->addTree( './builds', '' );
-	$zip->writeToFileNamed('artifacts/builds.zip');
+	#my $zip = Archive::Zip->new();
+	#$zip->addTree( './builds', '' );
+	#$zip->writeToFileNamed('artifacts/builds.zip');
 	
 	#system("rm -r builds") && die("Unable to clean up builds directory.");
 }
@@ -124,8 +124,6 @@ if ($Config{osname} eq "MSWin32")
 	fcopy("bin/RelWithDebInfo/Calc.pdb", "builds/bin/Windows/Calc.pdb") or die "Copy of Calc.pdb failed: $!";
 	fcopy("bin/RelWithDebInfo/RadeonRays.dll", "builds/bin/Windows/RadeonRays.dll") or die "Copy of RadeonRays.dll failed: $!";
 	fcopy("bin/RelWithDebInfo/RadeonRays.pdb", "builds/bin/Windows/RadeonRays.pdb") or die "Copy of RadeonRays.pdb failed: $!";	
-	#fcopy("3rdparty/embree/bin/x64/embree.dll", "builds/bin/Windows/embree.dll") or die "Copy of embree.dll failed: $!";
-	#fcopy("3rdparty/embree/bin/x64/tbb.dll", "builds/bin/Windows/tbb.dll") or die "Copy of tbb.dll failed: $!";
 }
 
-ZipIt();
+PrepareForZip();
