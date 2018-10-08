@@ -41,15 +41,15 @@ sub BuildRadeonRays
 sub PrepareForZip
 {
 	# copy headers
-	mkpath('builds/include', {error => \ $err} );
+	mkpath('artifacts/include', {error => \ $err} );
 	CheckFileError();
-	dircopy("RadeonRays/include", "builds/include") or die("Failed to copy RadeonRays headers.");
-	dircopy("Calc/inc", "builds/include") or die("Failed to copy Calc headers.");
+	dircopy("RadeonRays/include", "artifacts/include") or die("Failed to copy RadeonRays headers.");
+	dircopy("Calc/inc", "artifacts/include") or die("Failed to copy Calc headers.");
 
 	# write build version.txt
 	my $branch = qx("git symbolic-ref -q HEAD");
 	my $revision = qx("git rev-parse HEAD");
-	open(BUILD_INFO_FILE, '>', "builds/version.txt") or die("Unable to write build information to version.txt");
+	open(BUILD_INFO_FILE, '>', "artifacts/version.txt") or die("Unable to write build information to version.txt");
 	print BUILD_INFO_FILE "$branch";
 	print BUILD_INFO_FILE "$revision";
 	close(BUILD_INFO_FILE);
@@ -58,8 +58,6 @@ sub PrepareForZip
 	#my $zip = Archive::Zip->new();
 	#$zip->addTree( './builds', '' );
 	#$zip->writeToFileNamed('artifacts/builds.zip');
-	
-	#system("rm -r builds") && die("Unable to clean up builds directory.");
 }
 
 sub CheckFileError
@@ -84,26 +82,27 @@ sub CheckFileError
 
 mkpath('artifacts', {error => \ $err} );
 CheckFileError();
-mkpath('builds', {error => \ $err} );
+mkpath('artifacts/lib', {error => \ $err} );
 CheckFileError();
-mkpath('builds/lib', {error => \ $err} );
+mkpath('builds', {error => \ $err} );
 CheckFileError();
 
 if ($Config{osname} eq "darwin")
 {
 	BuildRadeonRays($mac);
-	mkpath('builds/lib/macOS', {error => \ $err} );
+	mkpath('artifacts/lib/macOS', {error => \ $err} );
 	CheckFileError();
-	fcopy("bin/libRadeonRays.dylib", "builds/lib/macOS/libRadeonRays.dylib") or die "Copy of libRadeonRays.dylib failed: $!";
+	fcopy("bin/libRadeonRays.dylib", "artifacts/lib/macOS/libRadeonRays.dylib") or die "Copy of libRadeonRays.dylib failed: $!";
 }
 
 if ($Config{osname} eq "linux")
 {
 	CheckInstallSDK();
 	BuildRadeonRays($linux);
-	mkpath('builds/lib/linux', {error => \ $err} );
+	mkpath('artifacts/lib/linux', {error => \ $err} );
 	CheckFileError();
-	fcopy("RadeonRays/libRadeonRays.a", "builds/lib/linux/libRadeonRays.a") or die "Copy of libRadeonRays.a failed: $!";
+	fcopy("RadeonRays/libRadeonRays.a", "artifacts/lib/linux/libRadeonRays.a") or die "Copy of libRadeonRays.a failed: $!";
+	system("rm -r artifacts/SDKDownloader") && die("Unable to clean up SDKDownloader directory.");
 }
 
 if ($Config{osname} eq "MSWin32")
@@ -111,19 +110,19 @@ if ($Config{osname} eq "MSWin32")
 	BuildRadeonRays($windows);
 	
 	# copy libs
-	mkpath('builds/lib/Windows', {error => \ $err} );
+	mkpath('artifacts/lib/Windows', {error => \ $err} );
 	CheckFileError();
-	fcopy("RadeonRays/RelWithDebInfo/RadeonRays.lib", "builds/lib/Windows/RadeonRays.lib") or die "Copy of RadeonRays.lib failed: $!";
+	fcopy("RadeonRays/RelWithDebInfo/RadeonRays.lib", "artifacts/lib/Windows/RadeonRays.lib") or die "Copy of RadeonRays.lib failed: $!";
 	
 	# copy dll files
-	mkpath('builds/bin', {error => \ $err} );
+	mkpath('artifacts/bin', {error => \ $err} );
 	CheckFileError();
-	mkpath('builds/bin/Windows', {error => \ $err} );
+	mkpath('artifacts/bin/Windows', {error => \ $err} );
 	CheckFileError();
-	fcopy("bin/RelWithDebInfo/Calc.dll", "builds/bin/Windows/Calc.dll") or die "Copy of Calc.dll failed: $!";
-	fcopy("bin/RelWithDebInfo/Calc.pdb", "builds/bin/Windows/Calc.pdb") or die "Copy of Calc.pdb failed: $!";
-	fcopy("bin/RelWithDebInfo/RadeonRays.dll", "builds/bin/Windows/RadeonRays.dll") or die "Copy of RadeonRays.dll failed: $!";
-	fcopy("bin/RelWithDebInfo/RadeonRays.pdb", "builds/bin/Windows/RadeonRays.pdb") or die "Copy of RadeonRays.pdb failed: $!";	
+	fcopy("bin/RelWithDebInfo/Calc.dll", "artifacts/bin/Windows/Calc.dll") or die "Copy of Calc.dll failed: $!";
+	fcopy("bin/RelWithDebInfo/Calc.pdb", "artifacts/bin/Windows/Calc.pdb") or die "Copy of Calc.pdb failed: $!";
+	fcopy("bin/RelWithDebInfo/RadeonRays.dll", "artifacts/bin/Windows/RadeonRays.dll") or die "Copy of RadeonRays.dll failed: $!";
+	fcopy("bin/RelWithDebInfo/RadeonRays.pdb", "artifacts/bin/Windows/RadeonRays.pdb") or die "Copy of RadeonRays.pdb failed: $!";	
 }
 
 PrepareForZip();
