@@ -21,7 +21,8 @@ sub CheckInstallSDK
 my $err; # used by CheckFileError
 
 my $mac = "cmake -DCMAKE_BUILD_TYPE=Release -DRR_USE_EMBREE=OFF -DRR_USE_OPENCL=ON -DRR_EMBED_KERNELS=OFF -DRR_SAFE_MATH=ON -DRR_SHARED_CALC=OFF";
-my $linux = "cmake -DCMAKE_BUILD_TYPE=Debug -DRR_USE_EMBREE=OFF -DRR_USE_OPENCL=ON -DRR_EMBED_KERNELS=OFF -DRR_SAFE_MATH=ON -DRR_SHARED_CALC=ON -DRR_ENABLE_STATIC=ON";
+my $linuxD = "cmake -DCMAKE_BUILD_TYPE=Debug -DRR_USE_EMBREE=OFF -DRR_USE_OPENCL=ON -DRR_EMBED_KERNELS=OFF -DRR_SAFE_MATH=ON -DRR_SHARED_CALC=ON -DRR_ENABLE_STATIC=ON";
+my $linuxR = "cmake -DCMAKE_BUILD_TYPE=Release -DRR_USE_EMBREE=OFF -DRR_USE_OPENCL=ON -DRR_EMBED_KERNELS=OFF -DRR_SAFE_MATH=ON -DRR_SHARED_CALC=ON -DRR_ENABLE_STATIC=ON";
 my $windows = "cmake -G \"Visual Studio 14 2015 Win64\" -DRR_USE_EMBREE=OFF -DRR_USE_OPENCL=ON -DRR_EMBED_KERNELS=ON -DRR_SAFE_MATH=ON -DRR_SHARED_CALC=ON -DCMAKE_PREFIX_PATH=3rdparty/opencl";
 
 sub BuildRadeonRays
@@ -53,11 +54,6 @@ sub PrepareForZip
 	print BUILD_INFO_FILE "$branch";
 	print BUILD_INFO_FILE "$revision";
 	close(BUILD_INFO_FILE);
-
-	# create builds.zip
-	#my $zip = Archive::Zip->new();
-	#$zip->addTree( './builds', '' );
-	#$zip->writeToFileNamed('artifacts/builds.zip');
 }
 
 sub CheckFileError
@@ -98,10 +94,12 @@ if ($Config{osname} eq "darwin")
 if ($Config{osname} eq "linux")
 {
 	CheckInstallSDK();
-	BuildRadeonRays($linux);
+	BuildRadeonRays($linuxR);
 	mkpath('artifacts/lib/linux', {error => \ $err} );
 	CheckFileError();
 	fcopy("RadeonRays/libRadeonRays.a", "artifacts/lib/linux/libRadeonRays.a") or die "Copy of libRadeonRays.a failed: $!";
+	BuildRadeonRays($linuxD);
+	fcopy("RadeonRays/libRadeonRaysD.a", "artifacts/lib/linux/libRadeonRaysD.a") or die "Copy of libRadeonRaysD.a failed: $!";
 	system("rm -r artifacts/SDKDownloader") && die("Unable to clean up SDKDownloader directory.");
 }
 
