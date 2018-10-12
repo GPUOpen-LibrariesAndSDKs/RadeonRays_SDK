@@ -86,12 +86,16 @@ if ($Config{osname} eq "darwin")
 if ($Config{osname} eq "linux")
 {
 	CheckInstallSDK();
-	BuildRadeonRays($linuxR);
 	mkpath('artifacts/lib/linux', {error => \ $err} );
 	CheckFileError();
-	fcopy("RadeonRays/libRadeonRays.a", "artifacts/lib/linux/libRadeonRays.a") or die "Copy of libRadeonRays.a failed: $!";
+	
 	BuildRadeonRays($linuxD);
 	fcopy("RadeonRays/libRadeonRaysD.a", "artifacts/lib/linux/libRadeonRaysD.a") or die "Copy of libRadeonRaysD.a failed: $!";
+	fcopy("Calc/libCalcD.a", "artifacts/lib/linux/libCalcD.a") or die "Copy of libCalcD.a failed: $!";
+	
+	BuildRadeonRays($linuxR);
+	fcopy("RadeonRays/libRadeonRays.a", "artifacts/lib/linux/libRadeonRays.a") or die "Copy of libRadeonRays.a failed: $!";
+	fcopy("Calc/libCalc.a", "artifacts/lib/linux/libCalc.a") or die "Copy of libCalc.a failed: $!";
 	system("rm -r artifacts/SDKDownloader") && die("Unable to clean up SDKDownloader directory.");
 }
 
