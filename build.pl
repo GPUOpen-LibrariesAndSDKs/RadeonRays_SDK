@@ -21,8 +21,8 @@ sub CheckInstallSDK
 my $err; # used by CheckFileError
 
 my $mac = "cmake -DCMAKE_BUILD_TYPE=Release -DRR_USE_EMBREE=OFF -DRR_USE_OPENCL=ON -DRR_EMBED_KERNELS=OFF -DRR_SAFE_MATH=ON -DRR_SHARED_CALC=OFF";
-my $linuxD = "cmake -DCMAKE_BUILD_TYPE=Debug -DRR_USE_EMBREE=OFF -DRR_USE_OPENCL=ON -DRR_EMBED_KERNELS=OFF -DRR_SAFE_MATH=ON -DRR_SHARED_CALC=ON -DRR_ENABLE_STATIC=ON";
-my $linuxR = "cmake -DCMAKE_BUILD_TYPE=Release -DRR_USE_EMBREE=OFF -DRR_USE_OPENCL=ON -DRR_EMBED_KERNELS=OFF -DRR_SAFE_MATH=ON -DRR_SHARED_CALC=ON -DRR_ENABLE_STATIC=ON";
+my $linuxD = "cmake -DCMAKE_BUILD_TYPE=Debug -DRR_USE_EMBREE=OFF -DRR_USE_OPENCL=ON -DRR_EMBED_KERNELS=OFF -DRR_SAFE_MATH=ON -DRR_SHARED_CALC=OFF -DRR_ENABLE_STATIC=ON";
+my $linuxR = "cmake -DCMAKE_BUILD_TYPE=Release -DRR_USE_EMBREE=OFF -DRR_USE_OPENCL=ON -DRR_EMBED_KERNELS=OFF -DRR_SAFE_MATH=ON -DRR_SHARED_CALC=OFF -DRR_ENABLE_STATIC=ON";
 my $windows = "cmake -G \"Visual Studio 14 2015 Win64\" -DRR_USE_EMBREE=OFF -DRR_USE_OPENCL=ON -DRR_EMBED_KERNELS=ON -DRR_SAFE_MATH=ON -DRR_SHARED_CALC=ON -DCMAKE_PREFIX_PATH=3rdparty/opencl";
 
 sub BuildRadeonRays
@@ -31,6 +31,7 @@ sub BuildRadeonRays
     system("$buildCommandPrefix $cmakeString") && die("cmake failed");
 	if ($Config{osname} eq "MSWin32")
 	{
+		system("\"C:/Program Files (x86)/Microsoft Visual Studio 14.0/Common7/IDE/devenv.exe\" RadeonRaysSDK.sln /Build Debug");
 		system("\"C:/Program Files (x86)/Microsoft Visual Studio 14.0/Common7/IDE/devenv.exe\" RadeonRaysSDK.sln /Build RelWithDebInfo");
 	}
 	else
@@ -39,21 +40,12 @@ sub BuildRadeonRays
 	}
 }
 
-sub PrepareForZip
+sub CopyHeaders
 {
-	# copy headers
 	mkpath('artifacts/include', {error => \ $err} );
 	CheckFileError();
 	dircopy("RadeonRays/include", "artifacts/include") or die("Failed to copy RadeonRays headers.");
 	dircopy("Calc/inc", "artifacts/include") or die("Failed to copy Calc headers.");
-
-	# write build version.txt
-	my $branch = qx("git symbolic-ref -q HEAD");
-	my $revision = qx("git rev-parse HEAD");
-	open(BUILD_INFO_FILE, '>', "artifacts/version.txt") or die("Unable to write build information to version.txt");
-	print BUILD_INFO_FILE "$branch";
-	print BUILD_INFO_FILE "$revision";
-	close(BUILD_INFO_FILE);
 }
 
 sub CheckFileError
@@ -117,10 +109,26 @@ if ($Config{osname} eq "MSWin32")
 	CheckFileError();
 	mkpath('artifacts/bin/Windows', {error => \ $err} );
 	CheckFileError();
+	
+	# Release
 	fcopy("bin/RelWithDebInfo/Calc.dll", "artifacts/bin/Windows/Calc.dll") or die "Copy of Calc.dll failed: $!";
 	fcopy("bin/RelWithDebInfo/Calc.pdb", "artifacts/bin/Windows/Calc.pdb") or die "Copy of Calc.pdb failed: $!";
 	fcopy("bin/RelWithDebInfo/RadeonRays.dll", "artifacts/bin/Windows/RadeonRays.dll") or die "Copy of RadeonRays.dll failed: $!";
-	fcopy("bin/RelWithDebInfo/RadeonRays.pdb", "artifacts/bin/Windows/RadeonRays.pdb") or die "Copy of RadeonRays.pdb failed: $!";	
+	fcopy("bin/RelWithDebInfo/RadeonRays.pdb", "artifacts/bin/Windows/RadeonRays.pdb") or die "Copy of RadeonRays.pdb failed: $!";
+	
+	# Debug
+	fcopy("bin/Debug/CalcD.dll", "artifacts/bin/Windows/CalcD.dll") or die "Copy of CalcD.dll failed: $!";
+	fcopy("bin/Debug/CalcD.pdb", "artifacts/bin/Windows/CalcD.pdb") or die "Copy of CalcD.pdb failed: $!";
+	fcopy("bin/Debug/RadeonRaysD.dll", "artifacts/bin/Windows/RadeonRaysD.dll") or die "Copy of RadeonRaysD.dll failed: $!";
+	fcopy("bin/Debug/RadeonRaysD.pdb", "artifacts/bin/Windows/RadeonRaysD.pdb") or die "Copy of RadeonRaysD.pdb failed: $!";
+	
+	# write build version.txt, only needed once as ACompleteBuild will combine all artifacts.
+	my $branch = qx("git symbolic-ref -q HEAD");
+	my $revision = qx("git rev-parse HEAD");
+	open(BUILD_INFO_FILE, '>', "artifacts/version.txt") or die("Unable to write build information to version.txt");
+	print BUILD_INFO_FILE "$branch";
+	print BUILD_INFO_FILE "$revision";
+	close(BUILD_INFO_FILE);
 }
 
-PrepareForZip();
+CopyHeaders();
