@@ -59,6 +59,8 @@ namespace RadeonRays
             , vertices(nullptr)
             , faces(nullptr)
             , executable(nullptr)
+            , isect_func(nullptr)
+            , occlude_func(nullptr)
         {
         }
 
