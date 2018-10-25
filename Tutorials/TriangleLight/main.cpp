@@ -21,7 +21,7 @@ THE SOFTWARE.
 ********************************************************************/
 #include "radeon_rays.h"
 #include <GL/glew.h>
-#include <GLUT/GLUT.h>
+#include <GL/glut.h>
 #include <cassert>
 #include <iostream>
 #include <memory>

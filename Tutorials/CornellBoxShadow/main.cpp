@@ -24,7 +24,7 @@ THE SOFTWARE.
 #include "CLW.h"
 
 #include <GL/glew.h>
-#include <GLUT/GLUT.h>
+#include <GL/glut.h>
 #include <cassert>
 #include <iostream>
 #include <memory>
@@ -189,7 +189,6 @@ Buffer* Shading(const CLWBuffer<Intersection> &isect, const CLWBuffer<int> &occl
                             light.z,
                             light.w };
     //run kernel
-    CLWBuffer<ray> ray_buf = CLWBuffer<ray>::Create(g_context, CL_MEM_READ_WRITE, g_window_width*g_window_height);
     CLWKernel kernel = g_program.GetKernel("Shading");
     kernel.SetArg(0, g_positions);
     kernel.SetArg(1, g_normals);
