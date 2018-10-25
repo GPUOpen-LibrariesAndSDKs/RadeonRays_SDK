@@ -24,7 +24,7 @@ THE SOFTWARE.
 #include "CLW.h"
 
 #include <GL/glew.h>
-#include <GLUT/GLUT.h>
+#include <GL/glut.h>
 #include <cassert>
 #include <iostream>
 #include <memory>
