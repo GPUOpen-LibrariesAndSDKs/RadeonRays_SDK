@@ -61,7 +61,7 @@ namespace RadeonRays
         void QueryIntersection(Buffer const* rays, int numrays, Buffer* hitinfos, Event const* waitevent, Event** event) const override;
 
         void QueryOcclusion(Buffer const* rays, int numrays, Buffer* hitresults, Event const* waitevent, Event** event) const override;
-        void QueryOccluded2dSumLinear2(Buffer const* origins, Buffer const* directions, Buffer const* koefs, Buffer const* offset_directions, Buffer const* offset_koefs, int numorigins, int numdirections, Buffer* hits, Event const* waitevent, Event** event) const override;
+        void QueryOccluded2dSumLinear2(Buffer const* origins, Buffer const* directions, Buffer const* koefs, Buffer const* offset_directions, Buffer const* offset_koefs, int numorigins, int numdirections, int directions_stride, Buffer* hits, Event const* waitevent, Event** event) const override;
 
         void QueryIntersection(Buffer const* rays, Buffer const* numrays, int maxrays, Buffer* hitinfos, Event const* waitevent, Event** event) const override;
 
