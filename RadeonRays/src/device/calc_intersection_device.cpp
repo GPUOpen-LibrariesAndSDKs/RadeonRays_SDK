@@ -288,7 +288,7 @@ namespace RadeonRays
     }
     
     
-    void CalcIntersectionDevice::QueryOccluded2dSumLinear2(Buffer const* origins, Buffer const* directions, Buffer const* koefs, Buffer const* offset_directions, Buffer const* offset_koefs, int numorigins, int numdirections, Buffer* hits, Event const* waitevent, Event** event) const
+    void CalcIntersectionDevice::QueryOccluded2dSumLinear2(Buffer const* origins, Buffer const* directions, Buffer const* koefs, Buffer const* offset_directions, Buffer const* offset_koefs, int numorigins, int numdirections, int directions_stride, Buffer* hits, Event const* waitevent, Event** event) const
     {
         // Extract Calc buffers from their holders
         auto origins_buffer = static_cast<CalcBufferHolder const*>(origins)->m_buffer.get();
@@ -306,7 +306,7 @@ namespace RadeonRays
         {
             // event pointer has been provided, so construct holder and return event to the user
             Calc::Event* calc_event = nullptr;
-            m_intersector->QueryOccluded2dSumLinear2(0, origins_buffer, directions_buffer, koefs_buffer, offset_directions_buffer, offset_koefs_buffer, numorigins, numdirections, hit_buffer, e, &calc_event);
+            m_intersector->QueryOccluded2dSumLinear2(0, origins_buffer, directions_buffer, koefs_buffer, offset_directions_buffer, offset_koefs_buffer, numorigins, numdirections, directions_stride, hit_buffer, e, &calc_event);
             
             auto holder = CreateEventHolder();
             holder->Set(m_device.get(), calc_event);
@@ -314,7 +314,7 @@ namespace RadeonRays
         }
         else
         {
-            m_intersector->QueryOccluded2dSumLinear2(0, origins_buffer, directions_buffer, koefs_buffer, offset_directions_buffer, offset_koefs_buffer, numorigins, numdirections, hit_buffer, e, nullptr);
+            m_intersector->QueryOccluded2dSumLinear2(0, origins_buffer, directions_buffer, koefs_buffer, offset_directions_buffer, offset_koefs_buffer, numorigins, numdirections, directions_stride, hit_buffer, e, nullptr);
         }
     }
     

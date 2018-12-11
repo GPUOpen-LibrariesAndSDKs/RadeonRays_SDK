@@ -105,7 +105,7 @@ namespace RadeonRays
         
         void QueryOccluded2dSumLinear2(std::uint32_t queue_idx, Calc::Buffer const *origins, Calc::Buffer const *directions, Calc::Buffer const *koefs, Calc::Buffer const *offset_directions,
                                        Calc::Buffer const *offset_koefs, std::uint32_t num_origins, std::uint32_t num_directions,
-                                       Calc::Buffer *hits, Calc::Event const *wait_event, Calc::Event **event) const;
+                                       std::uint32_t directions_stride, Calc::Buffer *hits, Calc::Event const *wait_event, Calc::Event **event) const;
 
         /** 
         \brief Query intersection for a batch of rays
@@ -160,7 +160,7 @@ namespace RadeonRays
         virtual void Occluded2dSumLinear2(std::uint32_t queueidx, Calc::Buffer const *origins, Calc::Buffer const *directions, Calc::Buffer const *koefs,
                                           Calc::Buffer const *offset_directions, Calc::Buffer const *offset_koefs,
                                           Calc::Buffer const *num_origins, Calc::Buffer const *num_directions,
-                                          std::uint32_t maxrays, Calc::Buffer *hits,
+                                          Calc::Buffer const *directions_stride, std::uint32_t maxrays, Calc::Buffer *hits,
                                           Calc::Event const *wait_event, Calc::Event **event) const {}
 
     protected: 
@@ -169,6 +169,7 @@ namespace RadeonRays
         // Buffer holding ray count
         std::unique_ptr<Calc::Buffer, std::function<void(Calc::Buffer*)>> m_counter;
         std::unique_ptr<Calc::Buffer, std::function<void(Calc::Buffer*)>> m_counter2;
+        std::unique_ptr<Calc::Buffer, std::function<void(Calc::Buffer*)>> m_counter3;
     };
 }
 

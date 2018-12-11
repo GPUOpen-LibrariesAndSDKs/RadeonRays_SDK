@@ -312,6 +312,7 @@ GLOBAL int const* restrict offset_koefs,
 // Number of origins and directions
 GLOBAL int const* restrict num_origins,
 GLOBAL int const* restrict num_directions,
+GLOBAL int const* restrict stride_directions,
 // Hit data
 GLOBAL float4* hits
 )
@@ -322,6 +323,8 @@ GLOBAL float4* hits
 
     int origin_id = global_id % (*num_origins);
     int direction_id = (int)(global_id / (*num_origins));
+    int direction_stride = (int)(direction_id % (*stride_directions));
+    int output_offset = direction_stride * (*num_origins);
     
     // Handle only working subset
     if (global_id < num_rays)
@@ -377,8 +380,8 @@ GLOBAL float4* hits
                             // If hit store the result and bail out
                             if (f < t_max)
                             {
-                                hits[origin_id].x += koef.x;
-                                hits[origin_id].y += koef.z;
+                                hits[output_offset + origin_id].x += koef.x;
+                                hits[output_offset + origin_id].y += koef.z;
                                 return;
                             }
                             #ifdef RR_RAY_MASK
@@ -398,8 +401,8 @@ GLOBAL float4* hits
             }
             
             // Finished traversal, but no intersection found
-            hits[origin_id].x += koef.y;
-            hits[origin_id].y += koef.w;
+            hits[output_offset + origin_id].x += koef.y;
+            hits[output_offset + origin_id].y += koef.w;
         }
     }
 }

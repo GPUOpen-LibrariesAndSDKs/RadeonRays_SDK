@@ -453,6 +453,7 @@ namespace RadeonRays
     void IntersectorSkipLinks::Occluded2dSumLinear2(std::uint32_t queueidx, Calc::Buffer const *origins, Calc::Buffer const *directions, Calc::Buffer const *koefs,
                                           Calc::Buffer const *offset_directions, Calc::Buffer const *offset_koefs,
                                           Calc::Buffer const *num_origins, Calc::Buffer const *num_directions,
+                                          Calc::Buffer const *directions_stride,
                                           std::uint32_t maxrays, Calc::Buffer *hits,
                                           Calc::Event const *wait_event, Calc::Event **event) const {
         auto& func = m_gpudata->occlude_func2d_sum_linear;
@@ -470,6 +471,7 @@ namespace RadeonRays
         func->SetArg(arg++, offset_koefs);
         func->SetArg(arg++, num_origins);
         func->SetArg(arg++, num_directions);
+        func->SetArg(arg++, directions_stride);
         func->SetArg(arg++, hits);
         
         size_t localsize = kWorkGroupSize;
