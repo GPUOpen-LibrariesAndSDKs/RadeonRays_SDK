@@ -290,6 +290,15 @@ void occluded_main(
     }
 }
 
+#define USE_ATOMIC
+
+#ifdef USE_ATOMIC
+inline float atomicadd(volatile __global float* address, const float value) {
+    float old = value;
+    while ((old = atomic_xchg(address, atomic_xchg(address, 0.0f)+old)) != 0.0f);
+    return old;
+}
+#endif
 
 __attribute__((reqd_work_group_size(64, 1, 1)))
 KERNEL
@@ -314,7 +323,7 @@ GLOBAL int const* restrict num_origins,
 GLOBAL int const* restrict num_directions,
 GLOBAL int const* restrict stride_directions,
 // Hit data
-GLOBAL float4* hits
+GLOBAL float* hits
 )
 {
     int num_rays = (*num_origins) * (*num_directions);
@@ -380,8 +389,18 @@ GLOBAL float4* hits
                             // If hit store the result and bail out
                             if (f < t_max)
                             {
-                                hits[output_offset + origin_id].x += koef.x;
-                                hits[output_offset + origin_id].y += koef.z;
+                                #ifdef USE_ATOMIC
+                                if (fabs(koef.x)>1e-4) {
+                                    atomicadd(&hits[(output_offset + origin_id)*2], koef.x);
+                                }
+                                if (fabs(koef.z)>1e-4) {
+                                    atomicadd(&hits[(output_offset + origin_id)*2+1], koef.z);
+                                }
+                                #else
+                                    hits[(output_offset + origin_id)*2] += koef.x;
+                                    hits[(output_offset + origin_id)*2+1] += koef.z;
+                                #endif
+
                                 return;
                             }
                             #ifdef RR_RAY_MASK
@@ -401,8 +420,17 @@ GLOBAL float4* hits
             }
             
             // Finished traversal, but no intersection found
-            hits[output_offset + origin_id].x += koef.y;
-            hits[output_offset + origin_id].y += koef.w;
+            #ifdef USE_ATOMIC
+            if (fabs(koef.y)>1e-4) {
+                atomicadd(&hits[(output_offset + origin_id)*2], koef.y);
+            }
+            if (fabs(koef.w)>1e-4) {
+                atomicadd(&hits[(output_offset + origin_id)*2+1], koef.w);
+            }
+            #else
+                hits[(output_offset + origin_id)*2] += koef.y;
+                hits[(output_offset + origin_id)*2+1] += koef.w;
+            #endif
         }
     }
 }
