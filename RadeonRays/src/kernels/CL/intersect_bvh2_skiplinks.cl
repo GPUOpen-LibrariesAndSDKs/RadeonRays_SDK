@@ -390,10 +390,10 @@ GLOBAL float* hits
                             if (f < t_max)
                             {
                                 #ifdef USE_ATOMIC
-                                if (koef.x>1e-3) {
+                                if (fabs(koef.x)>1e-4) {
                                     atomicadd(&hits[(output_offset + origin_id)*2], koef.x);
                                 }
-                                if (koef.z>1e-3) {
+                                if (fabs(koef.z)>1e-4) {
                                     atomicadd(&hits[(output_offset + origin_id)*2+1], koef.z);
                                 }
                                 #else
@@ -421,10 +421,10 @@ GLOBAL float* hits
             
             // Finished traversal, but no intersection found
             #ifdef USE_ATOMIC
-            if (koef.y>1e-3) {
+            if (fabs(koef.y)>1e-4) {
                 atomicadd(&hits[(output_offset + origin_id)*2], koef.y);
             }
-            if (koef.w>1e-3) {
+            if (fabs(koef.w)>1e-4) {
                 atomicadd(&hits[(output_offset + origin_id)*2+1], koef.w);
             }
             #else
