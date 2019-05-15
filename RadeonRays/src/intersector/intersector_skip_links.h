@@ -97,6 +97,19 @@ namespace RadeonRays
                                   std::uint32_t maxrays, Calc::Buffer *hits,
                                   Calc::Event const *wait_event, Calc::Event **event) const override;
 
+        // Occulusion2d implementation for cell-strings
+        void Occluded2dCellString(std::uint32_t queueidx,
+                                  Calc::Buffer const *origins,
+                                  Calc::Buffer const *directions,
+                                  Calc::Buffer const *num_origins,
+                                  Calc::Buffer const *num_directions,
+                                  Calc::Buffer const *cell_string_inds,
+                                  Calc::Buffer const *num_cell_strings,
+                                  std::uint32_t max_ray_batches,
+                                  Calc::Buffer *hits,
+                                  Calc::Event const *wait_event,
+                                  Calc::Event **event) const override;
+
     private:
         struct GpuData;
 
