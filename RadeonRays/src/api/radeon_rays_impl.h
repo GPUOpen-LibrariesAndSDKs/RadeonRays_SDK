@@ -114,7 +114,7 @@ namespace RadeonRays
 
         void QueryOccluded2dSumLinear2(Buffer const* origins, Buffer const* directions, Buffer const* koeffs, Buffer const* offset_directions, Buffer const* offset_koeffs, int numorigins, int numdirections, int directions_stride, Buffer* hitresults, Event const* waitevent, Event** event) const override;
 
-        void QueryOccluded2dCellString(Buffer const* origins, Buffer const* directions, int numorigins, int numdirections, Buffer const *cell_string_inds, Buffer const *num_cell_strings, Buffer* hitresults, Event const* waitevent, Event** event) const override;
+        void QueryOccluded2dCellString(Buffer const* origins, Buffer const* directions, int numorigins, int numdirections, Buffer const *cell_string_inds, int num_cell_strings, Buffer* hitresults, Event const* waitevent, Event** event) const override;
 
         // Find closest intersection, number of rays is in remote memory
         // TODO: do we need to modify rays' intersection range?

@@ -530,7 +530,7 @@ GLOBAL float* hits
                                 // If hit store the result and bail out
                                 if (f < t_max)
                                 {
-                                    hits[cell_string_id+direction_id] = 1.;
+                                    hits[cell_string_id + direction_id * (*num_cell_strings)] = 1.;
                                     return;
 
                                 }
@@ -551,6 +551,6 @@ GLOBAL float* hits
             }
         }
         // Finished traversal for all points in cell-string, but no intersection found
-        hits[cell_string_id * direction_id] = 0.;
+        hits[cell_string_id + direction_id * (*num_cell_strings)] = 0.;
     }
 }

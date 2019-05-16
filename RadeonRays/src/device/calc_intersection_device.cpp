@@ -318,8 +318,32 @@ namespace RadeonRays
         }
     }
 
-    void CalcIntersectionDevice::QueryOccluded2dCellString(Buffer const* origins, Buffer const* directions, int numorigins, int numdirections, Buffer const *cell_string_inds, Buffer const *num_cell_strings, Buffer* hit, Event const* waitevent, Event** event) const
+    void CalcIntersectionDevice::QueryOccluded2dCellString(Buffer const* origins, Buffer const* directions, int numorigins, int numdirections, Buffer const *cell_string_inds, int num_cell_strings, Buffer* hit, Event const* waitevent, Event** event) const
     {
+        // Extract Calc buffers from their holders
+        auto origins_buffer = static_cast<CalcBufferHolder const*>(origins)->m_buffer.get();
+        auto directions_buffer = static_cast<CalcBufferHolder const*>(directions)->m_buffer.get();
+        auto hit_buffer = static_cast<CalcBufferHolder const*>(hits)->m_buffer.get();
+        auto cell_string_inds_buffer = static_cast<CalcBufferHolder const*>(cell_string_inds)->m_buffer.get();
+
+
+        // If waitevent is passed in we have to extract it as well
+        auto e = waitevent ? static_cast<CalcEventHolder const*>(waitevent)->m_event.get() : nullptr;
+
+        if (event)
+        {
+            // event pointer has been provided, so construct holder and return event to the user
+            Calc::Event* calc_event = nullptr;
+            m_intersector->QueryOccluded2dCellString(0, origins_buffer, directions_buffer, numorigins, numdirections, cell_string_inds_buffer, num_cell_strings, hit_buffer, e, &calc_event);
+
+            auto holder = CreateEventHolder();
+            holder->Set(m_device.get(), calc_event);
+            *event = holder;
+        }
+        else
+        {
+            m_intersector->QueryOccluded2dCellString(0, origins_buffer, directions_buffer, numorigins, numdirections, cell_string_inds_buffer, num_cell_strings, hit_buffer, e, nullptr);
+        }
     }
 
     void CalcIntersectionDevice::QueryIntersection(Buffer const* rays, Buffer const* numrays, int maxrays, Buffer* hits, Event const* waitevent, Event** event) const
