@@ -272,6 +272,8 @@ namespace RadeonRays
         
         virtual void QueryOccluded2dSumLinear2(Buffer const* origins, Buffer const* directions, Buffer const* koeffs, Buffer const* offset_directions, Buffer const* offset_koeffs, int numorigins, int numdirections, int directions_stride, Buffer* hitresults, Event const* waitevent, Event** event) const = 0;
 
+        virtual void QueryOccluded2dCellString(Buffer const* origins, Buffer const* directions, int numorigins, int numdirections, Buffer const *cell_string_inds, int num_cell_strings, Buffer* hitresults, Event const* waitevent, Event** event) const = 0;
+      
         // Find closest intersection, number of rays is in remote memory
         // The call is asynchronous. Event pointers might be nullptrs.
         virtual void QueryIntersection(Buffer const* rays, Buffer const* numrays, int maxrays, Buffer* hitinfos, Event const* waitevent, Event** event) const = 0;

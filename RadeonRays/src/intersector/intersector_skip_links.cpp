@@ -53,7 +53,6 @@ namespace RadeonRays
         Calc::Function* isect_func;
         Calc::Function* occlude_func;
         Calc::Function* occlude_func2d_sum_linear;
-        Calc::Function* occlude_func2d_sum_linear;
         Calc::Function* occlude_func2d_cell_string;
 
         GpuData(Calc::Device* d)

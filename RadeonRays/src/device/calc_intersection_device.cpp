@@ -323,7 +323,7 @@ namespace RadeonRays
         // Extract Calc buffers from their holders
         auto origins_buffer = static_cast<CalcBufferHolder const*>(origins)->m_buffer.get();
         auto directions_buffer = static_cast<CalcBufferHolder const*>(directions)->m_buffer.get();
-        auto hit_buffer = static_cast<CalcBufferHolder const*>(hits)->m_buffer.get();
+        auto hit_buffer = static_cast<CalcBufferHolder const*>(hit)->m_buffer.get();
         auto cell_string_inds_buffer = static_cast<CalcBufferHolder const*>(cell_string_inds)->m_buffer.get();
 
 

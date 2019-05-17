@@ -74,6 +74,8 @@ namespace RadeonRays
         virtual void QueryOcclusion(Buffer const* rays, int numrays, Buffer* hits, Event const* waitevent, Event** event) const = 0;
         
         virtual void QueryOccluded2dSumLinear2(Buffer const* origins, Buffer const* directions, Buffer const* koefs, Buffer const* offset_directions, Buffer const* offset_koefs, int numorigins, int numdirections, int directions_stride, Buffer* hits, Event const* waitevent, Event** event) const = 0;
+      
+        virtual void QueryOccluded2dCellString(Buffer const* origins, Buffer const* directions, int numorigins, int numdirections, Buffer const *cell_string_inds, int num_cell_strings, Buffer* hit, Event const* waitevent, Event** event) const = 0;
 
         // Find intersection for the rays in rays buffer and write them into hits buffer. Take the number of rays from the buffer in remote memory.
         // rays is assumed AOS with elements of type RadeonRays::ray.
