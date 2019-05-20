@@ -84,9 +84,9 @@ CLWProgram CLWProgram::CreateFromSource(char const* sourcecode, size_t sourcesiz
         buildLog.resize(logSize);
         clGetProgramBuildInfo(program, deviceIds[0], CL_PROGRAM_BUILD_LOG, logSize, &buildLog[0], nullptr);
         
-#ifdef _DEBUG
+//#ifdef _DEBUG
         std::cout << &buildLog[0] << "\n";
-#endif
+//#endif
         
         throw CLWException(status, std::string(&buildLog[0]));
     }

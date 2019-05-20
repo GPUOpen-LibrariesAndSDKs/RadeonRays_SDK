@@ -466,7 +466,7 @@ GLOBAL float* hits
 
     // Handle only working subset
     int num_ray_batches = (*num_cell_strings) * (*num_directions);
-    if (global_id < (*num_ray_batches))
+    if (global_id < num_ray_batches)
     {
 
         // Map global_id to cell_string_id
@@ -477,8 +477,6 @@ GLOBAL float* hits
 
         int cs_pt_start = cell_string_inds[cell_string_id*2];
         int cs_pt_end = cell_string_inds[cell_string_id*2+1];
-
-        int hit = 0;
 
         // Iterate over all points in cell-string
         for (int i = cs_pt_start; i < cs_pt_end; i++) {
