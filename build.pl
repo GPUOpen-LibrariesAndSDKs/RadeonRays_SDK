@@ -106,11 +106,6 @@ if ($Config{osname} eq "MSWin32")
 {
 	BuildRadeonRays($windows);
 	
-	# copy libs
-	mkpath('artifacts/lib/Windows', {error => \ $err} );
-	CheckFileError();
-	fcopy("RadeonRays/RelWithDebInfo/RadeonRays.lib", "artifacts/lib/Windows/RadeonRays.lib") or die "Copy of RadeonRays.lib failed: $!";
-	
 	# copy dll files
 	mkpath('artifacts/bin', {error => \ $err} );
 	CheckFileError();
