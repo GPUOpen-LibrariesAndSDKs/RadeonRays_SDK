@@ -33,6 +33,8 @@ THE SOFTWARE.
 #include "executable.h"
 #include <algorithm>
 
+#include "../../Calc/src/device_clw.h"
+
 // Preferred work group size for Radeon devices
 static int const kWorkGroupSize = 64;
 
