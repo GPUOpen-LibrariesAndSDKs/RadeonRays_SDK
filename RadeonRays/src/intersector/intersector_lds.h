@@ -33,11 +33,12 @@ namespace RadeonRays
         // Constructor
         IntersectorLDS(Calc::Device *device);
 
+        void *GetGpuData( IntersectionApi::GpuDataType type ) const override;
+
     private:
         // World preprocessing implementation
         void Process(const World &world) override;
-        // Gets BVH implementation
-        void* GetBvhImpl() const override;
+                
         // Intersection implementation
         void Intersect(std::uint32_t queue_idx, const Calc::Buffer *rays, const Calc::Buffer *num_rays,
             std::uint32_t max_rays, Calc::Buffer *hits,

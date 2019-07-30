@@ -337,9 +337,9 @@ namespace RadeonRays
         }
     }
 
-    void* CalcIntersectionDevice::GetBvh() const
+    void* CalcIntersectionDevice::GetGpuData( IntersectionApi::GpuDataType type ) const
     {
-        return m_intersector->GetBvh();
+        return m_intersector->GetGpuData(type);
     }
 
     CalcEventHolder* CalcIntersectionDevice::CreateEventHolder() const

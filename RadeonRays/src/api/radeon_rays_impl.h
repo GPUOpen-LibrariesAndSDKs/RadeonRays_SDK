@@ -124,9 +124,8 @@ namespace RadeonRays
         /******************************************
         Unity hack
         ******************************************/
-        // Gets the BVH
-        void* GetBvh() const override;
-
+        void *GetGpuData( GpuDataType type ) const override;
+        
         /******************************************
         Utility
         ******************************************/

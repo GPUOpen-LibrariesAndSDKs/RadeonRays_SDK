@@ -444,4 +444,20 @@ namespace RadeonRays
         m_device->Execute(func, queueidx, globalsize, localsize, event);
     }
 
+    void* IntersectorSkipLinks::GetGpuData( IntersectionApi::GpuDataType type ) const
+    {
+        if (m_device->GetPlatform() == Calc::Platform::kOpenCL)
+        {
+            Calc::DeviceClw *clw = static_cast<Calc::DeviceClw*>(m_device);
+            switch(type)
+            {
+            case IntersectionApi::kGpuData_BvhBuffer     : return clw->GetNativeHandle(m_gpudata->bvh);
+            case IntersectionApi::kGpuData_VerticesBuffer: return clw->GetNativeHandle(m_gpudata->vertices);
+            case IntersectionApi::kGpuData_FacesBuffer   : return clw->GetNativeHandle(m_gpudata->faces);            
+            }            
+        }
+
+        return nullptr;            
+    }
+    
 }

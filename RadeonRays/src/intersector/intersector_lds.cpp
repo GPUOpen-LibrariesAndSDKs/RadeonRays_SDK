@@ -267,11 +267,12 @@ namespace RadeonRays
         }
     }
 
-    void* IntersectorLDS::GetBvhImpl() const
+    void *IntersectorLDS::GetGpuData( IntersectionApi::GpuDataType type ) const
     {
-        if (m_device->GetPlatform() == Calc::Platform::kOpenCL)
+        if (m_device->GetPlatform() == Calc::Platform::kOpenCL && type == IntersectionApi::kGpuData_BvhBuffer )
             return static_cast<Calc::DeviceClw *>(m_device)->GetNativeHandle(m_gpudata->bvh);
-        return NULL;
+
+        return nullptr;
     }
 
     void IntersectorLDS::Intersect(std::uint32_t queue_idx, const Calc::Buffer *rays, const Calc::Buffer *num_rays,

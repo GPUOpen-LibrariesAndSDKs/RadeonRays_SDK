@@ -171,6 +171,15 @@ namespace RadeonRays
     {
     public:
 
+        enum GpuDataType 
+        {
+            kGpuData_BvhBuffer = 0,
+            kGpuData_VerticesBuffer,
+            kGpuData_FacesBuffer
+        };
+
+    public:
+
         /******************************************
         Backend management
         *******************************************/
@@ -279,9 +288,8 @@ namespace RadeonRays
         /******************************************
         Unity hack for accessing internal BVH
         ******************************************/
-        // Gets the BVH
-        virtual void* GetBvh() const = 0;
-
+        // Gets the gpu data for current intersector/device
+        virtual void *GetGpuData( GpuDataType type ) const = 0;
         /******************************************
         Utility
         ******************************************/

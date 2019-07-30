@@ -141,9 +141,9 @@ namespace RadeonRays
         m_device->QueryOcclusion(rays, numrays, maxrays, hitresults, waitevent, event);
     }
 
-    void* IntersectionApiImpl::GetBvh() const
+    void* IntersectionApiImpl::GetGpuData( GpuDataType type ) const
     {
-        return m_device->GetBvh();
+        return m_device->GetGpuData(type);
     }
 
     void IntersectionApiImpl::DeleteEvent(Event* event) const

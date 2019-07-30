@@ -90,8 +90,8 @@ namespace RadeonRays
         virtual void QueryOcclusion(Buffer const* rays, Buffer const* numrays, int maxrays, Buffer* hits, Event const* waitevent, Event** event) const = 0;
 
         // Gets the BVH
-        virtual void* GetBvh() const = 0;
-
+        virtual void* GetGpuData( IntersectionApi::GpuDataType type ) const = 0;
+        
         IntersectionDevice(IntersectionDevice const&) = delete;
         IntersectionDevice& operator = (IntersectionDevice const&) = delete;
     };

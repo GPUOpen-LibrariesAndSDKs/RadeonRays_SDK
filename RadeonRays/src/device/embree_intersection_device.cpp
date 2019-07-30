@@ -503,7 +503,7 @@ namespace RadeonRays
         QueryOcclusion(rays, std::min(*static_cast<const int*>(fireNumrays->GetData()), maxrays), hits, waitevent, event);
     }
 
-    void* EmbreeIntersectionDevice::GetBvh() const
+    void* EmbreeIntersectionDevice::GetGpuData( IntersectionApi::GpuDataType type ) const
     {
         return nullptr;
     }

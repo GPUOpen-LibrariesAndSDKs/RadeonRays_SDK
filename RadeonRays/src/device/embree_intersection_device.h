@@ -59,7 +59,8 @@ namespace RadeonRays
         void QueryOcclusion(Buffer const* rays, int numrays, Buffer* hitresults, Event const* waitevent, Event** event) const override;
         void QueryIntersection(Buffer const* rays, Buffer const* numrays, int maxrays, Buffer* hitinfos, Event const* waitevent, Event** event) const override;
         void QueryOcclusion(Buffer const* rays, Buffer const* numrays, int maxrays, Buffer* hitresults, Event const* waitevent, Event** event) const override;
-        void* GetBvh() const override;
+
+        void *GetGpuData( IntersectionApi::GpuDataType type ) const override;
 
         inline cl_command_queue GetCommandQueue() const { return m_command_queue; }
         inline void SetCommandQueue(cl_command_queue command_queue) { m_command_queue = command_queue; }

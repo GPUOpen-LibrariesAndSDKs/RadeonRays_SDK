@@ -77,6 +77,8 @@ namespace RadeonRays
         // Constructor
         IntersectorSkipLinks(Calc::Device* device);
 
+        void *GetGpuData( IntersectionApi::GpuDataType type ) const override;
+        
     private:
         // Preprocess implementation
         void Process(World const& world) override;

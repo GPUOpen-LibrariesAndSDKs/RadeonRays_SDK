@@ -66,7 +66,8 @@ namespace RadeonRays
 
         void QueryOcclusion(Buffer const* rays, Buffer const* numrays, int maxrays, Buffer* hitresults, Event const* waitevent, Event** event) const override;
 
-        void* GetBvh() const override;
+        void *GetGpuData( IntersectionApi::GpuDataType type ) const override;
+        
 
         Calc::Platform GetPlatform() const { return m_device->GetPlatform(); }
     protected:
