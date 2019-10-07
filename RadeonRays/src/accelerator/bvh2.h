@@ -56,6 +56,11 @@ namespace RadeonRays
             , m_nodecount(0)
         {
         }
+        
+        ~Bvh2()
+        {
+            this->Clear();
+        }
 
         // Build function
         template <typename Iter>
