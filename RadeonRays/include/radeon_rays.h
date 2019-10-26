@@ -29,7 +29,7 @@ THE SOFTWARE.
 #include "math/ray.h"
 #include "math/mathutils.h"
 #include <cstdint>
-        
+
 #define RADEONRAYS_API_VERSION 2.0
 
 #if !RR_STATIC_LIBRARY
@@ -171,6 +171,15 @@ namespace RadeonRays
     {
     public:
 
+        enum GpuDataType 
+        {
+            kGpuData_BvhBuffer = 0,
+            kGpuData_VerticesBuffer,
+            kGpuData_FacesBuffer
+        };
+
+    public:
+
         /******************************************
         Backend management
         *******************************************/
@@ -276,6 +285,11 @@ namespace RadeonRays
         // The call is asynchronous. Event pointer mights be nullptrs.
         virtual void QueryOcclusion(Buffer const* rays, Buffer const* numrays, int maxrays, Buffer* hitresults, Event const* waitevent, Event** event) const = 0;
 
+        /******************************************
+        Unity hack for accessing internal BVH
+        ******************************************/
+        // Gets the gpu data for current intersector/device
+        virtual void *GetGpuData( GpuDataType type ) const = 0;
         /******************************************
         Utility
         ******************************************/

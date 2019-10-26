@@ -20,12 +20,12 @@ Bin/Release/x64/App64.exe
 *.db
 *.sln
 *.d
-
 *.o
-
 *.a
-
 *.so
+*.stamp
+*.cmake
+*.depend
 
 App/Makefile
 

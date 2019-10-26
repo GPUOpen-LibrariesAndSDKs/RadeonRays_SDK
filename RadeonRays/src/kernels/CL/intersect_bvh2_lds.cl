@@ -62,7 +62,7 @@ INLINE float2 fast_intersect_bbox2(float3 pmin, float3 pmax, float3 invdir, floa
     return (float2)(t0, t1);
 }
 
-__attribute__((reqd_work_group_size(64, 1, 1)))
+__attribute__((reqd_work_group_size(GROUP_SIZE, 1, 1)))
 KERNEL void intersect_main(
     // Bvh nodes
     GLOBAL const bvh_node *restrict nodes,
@@ -225,7 +225,7 @@ KERNEL void intersect_main(
     }
 }
 
-__attribute__((reqd_work_group_size(64, 1, 1)))
+__attribute__((reqd_work_group_size(GROUP_SIZE, 1, 1)))
 KERNEL void occluded_main(
     // Bvh nodes
     GLOBAL const bvh_node *restrict nodes,

@@ -135,6 +135,12 @@ namespace RadeonRays
         void QueryOcclusion(std::uint32_t queue_idx, Calc::Buffer const* rays, Calc::Buffer const* num_rays,
             std::uint32_t max_rays, Calc::Buffer* hits, Calc::Event const* wait_event, Calc::Event** event) const;
 
+        /*
+        \brief Gets the gpu data
+        \returns The requested gpu data 
+        */
+        virtual void *GetGpuData( IntersectionApi::GpuDataType type ) const;
+        
         // Disallow intersector copies
         Intersector(Intersector const&) = delete;
         Intersector& operator = (Intersector const&) = delete;
@@ -144,6 +150,7 @@ namespace RadeonRays
         virtual void Process(World const& world) = 0;
         // Compatibility check implemetation
         virtual bool IsCompatibleImpl(World const& world) const;
+        
         // Intersection implementation
         virtual void Intersect(std::uint32_t queue_idx, Calc::Buffer const *rays, Calc::Buffer const *num_rays, 
             std::uint32_t max_rays, Calc::Buffer *hits, 

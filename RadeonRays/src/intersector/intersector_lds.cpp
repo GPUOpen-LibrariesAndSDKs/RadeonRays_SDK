@@ -24,9 +24,11 @@ THE SOFTWARE.
 #include "calc.h"
 #include "executable.h"
 #include "../accelerator/bvh2.h"
+#include "../device/calc_holder.h"
 #include "../primitive/mesh.h"
 #include "../primitive/instance.h"
 #include "../translator/q_bvh_translator.h"
+#include "../../Calc/src/device_clw.h"
 #include "../world/world.h"
 
 namespace RadeonRays
@@ -150,9 +152,11 @@ namespace RadeonRays
 #endif
 #endif
 
-        m_gpudata->bvh_prog.isect_func = m_gpudata->bvh_prog.executable->CreateFunction("intersect_main");
-        m_gpudata->bvh_prog.occlude_func = m_gpudata->bvh_prog.executable->CreateFunction("occluded_main");
-
+        if (m_gpudata->bvh_prog.executable)
+        {
+            m_gpudata->bvh_prog.isect_func = m_gpudata->bvh_prog.executable->CreateFunction("intersect_main");
+            m_gpudata->bvh_prog.occlude_func = m_gpudata->bvh_prog.executable->CreateFunction("occluded_main");
+        }
         if (m_gpudata->qbvh_prog.executable)
         {
             m_gpudata->qbvh_prog.isect_func = m_gpudata->qbvh_prog.executable->CreateFunction("intersect_main");
@@ -261,6 +265,14 @@ namespace RadeonRays
             // Make sure everything is committed
             m_device->Finish(0);
         }
+    }
+
+    void *IntersectorLDS::GetGpuData( IntersectionApi::GpuDataType type ) const
+    {
+        if (m_device->GetPlatform() == Calc::Platform::kOpenCL && type == IntersectionApi::kGpuData_BvhBuffer )
+            return static_cast<Calc::DeviceClw *>(m_device)->GetNativeHandle(m_gpudata->bvh);
+
+        return nullptr;
     }
 
     void IntersectorLDS::Intersect(std::uint32_t queue_idx, const Calc::Buffer *rays, const Calc::Buffer *num_rays,

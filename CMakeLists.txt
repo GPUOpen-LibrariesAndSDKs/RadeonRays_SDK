@@ -23,6 +23,7 @@ elseif (UNIX)
     add_definitions(-fvisibility=hidden)
 endif (WIN32)
 
+set(CMAKE_DEBUG_POSTFIX D)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
@@ -35,11 +36,11 @@ find_package(Threads)
 
 find_package(PythonInterp 2.7 REQUIRED)
 set (STRINGIFY_SCRIPT ${RadeonRaysSDK_SOURCE_DIR}/Tools/scripts/stringify.py)
-set (EMBREE_INCLUDE_PATH ${RadeonRaysSDK_SOURCE_DIR}/3rdParty/embree/include)
+set (EMBREE_INCLUDE_PATH ${RadeonRaysSDK_SOURCE_DIR}/3rdparty/embree/include)
 if (WIN32)
-    set (EMBREE_LIB ${RadeonRaysSDK_SOURCE_DIR}/3rdParty/embree/lib/x64/embree.lib)
+    set (EMBREE_LIB ${RadeonRaysSDK_SOURCE_DIR}/3rdparty/embree/lib/x64/embree.lib)
 elseif (APPLE)
-    set (EMBREE_LIB ${RadeonRaysSDK_SOURCE_DIR}/3rdParty/embree/lib/x64/libembree.2.dylib)
+    set (EMBREE_LIB ${RadeonRaysSDK_SOURCE_DIR}/3rdparty/embree/lib/x64/libembree.2.dylib)
 elseif (UNIX)
     set (EMBREE_LIB embree2)
 endif (WIN32)
@@ -66,5 +67,3 @@ if (NOT RR_NO_TESTS)
     add_subdirectory(Gtest)
     add_subdirectory(UnitTest)
 endif (NOT RR_NO_TESTS)
-
-

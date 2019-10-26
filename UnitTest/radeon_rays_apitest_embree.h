@@ -268,8 +268,13 @@ TEST_F(ApiBackendEmbree, Intersection_1Ray)
 }
 
 
+#ifdef RR_RAY_MASK
 // The test creates a single triangle mesh and tests attach/detach functionality
 TEST_F(ApiBackendEmbree, Intersection_1Ray_Masked)
+#else
+// The test creates a single triangle mesh and tests attach/detach functionality
+TEST_F(ApiBackendEmbree, DISABLED_Intersection_1Ray_Masked)
+#endif
 {
     Shape* mesh = nullptr;
 

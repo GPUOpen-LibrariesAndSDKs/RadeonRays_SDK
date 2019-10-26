@@ -35,7 +35,21 @@ namespace RadeonRays
     inline
     void *Align(std::size_t alignment, std::size_t size, std::size_t space, void *ptr)
     {
+#if !defined(__GNUC__) || __GNUC__ >= 5
         return std::align(alignment, size, ptr, space);
+#else
+	// gcc4 doesn't have std::align
+        const auto intptr = reinterpret_cast<uintptr_t>(ptr);
+        const auto aligned = (intptr - 1u + alignment) & -alignment;
+        const auto diff = aligned - intptr;
+        if ((size + diff) > space)
+          return nullptr;
+        else
+        {
+            space -= diff;
+            return ptr = reinterpret_cast<void*>(aligned);
+        }
+#endif
     }
 
 #ifdef __GNUC__
@@ -225,13 +239,12 @@ namespace RadeonRays
         // Mutex to guard cv
         std::mutex mutex;
         // Indicates if we need to shutdown all the threads
-        std::atomic<bool> shutdown;
+        bool shutdown = false;
         // Number of primitives processed so far
         std::atomic<std::uint32_t> num_refs_processed;
+		num_refs_processed.store(0);
 
-        num_refs_processed.store(0);
-        shutdown.store(false);
-
+        // Push root request
         requests.push(SplitRequest{
             scene_min,
             scene_max,
@@ -243,33 +256,42 @@ namespace RadeonRays
             0u
         });
 
+        // Worker build function
         auto worker_thread = [&]()
         {
+            // Local stack for requests
             thread_local std::stack<SplitRequest> local_requests;
 
+            // Thread loop
             for (;;)
             {
                 // Wait for signal
                 {
+                    // Wait on the global stack to receive a request
                     std::unique_lock<std::mutex> lock(mutex);
                     cv.wait(lock, [&]() { return !requests.empty() || shutdown; });
 
+                    // If we have been awaken by shutdown, we need to leave asap
                     if (shutdown) return;
-
+                    // Otherwise take a request from global stack and put it
+                    // into our local stack
                     local_requests.push(requests.top());
                     requests.pop();
                 }
 
+                // Allocated space for requests
                 _MM_ALIGN16 SplitRequest request;
                 _MM_ALIGN16 SplitRequest request_left;
                 _MM_ALIGN16 SplitRequest request_right;
 
-                // Process local requests
+                // Start handling local stack of requests
                 while (!local_requests.empty())
                 {
+                    // Pop next request
                     request = local_requests.top();
                     local_requests.pop();
 
+                    // Handle it
                     auto node_type = HandleRequest(
                         request,
                         aabb_min,
@@ -281,28 +303,40 @@ namespace RadeonRays
                         request_left,
                         request_right);
 
+                    // If it is a leaf, update number of processed primitives
+                    // and continue
                     if (node_type == kLeaf)
                     {
                         num_refs_processed += static_cast<std::uint32_t>(request.num_refs);
                         continue;
                     }
 
-                    if (request_right.num_refs > 4096u)
+                    // Here we know we have just built and internal node,
+                    // so we are going to handle its left child on this thread and
+                    // its right child on:
+                    // - this thread if it is small
+                    // - another thread if it is huge (since this one is going to handle left child)
+                    if (request_right.num_refs > 2048u)
                     {
+                        // Put request into the global queue
                         std::unique_lock<std::mutex> lock(mutex);
                         requests.push(request_right);
+                        // Wake up one of the workers
                         cv.notify_one();
                     }
                     else
                     {
+                        // Put small request into the local queue
                         local_requests.push(request_right);
                     }
 
+                    // Put left request to local stack (always handled on this thread)
                     local_requests.push(request_left);
                 }
             }
         };
 
+        // Launch several threads
         auto num_threads = std::thread::hardware_concurrency();
         std::vector<std::thread> threads(num_threads);
 
@@ -311,14 +345,18 @@ namespace RadeonRays
             threads[i] = std::thread(worker_thread);
         }
 
+        // Wait until all primitives are handled
         while (num_refs_processed != num_aabbs)
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(20));
         }
 
          // Signal shutdown and wake up all the threads
-        shutdown.store(true);
+        {
+            std::unique_lock<std::mutex> lock(mutex);
+            shutdown = true;
         cv.notify_all();
+        }
             
         // Wait for all the threads to finish
         for (auto i = 0u; i < num_threads; ++i)

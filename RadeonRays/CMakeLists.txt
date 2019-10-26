@@ -217,7 +217,9 @@ endif (RR_USE_VULKAN)
 target_compile_features(RadeonRays PRIVATE cxx_std_14)
 
 if (UNIX AND NOT APPLE)
+		# TODO minimum SSE level is 4.1 for Windows and macOS?
         target_compile_options(RadeonRays PUBLIC -msse4.2 -fPIC)
+		target_link_libraries(RadeonRays PUBLIC dl)
         target_link_libraries(RadeonRays INTERFACE "-Wl,--no-undefined")
         
         #read version from header
@@ -226,7 +228,7 @@ if (UNIX AND NOT APPLE)
         
         set_target_properties(RadeonRays PROPERTIES SOVERSION ${RR_API_VERSION})
 elseif (APPLE)
-    target_compile_options(RadeonRays PUBLIC -stdlib=libc++)
+    target_compile_options(RadeonRays PUBLIC -stdlib=libc++ -msse4.1 -mmacosx-version-min=10.10)
 endif (UNIX AND NOT APPLE)
 
 
