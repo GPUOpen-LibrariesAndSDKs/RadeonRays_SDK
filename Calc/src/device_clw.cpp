@@ -423,9 +423,7 @@ namespace Calc
                                              int numheaders,
                                              char const* options
                                             )
-    {
-        return NULL;    // Unity: don't compile embedded kernels.
-        
+    {        
         try
         {
             std::string buildopts = options ? options : "";
