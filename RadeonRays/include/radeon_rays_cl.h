@@ -26,7 +26,7 @@ THE SOFTWARE.
 
 #include "radeon_rays.h"
 
-#if USE_OPENCL
+#ifdef USE_OPENCL
 #ifdef __APPLE__
 #include <OpenCL/OpenCL.h>
 #else

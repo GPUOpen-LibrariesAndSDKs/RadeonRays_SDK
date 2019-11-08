@@ -32,7 +32,7 @@ THE SOFTWARE.
 
 #define RADEONRAYS_API_VERSION 2.0
 
-#if !RR_STATIC_LIBRARY
+#ifndef RR_STATIC_LIBRARY
 #ifdef WIN32
     #ifdef EXPORT_API
         #define RRAPI __declspec(dllexport)
