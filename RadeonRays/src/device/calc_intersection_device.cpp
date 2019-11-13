@@ -91,7 +91,8 @@ namespace RadeonRays
                     // Get implementation
                     auto shapeimpl = static_cast<ShapeImpl const*>(shape);
                     // Check if it is an instance and update flag
-                    use2level = use2level | shapeimpl->is_instance();
+					if (shapeimpl->is_instance())
+						use2level = true;
                 }
             }
         }
