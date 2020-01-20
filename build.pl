@@ -21,8 +21,8 @@ sub CheckInstallSDK
 my $err; # used by CheckFileError
 
 my $mac = "cmake -DCMAKE_BUILD_TYPE=Release -DRR_USE_EMBREE=OFF -DRR_USE_OPENCL=ON -DRR_EMBED_KERNELS=OFF -DRR_SAFE_MATH=ON -DRR_SHARED_CALC=OFF";
-my $linuxD = "cmake -DCMAKE_BUILD_TYPE=Debug -DRR_USE_EMBREE=OFF -DRR_USE_OPENCL=ON -DRR_EMBED_KERNELS=OFF -DRR_SAFE_MATH=ON -DRR_SHARED_CALC=OFF -DRR_ENABLE_STATIC=ON -DRR_USE_VULKAN=OFF";
-my $linuxR = "cmake -DCMAKE_BUILD_TYPE=Release -DRR_USE_EMBREE=OFF -DRR_USE_OPENCL=ON -DRR_EMBED_KERNELS=OFF -DRR_SAFE_MATH=ON -DRR_SHARED_CALC=OFF -DRR_ENABLE_STATIC=ON -DRR_USE_VULKAN=OFF";
+my $linuxD = "cmake -DCMAKE_BUILD_TYPE=Debug -DRR_USE_EMBREE=OFF -DRR_USE_OPENCL=ON -DRR_EMBED_KERNELS=OFF -DRR_SAFE_MATH=ON -DRR_SHARED_CALC=ON -DRR_USE_VULKAN=OFF";
+my $linuxR = "cmake -DCMAKE_BUILD_TYPE=Release -DRR_USE_EMBREE=OFF -DRR_USE_OPENCL=ON -DRR_EMBED_KERNELS=OFF -DRR_SAFE_MATH=ON -DRR_SHARED_CALC=ON -DRR_USE_VULKAN=OFF";
 my $windows = "cmake -G \"Visual Studio 14 2015 Win64\" -DRR_USE_EMBREE=OFF -DRR_USE_OPENCL=ON -DRR_EMBED_KERNELS=ON -DRR_SAFE_MATH=ON -DRR_SHARED_CALC=ON -DCMAKE_PREFIX_PATH=3rdparty/opencl";
 
 sub BuildRadeonRays
@@ -86,18 +86,20 @@ if ($Config{osname} eq "darwin")
 if ($Config{osname} eq "linux")
 {
 	CheckInstallSDK();
-	mkpath('artifacts/lib/linux', {error => \ $err} );
+	mkpath('artifacts/bin', {error => \ $err} );
+	CheckFileError();
+	mkpath('artifacts/bin/Linux', {error => \ $err} );
 	CheckFileError();
 	
 	BuildRadeonRays($linuxD);
-	fcopy("RadeonRays/libRadeonRaysD.a", "artifacts/lib/linux/libRadeonRaysD.a") or die "Copy of libRadeonRaysD.a failed: $!";
-	fcopy("Calc/libCalcD.a", "artifacts/lib/linux/libCalcD.a") or die "Copy of libCalcD.a failed: $!";
-	fcopy("CLW/libCLWD.a", "artifacts/lib/linux/libCLWD.a") or die "Copy of libCLWD.a failed: $!";
+	fcopy("bin/libCalcD.so", "artifacts/bin/Linux/libCalc.so") or die "Copy of libCalc.so failed: $!";
+	fcopy("bin/libRadeonRaysD.so", "artifacts/bin/Linux/libRadeonRaysD.so") or die "Copy of libRadeonRaysD.so failed: $!";
+	fcopy("bin/libRadeonRaysD.so.2.0", "artifacts/bin/Linux/libRadeonRaysD.so.2.0") or die "Copy of libRadeonRaysD.so.2.0 failed: $!";
 	
 	BuildRadeonRays($linuxR);
-	fcopy("RadeonRays/libRadeonRays.a", "artifacts/lib/linux/libRadeonRays.a") or die "Copy of libRadeonRays.a failed: $!";
-	fcopy("Calc/libCalc.a", "artifacts/lib/linux/libCalc.a") or die "Copy of libCalc.a failed: $!";
-	fcopy("CLW/libCLW.a", "artifacts/lib/linux/libCLW.a") or die "Copy of libCLW.a failed: $!";
+	fcopy("bin/libCalc.so", "artifacts/bin/Linux/libCalc.so") or die "Copy of libCalc.so failed: $!";
+	fcopy("bin/libRadeonRays.so", "artifacts/bin/Linux/libRadeonRays.so") or die "Copy of libRadeonRays.so failed: $!";
+	fcopy("bin/libRadeonRays.so.2.0", "artifacts/bin/Linux/libRadeonRays.so.2.0") or die "Copy of libRadeonRays.so.2.0 failed: $!";
 	
 	system("rm -r artifacts/SDKDownloader") && die("Unable to clean up SDKDownloader directory.");
 }
