@@ -24,7 +24,6 @@ Bin/Release/x64/App64.exe
 *.a
 *.so
 *.stamp
-*.cmake
 *.depend
 
 App/Makefile
