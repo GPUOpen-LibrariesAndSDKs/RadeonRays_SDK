@@ -46,7 +46,34 @@ elseif (UNIX)
 endif (WIN32)
 
 if (RR_USE_OPENCL)
-    find_package(OpenCL REQUIRED)
+    set(OpenCL_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/CLW/CL")
+    find_library(OpenCL_LIBRARY
+	    NAMES OpenCL
+	    PATHS "${CMAKE_CURRENT_SOURCE_DIR}/CLW/CL/lib"
+    )
+
+    if(NOT IS_ABSOLUTE ${OpenCL_LIBRARY})
+        set(p "${CMAKE_CURRENT_SOURCE_DIR}/${OpenCL_LIBRARY}")
+    endif()
+    
+    include(FindPackageHandleStandardArgs)
+    find_package_handle_standard_args(
+	    OpenCL
+	    FOUND_VAR OpenCL_FOUND
+	    REQUIRED_VARS OpenCL_LIBRARY OpenCL_INCLUDE_DIRS
+    )
+    
+    mark_as_advanced(
+	    OpenCL_INCLUDE_DIRS
+	    OpenCL_LIBRARY
+    )
+
+	add_library(OpenCL::OpenCL UNKNOWN IMPORTED)
+	set_target_properties(OpenCL::OpenCL PROPERTIES
+		IMPORTED_LOCATION "${OpenCL_LIBRARY}")
+	set_target_properties(OpenCL::OpenCL PROPERTIES
+    		INTERFACE_INCLUDE_DIRECTORIES "${OpenCL_INCLUDE_DIRS}")
+
     add_definitions(-DUSE_OPENCL=1)
     
     add_subdirectory(CLW)
