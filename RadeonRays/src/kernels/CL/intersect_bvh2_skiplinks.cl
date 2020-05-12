@@ -289,3 +289,148 @@ void occluded_main(
         }
     }
 }
+
+#define USE_ATOMIC
+
+#ifdef USE_ATOMIC
+inline float atomicadd(volatile __global float* address, const float value) {
+    float old = value;
+    while ((old = atomic_xchg(address, atomic_xchg(address, 0.0f)+old)) != 0.0f);
+    return old;
+}
+#endif
+
+__attribute__((reqd_work_group_size(64, 1, 1)))
+KERNEL
+void occluded_main_2d_sum_linear(
+// BVH nodes
+GLOBAL bvh_node const* restrict nodes,
+// Triangle vertices
+GLOBAL float3 const* restrict vertices,
+// Triangle indices
+GLOBAL Face const* restrict faces,
+
+// Rays
+GLOBAL float4 const* restrict origins,
+GLOBAL float4 const* restrict directions,
+GLOBAL float4 const* restrict koefs,
+
+GLOBAL int const* restrict offset_directions,
+GLOBAL int const* restrict offset_koefs,
+
+// Number of origins and directions
+GLOBAL int const* restrict num_origins,
+GLOBAL int const* restrict num_directions,
+GLOBAL int const* restrict stride_directions,
+// Hit data
+GLOBAL float* hits
+)
+{
+    int num_rays = (*num_origins) * (*num_directions);
+    
+    int global_id = get_global_id(0);
+
+    int origin_id = global_id % (*num_origins);
+    int direction_id = (int)(global_id / (*num_origins));
+    int direction_stride = (int)(direction_id % (*stride_directions));
+    int output_offset = direction_stride * (*num_origins);
+    
+    // Handle only working subset
+    if (global_id < num_rays)
+    {
+        const int direction_offset = offset_directions[origin_id];
+        const int koefs_offset = offset_koefs[origin_id];
+
+        const float4 koef = koefs[direction_id + koefs_offset];
+
+        // Create ray
+        ray r;
+        r.o = origins[origin_id];
+        r.d = directions[direction_id + direction_offset];
+        r.extra.x = -1;
+        r.extra.y = 1;
+        r.doBackfaceCulling = 0;
+        r.padding = 1;
+        
+        {
+            // Precompute inverse direction and origin / dir for bbox testing
+            float3 const invdir = safe_invdir(r);
+            float3 const oxinvdir = -r.o.xyz * invdir;
+            // Intersection parametric distance
+            float t_max = r.o.w;
+            
+            // Current node address
+            int addr = 0;
+            
+            while (addr != INVALID_IDX)
+            {
+                // Fetch next node
+                bvh_node node = nodes[addr];
+                // Intersect against bbox
+                float2 s = fast_intersect_bbox1(node, invdir, oxinvdir, t_max);
+                
+                if (s.x <= s.y)
+                {
+                    // Check if the node is a leaf
+                    if (LEAFNODE(node))
+                    {
+                        int const face_idx = STARTIDX(node);
+                        Face const face = faces[face_idx];
+                        #ifdef RR_RAY_MASK
+                        if (ray_get_mask(&r) != face.shape_id)
+                        {
+                            #endif // RR_RAY_MASK
+                            float3 const v1 = vertices[face.idx[0]];
+                            float3 const v2 = vertices[face.idx[1]];
+                            float3 const v3 = vertices[face.idx[2]];
+                            
+                            // Intersect triangle
+                            float const f = fast_intersect_triangle(r, v1, v2, v3, t_max);
+                            // If hit store the result and bail out
+                            if (f < t_max)
+                            {
+                                #ifdef USE_ATOMIC
+                                if (fabs(koef.x)>1e-4) {
+                                    atomicadd(&hits[(output_offset + origin_id)*2], koef.x);
+                                }
+                                if (fabs(koef.z)>1e-4) {
+                                    atomicadd(&hits[(output_offset + origin_id)*2+1], koef.z);
+                                }
+                                #else
+                                    hits[(output_offset + origin_id)*2] += koef.x;
+                                    hits[(output_offset + origin_id)*2+1] += koef.z;
+                                #endif
+
+                                return;
+                            }
+                            #ifdef RR_RAY_MASK
+                        }
+                        #endif // RR_RAY_MASK
+                    }
+                    else
+                    {
+                        // Move to next node otherwise.
+                        // Left child is always at addr + 1
+                        ++addr;
+                        continue;
+                    }
+                }
+                
+                addr = NEXT(node);
+            }
+            
+            // Finished traversal, but no intersection found
+            #ifdef USE_ATOMIC
+            if (fabs(koef.y)>1e-4) {
+                atomicadd(&hits[(output_offset + origin_id)*2], koef.y);
+            }
+            if (fabs(koef.w)>1e-4) {
+                atomicadd(&hits[(output_offset + origin_id)*2+1], koef.w);
+            }
+            #else
+                hits[(output_offset + origin_id)*2] += koef.y;
+                hits[(output_offset + origin_id)*2+1] += koef.w;
+            #endif
+        }
+    }
+}
