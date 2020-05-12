@@ -111,8 +111,10 @@ namespace RadeonRays
         // Find any intersection.
         // The call is asynchronous. Event pointer mights be nullptrs.
         void QueryOcclusion(Buffer const* rays, int numrays, Buffer* hitresults, Event const* waitevent, Event** event) const override;
-        
+
         void QueryOccluded2dSumLinear2(Buffer const* origins, Buffer const* directions, Buffer const* koeffs, Buffer const* offset_directions, Buffer const* offset_koeffs, int numorigins, int numdirections, int directions_stride, Buffer* hitresults, Event const* waitevent, Event** event) const override;
+
+        void QueryOccluded2dCellString(Buffer const* origins, Buffer const* directions, int numorigins, int numdirections, Buffer const *cell_string_inds, int num_cell_strings, Buffer* hitresults, Event const* waitevent, Event** event) const override;
 
         // Find closest intersection, number of rays is in remote memory
         // TODO: do we need to modify rays' intersection range?
@@ -130,7 +132,6 @@ namespace RadeonRays
         void SetOption(char const* name, char const* value) override;
         // Set API global option: float
         void SetOption(char const* name, float value) override;
-        
 
         IntersectionDevice* GetDevice() const { return m_device.get(); }
 

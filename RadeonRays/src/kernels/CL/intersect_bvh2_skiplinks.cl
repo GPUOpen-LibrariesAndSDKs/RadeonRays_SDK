@@ -434,3 +434,121 @@ GLOBAL float* hits
         }
     }
 }
+
+__attribute__((reqd_work_group_size(64, 1, 1)))
+KERNEL
+void occluded_main_2d_cell_string(
+// BVH nodes
+GLOBAL bvh_node const* restrict nodes,
+// Triangle vertices
+GLOBAL float3 const* restrict vertices,
+// Triangle indices
+GLOBAL Face const* restrict faces,
+
+// Rays
+GLOBAL float4 const* restrict origins,
+GLOBAL float4 const* restrict directions,
+
+// Number of origins and directions
+GLOBAL int const* restrict num_origins,
+GLOBAL int const* restrict num_directions,
+
+// Cell-string to point mappings
+GLOBAL int const* restrict cell_string_inds,
+GLOBAL int const* restrict num_cell_strings,
+
+// Hit data
+GLOBAL float* hits
+)
+{
+    int global_id = get_global_id(0);
+
+
+    // Handle only working subset
+    int num_ray_batches = (*num_cell_strings) * (*num_directions);
+    if (global_id < num_ray_batches)
+    {
+
+        // Map global_id to cell_string_id
+        const int cell_string_id = global_id % (*num_cell_strings);
+
+        // Map global_id to direction_id
+        const int direction_id = (int)(global_id / (*num_cell_strings));
+
+        int cs_pt_start = cell_string_inds[cell_string_id*2];
+        int cs_pt_end = cell_string_inds[cell_string_id*2+1];
+
+        // Iterate over all points in cell-string
+        for (int i = cs_pt_start; i < cs_pt_end; i++) {
+
+            // Create ray
+            ray r;
+            r.o = origins[i];
+            r.d = directions[direction_id];
+            r.extra.x = -1;
+            r.extra.y = 1;
+            r.doBackfaceCulling = 0;
+            r.padding = 1;
+
+            {
+                // Precompute inverse direction and origin / dir for bbox testing
+                float3 const invdir = safe_invdir(r);
+                float3 const oxinvdir = -r.o.xyz * invdir;
+
+                // Intersection parametric distance
+                float t_max = r.o.w;
+
+                // Current node address
+                int addr = 0;
+
+                while (addr != INVALID_IDX)
+                {
+                    // Fetch next node
+                    bvh_node node = nodes[addr];
+                    // Intersect against bbox
+                    float2 s = fast_intersect_bbox1(node, invdir, oxinvdir, t_max);
+
+                    if (s.x <= s.y)
+                    {
+                        // Check if the node is a leaf
+                        if (LEAFNODE(node))
+                        {
+                            int const face_idx = STARTIDX(node);
+                            Face const face = faces[face_idx];
+                            #ifdef RR_RAY_MASK
+                            if (ray_get_mask(&r) != face.shape_id)
+                            {
+                                #endif // RR_RAY_MASK
+                                float3 const v1 = vertices[face.idx[0]];
+                                float3 const v2 = vertices[face.idx[1]];
+                                float3 const v3 = vertices[face.idx[2]];
+
+                                // Intersect triangle
+                                float const f = fast_intersect_triangle(r, v1, v2, v3, t_max);
+                                // If hit store the result and bail out
+                                if (f < t_max)
+                                {
+                                    hits[cell_string_id + direction_id * (*num_cell_strings)] = 1.;
+                                    return;
+
+                                }
+                                #ifdef RR_RAY_MASK
+                            }
+                            #endif // RR_RAY_MASK
+                        }
+                        else
+                        {
+                            // Move to next node otherwise.
+                            // Left child is always at addr + 1
+                            ++addr;
+                            continue;
+                        }
+                    }
+                    addr = NEXT(node);
+                }
+            }
+        }
+        // Finished traversal for all points in cell-string, but no intersection found
+        hits[cell_string_id + direction_id * (*num_cell_strings)] = 0.;
+    }
+}

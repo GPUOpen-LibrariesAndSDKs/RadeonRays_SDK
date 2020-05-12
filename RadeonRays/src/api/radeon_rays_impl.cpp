@@ -136,6 +136,12 @@ namespace RadeonRays
         m_device->QueryOccluded2dSumLinear2(origins, directions, koeffs, offset_directions, offset_koeffs, numorigins, numdirections, directions_stride, hitresults, waitevent, event);
     }
 
+  void IntersectionApiImpl::QueryOccluded2dCellString(Buffer const* origins, Buffer const* directions, int numorigins, int numdirections, Buffer const *cell_string_inds, int num_cell_strings, Buffer* hitresults, Event const* waitevent, Event** event) const
+    {
+        m_device->QueryOccluded2dCellString(origins, directions, numorigins, numdirections, cell_string_inds, num_cell_strings, hitresults, waitevent, event);
+    }
+
+
     void IntersectionApiImpl::QueryIntersection(Buffer const* rays, Buffer const* numrays, int maxrays, Buffer* hitinfos, Event const* waitevent, Event** event) const
     {
         m_device->QueryIntersection(rays, numrays, maxrays, hitinfos, waitevent, event);

@@ -106,6 +106,11 @@ namespace RadeonRays
         void QueryOccluded2dSumLinear2(std::uint32_t queue_idx, Calc::Buffer const *origins, Calc::Buffer const *directions, Calc::Buffer const *koefs, Calc::Buffer const *offset_directions,
                                        Calc::Buffer const *offset_koefs, std::uint32_t num_origins, std::uint32_t num_directions,
                                        std::uint32_t directions_stride, Calc::Buffer *hits, Calc::Event const *wait_event, Calc::Event **event) const;
+      
+        void QueryOccluded2dCellString(std::uint32_t queue_idx, Calc::Buffer const *origins, Calc::Buffer const *directions,
+                                       std::uint32_t num_origins, std::uint32_t num_directions, Calc::Buffer const *cell_string_inds,
+                                       std::uint32_t num_cell_strings, Calc::Buffer *hits,
+                                       Calc::Event const *wait_event, Calc::Event **event) const;
 
         /** 
         \brief Query intersection for a batch of rays
@@ -162,6 +167,23 @@ namespace RadeonRays
                                           Calc::Buffer const *num_origins, Calc::Buffer const *num_directions,
                                           Calc::Buffer const *directions_stride, std::uint32_t maxrays, Calc::Buffer *hits,
                                           Calc::Event const *wait_event, Calc::Event **event) const {}
+      
+//        virtual void QueryOccluded2dCellString(std::uint32_t queue_idx, Calc::Buffer const *origins, Calc::Buffer const *directions,
+//                                               std::uint32_t num_origins, std::uint32_t num_directions, Calc::Buffer const *cell_string_inds,
+//                                               std::uint32_t num_cell_strings, Calc::Buffer *hits,
+//                                               Calc::Event const *wait_event, Calc::Event **event) const {}
+      
+        virtual void Occluded2dCellString(std::uint32_t queueidx,
+                                          Calc::Buffer const *origins,
+                                          Calc::Buffer const *directions,
+                                          Calc::Buffer const *num_origins,
+                                          Calc::Buffer const *num_directions,
+                                          Calc::Buffer const *cell_string_inds,
+                                          Calc::Buffer const *num_cell_strings,
+                                          std::uint32_t max_ray_batches,
+                                          Calc::Buffer *hits,
+                                          Calc::Event const *wait_event,
+                                          Calc::Event **event) const {}
 
     protected: 
         // Device to use

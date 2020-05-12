@@ -53,6 +53,7 @@ namespace RadeonRays
         Calc::Function* isect_func;
         Calc::Function* occlude_func;
         Calc::Function* occlude_func2d_sum_linear;
+        Calc::Function* occlude_func2d_cell_string;
 
         GpuData(Calc::Device* d)
             : device(d)
@@ -131,6 +132,7 @@ namespace RadeonRays
         m_gpudata->isect_func = m_gpudata->executable->CreateFunction("intersect_main");
         m_gpudata->occlude_func = m_gpudata->executable->CreateFunction("occluded_main");
         m_gpudata->occlude_func2d_sum_linear = m_gpudata->executable->CreateFunction("occluded_main_2d_sum_linear");
+        m_gpudata->occlude_func2d_cell_string = m_gpudata->executable->CreateFunction("occluded_main_2d_cell_string");
     }
 
     void IntersectorSkipLinks::Process(World const& world)
@@ -449,7 +451,7 @@ namespace RadeonRays
 
         m_device->Execute(func, queueidx, globalsize, localsize, event);
     }
-    
+
     void IntersectorSkipLinks::Occluded2dSumLinear2(std::uint32_t queueidx, Calc::Buffer const *origins, Calc::Buffer const *directions, Calc::Buffer const *koefs,
                                           Calc::Buffer const *offset_directions, Calc::Buffer const *offset_koefs,
                                           Calc::Buffer const *num_origins, Calc::Buffer const *num_directions,
@@ -457,10 +459,10 @@ namespace RadeonRays
                                           std::uint32_t maxrays, Calc::Buffer *hits,
                                           Calc::Event const *wait_event, Calc::Event **event) const {
         auto& func = m_gpudata->occlude_func2d_sum_linear;
-        
+
         // Set args
         int arg = 0;
-        
+
         func->SetArg(arg++, m_gpudata->bvh);
         func->SetArg(arg++, m_gpudata->vertices);
         func->SetArg(arg++, m_gpudata->faces);
@@ -473,11 +475,43 @@ namespace RadeonRays
         func->SetArg(arg++, num_directions);
         func->SetArg(arg++, directions_stride);
         func->SetArg(arg++, hits);
-        
+
         size_t localsize = kWorkGroupSize;
         size_t globalsize = ((maxrays + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
-        
+
         m_device->Execute(func, queueidx, globalsize, localsize, event);
     }
 
+    void IntersectorSkipLinks::Occluded2dCellString(std::uint32_t queueidx,
+                                                    Calc::Buffer const *origins,
+                                                    Calc::Buffer const *directions,
+                                                    Calc::Buffer const *num_origins,
+                                                    Calc::Buffer const *num_directions,
+                                                    Calc::Buffer const *cell_string_inds,
+                                                    Calc::Buffer const *num_cell_strings,
+                                                    std::uint32_t max_ray_batches,
+                                                    Calc::Buffer *hits,
+                                                    Calc::Event const *wait_event,
+                                                    Calc::Event **event) const {
+        auto& func = m_gpudata->occlude_func2d_cell_string;
+
+        // Set args
+        int arg = 0;
+
+        func->SetArg(arg++, m_gpudata->bvh);
+        func->SetArg(arg++, m_gpudata->vertices);
+        func->SetArg(arg++, m_gpudata->faces);
+        func->SetArg(arg++, origins);
+        func->SetArg(arg++, directions);
+        func->SetArg(arg++, num_origins);
+        func->SetArg(arg++, num_directions);
+        func->SetArg(arg++, cell_string_inds);
+        func->SetArg(arg++, num_cell_strings);
+        func->SetArg(arg++, hits);
+
+        size_t localsize = kWorkGroupSize;
+        size_t globalsize = ((max_ray_batches + kWorkGroupSize - 1) / kWorkGroupSize) * kWorkGroupSize;
+
+        m_device->Execute(func, queueidx, globalsize, localsize, event);
+    }
 }
