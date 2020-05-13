@@ -28,3 +28,7 @@ RadeonRays requires a PC with the following software and hardware:
 - Vulkan: a 64-bit version of Windows® 10 or Linux, and a GPU and drivers that support Vulkan version 1.2
 - Package Contents
 - The distributed RadeonRays package contains:
+
+## Documentation
+
+[Documentation page](https://radeon-pro.github.io/RadeonProRenderDocs/rr/about.html)
