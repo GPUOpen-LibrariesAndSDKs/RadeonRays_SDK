@@ -23,8 +23,7 @@ The library supports the following graphics and GPGPU frameworks as its backends
 ## System Requirements
 RadeonRays requires a PC with the following software and hardware:
 
-- DirectX12: a 64-bit version of Windows® 10, and a GPU and drivers that supports DirectX12 features
-- Metal: a 64-bit version of MacOS® X 10.15 or later, and a discrete GPU that supports the MPS acceleration structure
-- Vulkan: a 64-bit version of Windows® 10 or Linux, and a GPU and drivers that support Vulkan version 1.2
-- Package Contents
-- The distributed RadeonRays package contains:
+- DirectX12: a 64-bit version of WindowsÂ® 10, and a GPU and drivers that supports DirectX12 features
+- Metal: a 64-bit version of MacOSÂ® X 10.15 or later, and a discrete GPU that supports the MPS acceleration structure
+- Vulkan: a 64-bit version of WindowsÂ® 10 or Linux, and a GPU and drivers that support Vulkan version 1.2
+
