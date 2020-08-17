@@ -21,8 +21,8 @@ sub CheckInstallSDK
 my $err; # used by CheckFileError
 
 my $mac = "cmake -DCMAKE_BUILD_TYPE=Release -DRR_USE_EMBREE=OFF -DRR_USE_OPENCL=ON -DRR_EMBED_KERNELS=OFF -DRR_SAFE_MATH=ON -DRR_SHARED_CALC=OFF";
-my $linuxD = "cmake -DCMAKE_BUILD_TYPE=Debug -DRR_USE_EMBREE=OFF -DRR_USE_OPENCL=ON -DRR_EMBED_KERNELS=OFF -DRR_SAFE_MATH=ON -DRR_SHARED_CALC=ON -DRR_USE_VULKAN=OFF";
-my $linuxR = "cmake -DCMAKE_BUILD_TYPE=Release -DRR_USE_EMBREE=OFF -DRR_USE_OPENCL=ON -DRR_EMBED_KERNELS=OFF -DRR_SAFE_MATH=ON -DRR_SHARED_CALC=ON -DRR_USE_VULKAN=OFF";
+my $linuxD = "cmake -DCMAKE_BUILD_TYPE=Debug -DRR_USE_EMBREE=OFF -DRR_USE_OPENCL=ON -DRR_EMBED_KERNELS=OFF -DRR_SAFE_MATH=ON -DRR_SHARED_CALC=OFF -DRR_USE_VULKAN=OFF";
+my $linuxR = "cmake -DCMAKE_BUILD_TYPE=Release -DRR_USE_EMBREE=OFF -DRR_USE_OPENCL=ON -DRR_EMBED_KERNELS=OFF -DRR_SAFE_MATH=ON -DRR_SHARED_CALC=OFF -DRR_USE_VULKAN=OFF";
 my $windows = "cmake -G \"Visual Studio 14 2015 Win64\" -DRR_USE_EMBREE=OFF -DRR_USE_OPENCL=ON -DRR_EMBED_KERNELS=ON -DRR_SAFE_MATH=ON -DRR_SHARED_CALC=ON -DCMAKE_PREFIX_PATH=3rdparty/opencl";
 
 sub BuildRadeonRays
@@ -92,12 +92,12 @@ if ($Config{osname} eq "linux")
 	CheckFileError();
 	
 	BuildRadeonRays($linuxD);
-	fcopy("bin/libCalcD.so", "artifacts/bin/Linux/libCalc.so") or die "Copy of libCalc.so failed: $!";
+	#fcopy("bin/libCalcD.so", "artifacts/bin/Linux/libCalc.so") or die "Copy of libCalc.so failed: $!";
 	fcopy("bin/libRadeonRaysD.so", "artifacts/bin/Linux/libRadeonRaysD.so") or die "Copy of libRadeonRaysD.so failed: $!";
 	fcopy("bin/libRadeonRaysD.so.2.0", "artifacts/bin/Linux/libRadeonRaysD.so.2.0") or die "Copy of libRadeonRaysD.so.2.0 failed: $!";
 	
 	BuildRadeonRays($linuxR);
-	fcopy("bin/libCalc.so", "artifacts/bin/Linux/libCalc.so") or die "Copy of libCalc.so failed: $!";
+	#fcopy("bin/libCalc.so", "artifacts/bin/Linux/libCalc.so") or die "Copy of libCalc.so failed: $!";
 	fcopy("bin/libRadeonRays.so", "artifacts/bin/Linux/libRadeonRays.so") or die "Copy of libRadeonRays.so failed: $!";
 	fcopy("bin/libRadeonRays.so.2.0", "artifacts/bin/Linux/libRadeonRays.so.2.0") or die "Copy of libRadeonRays.so.2.0 failed: $!";
 	
