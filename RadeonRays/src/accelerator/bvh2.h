@@ -27,9 +27,18 @@ THE SOFTWARE.
 #include <vector>
 #include <thread>
 #include <condition_variable>
-#include <mmintrin.h>
-#include <xmmintrin.h>
-#include <smmintrin.h>
+
+#if defined(__ARM_NEON__) || defined(__ARM_NEON)
+    #define USE_NEON 1
+#endif
+
+#if USE_NEON
+    #include "sse2neon.h"
+#else
+    #include <mmintrin.h>
+    #include <xmmintrin.h>
+    #include <smmintrin.h>
+#endif
 
 #include "../primitive/mesh.h"
 #include "../primitive/instance.h"

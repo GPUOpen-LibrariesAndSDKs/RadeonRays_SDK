@@ -20,7 +20,8 @@ sub CheckInstallSDK
 
 my $err; # used by CheckFileError
 
-my $mac = "cmake -DCMAKE_BUILD_TYPE=Release -DRR_USE_EMBREE=OFF -DRR_USE_OPENCL=ON -DRR_EMBED_KERNELS=OFF -DRR_SAFE_MATH=ON -DRR_SHARED_CALC=OFF";
+my $mac_x64 = "cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=x86_64 -DRR_USE_EMBREE=OFF -DRR_USE_OPENCL=ON -DRR_EMBED_KERNELS=OFF -DRR_SAFE_MATH=ON -DRR_SHARED_CALC=OFF";
+my $mac_arm64 = "cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=arm64 -DRR_USE_EMBREE=OFF -DRR_USE_OPENCL=ON -DRR_EMBED_KERNELS=OFF -DRR_SAFE_MATH=ON -DRR_SHARED_CALC=OFF";
 my $linuxD = "cmake -DCMAKE_BUILD_TYPE=Debug -DRR_USE_EMBREE=OFF -DRR_USE_OPENCL=ON -DRR_EMBED_KERNELS=OFF -DRR_SAFE_MATH=ON -DRR_SHARED_CALC=OFF -DRR_USE_VULKAN=OFF";
 my $linuxR = "cmake -DCMAKE_BUILD_TYPE=Release -DRR_USE_EMBREE=OFF -DRR_USE_OPENCL=ON -DRR_EMBED_KERNELS=OFF -DRR_SAFE_MATH=ON -DRR_SHARED_CALC=OFF -DRR_USE_VULKAN=OFF";
 my $windows = "cmake -G \"Visual Studio 14 2015 Win64\" -DRR_USE_EMBREE=OFF -DRR_USE_OPENCL=ON -DRR_EMBED_KERNELS=ON -DRR_SAFE_MATH=ON -DRR_SHARED_CALC=ON -DCMAKE_PREFIX_PATH=3rdparty/opencl";
@@ -33,6 +34,11 @@ sub BuildRadeonRays
 	{
 		system("\"C:/Program Files (x86)/Microsoft Visual Studio 14.0/Common7/IDE/devenv.exe\" RadeonRaysSDK.sln /Build Debug");
 		system("\"C:/Program Files (x86)/Microsoft Visual Studio 14.0/Common7/IDE/devenv.exe\" RadeonRaysSDK.sln /Build RelWithDebInfo");
+	}
+	elsif ($Config{osname} eq "darwin")
+	{
+		system("make clean") && die("Failed make clean");
+		system("$buildCommandPrefix make") && die("Failed make");
 	}
 	else
 	{
@@ -77,10 +83,16 @@ CheckFileError();
 
 if ($Config{osname} eq "darwin")
 {
-	BuildRadeonRays($mac);
-	mkpath('artifacts/lib/macOS', {error => \ $err} );
+
+	BuildRadeonRays($mac_x64);
+	mkpath('artifacts/lib/macOS/x64', {error => \ $err} );
 	CheckFileError();
-	fcopy("bin/libRadeonRays.dylib", "artifacts/lib/macOS/libRadeonRays.dylib") or die "Copy of libRadeonRays.dylib failed: $!";
+	fcopy("bin/x86_64/libRadeonRays.dylib", "artifacts/lib/macOS/x64/libRadeonRays.dylib") or die "Copy of libRadeonRays.dylib failed: $!";
+
+	BuildRadeonRays($mac_arm64);
+	mkpath('artifacts/lib/macOS/arm64', {error => \ $err} );
+	CheckFileError();
+	fcopy("bin/arm64/libRadeonRays.dylib", "artifacts/lib/macOS/arm64/libRadeonRays.dylib") or die "Copy of libRadeonRays.dylib failed: $!";
 }
 
 if ($Config{osname} eq "linux")
