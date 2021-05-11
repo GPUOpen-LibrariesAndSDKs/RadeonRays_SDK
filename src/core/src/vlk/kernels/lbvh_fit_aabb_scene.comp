@@ -1,0 +1,168 @@
+/**********************************************************************
+Copyright (c) 2020 Advanced Micro Devices, Inc. All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+********************************************************************/
+#version 450
+#extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_nonuniform_qualifier : enable
+
+#include "common.h"
+#include "pp_common.h"
+#include "bvh2.h"
+
+#define RR_FLT_MIN 1.175494e-38
+#define RR_FLT_MAX 3.402823e+38
+#define INTERNAL_NODE_INDEX(i) (i)
+#define LEAF_INDEX(i) ((g_instance_count - 1) + i)
+
+// Full span BVH buffer.
+layout(set = 0, binding = 0) coherent buffer BVH
+{
+    BVHNode g_bvh[];
+};
+
+layout(set = 0, binding = 1) buffer Transforms
+{
+    Transform g_transforms[];
+};
+
+
+// Morton codes.
+layout(set = 0, binding = 2) buffer MortonCodes
+{
+    uint g_morton_codes[];
+};
+
+// Indices.
+layout(set = 0, binding = 3) buffer Indices
+{
+    uint g_indices[];
+};
+
+// Whole mesh AABB
+layout(set = 0, binding = 4) buffer SceneAABB
+{
+    uint g_scene_aabb[8];
+};
+
+layout(set = 1, binding = 0) buffer InstanceDesc
+{
+    InstanceDescription g_descs[];
+};
+
+layout(set = 1, binding = 1) buffer ChildrenBVH
+{
+    BVHNode g_nodes[];
+} g_children_bvh[2048];
+
+// Push constants.
+layout (push_constant) uniform PushConstants
+{
+    // Stride in the vertex buffer.
+    uint g_instance_count;
+};
+
+layout (local_size_x = RR_GROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
+
+
+Aabb calculate_aabb_for_node(in BVHNode node)
+{
+    Aabb aabb_left = 
+        create_aabb_from_minmax(node.aabb0_min_or_v0,
+                                node.aabb0_max_or_v1);
+
+    Aabb aabb_right = 
+        create_aabb_from_minmax(node.aabb1_min_or_v2,
+                                node.aabb1_max_or_v3);
+
+    return calculate_aabb_union(aabb_left, aabb_right);
+}
+
+void main()
+{
+    DECLARE_BUILTINS_1D;
+
+    for (int i = 0; i < PRIMITIVES_PER_THREAD; ++i)
+    {
+        //  Calculate linear primitive index.
+        uint prim_index = gidx * PRIMITIVES_PER_THREAD + i;
+
+        if (prim_index >= g_instance_count)
+        {
+            return;
+        }
+
+        // Load our BVH node.
+        uint index = LEAF_INDEX(prim_index);
+        uint addr = g_bvh[index].parent;
+
+        uint instance_index = g_bvh[index].child1;
+        InstanceDescription desc = g_descs[instance_index];
+        g_transforms[2 * instance_index] = inverse(desc.transform);
+        g_transforms[2 * instance_index + 1] = desc.transform;
+        BVHNode geom_root = g_children_bvh[nonuniformEXT(instance_index)].g_nodes[0];
+        Aabb instance_aabb = Aabb(geom_root.aabb0_min_or_v0, geom_root.aabb0_max_or_v1);
+        grow_aabb(instance_aabb, geom_root.aabb1_min_or_v2);
+        grow_aabb(instance_aabb, geom_root.aabb1_max_or_v3);
+        transform_aabb(instance_aabb, desc.transform);
+        g_bvh[index].aabb0_min_or_v0 = instance_aabb.pmin;
+        g_bvh[index].aabb0_max_or_v1 = instance_aabb.pmax;
+        g_bvh[index].aabb1_min_or_v2 = instance_aabb.pmin;
+        g_bvh[index].aabb1_max_or_v3 = instance_aabb.pmax;
+
+        // Go up the tree.
+        while (addr != RR_INVALID_ADDR)
+        {
+            // Check node's update flag.
+            if (atomicExchange(g_bvh[addr].update,
+                            1) == 1)
+            {
+                // If the flag was 1 the second child is ready and 
+                // this thread calculates AABB for the node.
+
+                // Fetch left.
+                uint addr_left = g_bvh[addr].child0;
+                // Calculate bbox and set.
+                Aabb aabb_left = calculate_aabb_for_node(g_bvh[addr_left]);
+                // Set left AABB.
+                g_bvh[addr].aabb0_min_or_v0 = aabb_left.pmin;
+                g_bvh[addr].aabb0_max_or_v1 = aabb_left.pmax;
+
+                // Fetch right.
+                uint addr_right = g_bvh[addr].child1;
+                // Calculate bbox and set.
+                Aabb aabb_right = calculate_aabb_for_node(g_bvh[addr_right]);
+                // Set right AABB.
+                g_bvh[addr].aabb1_min_or_v2 = aabb_right.pmin;
+                g_bvh[addr].aabb1_max_or_v3 = aabb_right.pmax;
+            }
+            else
+            {
+                // If the flag was 0 set it to 1 and bail out.
+                // The thread handling the second child will
+                // handle this node.
+                break;
+            }
+
+            addr = g_bvh[addr].parent;
+        }
+    }
+}
+

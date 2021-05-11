@@ -1,0 +1,206 @@
+/**********************************************************************
+Copyright (c) 2020 Advanced Micro Devices, Inc. All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+********************************************************************/
+#version 450
+#extension GL_GOOGLE_include_directive : enable
+
+#include "common.h"
+#include "pp_common.h"
+#include "bvh2.h"
+
+#define RR_FLT_MIN 1.175494e-38
+#define RR_FLT_MAX 3.402823e+38
+#define INTERNAL_NODE_INDEX(i) (i)
+#define LEAF_INDEX(i) ((g_num_leafs - 1) + i)
+
+#ifndef UPDATE_KERNEL
+// Full span BVH buffer.
+layout(set = 0, binding = 0) coherent buffer BVH
+{
+    BVHNode g_bvh[];
+};
+
+// Morton codes.
+layout(set = 0, binding = 1) buffer MortonCodes
+{
+    uint g_morton_codes[];
+};
+
+// Indices.
+layout(set = 0, binding = 2) buffer Indices
+{
+    uint g_indices[];
+};
+
+// Whole mesh AABB
+layout(set = 0, binding = 3) buffer MeshAABB
+{
+    uint g_mesh_aabb[8];
+};
+
+layout(set = 1, binding = 0) buffer MeshIndices
+{
+    uint g_mesh_indices[];
+};
+
+layout(set = 1, binding = 1) buffer MeshVertices
+{
+    float g_mesh_vertices[];
+};
+#else
+layout(set = 0, binding = 0) buffer BVH
+{
+    BVHNode g_bvh[];
+};
+layout(set = 0, binding = 1) buffer MeshIndices
+{
+    uint g_mesh_indices[];
+};
+layout(set = 0, binding = 2) buffer MeshVertices
+{
+    float g_mesh_vertices[];
+};
+#endif
+
+// Push constants.
+layout (push_constant) uniform PushConstants
+{
+    // Stride in the vertex buffer.
+    uint g_vertex_stride;
+    // Number of leaf indices.
+    uint g_num_leafs;
+};
+
+layout(local_size_x = RR_GROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
+
+Aabb calculate_aabb_for_node(uint addr)
+{
+    // Make a union of two kids for an internal,
+    // and union of all vertices for a leaf.
+    if (RR_BVH2_INTERNAL_NODE(g_bvh[addr]))
+    {
+        Aabb aabb_left = 
+            create_aabb_from_minmax(g_bvh[addr].aabb0_min_or_v0,
+                                    g_bvh[addr].aabb0_max_or_v1);
+
+        Aabb aabb_right = 
+            create_aabb_from_minmax(g_bvh[addr].aabb1_min_or_v2,
+                                    g_bvh[addr].aabb1_max_or_v3);
+
+        return calculate_aabb_union(aabb_left, aabb_right);
+    }
+    else
+    {
+        BVHNode node = g_bvh[addr];
+
+        Aabb result = calculate_aabb_for_triangle(node.aabb0_min_or_v0,
+                                                  node.aabb0_max_or_v1,
+                                                  node.aabb1_min_or_v2);
+
+        return result;
+    }
+}
+
+void main()
+{
+    DECLARE_BUILTINS_1D;
+
+    for (int i = 0; i < PRIMITIVES_PER_THREAD; ++i)
+    {
+        //  Calculate linear primitive index.
+        uint prim_index = gidx * PRIMITIVES_PER_THREAD + i;
+
+        if (prim_index >= g_num_leafs)
+        {
+            return;
+        }
+
+        // Load our BVH node.
+        uint index = LEAF_INDEX(prim_index);
+        uint addr = g_bvh[index].parent;
+
+        uint vertex_stride_in_floats = g_vertex_stride >> 2;      
+        uint current_triangle = g_bvh[index].child1;
+        uint i0 = g_mesh_indices[(3 * current_triangle + 0)];
+        uint i1 = g_mesh_indices[(3 * current_triangle + 1)];
+        uint i2 = g_mesh_indices[(3 * current_triangle + 2)];
+
+        // Update vertex 0.
+        float x = g_mesh_vertices[i0 * vertex_stride_in_floats + 0];
+        float y = g_mesh_vertices[i0 * vertex_stride_in_floats + 1];
+        float z = g_mesh_vertices[i0 * vertex_stride_in_floats + 2];
+        vec3 v0 = vec3(x, y, z);
+
+        // Update vertex 1.
+        x = g_mesh_vertices[i1 * vertex_stride_in_floats + 0];
+        y = g_mesh_vertices[i1 * vertex_stride_in_floats + 1];
+        z = g_mesh_vertices[i1 * vertex_stride_in_floats + 2];
+        vec3 v1 = vec3(x, y, z);
+
+        // Update vertex 2.
+        x = g_mesh_vertices[i2 * vertex_stride_in_floats + 0];
+        y = g_mesh_vertices[i2 * vertex_stride_in_floats + 1];
+        z = g_mesh_vertices[i2 * vertex_stride_in_floats + 2];
+        vec3 v2 = vec3(x, y, z);
+
+        g_bvh[index].aabb0_min_or_v0 = v0;
+        g_bvh[index].aabb0_max_or_v1 = v1;
+        g_bvh[index].aabb1_min_or_v2 = v2;
+
+        // Go up the tree.
+        while (addr != RR_INVALID_ADDR)
+        {
+            // Check node's update flag.
+            if (atomicExchange(g_bvh[addr].update,
+                            1) == 1)
+            {
+                // If the flag was 1 the second child is ready and 
+                // this thread calculates AABB for the node.
+
+                // Fetch left.
+                uint addr_left = g_bvh[addr].child0;
+                // Calculate bbox and set.
+                Aabb aabb_left = calculate_aabb_for_node(addr_left);
+                // Set left AABB.
+                g_bvh[addr].aabb0_min_or_v0 = aabb_left.pmin;
+                g_bvh[addr].aabb0_max_or_v1 = aabb_left.pmax;
+
+                // Fetch right.
+                uint addr_right = g_bvh[addr].child1;
+                // Calculate bbox and set.
+                Aabb aabb_right = calculate_aabb_for_node(addr_right);
+                // Set right AABB.
+                g_bvh[addr].aabb1_min_or_v2 = aabb_right.pmin;
+                g_bvh[addr].aabb1_max_or_v3 = aabb_right.pmax;
+            }
+            else
+            {
+                // If the flag was 0 set it to 1 and bail out.
+                // The thread handling the second child will
+                // handle this node.
+                break;
+            }
+
+            addr = g_bvh[addr].parent;
+        }
+    }
+}
+

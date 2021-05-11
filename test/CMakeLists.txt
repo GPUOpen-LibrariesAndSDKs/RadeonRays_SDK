@@ -1,0 +1,6 @@
+if (ENABLE_DX12)
+    add_subdirectory(test_dx)
+endif(ENABLE_DX12)
+if (ENABLE_VULKAN)
+    add_subdirectory(test_vk)
+endif(ENABLE_VULKAN)

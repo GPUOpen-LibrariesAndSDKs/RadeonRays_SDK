@@ -1,0 +1,222 @@
+/**********************************************************************
+Copyright (c) 2020 Advanced Micro Devices, Inc. All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+********************************************************************/
+#version 450
+#extension GL_GOOGLE_include_directive : enable
+
+#ifdef PP_USE_SUBGROUP_OPS
+#extension GL_ARB_shader_ballot : require
+#ifdef PP_USE_NV_SHADER_SUBGROUP_PARTITIONED
+#extension GL_NV_shader_subgroup_partitioned : require
+#define PP_SUBGROUP_SIZE 32
+#endif
+#ifdef PP_USE_AMD_SHADER_BALLOT
+#extension GL_AMD_shader_ballot : require
+#define PP_SUBGROUP_SIZE 64
+#endif
+#endif
+
+#include "pp_common.h"
+
+layout(binding = 0) buffer InputKeys
+{
+    int g_input_keys[];
+};
+
+layout(binding = 1) buffer PartSums
+{
+    int g_part_sums[];
+};
+
+layout(binding = 2) buffer OutputKeys
+{
+    int g_output_keys[];
+};
+
+// Push constants.
+layout(push_constant) uniform PushConstants
+{
+    // Num keys.
+    uint g_num_keys;
+    // Weather to add partial sum.
+    uint g_add_sum;
+};
+
+layout(local_size_x = PP_GROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
+
+// We store keys during LDS scan here
+shared int lds_keys[PP_GROUP_SIZE];
+// This is to transform uncoalesced loads into coalesced loads and 
+// then scattered load from LDS
+shared int lds_loads[PP_KEYS_PER_THREAD][PP_GROUP_SIZE];
+
+// Subgroup operations are platform-specific optimizations
+#ifdef PP_USE_SUBGROUP_OPS
+#ifdef PP_USE_NV_SHADER_SUBGROUP_PARTITIONED
+// Peform scan within a subgrop
+int SubroupScanExclusiveAdd(int key)
+{
+    return subgroupPartitionedExclusiveAddNV(key, uvec4(0xffffffffu));
+}
+#endif
+#ifdef PP_USE_AMD_SHADER_BALLOT
+// Peform scan within a subgroup
+int SubroupScanExclusiveAdd(int key)
+{
+    return addInvocationsExclusiveScanAMD(key);
+}
+#endif
+#endif
+
+// Perform scan within a block of threads
+int BlockScanExclusiveAdd(int key)
+{
+    DECLARE_BUILTINS_1D;
+
+#ifndef PP_USE_SUBGROUP_OPS
+    // Load the key into LDS
+    lds_keys[lidx] = key;
+
+    barrier();
+
+    // Calculate reduction
+    for (int stride = 1; stride < PP_GROUP_SIZE; stride <<= 1)
+    {
+        if (lidx < PP_GROUP_SIZE / (2 * stride))
+        {
+            lds_keys[2 * (lidx + 1) * stride - 1] =
+            lds_keys[2 * (lidx + 1) * stride - 1] +
+            lds_keys[(2 * lidx + 1) * stride - 1];
+        }
+
+        barrier();
+    }
+
+    // Then put 0 into the root for downsweep
+    if (lidx == 0)
+        lds_keys[PP_GROUP_SIZE - 1] = 0;
+
+    barrier();
+
+    // Perform downsweep
+    for (int stride = PP_GROUP_SIZE >> 1; stride > 0; stride >>= 1)
+    {
+        if (lidx < PP_GROUP_SIZE / (2 * stride))
+        {
+            int temp = lds_keys[(2 * lidx + 1) * stride - 1];
+            lds_keys[(2 * lidx + 1) * stride - 1] = lds_keys[2 * (lidx + 1) * stride - 1];
+            lds_keys[2 * (lidx + 1) * stride - 1] = lds_keys[2 * (lidx + 1) * stride - 1] + temp;
+        }
+
+        barrier();
+    }
+
+    return lds_keys[lidx];
+#else
+    lds_keys[lidx] = 0;
+
+    barrier();
+
+    // Peform scan within a subgroup (wave)
+    int wave_scanned = SubroupScanExclusiveAdd(key);
+
+    uint widx = lidx / PP_SUBGROUP_SIZE;
+    uint wlidx = gl_SubGroupInvocationARB;
+
+    // Last element in each subgroup writes partial sum into LDS
+    if (wlidx == PP_SUBGROUP_SIZE - 1)
+    {
+        lds_keys[widx] = wave_scanned + key;
+    }
+
+    barrier();
+
+    // Then first subgroup scannes partial sums
+    if (widx == 0)
+    {
+        lds_keys[lidx] = SubroupScanExclusiveAdd(lds_keys[lidx]);
+    }
+
+    barrier();
+
+    // And we add partial sums back to each subgroup-scanned element
+    wave_scanned += lds_keys[widx];
+
+    return wave_scanned;
+#endif
+}
+
+void main()
+{
+    DECLARE_BUILTINS_1D;
+
+    // Perform coalesced load into LDS
+    uint range_begin = bidx * block_size * PP_KEYS_PER_THREAD;
+    for (uint i = 0; i < PP_KEYS_PER_THREAD; ++i)
+    {
+        uint load_index = range_begin + i * block_size + lidx;
+
+        uint col = (i * block_size + lidx) / PP_KEYS_PER_THREAD;
+        uint row = (i * block_size + lidx) % PP_KEYS_PER_THREAD;
+
+        lds_loads[row][col] = (load_index < g_num_keys) ? g_input_keys[load_index] : 0;
+    }
+
+    barrier();
+
+    int thread_sum = 0;
+
+    // Calculate scan on this thread's elements
+    for (uint i = 0; i < PP_KEYS_PER_THREAD; ++i)
+    {
+        int tmp = lds_loads[i][lidx];
+        lds_loads[i][lidx] = thread_sum;
+        thread_sum += tmp;
+    }
+
+    // Scan partial sums
+    thread_sum = BlockScanExclusiveAdd(thread_sum);
+
+    // Add global partial sums if required
+    int part_sum = g_add_sum == 1 ? g_part_sums[bidx] : 0;
+
+    // Add partial sums back
+    for (uint i = 0; i < PP_KEYS_PER_THREAD; ++i)
+    {
+        lds_loads[i][lidx] += thread_sum;
+    }
+
+    barrier();
+
+    // Perform coalesced writes back to global memory
+    for (uint i = 0; i < PP_KEYS_PER_THREAD; ++i)
+    {
+        uint store_index = range_begin + i * block_size + lidx;
+        uint col = (i * block_size + lidx) / PP_KEYS_PER_THREAD;
+        uint row = (i * block_size + lidx) % PP_KEYS_PER_THREAD;
+
+        if (store_index < g_num_keys)
+        {
+            g_output_keys[store_index] = lds_loads[row][col] + part_sum;
+        }
+    }
+}
+

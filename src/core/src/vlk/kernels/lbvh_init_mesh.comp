@@ -1,0 +1,78 @@
+/**********************************************************************
+Copyright (c) 2020 Advanced Micro Devices, Inc. All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+********************************************************************/
+#version 450
+#extension GL_GOOGLE_include_directive : enable
+#extension GL_ARB_gpu_shader_int64 : require
+
+#include "common.h"
+#include "pp_common.h"
+#include "bvh2.h"
+
+#define RR_FLT_MAX 3.402823e+38
+
+#define INTERNAL_NODE_INDEX(i) (i)
+#define LEAF_INDEX(i) ((g_num_leafs - 1) + i)
+
+// Full span BVH buffer.
+layout(set = 0, binding = 0) buffer BVH
+{
+    BVHNode g_bvh[];
+};
+
+// Morton codes.
+layout(set = 0, binding = 1) buffer MortonCodes
+{
+    uint g_morton_codes[];
+};
+
+// Indices.
+layout(set = 0, binding = 2) buffer Indices
+{
+    uint g_indices[];
+};
+
+// Whole mesh AABB
+layout(set = 0, binding = 3) buffer MeshAABB
+{
+    uint g_mesh_aabb[8];
+};
+
+layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+void main()
+{
+    DECLARE_BUILTINS_1D;
+    if(gidx == 0)
+    {
+        uvec3 max = Float3ToUint3(vec3(RR_FLT_MAX, RR_FLT_MAX, RR_FLT_MAX));
+        uvec3 nmax = Float3ToUint3(vec3(-RR_FLT_MAX, -RR_FLT_MAX, -RR_FLT_MAX));
+        g_mesh_aabb[0] = max.x;
+        g_mesh_aabb[1] = max.y;
+        g_mesh_aabb[2] = max.z;
+        g_mesh_aabb[3] = 0;
+        g_mesh_aabb[4] = nmax.x;
+        g_mesh_aabb[5] = nmax.y;
+        g_mesh_aabb[6] = nmax.z;
+        g_mesh_aabb[7] = 0;
+    }
+}
+

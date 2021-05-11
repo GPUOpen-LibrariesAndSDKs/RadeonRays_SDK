@@ -1,0 +1,104 @@
+/**********************************************************************
+Copyright (c) 2020 Advanced Micro Devices, Inc. All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+********************************************************************/
+#version 450
+#extension GL_GOOGLE_include_directive : enable
+
+#ifdef PP_USE_16BIT_HISTOGRAM
+#ifdef PP_USE_AMD_GPU_SHADER_INT16
+#extension GL_AMD_gpu_shader_int16: enable
+#define HISTOGRAM_TYPE uint16_t
+#else
+#extension GL_NV_gpu_shader5 : enable
+#define HISTOGRAM_TYPE uint16_t
+#endif
+#else
+#define HISTOGRAM_TYPE int
+#endif
+
+#define PP_NUM_HISTOGRAM_BITS 4
+#define PP_NUM_HISTOGRAM_BINS (1 << PP_NUM_HISTOGRAM_BITS)
+
+#include "pp_common.h"
+
+layout(binding = 0) buffer Keys
+{
+    int g_keys[];
+};
+
+layout(binding = 1) buffer GroupHistograms
+{
+    int g_group_histograms[];
+};
+
+// Push constants.
+layout (push_constant) uniform PushConstants
+{
+    // Number of keys.
+    uint g_num_keys;
+    // Bit shift.
+    uint g_bit_shift;
+};
+
+layout(local_size_x = PP_GROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
+
+shared HISTOGRAM_TYPE lds_histograms[PP_NUM_HISTOGRAM_BINS];
+
+void main()
+{
+    DECLARE_BUILTINS_1D;
+
+    // Clear LDS histograms (PP_GROUP_SIZE elements for each bin)
+    if (lidx < PP_NUM_HISTOGRAM_BINS)
+    {
+        lds_histograms[lidx] = 0;
+    }
+
+    barrier();
+
+    // Each thread handles PP_KEYS_PER_THREAD elements
+#pragma unroll
+    for (int i = 0; i < PP_KEYS_PER_THREAD; ++i)
+    {
+        // Calculate next input element index
+        uint key_index = gidx * PP_KEYS_PER_THREAD + i;
+
+        // Handle out of bounds
+        if (key_index >= g_num_keys)
+        {
+            break;
+        }
+
+        // Determine bin index for next element
+        int bin_index = (g_keys[key_index] >> g_bit_shift) & 0xf;
+
+        // Increment LDS histogram counter (no atomic required, histogram is private)
+        atomicAdd(lds_histograms[bin_index], 1);
+    }
+
+    barrier();
+
+    // Write reduced bins into global memory
+    if (lidx < PP_NUM_HISTOGRAM_BINS)
+    {
+        g_group_histograms[num_blocks * lidx + bidx] = lds_histograms[lidx];
+    }
+}

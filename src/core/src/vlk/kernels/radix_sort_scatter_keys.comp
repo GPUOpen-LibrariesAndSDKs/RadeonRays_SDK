@@ -1,0 +1,296 @@
+/**********************************************************************
+Copyright (c) 2020 Advanced Micro Devices, Inc. All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+********************************************************************/
+#version 450
+#extension GL_GOOGLE_include_directive : enable
+
+#ifdef PP_USE_SUBGROUP_OPS
+#extension GL_ARB_shader_ballot : require
+#ifdef PP_USE_NV_SHADER_SUBGROUP_PARTITIONED
+#extension GL_NV_shader_subgroup_partitioned : require
+#define PP_SUBGROUP_SIZE 32
+#endif
+#ifdef PP_USE_AMD_SHADER_BALLOT
+#extension GL_AMD_shader_ballot : require
+#define PP_SUBGROUP_SIZE 64
+#endif
+#endif
+
+#define PP_NUM_HISTOGRAM_BITS 4
+#define PP_NUM_HISTOGRAM_BINS (1 << PP_NUM_HISTOGRAM_BITS)
+#define PP_INT_MAX 0x7fffffff
+
+#include "pp_common.h"
+
+layout(binding = 0) buffer Keys
+{
+    int g_keys[];
+};
+
+layout(binding = 1) buffer ScannedGroupHistograms
+{
+    int g_scanned_group_histograms[];
+};
+
+layout(binding = 2) buffer OutputKeys
+{
+    int g_output_keys[];
+};
+
+layout(binding = 3) buffer Values
+{
+    int g_values[];
+};
+
+layout(binding = 4) buffer OutputValues
+{
+    int g_output_values[];
+};
+
+// Push constants.
+layout (push_constant) uniform PushConstants
+{
+    // Number of keys.
+    uint g_num_keys;
+    // Bit shift.
+    uint g_bit_shift;
+};
+
+layout(local_size_x = PP_GROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
+
+// Scratch memory for group operations
+shared int lds_scratch[PP_GROUP_SIZE];
+// Temporary storage for the keys
+shared int lds_keys[PP_GROUP_SIZE];
+// Cache for scanned histogram for faster indexing
+shared int lds_scanned_histogram[PP_NUM_HISTOGRAM_BINS];
+// Block histogram
+shared int lds_histogram[PP_NUM_HISTOGRAM_BINS];
+
+#ifdef PP_USE_SUBGROUP_OPS
+#ifdef PP_USE_NV_SHADER_SUBGROUP_PARTITIONED
+int SubroupScanExclusiveAdd(int key)
+{
+    return subgroupPartitionedExclusiveAddNV(key, uvec4(0xffffffffu));
+}
+#endif
+#ifdef PP_USE_AMD_SHADER_BALLOT
+int SubroupScanExclusiveAdd(int key)
+{
+    return addInvocationsExclusiveScanAMD(key);
+}
+#endif
+#endif
+
+int BlockScanExclusiveAdd(int key)
+{
+    DECLARE_BUILTINS_1D;
+
+#ifndef PP_USE_SUBGROUP_OPS
+    lds_scratch[lidx] = key;
+
+    barrier();
+
+    // Calculate reduction
+    for (int stride = 1; stride < PP_GROUP_SIZE; stride <<= 1)
+    {
+        if (lidx < PP_GROUP_SIZE / (2 * stride))
+        {
+            lds_scratch[2 * (lidx + 1) * stride - 1] =
+                lds_scratch[2 * (lidx + 1) * stride - 1] +
+                lds_scratch[(2 * lidx + 1) * stride - 1];
+        }
+
+        barrier();
+    }
+
+    // Then put 0 into the root for downsweep
+    if (lidx == 0)
+        lds_scratch[PP_GROUP_SIZE - 1] = 0;
+
+    barrier();
+
+    // Perform downsweep
+    for (int stride = PP_GROUP_SIZE >> 1; stride > 0; stride >>= 1)
+    {
+        if (lidx < PP_GROUP_SIZE / (2 * stride))
+        {
+            int temp = lds_scratch[(2 * lidx + 1) * stride - 1];
+            lds_scratch[(2 * lidx + 1) * stride - 1] = lds_scratch[2 * (lidx + 1) * stride - 1];
+            lds_scratch[2 * (lidx + 1) * stride - 1] = lds_scratch[2 * (lidx + 1) * stride - 1] + temp;
+        }
+
+        barrier();
+    }
+
+    return lds_scratch[lidx];
+#else
+    lds_scratch[lidx] = 0;
+
+    barrier();
+
+    int wave_scanned = SubroupScanExclusiveAdd(key);
+
+    uint widx = lidx / PP_SUBGROUP_SIZE;
+    uint wlidx = gl_SubGroupInvocationARB;
+
+    // Last element in each subgroup writes partial sum into LDS
+    if (wlidx == PP_SUBGROUP_SIZE - 1)
+    {
+        lds_scratch[widx] = wave_scanned + key;
+    }
+
+    barrier();
+
+    // Then first subgroup scannes partial sums
+    if (widx == 0)
+    {
+        lds_scratch[lidx] = SubroupScanExclusiveAdd(lds_scratch[lidx]);
+    }
+
+    barrier();
+
+    // And we add partial sums back to each subgroup-scanned element
+    wave_scanned += lds_scratch[widx];
+
+    return wave_scanned;
+#endif
+}
+
+
+void main()
+{
+    DECLARE_BUILTINS_1D;
+
+    // Cache scanned histogram in LDS and clear block histogram
+    if (lidx < PP_NUM_HISTOGRAM_BINS)
+    {
+        lds_scanned_histogram[lidx] = g_scanned_group_histograms[num_blocks * lidx + bidx];
+    }
+
+    // Starting point of our block in global memory
+    uint block_start_index = bidx * PP_GROUP_SIZE * PP_KEYS_PER_THREAD;
+#pragma unroll
+    // Each thread handles PP_KEYS_PER_THREAD elements
+    for (int i = 0; i < PP_KEYS_PER_THREAD; ++i)
+    {
+        // Clear block histogram
+        if (lidx < PP_NUM_HISTOGRAM_BINS)
+        {
+            lds_histogram[lidx] = 0;
+        }
+
+        // Calculate next input element index
+        uint key_index = block_start_index + i * PP_GROUP_SIZE + lidx;
+
+        // Fetch next element and put it in LDS
+        int key = (key_index < g_num_keys) ? g_keys[key_index] : PP_INT_MAX;
+        int value = (key_index < g_num_keys) ? g_values[key_index] : 0;
+
+        // Sort keys locally in LDS
+#pragma unroll
+        for (uint shift = 0; shift < PP_NUM_HISTOGRAM_BITS; shift += 2)
+        {
+            // Detemine bin index for the key
+            int bin_index = ((key >> g_bit_shift) >> shift) & 0x3;
+            // Create local packed histogram (0th in 1st byte, 1th in 2nd, etc)
+            int local_histogram = 1 << (bin_index * 8);
+            // Scan local histograms
+            int local_histogram_scanned = BlockScanExclusiveAdd(local_histogram);
+            barrier();
+            // Last thread in a block broadcasts total block histogram
+            if (lidx == (PP_GROUP_SIZE - 1))
+            {
+                lds_scratch[0] = local_histogram_scanned + local_histogram;
+            }
+            // Make sure broadcast happened
+            barrier();
+            // Load broadcast value
+            local_histogram = lds_scratch[0];
+            // Scan block histogram in order to add scanned values as offsets
+            local_histogram = (local_histogram << 8) +
+                              (local_histogram << 16) +
+                              (local_histogram << 24);
+            // Add offsets from previos bins
+            local_histogram_scanned += local_histogram;
+            // Calculate target offset
+            int offset = (local_histogram_scanned >> (bin_index * 8)) & 0xff;
+            // Distribute the key
+            lds_keys[offset] = key;
+            //
+            barrier();
+            // Load key
+            key = lds_keys[lidx];
+
+            // Perform value exchange
+            barrier();
+            lds_keys[offset] = value;
+            barrier();
+            value = lds_keys[lidx];
+            barrier();
+
+        }
+
+        // Reconstruct original 16-bins histogram
+        int bin_index = (key >> g_bit_shift) & 0xf;
+
+        atomicAdd(lds_histogram[bin_index], 1);
+
+        barrier();
+
+        // Scan original histogram
+        int histogram_value =
+#ifndef PP_USE_SUBGROUP_OPS
+            BlockScanExclusiveAdd(lidx < PP_NUM_HISTOGRAM_BINS ? lds_histogram[lidx] : 0);
+#else
+            SubroupScanExclusiveAdd(lidx < PP_NUM_HISTOGRAM_BINS ? lds_histogram[lidx] : 0);
+#endif
+
+        // Broadcast scanned histogram via LDS
+        if (lidx < PP_NUM_HISTOGRAM_BINS)
+        {
+            lds_scratch[lidx] = histogram_value;
+        }
+
+        // Fetch scanned block histogram index
+        int global_offset = lds_scanned_histogram[bin_index];
+
+        barrier();
+
+        // Fetch scanned histogram within a block
+        int local_offset = int(lidx) - lds_scratch[bin_index];
+
+        // Write the element back to global memory
+        if (global_offset + local_offset < g_num_keys)
+        {
+            g_output_keys[global_offset + local_offset] = key;
+            g_output_values[global_offset + local_offset] = value;
+        }
+
+        barrier();
+
+        // Update scanned histogram
+        if (lidx < PP_NUM_HISTOGRAM_BINS)
+        {
+            lds_scanned_histogram[lidx] += lds_histogram[lidx];
+        }
+    }
+}

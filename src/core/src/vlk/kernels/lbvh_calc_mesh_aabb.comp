@@ -1,0 +1,179 @@
+/**********************************************************************
+Copyright (c) 2020 Advanced Micro Devices, Inc. All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+********************************************************************/
+#version 450
+#extension GL_GOOGLE_include_directive : enable
+
+#include "common.h"
+#include "pp_common.h"
+#include "bvh2.h"
+
+#define RR_FLT_MIN 1.175494e-38
+#define RR_FLT_MAX 3.402823e+38
+
+// Full span BVH buffer.
+layout(set = 0, binding = 0) buffer BVH
+{
+    BVHNode g_bvh[];
+};
+
+// Morton codes.
+layout(set = 0, binding = 1) buffer MortonCodes
+{
+    uint g_morton_codes[];
+};
+
+// Indices.
+layout(set = 0, binding = 2) buffer Indices
+{
+    uint g_indices[];
+};
+
+// Whole mesh AABB
+layout(set = 0, binding = 3) buffer MeshAABB
+{
+    uint g_mesh_aabb[8];
+};
+
+layout(set = 1, binding = 0) buffer MeshIndices
+{
+    uint g_mesh_indices[];
+};
+
+layout(set = 1, binding = 1) buffer MeshVertices
+{
+    float g_mesh_vertices[];
+};
+
+// Push constants.
+layout (push_constant) uniform PushConstants
+{
+    // Stride in the vertex buffer.
+    uint g_vertex_stride;
+    // Number of leaf indices.
+    uint g_num_leafs;
+};
+
+layout (local_size_x = RR_GROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
+
+shared vec3 lds_scratch[RR_GROUP_SIZE];
+
+vec3 BlockReduceMin(vec3 value)
+{
+    DECLARE_BUILTINS_1D;
+
+    lds_scratch[lidx] = value;
+
+    for (int stride = RR_GROUP_SIZE/2; stride > 0; stride /= 2)
+    {
+        barrier();
+
+        if (lidx < stride)
+        {
+            lds_scratch[lidx] = min(lds_scratch[lidx], lds_scratch[lidx + stride]);
+        }
+    }
+
+    barrier();
+
+    return lds_scratch[0];
+}
+
+vec3 BlockReduceMax(vec3 value)
+{
+    DECLARE_BUILTINS_1D;
+
+    lds_scratch[lidx] = value;
+
+    for (int stride = RR_GROUP_SIZE/2; stride > 0; stride /= 2)
+    {
+        barrier();
+
+        if (lidx < stride)
+        {
+            lds_scratch[lidx] = max(lds_scratch[lidx], lds_scratch[lidx + stride]);
+        }
+    }
+
+    barrier();
+
+    return lds_scratch[0];
+}
+
+void main()
+{
+    DECLARE_BUILTINS_1D;
+
+    Aabb result = Aabb( vec3(RR_FLT_MAX, RR_FLT_MAX, RR_FLT_MAX),
+                        vec3(-RR_FLT_MAX, -RR_FLT_MAX, -RR_FLT_MAX) );
+
+    uint vertex_stride_in_floats = g_vertex_stride >> 2;
+    for (int i = 0; i < PRIMITIVES_PER_THREAD; ++i)
+    {
+        //  Calculate linear triangle index.
+        uint prim_index = gidx * PRIMITIVES_PER_THREAD + i;
+
+        if (prim_index < g_num_leafs)
+        {
+            uint index = prim_index;
+            Aabb aabb = Aabb(vec3(RR_FLT_MAX, RR_FLT_MAX, RR_FLT_MAX),
+                            vec3(-RR_FLT_MAX, -RR_FLT_MAX, -RR_FLT_MAX));
+
+            uint i0 = g_mesh_indices[(3 * index + 0)];
+            uint i1 = g_mesh_indices[(3 * index + 1)];
+            uint i2 = g_mesh_indices[(3 * index + 2)];
+
+            float x = g_mesh_vertices[i0 * vertex_stride_in_floats + 0];
+            float y = g_mesh_vertices[i0 * vertex_stride_in_floats + 1];
+            float z = g_mesh_vertices[i0 * vertex_stride_in_floats + 2];
+            vec3 v0 = vec3(x, y, z);
+
+            x = g_mesh_vertices[i1 * vertex_stride_in_floats + 0];
+            y = g_mesh_vertices[i1 * vertex_stride_in_floats + 1];
+            z = g_mesh_vertices[i1 * vertex_stride_in_floats + 2];
+            vec3 v1 = vec3(x, y, z);
+
+
+            x = g_mesh_vertices[i2 * vertex_stride_in_floats + 0];
+            y = g_mesh_vertices[i2 * vertex_stride_in_floats + 1];
+            z = g_mesh_vertices[i2 * vertex_stride_in_floats + 2];
+            vec3 v2 = vec3(x, y, z);
+            aabb = calculate_aabb_for_triangle(v0, v1, v2);
+
+            aabb.pmin = BlockReduceMin(aabb.pmin);
+            aabb.pmax = BlockReduceMax(aabb.pmax);
+        
+            if (lidx == 0)
+            {
+                // Convert the block bounds to uints so we can atomically min/max them against the scene bounds in memory.
+                const uvec3 block_min_uint = Float3ToUint3(aabb.pmin.xyz);
+                const uvec3 block_max_uint = Float3ToUint3(aabb.pmax.xyz);
+
+                atomicMin(g_mesh_aabb[0], block_min_uint.x);
+                atomicMin(g_mesh_aabb[1], block_min_uint.y);
+                atomicMin(g_mesh_aabb[2], block_min_uint.z);
+                atomicMax(g_mesh_aabb[4], block_max_uint.x);
+                atomicMax(g_mesh_aabb[5], block_max_uint.y);
+                atomicMax(g_mesh_aabb[6], block_max_uint.z);
+            }
+        }
+    }
+}

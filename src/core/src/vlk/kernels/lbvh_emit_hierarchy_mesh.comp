@@ -1,0 +1,218 @@
+/**********************************************************************
+Copyright (c) 2018 Advanced Micro Devices, Inc. All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+********************************************************************/
+#version 450
+#extension GL_GOOGLE_include_directive : enable
+
+#include "common.h"
+#include "pp_common.h"
+#include "bvh2.h"
+
+#define RR_FLT_MIN 1.175494e-38
+#define RR_FLT_MAX 3.402823e+38
+#define INTERNAL_NODE_INDEX(i) (i)
+#define LEAF_INDEX(i) ((g_num_leafs - 1) + i)
+
+// Full span BVH buffer.
+layout(set = 0, binding = 0) buffer BVH
+{
+    BVHNode g_bvh[];
+};
+
+// Morton codes.
+layout(set = 0, binding = 1) buffer MortonCodes
+{
+    uint g_morton_codes[];
+};
+
+// Indices.
+layout(set = 0, binding = 2) buffer Indices
+{
+    uint g_indices[];
+};
+
+// Whole mesh AABB
+layout(set = 0, binding = 3) buffer MeshAABB
+{
+    uint g_mesh_aabb[8];
+};
+
+layout(set = 1, binding = 0) buffer MeshIndices
+{
+    uint g_mesh_indices[];
+};
+
+layout(set = 1, binding = 1) buffer MeshVertices
+{
+    float g_mesh_vertices[];
+};
+
+// Push constants.
+layout (push_constant) uniform PushConstants
+{
+    // Number of leaf indices.
+    uint g_num_leafs;
+};
+
+layout (local_size_x = RR_GROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
+
+
+uint clz(uint v)
+{
+    return 32u - findMSB(v);
+}
+
+// Calculate longest common prefix length of bit representations
+// if i1th and i2th morton codes
+int CalcCommonPrefixLength(int i1, int i2)
+{
+    // Select left end
+    int left = min(i1, i2);
+    // Select right end
+    int right = max(i1, i2);
+
+    if (left < 0 || right >= g_num_leafs)
+    {
+        return 0;
+    }
+
+    // Fetch Morton codes for both ends
+    uint left_code = g_morton_codes[left];
+    uint right_code = g_morton_codes[right];
+
+    // Special handling of duplicated codes: use their indices as a fallback
+    return int(left_code != right_code ? clz(left_code ^ right_code) : (32u + clz(left ^ right)));
+}
+
+uvec2 FindSpan(int index)
+{
+    // Find the direction of the range
+    int d = sign(CalcCommonPrefixLength(index, index + 1) - CalcCommonPrefixLength(index, index - 1));
+
+    // Find minimum number of bits for the break on the other side
+    int delta_min = CalcCommonPrefixLength(index, index - d);
+
+    // Search conservative far end
+    int lmax = 2;
+    while (CalcCommonPrefixLength(index, index + lmax * d) > delta_min)
+    {
+        lmax *= 2;
+    }
+
+    // Search back to find exact bound
+    // with binary search
+    int l = 0;
+    int t = lmax;
+    do
+    {
+        t /= 2;
+
+        if(CalcCommonPrefixLength(index, index + (l + t) * d) > delta_min)
+        {
+            l = l + t;
+        }
+    }
+    while (t > 1);
+
+    // Pack span 
+    uvec2 span;
+    span.x = max(min(index, index + l * d), 0u);
+    span.y = min(max(index, index + l * d), g_num_leafs - 1);
+    return span;
+}
+
+uint FindSplit(uvec2 span)
+{
+    int left = int(span.x);
+    int right =  int(span.y);
+
+    // Calculate the number of identical bits from higher end
+    int num_identical = CalcCommonPrefixLength(left, right);
+
+    do
+    {
+        // Proposed split
+        int new_split = (right + left) / 2;
+
+        // If it has more equal leading bits than left and right accept it
+        if (CalcCommonPrefixLength(left, new_split) > num_identical)
+        {
+            left = new_split;
+        }
+        else
+        {
+            right = new_split;
+        }
+    }
+    while (right > left + 1);
+
+    return uint(left);
+}
+
+void main()
+{
+    DECLARE_BUILTINS_1D;
+
+    for (int i = 0; i < PRIMITIVES_PER_THREAD; ++i)
+    {
+        //  Calculate linear primitive index.
+        uint prim_index = gidx * PRIMITIVES_PER_THREAD + i;
+        uint index = LEAF_INDEX(prim_index);
+        uint current_triangle = g_indices[prim_index];
+    
+        // Handle leaf nodes
+        if (prim_index < g_num_leafs)
+        {
+            // Mark a leaf
+            g_bvh[index].child0 = RR_INVALID_ADDR;
+            // Set primitiveID
+            g_bvh[index].child1.x = current_triangle;
+            // zero update flag
+            g_bvh[index].update = 0;
+        }
+
+        // Now handle N-1 internal nodes
+        if (prim_index < g_num_leafs - 1)
+        {
+            // Find node coverage span
+            uvec2 span = FindSpan(int(prim_index));
+            // Find node split
+            uint split = FindSplit(span);
+
+            // Create child nodes if needed
+            uint addr_left = (split == span.x) ? LEAF_INDEX(split) : INTERNAL_NODE_INDEX(split);
+            uint addr_right = (split + 1 == span.y) ? LEAF_INDEX(split + 1) : INTERNAL_NODE_INDEX(split + 1);
+
+            g_bvh[INTERNAL_NODE_INDEX(prim_index)].child0 = addr_left;
+            g_bvh[INTERNAL_NODE_INDEX(prim_index)].child1 = addr_right;
+            g_bvh[INTERNAL_NODE_INDEX(prim_index)].update = 0;
+
+            g_bvh[addr_left].parent = INTERNAL_NODE_INDEX(prim_index);
+            g_bvh[addr_right].parent = INTERNAL_NODE_INDEX(prim_index);
+
+            if (INTERNAL_NODE_INDEX(prim_index) == 0)
+            {
+                g_bvh[INTERNAL_NODE_INDEX(prim_index)].parent = RR_INVALID_ADDR;
+            }
+        }
+    }
+}
+

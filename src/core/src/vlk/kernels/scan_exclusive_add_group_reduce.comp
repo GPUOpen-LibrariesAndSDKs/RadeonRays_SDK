@@ -1,0 +1,154 @@
+/**********************************************************************
+Copyright (c) 2020 Advanced Micro Devices, Inc. All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+********************************************************************/
+#version 450
+#extension GL_GOOGLE_include_directive : enable
+
+#ifdef PP_USE_SUBGROUP_OPS
+#extension GL_ARB_shader_ballot : require
+#ifdef PP_USE_NV_SHADER_SUBGROUP_PARTITIONED
+#extension GL_NV_shader_subgroup_partitioned : require
+#define PP_SUBGROUP_SIZE 32
+#endif
+#ifdef PP_USE_AMD_SHADER_BALLOT
+#extension GL_AMD_shader_ballot : require
+#define PP_SUBGROUP_SIZE 64
+#endif
+#endif
+
+#include "pp_common.h"
+
+layout(binding = 0) buffer InputKeys
+{
+    int g_input_keys[];
+};
+
+layout(binding = 1) buffer PartSums
+{
+    int g_part_sums[];
+};
+
+// Push constants.
+layout(push_constant) uniform PushConstants
+{
+    // Num keys.
+    uint g_num_keys;
+};
+
+layout(local_size_x = PP_GROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
+
+shared int lds_keys[PP_GROUP_SIZE];
+
+// Accelerated subgroup reductions
+#ifdef PP_USE_SUBGROUP_OPS
+#ifdef PP_USE_NV_SHADER_SUBGROUP_PARTITIONED
+int SubroupReduceAdd(int key)
+{
+    return subgroupPartitionedAddNV(key, uvec4(0xffffffffu));
+}
+#endif
+#ifdef PP_USE_AMD_SHADER_BALLOT
+int SubroupReduceAdd(int key)
+{
+    return addInvocationsAMD(key);
+}
+#endif
+#endif
+
+// Reduction within a block
+int BlockReduceAdd(int key)
+{
+    DECLARE_BUILTINS_1D;
+
+#ifndef PP_USE_SUBGROUP_OPS
+    // Load key into LDS
+    lds_keys[lidx] = key;
+
+    barrier();
+
+    // Peform reduction within a block
+    for (int stride = (PP_GROUP_SIZE >> 1); stride > 0; stride >>= 1)
+    {
+        if (lidx < stride)
+        {
+            lds_keys[lidx] += lds_keys[lidx + stride];
+        }
+
+        barrier();
+    }
+
+    return lds_keys[0];
+#else
+    lds_keys[lidx] = 0;
+
+    barrier();
+
+    // Perform reduction within a subgroup
+    int wave_reduced = SubroupReduceAdd(key);
+
+    uint widx = lidx / PP_SUBGROUP_SIZE;
+    uint wlidx = gl_SubGroupInvocationARB;
+
+    // First element of each wave puts subgroup-reduced value into LDS
+    if (wlidx == 0)
+    {
+        lds_keys[widx] = wave_reduced;
+    }
+
+    barrier();
+
+    // First subroup reduces partial sums
+    if (widx == 0)
+    {
+        lds_keys[lidx] = SubroupReduceAdd(lds_keys[lidx]);
+    }
+
+    barrier();
+
+    return lds_keys[0];
+#endif
+}
+
+void main()
+{
+    DECLARE_BUILTINS_1D;
+
+    int thread_sum = 0;
+
+    // Do coalesced loads and calculate their partial sums right away
+    uint range_begin = bidx * block_size * PP_KEYS_PER_THREAD;
+#pragma unroll
+    for (uint i = 0; i < PP_KEYS_PER_THREAD; ++i)
+    {
+        uint load_index = range_begin + i * block_size + lidx;
+        thread_sum += (load_index < g_num_keys) ? g_input_keys[load_index] : 0;
+    }
+
+    // Reduce sums
+    thread_sum = BlockReduceAdd(thread_sum);
+
+    // First thread writes the sum to partial sums array
+    if (lidx == 0)
+    {
+        g_part_sums[bidx] = thread_sum;
+    }
+}
+

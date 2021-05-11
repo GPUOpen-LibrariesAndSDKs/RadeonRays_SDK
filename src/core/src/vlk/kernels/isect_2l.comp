@@ -1,0 +1,323 @@
+/**********************************************************************
+Copyright (c) 2018 Advanced Micro Devices, Inc. All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+********************************************************************/
+#version 450
+
+#extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_nonuniform_qualifier : enable
+
+#define RR_LDS_STACK_SIZE 16
+#define RR_STACK_SIZE 64
+#define RR_TOP_LEVEL_SENTINEL (RR_INVALID_ADDR - 1)
+
+#include "common.h"
+#include "bvh2.h"
+
+#ifdef RR_INDIRECT_KERNEL
+#define HitsIndex 4
+#define ScratchIndex 5
+#else
+#define HitsIndex 3
+#define ScratchIndex 4
+#endif
+
+// BVH buffer.
+layout(set = 0, binding = 0) buffer BVH
+{
+    BVHNode g_bvh[];
+};
+
+// Transforms buffer.
+layout(set = 0, binding = 1) buffer Transforms
+{
+    Transform g_transforms[];
+};
+
+// Ray buffer.
+layout(set = 0, binding = 2) buffer Rays
+{
+    Ray g_rays[];
+};
+
+#ifdef RR_INDIRECT_KERNEL
+// Ray count.
+layout(set = 0, binding = 3) buffer RayCount
+{
+    uint g_num_rays_indirect;
+};
+#endif
+
+#ifdef RR_OUTPUT_TYPE_FULL_HIT
+// Hit buffer.
+layout(set = 0, binding = HitsIndex) buffer Hits
+{
+    Hit g_hits[];
+};
+#else
+// Hit buffer.
+layout(set = 0, binding = HitsIndex) buffer Hits
+{
+    uint g_hits[];
+};
+#endif
+// Hit buffer.
+layout(set = 0, binding = ScratchIndex) buffer Stack
+{
+    uint g_stack[];
+};
+// BVH buffers.
+layout(set = 0, binding = ScratchIndex + 1) buffer ChildrenBVH
+{
+    BVHNode g_nodes[];
+} g_children_bvh[2048];
+
+
+// Push constants.
+layout (push_constant) uniform PushConstants
+{
+    // Number of rays in the workload.
+    uint g_num_rays;
+};
+
+
+// Group size.
+layout (local_size_x = RR_GROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
+
+shared uint lds_stack[RR_GROUP_SIZE * RR_LDS_STACK_SIZE];
+void PushStack(in uint addr, inout uint lds_sptr, inout uint lds_sbegin, inout uint sptr, inout uint sbegin)
+{
+    if (lds_sptr - lds_sbegin >= RR_LDS_STACK_SIZE)
+    {
+        for (int i = 1; i < RR_LDS_STACK_SIZE; ++i)
+        {
+            g_stack[sptr + i] = lds_stack[lds_sbegin + i];
+        }
+
+        sptr += RR_LDS_STACK_SIZE;
+        lds_sptr = lds_sbegin + 1;
+    }
+    lds_stack[lds_sptr++] = addr;
+}
+
+uint PopStack(inout uint lds_sptr, inout uint lds_sbegin, inout uint sptr, inout uint sbegin)
+{
+    uint addr = lds_stack[--lds_sptr];
+    if (addr == RR_INVALID_ADDR && sptr > sbegin)
+    {
+        sptr -= RR_LDS_STACK_SIZE;
+        for (int i = 1; i < RR_LDS_STACK_SIZE; ++i)
+        {
+            lds_stack[lds_sbegin + i] = g_stack[sptr + i];
+        }
+        lds_sptr = lds_sbegin + RR_LDS_STACK_SIZE;
+        addr = lds_stack[--lds_sptr];
+    }
+    return addr;
+}
+
+void main()
+{
+    uint gidx = gl_GlobalInvocationID.x;
+    uint lidx = gl_LocalInvocationID.x;
+
+#ifndef RR_INDIRECT_KERNEL
+    if (gidx >= g_num_rays)
+    {
+        return;
+    }
+#else
+    if (gidx >= g_num_rays_indirect)
+    {
+        return;
+    }
+#endif
+
+    Ray ray = g_rays[gidx];
+    vec3 invdir = safe_invdir(ray.direction);
+    vec3 oxinvdir = -ray.origin * invdir;
+
+    float closest_t = ray.max_t;
+    uint closest_addr = RR_INVALID_ADDR;
+    uint closest_inst_id = RR_INVALID_ADDR;
+    uint closest_prim_id = RR_INVALID_ADDR;
+
+    uint current_inst_id = RR_INVALID_ADDR;
+
+    uint sbegin = RR_STACK_SIZE * gidx; 
+    uint sptr = sbegin;
+    uint lds_sbegin = lidx * RR_LDS_STACK_SIZE;
+    uint lds_sptr = lds_sbegin;
+
+    lds_stack[lds_sptr++] = RR_INVALID_ADDR;
+    uint addr = 0;
+    BVHNode node = g_bvh[addr];
+
+    while (addr != RR_INVALID_ADDR)
+    {
+        if (current_inst_id == RR_INVALID_ADDR)
+        {
+            node = g_bvh[addr];
+        }
+        else
+        {
+            node = g_children_bvh[nonuniformEXT(current_inst_id)].g_nodes[addr];
+        }
+
+        if (RR_BVH2_INTERNAL_NODE(node))
+        {
+            vec2 s0 = fast_intersect_aabb(node.aabb0_min_or_v0,
+                                          node.aabb0_max_or_v1,
+                                          invdir, oxinvdir, closest_t, ray.min_t);
+            vec2 s1 = fast_intersect_aabb(node.aabb1_min_or_v2,
+                                          node.aabb1_max_or_v3,
+                                          invdir, oxinvdir, closest_t, ray.min_t);
+            bool traverse_c0 = (s0.x <= s0.y);
+            bool traverse_c1 = (s1.x <= s1.y);
+            bool c1first = traverse_c1 && (s0.x > s1.x);
+
+            if (traverse_c0 || traverse_c1)
+            {
+                uint deferred = RR_INVALID_ADDR;
+
+                if (c1first || !traverse_c0)
+                {
+                    addr = node.child1;
+                    deferred = node.child0;
+                }
+                else
+                {
+                    addr = node.child0;
+                    deferred = node.child1;
+                }
+
+                if (traverse_c0 && traverse_c1)
+                {
+                    PushStack(deferred, lds_sptr, lds_sbegin, sptr, sbegin);
+                }
+
+                continue;
+            }
+        } 
+        else
+        {
+            // Here we got to either top-level leaf or bottom level leaf.
+            if (current_inst_id == RR_INVALID_ADDR)
+            {
+                current_inst_id = node.child1;
+
+                // Transform ray.
+                Transform t = g_transforms[2 * current_inst_id];
+                transform_ray(t, ray);
+                invdir = safe_invdir(ray.direction);
+                oxinvdir = -ray.origin * invdir;
+
+                // Push sentinel and continue.
+                PushStack(RR_TOP_LEVEL_SENTINEL, lds_sptr, lds_sbegin, sptr, sbegin);
+                addr = 0;
+
+                continue;
+            }
+            else
+            {
+                float t = fast_intersect_triangle(ray,
+                                                  node.aabb0_min_or_v0,
+                                                  node.aabb0_max_or_v1,
+                                                  node.aabb1_min_or_v2,
+                                                  closest_t);
+
+                if (t < closest_t)
+                {
+#ifndef RR_QUERY_ANY
+                    closest_t = t;
+                    closest_addr = addr;
+                    closest_prim_id = node.child1;
+                    closest_inst_id = current_inst_id;
+#else
+    #ifdef RR_OUTPUT_TYPE_FULL_HIT
+                    vec3 p = ray.origin + t * ray.direction;
+                    Hit hit;
+                    hit.uv = calculate_barycentrics(p,
+                                                    node.aabb0_min_or_v0,
+                                                    node.aabb0_max_or_v1,
+                                                    node.aabb1_min_or_v2);
+
+                    hit.prim_id = node.child1;
+                    hit.shape_id = current_inst_id;
+                    g_hits[gidx] = hit;
+    #else 
+                    g_hits[gidx] = current_inst_id;
+    #endif
+                    return;
+#endif
+                }
+            }
+        }
+
+        addr = PopStack(lds_sptr, lds_sbegin, sptr, sbegin);
+
+        // Analyze addr and detemine if bottom -> top
+        // level is happening (in this case we need to restore original ray).
+        if (addr == RR_TOP_LEVEL_SENTINEL)
+        {
+            current_inst_id = RR_INVALID_ADDR;
+            // Restore original ray
+            ray = g_rays[gidx];
+            invdir = safe_invdir(ray.direction);
+            oxinvdir = -ray.origin * invdir;
+            addr = PopStack(lds_sptr, lds_sbegin, sptr, sbegin);
+        }
+    }
+
+    if (closest_addr != RR_INVALID_ADDR)
+    {
+        BVHNode node = g_children_bvh[nonuniformEXT(closest_inst_id)].g_nodes[closest_addr];
+
+#ifdef RR_OUTPUT_TYPE_FULL_HIT
+        ray = g_rays[gidx];
+
+        Transform t = g_transforms[2 * closest_inst_id];
+        transform_ray(t, ray);
+
+        vec3 p = ray.origin + closest_t * ray.direction;
+
+        Hit hit;
+        hit.uv = calculate_barycentrics(p,
+                                        node.aabb0_min_or_v0,
+                                        node.aabb0_max_or_v1,
+                                        node.aabb1_min_or_v2);
+
+        hit.prim_id = closest_prim_id;
+        hit.shape_id = closest_inst_id;
+        g_hits[gidx] = hit;
+#else
+        g_hits[gidx] = closest_inst_id;
+#endif
+    }
+    else
+    {
+#ifdef RR_OUTPUT_TYPE_FULL_HIT
+        g_hits[gidx].shape_id = RR_INVALID_ADDR;
+#else
+        g_hits[gidx] = RR_INVALID_ADDR;
+#endif
+
+    }
+}
