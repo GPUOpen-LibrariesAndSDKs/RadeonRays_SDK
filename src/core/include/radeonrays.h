@@ -42,12 +42,12 @@ struct _RREvent;
 struct _RRContext;
 struct _RRCommandStream;
 
-typedef uint32_t          RRBuildFlags;
-typedef uint32_t          RRRayMask;
-typedef _RRDevicePtr*     RRDevicePtr;
-typedef _RRContext*       RRContext;
-typedef _RREvent*         RREvent;
-typedef _RRCommandStream* RRCommandStream;
+typedef uint32_t                 RRBuildFlags;
+typedef uint32_t                 RRRayMask;
+typedef struct _RRDevicePtr*     RRDevicePtr;
+typedef struct _RRContext*       RRContext;
+typedef struct _RREvent*         RREvent;
+typedef struct _RRCommandStream* RRCommandStream;
 
 enum
 {
