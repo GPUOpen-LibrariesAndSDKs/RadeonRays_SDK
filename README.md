@@ -21,6 +21,7 @@ RadeonRays requires a PC with the following software and hardware:
 
 - DirectX12: a 64-bit version of Windows&reg; 10, and a GPU and drivers that supports DirectX12 features
 - Vulkan: a 64-bit version of Windows&reg; 10 or Linux, and a GPU and drivers that support Vulkan version 1.2
+- Installed spdlog library
 
 ## Documentation
 
