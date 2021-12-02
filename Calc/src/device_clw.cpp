@@ -401,6 +401,10 @@ namespace Calc
 #endif
                 );
 
+#if defined(__arm64__)
+            buildopts.append("-D ARM64 ");
+#endif
+
             return new ExecutableClw(CLWProgram::CreateFromSource(source_code, size, buildopts.c_str(), m_context));
         }
         catch (CLWException& e)
@@ -448,6 +452,10 @@ namespace Calc
                 ""
 #endif
                 );
+
+#if defined(__arm64__)
+            buildopts.append("-D ARM64 ");
+#endif
 
             return new ExecutableClw(
                                      CLWProgram::CreateFromFile(filename, headernames, numheaders, buildopts.c_str(), m_context)
@@ -610,7 +618,11 @@ namespace Calc
                              ""
 #endif
                              );
-            
+
+#if defined(__arm64__)
+            buildopts.append("-D ARM64 ");
+#endif
+
             m_pp = CLWParallelPrimitives(context, buildopts.c_str());
         }
 

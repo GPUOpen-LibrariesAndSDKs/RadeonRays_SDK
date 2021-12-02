@@ -106,7 +106,7 @@ int ray_get_doBackfaceCull(ray const* r)
 /*************************************************************************
 FUNCTIONS
 **************************************************************************/
-#ifndef APPLE
+#if !defined(APPLE) || defined(ARM64)
 INLINE
 float4 make_float4(float x, float y, float z, float w)
 {

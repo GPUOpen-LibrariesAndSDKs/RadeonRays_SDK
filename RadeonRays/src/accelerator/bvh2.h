@@ -27,9 +27,9 @@ THE SOFTWARE.
 #include <vector>
 #include <thread>
 #include <condition_variable>
-#include <mmintrin.h>
-#include <xmmintrin.h>
-#include <smmintrin.h>
+#include <simde/x86/mmx.h>
+#include <simde/x86/sse.h>
+#include <simde/x86/sse4.1.h>
 
 #include "../primitive/mesh.h"
 #include "../primitive/instance.h"

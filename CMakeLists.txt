@@ -44,6 +44,9 @@ elseif (UNIX)
     set (EMBREE_LIB embree2)
 endif (WIN32)
 
+include_directories(simde)
+add_definitions(-DSIMDE_ENABLE_NATIVE_ALIASES)
+
 if (RR_USE_OPENCL)
     find_package(OpenCL REQUIRED)
     add_definitions(-DUSE_OPENCL=1)
