@@ -250,6 +250,8 @@ KERNEL void occluded_main(
 
         if (ray_is_active(&my_ray))
         {
+            bool have_intersection = false;
+
             const float3 invDir = safe_invdir(my_ray);
             const float3 oxInvDir = -my_ray.o.xyz * invDir;
 
@@ -334,7 +336,8 @@ KERNEL void occluded_main(
                         if (t < closest_t)
                         {
                             hits[index] = HIT_MARKER;
-                            return;
+                            have_intersection = true;
+                            break;
                         }
 #ifdef RR_RAY_MASK
                     }
@@ -356,8 +359,11 @@ KERNEL void occluded_main(
                 }
             }
 
-            // Finished traversal, but no intersection found
-            hits[index] = MISS_MARKER;
+            if (have_intersection == false)
+            {
+                // Finished traversal, but no intersection found
+                hits[index] = MISS_MARKER;
+            }
         }
     }
 }

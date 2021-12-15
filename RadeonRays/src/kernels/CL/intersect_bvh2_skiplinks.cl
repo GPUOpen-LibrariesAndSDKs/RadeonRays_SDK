@@ -229,6 +229,8 @@ void occluded_main(
 
         if (ray_is_active(&r))
         {
+            bool have_intersection = false;
+
             // Precompute inverse direction and origin / dir for bbox testing
             float3 const invdir = safe_invdir(r);
             float3 const oxinvdir = -r.o.xyz * invdir;
@@ -266,7 +268,8 @@ void occluded_main(
                             if (f < t_max)
                             {
                                 hits[global_id] = HIT_MARKER;
-                                return;
+                                have_intersection = true;
+                                break;
                             }
 #ifdef RR_RAY_MASK
                         }
@@ -284,8 +287,11 @@ void occluded_main(
                 addr = NEXT(node);
             }
 
-            // Finished traversal, but no intersection found
-            hits[global_id] = MISS_MARKER;
+            if (have_intersection == false)
+            {
+                // Finished traversal, but no intersection found
+                hits[global_id] = MISS_MARKER;
+            }
         }
     }
 }
@@ -353,6 +359,8 @@ GLOBAL float* hits
         r.padding = 1;
         
         {
+            bool have_intersection = false;
+
             // Precompute inverse direction and origin / dir for bbox testing
             float3 const invdir = safe_invdir(r);
             float3 const oxinvdir = -r.o.xyz * invdir;
@@ -401,7 +409,10 @@ GLOBAL float* hits
                                     hits[(output_offset + origin_id)*2+1] += koef.z;
                                 #endif
 
-                                return;
+                                // Normally we would just return here but Apple M1 OpenCL compiler sometimes behaves
+                                // as if the return is never executed.
+                                have_intersection = true;
+                                break;
                             }
                             #ifdef RR_RAY_MASK
                         }
@@ -418,19 +429,22 @@ GLOBAL float* hits
                 
                 addr = NEXT(node);
             }
-            
-            // Finished traversal, but no intersection found
-            #ifdef USE_ATOMIC
-            if (fabs(koef.y)>1e-4) {
-                atomicadd(&hits[(output_offset + origin_id)*2], koef.y);
+
+            if (have_intersection == false)
+            {
+                // Finished traversal, but no intersection found
+                #ifdef USE_ATOMIC
+                if (fabs(koef.y)>1e-4) {
+                    atomicadd(&hits[(output_offset + origin_id)*2], koef.y);
+                }
+                if (fabs(koef.w)>1e-4) {
+                    atomicadd(&hits[(output_offset + origin_id)*2+1], koef.w);
+                }
+                #else
+                    hits[(output_offset + origin_id)*2] += koef.y;
+                    hits[(output_offset + origin_id)*2+1] += koef.w;
+                #endif
             }
-            if (fabs(koef.w)>1e-4) {
-                atomicadd(&hits[(output_offset + origin_id)*2+1], koef.w);
-            }
-            #else
-                hits[(output_offset + origin_id)*2] += koef.y;
-                hits[(output_offset + origin_id)*2+1] += koef.w;
-            #endif
         }
     }
 }
@@ -468,6 +482,7 @@ GLOBAL float* hits
     int num_ray_batches = (*num_cell_strings) * (*num_directions);
     if (global_id < num_ray_batches)
     {
+        bool have_intersection = false;
 
         // Map global_id to cell_string_id
         const int cell_string_id = global_id % (*num_cell_strings);
@@ -479,7 +494,7 @@ GLOBAL float* hits
         int cs_pt_end = cell_string_inds[cell_string_id*2+1];
 
         // Iterate over all points in cell-string
-        for (int i = cs_pt_start; i < cs_pt_end; i++) {
+        for (int i = cs_pt_start; i < cs_pt_end && have_intersection == false; i++) {
 
             // Create ray
             ray r;
@@ -529,8 +544,8 @@ GLOBAL float* hits
                                 if (f < t_max)
                                 {
                                     hits[cell_string_id + direction_id * (*num_cell_strings)] = 1.;
-                                    return;
-
+                                    have_intersection = true;
+                                    break;
                                 }
                                 #ifdef RR_RAY_MASK
                             }
@@ -548,7 +563,11 @@ GLOBAL float* hits
                 }
             }
         }
-        // Finished traversal for all points in cell-string, but no intersection found
-        hits[cell_string_id + direction_id * (*num_cell_strings)] = 0.;
+
+        if (have_intersection == false)
+        {
+            // Finished traversal for all points in cell-string, but no intersection found
+            hits[cell_string_id + direction_id * (*num_cell_strings)] = 0.;
+        }
     }
 }

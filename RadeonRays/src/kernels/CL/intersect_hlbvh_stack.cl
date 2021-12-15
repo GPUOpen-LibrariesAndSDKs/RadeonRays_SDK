@@ -106,7 +106,9 @@ occluded_main(
 
         if (ray_is_active(&r))
         {
-            // Allocate stack in global memory 
+            bool have_intersection = false;
+
+            // Allocate stack in global memory
             __global int* gm_stack_base = stack + (group_id * WAVEFRONT_SIZE + local_id) * GLOBAL_STACK_SIZE;
             __global int* gm_stack = gm_stack_base;
             // Allocate stack in LDS
@@ -154,7 +156,8 @@ occluded_main(
                         if (f < t_max)
                         {
                             hits[global_id] = HIT_MARKER;
-                            return;
+                            have_intersection = true;
+                            break;
                         }
 #ifdef RR_RAY_MASK
                     }
@@ -233,8 +236,11 @@ occluded_main(
                 }
             }
 
-            // Finished traversal, but no intersection found
-            hits[global_id] = MISS_MARKER;
+            if (have_intersection == false)
+            {
+                // Finished traversal, but no intersection found
+                hits[global_id] = MISS_MARKER;
+            }
         }
     }
 }

@@ -338,6 +338,8 @@ KERNEL void occluded_main(
 
         if (ray_is_active(&my_ray))
         {
+            bool have_intersection = false;
+
             // Precompute inverse direction and origin / dir for bbox testing
             const float3 invDir32 = safe_invdir2(my_ray);
             const half3 invDir = convert_half3(invDir32);
@@ -448,7 +450,8 @@ KERNEL void occluded_main(
                         if (t < closest_t)
                         {
                             hits[index] = HIT_MARKER;
-                            return;
+                            have_intersection = true;
+                            break;
                         }
 #ifdef RR_RAY_MASK
                 }
@@ -470,8 +473,11 @@ KERNEL void occluded_main(
                 }
             }
 
-            // Finished traversal, but no intersection found
-            hits[index] = MISS_MARKER;
+            if (have_intersection == false)
+            {
+                // Finished traversal, but no intersection found
+                hits[index] = MISS_MARKER;
+            }
         }
     }
 }

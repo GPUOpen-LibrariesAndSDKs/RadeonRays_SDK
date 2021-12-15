@@ -336,6 +336,8 @@ KERNEL void occluded_main(
 
         if (ray_is_active(&r))
         {
+            bool have_intersection = false;
+
             // Precompute invdir for bbox testing
             float3 invdir = safe_invdir(r);
             float3 invdirtop = invdir;
@@ -378,7 +380,8 @@ KERNEL void occluded_main(
                             if (f < t_max)
                             {
                                 hits[global_id] = HIT_MARKER;
-                                return;
+                                have_intersection = true;
+                                break;
                             }
 
                             // And goto next node
@@ -453,7 +456,10 @@ KERNEL void occluded_main(
                 }
             }
 
-            hits[global_id] = MISS_MARKER;
+            if (have_intersection == false)
+            {
+                hits[global_id] = MISS_MARKER;
+            }
         }
     }
 }
