@@ -84,6 +84,9 @@ namespace RadeonRays
         , m_bvh(nullptr)
     {
         std::string buildopts;
+#ifdef RR_RAY_ACTIVE_FLAG
+        buildopts.append("-D RR_RAY_ACTIVE_FLAG ");
+#endif
 #ifdef RR_RAY_MASK
         buildopts.append("-D RR_RAY_MASK ");
 #endif

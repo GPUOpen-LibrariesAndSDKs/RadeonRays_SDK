@@ -82,7 +82,11 @@ int ray_get_mask(ray const* r)
 INLINE
 int ray_is_active(ray const* r)
 {
+#ifdef RR_RAY_ACTIVE_FLAG
     return r->extra.y;
+#else
+    return true;
+#endif
 }
 
 INLINE
