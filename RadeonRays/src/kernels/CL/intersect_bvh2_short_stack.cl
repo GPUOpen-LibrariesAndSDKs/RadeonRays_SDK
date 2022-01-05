@@ -453,7 +453,7 @@ KERNEL void intersect_main(
                 // Update hit information
                 hits[global_id].shape_id = node.shape_id;
                 hits[global_id].prim_id = node.prim_id;
-                hits[global_id].uvwt = make_float4(uv.x, uv.y, 0.f, t_max);
+                hits[global_id].uv = make_float2(uv.x, uv.y);
             }
             else
             {

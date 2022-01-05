@@ -64,9 +64,7 @@ typedef struct
 {
     int shape_id;
     int prim_id;
-    int2 padding;
-
-    float4 uvwt;
+    float2 uv;
 } Intersection;
 
 

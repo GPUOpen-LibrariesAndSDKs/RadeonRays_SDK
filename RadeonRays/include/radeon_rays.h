@@ -143,12 +143,8 @@ namespace RadeonRays
         Id shapeid;
         // Primitve ID
         Id primid;
-
-        int padding0;
-        int padding1;
-        
         // UV parametrization
-        float4 uvwt;
+        float2 uv;
 
         Intersection();
     };

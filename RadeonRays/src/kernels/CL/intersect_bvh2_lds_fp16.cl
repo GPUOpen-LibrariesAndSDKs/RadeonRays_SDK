@@ -301,7 +301,7 @@ KERNEL void intersect_main(
                 // Update hit information
                 hits[index].prim_id = node.aabb23_min_or_v2_and_addr2_or_prim_id.w;
                 hits[index].shape_id = node.aabb01_max_or_v1_and_addr1_or_mesh_id.w;
-                hits[index].uvwt = (float4)(uv.x, uv.y, 0.0f, closest_t);
+                hits[index].uv = (float2)(uv.x, uv.y);
             }
             else
             {

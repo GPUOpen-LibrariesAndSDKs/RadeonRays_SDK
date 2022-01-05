@@ -213,7 +213,7 @@ KERNEL void intersect_main(
                 // Update hit information
                 hits[index].prim_id = GetPrimId(node);
                 hits[index].shape_id = GetMeshId(node);
-                hits[index].uvwt = (float4)(uv.x, uv.y, 0.0f, closest_t);
+                hits[index].uv = (float2)(uv.x, uv.y);
             }
             else
             {

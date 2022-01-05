@@ -294,7 +294,7 @@ KERNEL void intersect_main(
                 // Update hit information
                 hits[global_id].shape_id = closest_shape_id;
                 hits[global_id].prim_id = closest_prim_id;
-                hits[global_id].uvwt = make_float4(closest_barycentrics.x, closest_barycentrics.y, 0.f, t_max);
+                hits[global_id].uv = make_float2(closest_barycentrics.x, closest_barycentrics.y);
             }
             else
             {
