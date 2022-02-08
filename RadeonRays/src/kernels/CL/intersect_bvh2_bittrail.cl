@@ -159,6 +159,8 @@ occluded_main(
 
         if (ray_is_active(&r))
         {
+            bool have_intersection = false;
+
             // Precompute inverse direction and origin / dir for bbox testing
             float3 const invdir = safe_invdir(r);
             float3 const oxinvdir = -r.o.xyz * invdir;
@@ -196,7 +198,8 @@ occluded_main(
                         if (f < t_max)
                         {
                             hits[global_id] = HIT_MARKER;
-                            return;
+                            have_intersection = true;
+                            break;
                         }
 #ifdef RR_RAY_MASK
                     }
@@ -271,8 +274,11 @@ occluded_main(
                 addr = hash_table[displacement + (node_idx & (displacement_table_size - 1))];
             }
 
-            // Finished traversal, but no intersection found
-            hits[global_id] = MISS_MARKER;
+            if (have_intersection == false)
+            {
+                // Finished traversal, but no intersection found
+                hits[global_id] = MISS_MARKER;
+            }
         }
     }
 }

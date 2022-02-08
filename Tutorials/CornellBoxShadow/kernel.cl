@@ -137,24 +137,22 @@ __kernel void GenerateShadowRays(__global Ray* rays,
         int prim_id = isect[k].primid;
 
         // Need shadow rays only for intersections
-        if (shape_id == -1 || prim_id == -1)
+        if (shape_id != -1 && prim_id != -1)
         {
-           return;
+            // Calculate position and normal of the intersection point
+            int ind = indents[shape_id];
+            float4 pos = ConvertFromBarycentric(positions + ind*3, ids + ind, prim_id, &isect[k].uvwt);
+            float4 norm = ConvertFromBarycentric(normals + ind*3, ids + ind, prim_id, &isect[k].uvwt);
+            norm = normalize(norm);
+
+            float4 dir = light - pos;
+            rays[k].d = normalize(dir);
+            rays[k].o = pos + norm * EPSILON;
+            rays[k].o.w = length(dir);
+
+            rays[k].extra.x = 0xFFFFFFFF;
+            rays[k].extra.y = 0xFFFFFFFF;
         }
-        
-        // Calculate position and normal of the intersection point
-        int ind = indents[shape_id];
-        float4 pos = ConvertFromBarycentric(positions + ind*3, ids + ind, prim_id, &isect[k].uvwt);
-        float4 norm = ConvertFromBarycentric(normals + ind*3, ids + ind, prim_id, &isect[k].uvwt);
-        norm = normalize(norm);
-
-        float4 dir = light - pos;
-        rays[k].d = normalize(dir);
-        rays[k].o = pos + norm * EPSILON;
-        rays[k].o.w = length(dir);
-
-        rays[k].extra.x = 0xFFFFFFFF;
-        rays[k].extra.y = 0xFFFFFFFF;
    }
 }
 
