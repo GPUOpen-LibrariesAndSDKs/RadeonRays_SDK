@@ -22,6 +22,7 @@ THE SOFTWARE.
 #ifndef __CLW__CLWParallelPrimitives__
 #define __CLW__CLWParallelPrimitives__
 
+#include <limits>
 #include "CLWContext.h"
 #include "CLWProgram.h"
 #include "CLWEvent.h"
