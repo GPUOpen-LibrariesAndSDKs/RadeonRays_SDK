@@ -378,13 +378,13 @@ RR_API RRError rrGetSceneBuildMemoryRequirements(RRContext                contex
  *
  * @param context RR API context.
  * @param scene Scene to raycast against.
- * @param query Query type (clsosest or first)
+ * @param query Query type (closest or first)
  * @param rays Buffer of rays.
  * @param ray_count Number of rays in the buffer (or max number of rays if indirect_ray_count is supplied).
  * @param indirect_ray_count Optional actual number of rays in the buffer.
  * @param query_output Type of the information to output.
  * @param hits Output hits buffer.
- * @param scratch Auxilliary buffer for trace.
+ * @param scratch Auxiliary buffer for trace.
  * @param command_stream to write command to.
  * @return Error in case of a failure, RRSuccess otherwise.
  */

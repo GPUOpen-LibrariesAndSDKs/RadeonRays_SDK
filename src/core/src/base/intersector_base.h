@@ -89,7 +89,7 @@ public:
                                                      const RRBuildOptions*                     build_options) = 0;
 
     /**
-     * @brief Get scene build memeory requirements.
+     * @brief Get scene build memory requirements.
      *
      * @param instance_count Number of instances in the scene.
      * @param build_options Build options.
@@ -168,7 +168,7 @@ public:
      * @param indirect_ray_count Optional buffer containing number of rays in GPU memory.
      * @param query_output Type of output produced by the intersector.
      * @param hits Buffer to write hit data to.
-     * @param scratch Auxilliary buffer for trace.
+     * @param scratch Auxiliary buffer for trace.
      **/
     virtual void Intersect(CommandStreamBase*     command_stream,
                            DevicePtrBase*         scene_buffer,

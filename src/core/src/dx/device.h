@@ -52,7 +52,7 @@ public:
     ~Device();
 
     /*************************************************************
-     * DeviceBase interface overrrides.
+     * DeviceBase interface overrides.
      *************************************************************/
     /**
      * @brief Allocate a command stream.

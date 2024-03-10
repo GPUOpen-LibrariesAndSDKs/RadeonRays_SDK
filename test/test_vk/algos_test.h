@@ -152,7 +152,7 @@ void AlgosTest::SetUp()
     std::vector<VkQueueFamilyProperties> queue_props(queue_family_count);
     vkGetPhysicalDeviceQueueFamilyProperties(gpus[0], &queue_family_count, queue_props.data());
 
-    // Look for a queue supporing both compute and transfer
+    // Look for a queue supporting both compute and transfer
     bool found = false;
     for (unsigned int i = 0; i < queue_family_count; i++)
     {
