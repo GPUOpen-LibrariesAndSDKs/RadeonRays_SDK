@@ -29,7 +29,7 @@ float3 TransformPoint(in float3 p, in float4 transform[3])
                    dot(p, transform[2].xyz) + transform[2].w);
 }
 
-//< Caluclate inverse of 4x4 matrix.
+//< Calculate inverse of 4x4 matrix.
 float4x4 inverse(in float4x4 m)
 {
     float n11 = m[0][0], n12 = m[1][0], n13 = m[2][0], n14 = m[3][0];

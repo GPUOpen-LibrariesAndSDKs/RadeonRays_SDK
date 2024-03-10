@@ -37,7 +37,7 @@ public:
     ~Dx12Intersector() = default;
 
     /********************************************
-     * IntersectorBase interface overrrides.
+     * IntersectorBase interface overrides.
      ********************************************/
     /**
      * @brief Get an info on build memory requirements.

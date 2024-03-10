@@ -111,7 +111,7 @@ void Device::CreateDXGIAdapter(D3D_FEATURE_LEVEL feature_level)
 
 void Device::CreateDeviceAndCommandQueue(D3D_FEATURE_LEVEL feature_level)
 {
-    Logger::Get().Debug("Initalizing DirectX in standalone mode");
+    Logger::Get().Debug("Initializing DirectX in standalone mode");
 
     // Create the DX12 API device object.
     ThrowIfFailed(D3D12CreateDevice(dxgi_adapter_.Get(), feature_level, IID_PPV_ARGS(&device_)),
@@ -138,7 +138,7 @@ void Device::InitD3D()
 
 void Device::InitializePools()
 {
-    // Initalize fence pool creation functions.
+    // Initialize fence pool creation functions.
     event_pool_.SetCreateFn([device = device_]() {
         EventBackend<BackendType::kDx12>* event = new Event();
         ID3D12Fence*                      fence = nullptr;

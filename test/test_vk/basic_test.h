@@ -151,7 +151,7 @@ void BasicTest::SetUp()
     std::vector<VkQueueFamilyProperties> queue_props(queue_family_count);
     vkGetPhysicalDeviceQueueFamilyProperties(gpus[0], &queue_family_count, queue_props.data());
 
-    // Look for a queue supporing both compute and transfer
+    // Look for a queue supporting both compute and transfer
     bool found = false;
     for (unsigned int i = 0; i < queue_family_count; i++)
     {
@@ -361,7 +361,7 @@ TEST_F(BasicTest, BuildSingleTriangle)
     CHECK_RR_CALL(rrCmdBuildGeometry(
         context, RR_BUILD_OPERATION_BUILD, &geometry_build_input, &options, scratch_ptr, geometry_ptr, command_stream));
 
-    /// release everuthing
+    /// release everything
     RREvent wait_event = nullptr;
     CHECK_RR_CALL(rrSumbitCommandStream(context, command_stream, nullptr, &wait_event));
     CHECK_RR_CALL(rrWaitEvent(context, wait_event));
