@@ -20,6 +20,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ********************************************************************/
 
+__constant float const kRayParamEpsilon = 1e-6;
+__constant float const kUvEpsilon = 1e-6;
+__constant float const kOnePlusUvEpsilon = 1.0 + kUvEpsilon;
+
 /*************************************************************************
 DEFINES
 **************************************************************************/
@@ -207,7 +211,10 @@ float fast_intersect_triangle(ray r, float3 v1, float3 v2, float3 v3, float t_ma
     float const b2 = dot(r.d.xyz, s2) * invd;
     float const temp = dot(e2, s2) * invd;
 
-    if (b1 < 0.f || b1 > 1.f || b2 < 0.f || b1 + b2 > 1.f || temp < 0.f || temp > t_max)
+    /* Allow intersection to be slightly outside triangle edges so that line doesn't
+    miss intersection at the seam of two adjacent triangles (kUvEpsilon/kOnePlusUvEpsilon)
+    and don't count intersections right at the line origin (kRayParamEpsilon). */
+    if (b1 < -kUvEpsilon || b1 > kOnePlusUvEpsilon || b2 < -kUvEpsilon || b1 + b2 > kOnePlusUvEpsilon || temp < kRayParamEpsilon || temp > t_max)
     {
         return t_max;
     }
